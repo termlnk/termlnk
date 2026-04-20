@@ -1,0 +1,25 @@
+{
+  "git": {
+    "commitMessage": "release(desktop): v${version}",
+    "tagName": "v${version}",
+    "requireBranch": "main"
+  },
+  "github": {
+    "release": false,
+    "releaseName": "Desktop v${version}",
+    "draft": true
+  },
+  "npm": false,
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "angular",
+      "infile": "docs/CHANGELOG.md",
+      "ignoreRecommendedBump": true
+    },
+    "@release-it-plugins/workspaces": {
+      "skipChecks": true,
+      "publish": false,
+      "workspaces": ["packages/*", "apps/desktop"]
+    }
+  }
+}

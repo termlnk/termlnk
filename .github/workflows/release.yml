@@ -1,0 +1,239 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-alpha.*'
+      - 'v*.*.*-beta.*'
+      - 'v*.*.*-rc.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to rebuild, for example v0.0.1'
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release-tag: ${{ steps.tag.outputs.release-tag }}
+    steps:
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = 'workflow_dispatch' ]; then
+            RELEASE_TAG='${{ inputs.tag }}'
+          else
+            RELEASE_TAG="${GITHUB_REF#refs/tags/}"
+          fi
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG"
+            exit 1
+          fi
+
+          echo "release-tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_TAG="${{ steps.tag.outputs.release-tag }}"
+          REPO="${{ github.repository }}"
+          if ! gh release view "$RELEASE_TAG" --repo "$REPO" &>/dev/null; then
+            gh release create "$RELEASE_TAG" \
+              --repo "$REPO" \
+              --draft \
+              --title "Desktop ${RELEASE_TAG}" \
+              --notes "Release ${RELEASE_TAG}"
+            echo "Created draft release for $RELEASE_TAG"
+          else
+            echo "Release $RELEASE_TAG already exists, skipping creation"
+          fi
+
+  build:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
+      TURBO_TELEMETRY_DISABLED: '1'
+      HUSKY: '0'
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          ref: refs/tags/${{ needs.prepare.outputs.release-tag }}
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
+
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-build-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'packages/**/package.json', 'apps/desktop/package.json') }}
+          restore-keys: |
+            turbo-build-
+
+      - name: Install dependencies
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          TERMLNK_SKIP_ELECTRON_POSTINSTALL: '1'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Generate locale files
+        working-directory: apps/desktop
+        run: pnpm generate:locales
+
+      - name: Build Electron (Vite)
+        working-directory: apps/desktop
+        run: pnpm build
+
+      - name: Upload desktop dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-dist
+          path: apps/desktop/dist/
+          retention-days: 1
+
+  mac:
+    needs: [prepare, build]
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+      packages: read
+    uses: ./.github/workflows/release-mac.yml
+    with:
+      release-tag: ${{ needs.prepare.outputs.release-tag }}
+    secrets: inherit
+
+  windows:
+    needs: [prepare, build]
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+      packages: read
+    uses: ./.github/workflows/release-windows.yml
+    with:
+      release-tag: ${{ needs.prepare.outputs.release-tag }}
+    secrets: inherit
+
+  linux:
+    needs: [prepare, build]
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+      packages: read
+    uses: ./.github/workflows/release-linux.yml
+    with:
+      release-tag: ${{ needs.prepare.outputs.release-tag }}
+    secrets: inherit
+
+  finalize:
+    needs: [prepare, mac, windows, linux]
+    if: >-
+      !cancelled() &&
+      needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (sparse — only changelog)
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: docs/CHANGELOG.md
+          sparse-checkout-cone-mode: false
+
+      - name: Extract changelog for current version
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
+        shell: bash
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          awk '/^## \['"$VERSION"'\]/{found=1; next} /^## \[/{if(found) exit} found{print}' docs/CHANGELOG.md > /tmp/release-notes.md
+          echo "--- Release notes for $VERSION ---"
+          cat /tmp/release-notes.md
+
+      - name: Update release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
+        run: gh release edit "$RELEASE_TAG" --notes-file /tmp/release-notes.md
+
+      - name: Download update manifests
+        uses: actions/download-artifact@v4
+        with:
+          path: manifests
+          pattern: latest-*
+
+      - name: Merge update manifests
+        run: |
+          pip install yq --quiet
+
+          merge_manifests() {
+            local output="$1"
+            shift
+            local inputs=()
+            for f in "$@"; do [ -f "$f" ] && inputs+=("$f"); done
+
+            if [ ${#inputs[@]} -eq 0 ]; then
+              echo "No manifests found for $output, skipping"
+              return
+            elif [ ${#inputs[@]} -eq 1 ]; then
+              cp "${inputs[0]}" "/tmp/$output"
+            else
+              yq eval-all '
+                select(fileIndex == 0) *
+                {"files": [.[].files[] | select(. != null)]}
+              ' "${inputs[@]}" > "/tmp/$output"
+            fi
+            echo "Merged ${#inputs[@]} manifest(s) into $output"
+          }
+
+          merge_manifests "latest-mac.yml" \
+            manifests/latest-mac-arm64/latest-mac.yml \
+            manifests/latest-mac-x64/latest-mac.yml
+
+          merge_manifests "latest.yml" \
+            manifests/latest-win-arm64/latest.yml \
+            manifests/latest-win-x64/latest.yml
+
+          merge_manifests "latest-linux.yml" \
+            manifests/latest-linux-arm64/latest-linux.yml \
+            manifests/latest-linux-x64/latest-linux.yml
+
+      - name: Upload merged manifests to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          for f in latest-mac.yml latest.yml latest-linux.yml; do
+            if [ -f "/tmp/$f" ]; then
+              aws s3 cp "/tmp/$f" "s3://${{ secrets.R2_BUCKET_NAME }}/desktop/$f" \
+                --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+              echo "Uploaded $f"
+            fi
+          done

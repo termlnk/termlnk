@@ -1,0 +1,161 @@
+/**
+ * Copyright 2026-present Termlnk
+ *
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+
+import type enUS from './en-US';
+
+const locale: typeof enUS = {
+  'terminal-ui': {
+    menu: {
+      host: 'Hosts',
+    },
+    'hosts-explorer': {
+      title: '資源管理器',
+    },
+    'host-dialog': {
+      title: {
+        create: '建立主機',
+        edit: '編輯主機',
+      },
+      tab: {
+        basic: '基本資訊',
+        credential: '認證方式',
+        proxy: '代理設定',
+        advanced: '進階設定',
+      },
+      field: {
+        label: '名稱',
+        addr: '位址',
+        port: '連接埠',
+        username: '使用者名稱',
+        password: '密碼',
+        privateKey: '私鑰',
+        parentGroup: '群組',
+        rootGroup: '根目錄',
+      },
+      credential: {
+        type: '認證類型',
+        password: '密碼認證',
+        rsa: '金鑰認證',
+      },
+      proxy: {
+        enable: '啟用代理',
+        type: '代理類型',
+        host: '代理位址',
+        port: '代理連接埠',
+      },
+      advanced: {
+        timeout: '連線逾時(ms)',
+        heartbeat: '心跳間隔(ms)',
+        x11Forward: 'X11 轉發',
+        termType: '終端機類型',
+        encode: '編碼',
+        fontFamily: '字型',
+        fontSize: '字型大小',
+        fontDefault: '預設',
+        runScript: '連線後指令碼',
+        runScriptPlaceholder: '# 連線後執行的指令碼',
+      },
+      btn: {
+        test: '測試連線',
+        cancel: '取消',
+        create: '建立',
+        edit: '儲存',
+      },
+      test: {
+        success: '連線成功 ({0}ms)',
+        failed: '連線失敗: {0}',
+        validationFailed: '請先完善連線資訊',
+      },
+      validation: {
+        labelRequired: '名稱不能為空',
+        addrRequired: '位址不能為空',
+        addrInvalid: '請輸入有效的 IP 位址或主機名稱',
+        portMin: '連接埠最小為 1',
+        portMax: '連接埠最大為 65535',
+        portInvalid: '連接埠必須為整數',
+        usernameRequired: '使用者名稱不能為空',
+        privateKeyRequired: '私鑰不能為空',
+        proxyHostRequired: '代理位址不能為空',
+        proxyPortRequired: '代理連接埠不能為空',
+        timeoutMin: '連線逾時最小為 1000ms',
+        heartbeatMin: '心跳間隔最小為 1000ms',
+        fontSizeMin: '字型大小最小為 8',
+        fontSizeMax: '字型大小最大為 24',
+      },
+    },
+    connection: {
+      step: {
+        connect: '連線',
+        verify: '驗證',
+        shell: '終端機',
+      },
+      status: {
+        connecting: '正在建立連線...',
+        authenticating: '握手完成，正在認證...',
+        openingShell: '正在啟動終端機...',
+        auth: '需要認證。',
+        authFailed: '認證失敗，請重試。',
+        ready: '正在啟動終端機...',
+        error: '連線失敗',
+      },
+      action: {
+        close: '關閉',
+        retry: '重試',
+        continue: '繼續',
+        replace: '取代',
+        addNew: '作為新指紋新增',
+        cancel: '取消',
+      },
+      password: {
+        title: '密碼',
+        placeholder: '請輸入密碼',
+        remember: '儲存此主機密碼',
+      },
+      fingerprint: {
+        title: '{0} 的指紋已變更',
+        subtitle: '偵測到潛在的安全風險。',
+        label: '新的 {0} 指紋為',
+      },
+      logs: {
+        title: '連線記錄',
+      },
+    },
+    drop: {
+      hint: '拖放檔案以貼上路徑',
+    },
+    progress: {
+      title: '終端機進度',
+      source: 'OSC 9;4',
+      indeterminateValue: '--',
+      state: {
+        running: '進行中',
+        error: '錯誤',
+        indeterminate: '無法確定',
+        paused: '已暫停',
+      },
+    },
+    group: {
+      'default-name': '新建群組',
+    },
+    shortcuts: {
+      'close-active-tab': '關閉目前分頁',
+      'create-new-host': '建立新主機',
+      'maximize-session': '最大化/還原工作階段',
+      'open-local-terminal': '新建本機終端機',
+    },
+  },
+};
+
+export default locale;

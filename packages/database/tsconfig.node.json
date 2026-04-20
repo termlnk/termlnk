@@ -1,0 +1,7 @@
+{
+  "extends": "@termlnk/shared/tsconfig/node",
+  "include": [
+    "vitest.config.ts",
+    "drizzle.config.ts"
+  ]
+}

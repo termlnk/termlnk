@@ -1,0 +1,136 @@
+/**
+ * Copyright 2026-present Termlnk
+ *
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+
+import type { ITerminalSessionClosedEvent, ITerminalSessionCreatedEvent, SSHSessionEvent, SSHSessionStatus } from '@termlnk/rpc';
+import type { Observable } from 'rxjs';
+import { createIdentifier, Disposable } from '@termlnk/core';
+import { decodeBase64Utf8Stream, trpcSubscriptionToObservable } from '@termlnk/rpc';
+import { IRPCClientService } from '../rpc-client.service';
+
+export interface ISSHTestConnectionInput {
+  addr: string;
+  port: number;
+  credential: { type: 'password'; username: string; password: string } | { type: 'rsa'; username: string; privateKey: string };
+  proxy?: { enabled: boolean; type: 'socks5' | 'http'; host: string; port: number; username?: string; password?: string };
+  settings?: { connectTimeout?: number };
+}
+
+export interface ISSHTestConnectionResult {
+  ok: boolean;
+  latency: number;
+  message?: string;
+}
+
+export interface ISSHService {
+  sessionCreated$: Observable<ITerminalSessionCreatedEvent>;
+  sessionClosed$: Observable<ITerminalSessionClosedEvent>;
+
+  createSession(hostId: string, cols?: number, rows?: number, password?: string, sessionId?: string): Promise<string>;
+  closeSession(sessionId: string): Promise<void>;
+  retrySession(sessionId: string, password: string): Promise<void>;
+  resize(sessionId: string, rows: number, cols: number): Promise<void>;
+  write(sessionId: string, data: string): Promise<void>;
+  data$(sessionId: string): Observable<string>;
+  status$(sessionId: string): Observable<SSHSessionStatus>;
+  event$(sessionId: string): Observable<SSHSessionEvent>;
+  error$(sessionId: string): Observable<string>;
+  respondKeyboardInteractive(sessionId: string, responses: string[]): Promise<void>;
+  respondChangePassword(sessionId: string, newPassword: string): Promise<void>;
+  testConnection(input: ISSHTestConnectionInput): Promise<ISSHTestConnectionResult>;
+  setFocusedSession(sessionId: string | null): Promise<void>;
+}
+export const ISSHService = createIdentifier<ISSHService>('rpc-client.ssh-service');
+
+export class SSHService extends Disposable implements ISSHService {
+  constructor(
+    @IRPCClientService private readonly _rpcClientService: IRPCClientService
+  ) {
+    super();
+  }
+
+  private get _client() {
+    return this._rpcClientService.getClient().ssh;
+  }
+
+  async createSession(hostId: string, cols = 80, rows = 24, password?: string, sessionId?: string): Promise<string> {
+    return this._client.createSession.mutate({ hostId, cols, rows, password, sessionId });
+  }
+
+  async closeSession(sessionId: string): Promise<void> {
+    await this._client.closeSession.mutate(sessionId);
+  }
+
+  async retrySession(sessionId: string, password: string): Promise<void> {
+    await this._client.retrySession.mutate({ sessionId, password });
+  }
+
+  async resize(sessionId: string, rows: number, cols: number): Promise<void> {
+    await this._client.resize.mutate({ sessionId, rows, cols });
+  }
+
+  async write(sessionId: string, data: string): Promise<void> {
+    await this._client.write.mutate({ sessionId, data });
+  }
+
+  data$(sessionId: string): Observable<string> {
+    return decodeBase64Utf8Stream(
+      trpcSubscriptionToObservable<string>((opts) =>
+        this._client.data$.subscribe(sessionId, opts)
+      )
+    );
+  }
+
+  status$(sessionId: string): Observable<SSHSessionStatus> {
+    return trpcSubscriptionToObservable((opts) =>
+      this._client.status$.subscribe(sessionId, opts)
+    );
+  }
+
+  event$(sessionId: string): Observable<SSHSessionEvent> {
+    return trpcSubscriptionToObservable((opts) =>
+      this._client.event$.subscribe(sessionId, opts)
+    );
+  }
+
+  error$(sessionId: string): Observable<string> {
+    return trpcSubscriptionToObservable((opts) =>
+      this._client.error$.subscribe(sessionId, opts)
+    );
+  }
+
+  async respondKeyboardInteractive(sessionId: string, responses: string[]): Promise<void> {
+    await this._client.respondKeyboardInteractive.mutate({ sessionId, responses });
+  }
+
+  async respondChangePassword(sessionId: string, newPassword: string): Promise<void> {
+    await this._client.respondChangePassword.mutate({ sessionId, newPassword });
+  }
+
+  async testConnection(input: ISSHTestConnectionInput): Promise<ISSHTestConnectionResult> {
+    return this._client.testConnection.mutate(input);
+  }
+
+  async setFocusedSession(sessionId: string | null): Promise<void> {
+    await this._client.setFocusedSession.mutate(sessionId);
+  }
+
+  readonly sessionCreated$: Observable<ITerminalSessionCreatedEvent> = trpcSubscriptionToObservable(
+    (opts) => this._client.sessionCreated$.subscribe(undefined, opts)
+  );
+
+  readonly sessionClosed$: Observable<ITerminalSessionClosedEvent> = trpcSubscriptionToObservable(
+    (opts) => this._client.sessionClosed$.subscribe(undefined, opts)
+  );
+}

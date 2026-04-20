@@ -1,0 +1,65 @@
+{
+  "name": "@termlnk/rpc",
+  "version": "0.0.0",
+  "private": false,
+  "description": "RPC base definitions for termlnk",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./lib/types/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "main": "./lib/es/index.js",
+    "module": "./lib/es/index.js",
+    "exports": {
+      ".": {
+        "import": "./lib/es/index.js",
+        "require": "./lib/cjs/index.js",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./*": {
+        "import": "./lib/es/*",
+        "require": "./lib/cjs/*",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./lib/*": "./lib/*"
+    }
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build": "termlnk-cli build"
+  },
+  "peerDependencies": {
+    "@termlnk/core": "workspace:*",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@termlnk/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "@trpc/server": "^11.13.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4"
+  }
+}

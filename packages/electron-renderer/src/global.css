@@ -1,0 +1,10 @@
+@import 'tailwindcss/utilities' prefix(tm);
+@import '@termlnk/shared/tailwind/theme.css';
+
+.electron-dragable {
+  app-region: drag;
+}
+
+.electron-no-drag {
+  app-region: no-drag;
+}

@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig/node",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "strict": false,
+    "noEmit": true,
+    "esModuleInterop": true
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules"]
+}

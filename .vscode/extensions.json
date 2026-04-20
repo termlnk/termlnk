@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "editorconfig.editorconfig",
+    "intellsmi.comment-translate",
+    "kingwl.vscode-vitest-runner",
+    "streetsidesoftware.code-spell-checker",
+    "tldraw-org.tldraw-vscode",
+    "usernamehw.errorlens",
+    "vitest.explorer",
+    "davidanson.vscode-markdownlint"
+  ]
+}

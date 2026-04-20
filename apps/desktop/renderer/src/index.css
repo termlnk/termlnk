@@ -1,0 +1,22 @@
+@import 'tailwindcss' prefix(tm);
+@import 'tw-animate-css';
+@import '@termlnk/shared/tailwind/theme.css';
+
+@source "../../../../packages/design/src";
+@source "../../../../packages/ui/src";
+@source "../../../../packages/themes-ui/src";
+@source "../../../../packages/terminal-ui/src";
+@source "../../../../packages/electron-renderer/src";
+@source "../../../../packages/sftp-ui/src";
+@source "../../../../packages/settings-ui/src";
+@source "../../../../packages/extension-ui/src";
+@source "../../../../packages/agent-ui/src";
+
+body,
+#root {
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}

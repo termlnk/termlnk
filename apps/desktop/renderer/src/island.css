@@ -1,0 +1,33 @@
+@import 'tailwindcss/theme' prefix(tm);
+@import 'tailwindcss/utilities' prefix(tm);
+@import '@termlnk/shared/tailwind/theme.css';
+
+@source "../../../../packages/island-ui/src";
+
+/* ---------------------------------------------------------------------------
+ * Island window reset
+ * ------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html,
+body,
+#island-root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  color-scheme: normal;
+}
+
+#island-root {
+  position: relative;
+}

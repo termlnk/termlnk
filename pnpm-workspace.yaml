@@ -1,0 +1,42 @@
+packages:
+  - internal/*
+  - packages/*
+  - extensions/*
+  - apps/desktop
+  - apps/desktop/main
+  - apps/desktop/renderer
+
+ignoredBuiltDependencies:
+  - javascript-obfuscator
+
+onlyBuiltDependencies:
+  - '@swc/core'
+  - '@tailwindcss/oxide'
+  - electron
+  - esbuild
+  - fs-xattr
+  - macos-alias
+  - protobufjs
+  - sharp
+
+overrides:
+  '@types/react': ^19.2.14
+  '@types/react-dom': ^19.2.3
+  react: ^19.2.5
+  react-dom: ^19.2.5
+  electron: 40.8.5
+  tar: ^7.5.13
+  undici: ^8.1.0
+  file-type: ^22.0.0
+  '@tootallnate/once': ^3.0.1
+  tmp: ^0.2.5
+  defu: ^6.1.5
+  lodash: ^4.18.1
+  '@xmldom/xmldom': ^0.8.12
+  # Dependabot security fixes (transitive)
+  protobufjs: ^7.5.5
+  basic-ftp: ^5.3.0
+  dompurify: ^3.4.0
+  hono: ^4.12.14
+  follow-redirects: ^1.16.0
+  '@hono/node-server': ^1.19.13

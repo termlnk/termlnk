@@ -1,0 +1,14 @@
+{
+  "name": "@termlnk/macos-utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Native macOS window utilities for Electron",
+  "license": "SEE LICENSE IN LICENSE",
+  "main": "./index.cjs",
+  "types": "./index.d.ts",
+  "os": ["darwin"],
+  "scripts": {
+    "install": "node scripts/install.js",
+    "build": "node-gyp rebuild"
+  }
+}

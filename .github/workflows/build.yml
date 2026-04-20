@@ -1,0 +1,55 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=8192
+  TURBO_TELEMETRY_DISABLED: '1'
+  HUSKY: '0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
+        with:
+          node-version: '24'
+
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-build-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'packages/**/package.json', 'apps/desktop/package.json') }}
+          restore-keys: |
+            turbo-build-
+
+      - name: Install dependencies
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          TERMLNK_SKIP_ELECTRON_POSTINSTALL: '1'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Generate locale files
+        working-directory: apps/desktop
+        run: pnpm generate:locales
+
+      - name: Build Electron (Vite)
+        working-directory: apps/desktop
+        run: pnpm build

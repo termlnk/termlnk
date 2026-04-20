@@ -1,0 +1,8 @@
+{
+  "extends": "@termlnk/shared/tsconfig/node",
+  "include": [
+    "electron-builder.ts",
+    "scripts/**/*",
+    "configs/**/*"
+  ]
+}

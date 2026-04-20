@@ -1,0 +1,32 @@
+@import 'tailwindcss/utilities' prefix(tm);
+@import '@termlnk/shared/tailwind/theme.css';
+
+/* xterm internal DOM styling - cannot be expressed in Tailwind */
+.tm-terminal-view .xterm {
+  height: 100%;
+  padding: 4px 0 4px 6px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.tm-terminal-view .xterm-viewport {
+  background-color: transparent !important;
+}
+
+.tm-terminal-view .xterm-screen {
+  background-color: transparent;
+}
+
+/* xterm 6.x custom scrollbar (pill style, flush to right edge) */
+.tm-terminal-view .xterm .xterm-scrollable-element > .xterm-scrollbar {
+  border-radius: 999px;
+}
+
+.tm-terminal-view .xterm .xterm-scrollable-element > .xterm-scrollbar > .xterm-slider {
+  border-radius: 999px;
+}
+
+/* Hide scrollbar for tabs container */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

@@ -1,0 +1,90 @@
+{
+  "name": "@termlnk/design",
+  "version": "0.0.0",
+  "private": false,
+  "description": "UI component library for termlnk",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*",
+    "./locale/*": "./src/locale/*.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./lib/types/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "main": "./lib/es/index.js",
+    "module": "./lib/es/index.js",
+    "exports": {
+      ".": {
+        "import": "./lib/es/index.js",
+        "require": "./lib/cjs/index.js",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./*": {
+        "import": "./lib/es/*",
+        "require": "./lib/cjs/*",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./locale/*": {
+        "import": "./lib/es/locale/*.js",
+        "require": "./lib/cjs/locale/*.js",
+        "types": "./lib/types/locale/*.d.ts"
+      },
+      "./lib/*": "./lib/*"
+    }
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build": "termlnk-cli build"
+  },
+  "peerDependencies": {
+    "@lobehub/icons": "^5.0.1",
+    "lucide-react": "^1.8.0",
+    "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
+    "react-dom": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.2.0",
+    "@lobehub/icons": "^5.0.1",
+    "@wendellhu/redi": "^1.1.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "dayjs": "^1.11.20",
+    "lucide-react": "^1.8.0",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.4.3",
+    "rc-virtual-list": "^3.19.2",
+    "react-grid-layout": "^2.2.2",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.5.0",
+    "vaul": "^1.1.2"
+  },
+  "devDependencies": {
+    "@termlnk/core": "workspace:*",
+    "@termlnk/shared": "workspace:*",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4"
+  }
+}

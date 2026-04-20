@@ -1,0 +1,11 @@
+@import 'tailwindcss' prefix(tm);
+@import '@termlnk/shared/tailwind/theme.css';
+
+@keyframes tm-ssh-progress {
+  0% {
+    transform: translateX(-60%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}

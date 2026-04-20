@@ -1,0 +1,35 @@
+{
+  "name": "@termlnk/main",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "author": "telan <telanflow@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
+    "@termlnk/agent": "workspace:*",
+    "@termlnk/agent-core": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
+    "@termlnk/electron": "workspace:*",
+    "@termlnk/electron-main": "workspace:*",
+    "@termlnk/extension": "workspace:*",
+    "@termlnk/extension-core": "workspace:*",
+    "@termlnk/island-core": "workspace:*",
+    "@termlnk/rpc": "workspace:*",
+    "@termlnk/rpc-server": "workspace:*",
+    "@termlnk/terminal": "workspace:*",
+    "@termlnk/themes": "workspace:*",
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "electron": "40.8.5"
+  }
+}

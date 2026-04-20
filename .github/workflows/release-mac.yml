@@ -1,0 +1,116 @@
+name: Release macOS
+
+on:
+  workflow_call:
+    inputs:
+      release-tag:
+        required: true
+        type: string
+
+env:
+  NODE_OPTIONS: --max-old-space-size=8192
+  TURBO_TELEMETRY_DISABLED: '1'
+  HUSKY: '0'
+  DEBUG: 'electron-builder:*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x64
+          - runner: macos-latest
+            arch: arm64
+
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          ref: refs/tags/${{ inputs.release-tag }}
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
+
+      - name: Restore Electron cache
+        id: electron-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/Library/Caches/electron
+          key: macOS-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}
+
+      - name: Install Python setuptools
+        if: matrix.arch == 'x64'
+        run: brew install python-setuptools
+
+      - name: Set release version
+        run: |
+          echo "RELEASE_VERSION=${{ inputs.release-tag }}" | sed 's/=v/=/' >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Download desktop dist
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-dist
+          path: apps/desktop/dist/
+
+      - name: Stage & Build
+        working-directory: apps/desktop
+        env:
+          CSC_LINK: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: pnpm stage -- --platform darwin --arch ${{ matrix.arch }} && npx electron-builder --mac --${{ matrix.arch }} --publish never
+
+      - name: Upload to R2
+        working-directory: apps/desktop/release
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 cp . s3://${{ secrets.R2_BUCKET_NAME }}/desktop/ \
+            --endpoint-url ${{ secrets.R2_ENDPOINT }} \
+            --recursive --exclude "*" \
+            --include "*.dmg" --include "*.zip" --include "*.blockmap"
+
+      - name: Upload update manifest as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: latest-mac-${{ matrix.arch }}
+          path: apps/desktop/release/latest-mac.yml
+          if-no-files-found: warn
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=( apps/desktop/release/*.dmg apps/desktop/release/*.zip )
+          if [ ${#files[@]} -eq 0 ]; then echo "::error::No release artifacts found"; exit 1; fi
+          for f in "${files[@]}"; do
+            gh release upload "${{ inputs.release-tag }}" "$f" --clobber
+          done
+
+      - name: Save Electron cache
+        if: steps.electron-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/Library/Caches/electron
+          key: macOS-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}

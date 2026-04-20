@@ -1,0 +1,26 @@
+name: Publish Release
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.release.tag_name }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Release info
+        run: |
+          echo "Tag: ${{ github.event.release.tag_name }}"
+          echo "Name: ${{ github.event.release.name }}"
+          echo "Prerelease: ${{ github.event.release.prerelease }}"
+
+      # Future: Add distribution steps here
+      # - Snapcraft publish
+      # - WinGet version bump
+      # - Homebrew formula update

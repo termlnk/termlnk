@@ -1,0 +1,94 @@
+/* Base46 Theme Colors - Shared Tailwind v4 Theme Configuration */
+/* All colors use @theme inline to support runtime theme switching via CSS variables */
+
+/* Reset default Tailwind color palette */
+@theme {
+  --color-*: initial;
+}
+
+/* Define our custom Base46 colors using @theme inline for runtime theme switching */
+@theme inline {
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* base_30 UI colors */
+  --color-white: var(--tm-white);
+  --color-black: var(--tm-black);
+  --color-darker-black: var(--tm-darker-black);
+  --color-black2: var(--tm-black2);
+  --color-one-bg: var(--tm-one-bg);
+  --color-one-bg2: var(--tm-one-bg2);
+  --color-one-bg3: var(--tm-one-bg3);
+  --color-grey: var(--tm-grey);
+  --color-grey-fg: var(--tm-grey-fg);
+  --color-grey-fg2: var(--tm-grey-fg2);
+  --color-light-grey: var(--tm-light-grey);
+  --color-red: var(--tm-red);
+  --color-baby-pink: var(--tm-baby-pink);
+  --color-pink: var(--tm-pink);
+  --color-green: var(--tm-green);
+  --color-vibrant-green: var(--tm-vibrant-green);
+  --color-blue: var(--tm-blue);
+  --color-nord-blue: var(--tm-nord-blue);
+  --color-yellow: var(--tm-yellow);
+  --color-sun: var(--tm-sun);
+  --color-purple: var(--tm-purple);
+  --color-dark-purple: var(--tm-dark-purple);
+  --color-teal: var(--tm-teal);
+  --color-orange: var(--tm-orange);
+  --color-cyan: var(--tm-cyan);
+  --color-line: var(--tm-line);
+  --color-statusline-bg: var(--tm-statusline-bg);
+  --color-lightbg: var(--tm-lightbg);
+  --color-pmenu-bg: var(--tm-pmenu-bg);
+  --color-folder-bg: var(--tm-folder-bg);
+
+  /* base_16 syntax highlighting colors */
+  --color-base00: var(--tm-base00);
+  --color-base01: var(--tm-base01);
+  --color-base02: var(--tm-base02);
+  --color-base03: var(--tm-base03);
+  --color-base04: var(--tm-base04);
+  --color-base05: var(--tm-base05);
+  --color-base06: var(--tm-base06);
+  --color-base07: var(--tm-base07);
+  --color-base08: var(--tm-base08);
+  --color-base09: var(--tm-base09);
+  --color-base0A: var(--tm-base0A);
+  --color-base0B: var(--tm-base0B);
+  --color-base0C: var(--tm-base0C);
+  --color-base0D: var(--tm-base0D);
+  --color-base0E: var(--tm-base0E);
+  --color-base0F: var(--tm-base0F);
+}
+
+/* Dark mode variant using selector strategy */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Global scrollbar style (Base46-aware, shared by all UI plugins) */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tm-grey) transparent;
+}
+
+/* WebKit / Chromium */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--tm-grey);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--tm-grey-fg);
+}

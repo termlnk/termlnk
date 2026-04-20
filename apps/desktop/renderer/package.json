@@ -1,0 +1,48 @@
+{
+  "name": "@termlnk/renderer",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "author": "telan <telanflow@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "main": "./dist/main/index.js",
+  "dependencies": {
+    "@tanstack/react-query": "^5.99.0",
+    "@tanstack/react-router": "^1.168.18",
+    "@tanstack/react-router-devtools": "^1.166.13",
+    "@termlnk/agent-ui": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/design": "workspace:*",
+    "@termlnk/electron": "workspace:*",
+    "@termlnk/electron-renderer": "workspace:*",
+    "@termlnk/extension": "workspace:*",
+    "@termlnk/extension-ui": "workspace:*",
+    "@termlnk/island": "workspace:*",
+    "@termlnk/island-ui": "workspace:*",
+    "@termlnk/rpc": "workspace:*",
+    "@termlnk/rpc-client": "workspace:*",
+    "@termlnk/settings-ui": "workspace:*",
+    "@termlnk/sftp-ui": "workspace:*",
+    "@termlnk/terminal": "workspace:*",
+    "@termlnk/terminal-ui": "workspace:*",
+    "@termlnk/themes": "workspace:*",
+    "@termlnk/ui": "workspace:*",
+    "ahooks": "^3.9.7",
+    "axios": "^1.15.0",
+    "dayjs": "^1.11.20",
+    "filesize": "^11.0.15",
+    "jotai": "^2.19.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@tanstack/router-plugin": "^1.167.18",
+    "@termlnk/shared": "workspace:*",
+    "react-scan": "^0.5.3"
+  }
+}

@@ -1,0 +1,112 @@
+name: Release Windows
+
+on:
+  workflow_call:
+    inputs:
+      release-tag:
+        required: true
+        type: string
+
+env:
+  NODE_OPTIONS: --max-old-space-size=8192
+  TURBO_TELEMETRY_DISABLED: '1'
+  HUSKY: '0'
+  DEBUG: 'electron-builder:*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            arch: x64
+          - runner: windows-11-arm
+            arch: arm64
+
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          ref: refs/tags/${{ inputs.release-tag }}
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
+
+      - name: Restore Electron cache
+        id: electron-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~\AppData\Local\electron\Cache
+          key: Windows-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}
+
+      - name: Set release version
+        shell: bash
+        run: |
+          echo "RELEASE_VERSION=${{ inputs.release-tag }}" | sed 's/=v/=/' >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Download desktop dist
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-dist
+          path: apps/desktop/dist/
+
+      - name: Stage & Build
+        working-directory: apps/desktop
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: pnpm stage -- --platform win32 --arch ${{ matrix.arch }} && npx electron-builder --win --${{ matrix.arch }} --publish never
+
+      - name: Upload to R2
+        working-directory: apps/desktop/release
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 cp . s3://${{ secrets.R2_BUCKET_NAME }}/desktop/ \
+            --endpoint-url ${{ secrets.R2_ENDPOINT }} \
+            --recursive --exclude "*" \
+            --include "*.exe" --include "*.tar.gz" --include "*.blockmap"
+
+      - name: Upload update manifest as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: latest-win-${{ matrix.arch }}
+          path: apps/desktop/release/latest.yml
+          if-no-files-found: warn
+
+      - name: Upload to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=( apps/desktop/release/*-setup.exe apps/desktop/release/*.tar.gz )
+          if [ ${#files[@]} -eq 0 ]; then echo "::error::No release artifacts found"; exit 1; fi
+          for f in "${files[@]}"; do
+            gh release upload "${{ inputs.release-tag }}" "$f" --clobber
+          done
+
+      - name: Save Electron cache
+        if: steps.electron-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~\AppData\Local\electron\Cache
+          key: Windows-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}

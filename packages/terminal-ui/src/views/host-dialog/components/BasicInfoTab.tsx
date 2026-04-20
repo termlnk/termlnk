@@ -1,0 +1,245 @@
+/**
+ * Copyright 2026-present Termlnk
+ *
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+
+import type { HostTree, ICredential } from '@termlnk/terminal';
+import type { HostFormItem } from '../../../models/host-dialog.state';
+import { LocaleService } from '@termlnk/core';
+import { Field, FieldContent, FieldError, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, useDependency } from '@termlnk/design';
+import { IHostManagerService } from '@termlnk/rpc-client';
+import { DEFAULT_HOST_ROOT, HostType } from '@termlnk/terminal';
+import { useEffect, useState } from 'react';
+
+export interface IBasicInfoTabProps {
+  data: HostFormItem;
+  onChange: (data: Partial<HostFormItem>) => void;
+  getError: (path: string) => string | undefined;
+}
+
+interface IGroupOption {
+  id: string;
+  label: string;
+  depth: number;
+}
+
+function flattenGroups(trees: HostTree[], depth = 0): IGroupOption[] {
+  const result: IGroupOption[] = [];
+  for (const node of trees) {
+    if (node.type === HostType.GROUP) {
+      result.push({ id: node.id, label: node.label, depth });
+      if (node.children?.length) {
+        result.push(...flattenGroups(node.children, depth + 1));
+      }
+    }
+  }
+  return result;
+}
+
+const compactInputCls = 'tm:h-8 tm:px-2 tm:py-1 tm:text-xs';
+const credentialTabTriggerCls = 'tm:px-2.5 tm:py-1 tm:text-xs tm:text-white tm:hover:text-blue';
+
+export function BasicInfoTab(props: IBasicInfoTabProps) {
+  const { data, onChange, getError } = props;
+  const localeService = useDependency(LocaleService);
+  const hostManagerService = useDependency(IHostManagerService);
+
+  const credentialType = data.credential?.type ?? 'password';
+
+  const [groups, setGroups] = useState<IGroupOption[]>([]);
+
+  useEffect(() => {
+    hostManagerService.tree().then((trees) => {
+      setGroups(flattenGroups(trees));
+    });
+  }, [hostManagerService]);
+
+  const handleTypeChange = (type: string) => {
+    const baseCredential = { username: data.credential?.username ?? '' };
+    if (type === 'password') {
+      onChange({
+        credential: { ...baseCredential, type: 'password', password: '' } as ICredential,
+      });
+    } else if (type === 'rsa') {
+      onChange({
+        credential: { ...baseCredential, type: 'rsa', privateKey: '' } as ICredential,
+      });
+    }
+  };
+
+  return (
+    <FieldGroup className="tm:gap-3">
+      <Field>
+        <FieldLabel>{localeService.t('terminal-ui.host-dialog.field.parentGroup')}</FieldLabel>
+        <FieldContent>
+          <Select value={data.pid ?? DEFAULT_HOST_ROOT} onValueChange={(v) => onChange({ pid: v })}>
+            <SelectTrigger
+              className={`
+                ${compactInputCls}
+                tm:w-full
+              `}
+              size="sm"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={DEFAULT_HOST_ROOT}>
+                {localeService.t('terminal-ui.host-dialog.field.rootGroup')}
+              </SelectItem>
+              {groups.map((group) => (
+                <SelectItem key={group.id} value={group.id}>
+                  <span style={{ paddingLeft: `${group.depth * 12}px` }}>{group.label}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FieldContent>
+      </Field>
+
+      <Field data-invalid={!!getError('label')}>
+        <FieldLabel htmlFor="host-label">{localeService.t('terminal-ui.host-dialog.field.label')}</FieldLabel>
+        <FieldContent>
+          <Input
+            id="host-label"
+            className={compactInputCls}
+            value={data.label ?? ''}
+            onChange={(e) => onChange({ label: e.target.value })}
+            placeholder={localeService.t('terminal-ui.host-dialog.field.label')}
+          />
+          <FieldError>{getError('label')}</FieldError>
+        </FieldContent>
+      </Field>
+
+      <div className="tm:flex tm:gap-3">
+        <Field data-invalid={!!getError('addr')} className="tm:flex-1">
+          <FieldLabel htmlFor="host-addr">{localeService.t('terminal-ui.host-dialog.field.addr')}</FieldLabel>
+          <FieldContent>
+            <Input
+              id="host-addr"
+              className={compactInputCls}
+              value={data.addr ?? ''}
+              onChange={(e) => onChange({ addr: e.target.value })}
+              placeholder="127.0.0.1"
+            />
+            <FieldError>{getError('addr')}</FieldError>
+          </FieldContent>
+        </Field>
+
+        <Field data-invalid={!!getError('port')} className="tm:w-24">
+          <FieldLabel htmlFor="host-port">{localeService.t('terminal-ui.host-dialog.field.port')}</FieldLabel>
+          <FieldContent>
+            <Input
+              id="host-port"
+              className={compactInputCls}
+              type="number"
+              value={data.port ?? 22}
+              onChange={(e) => onChange({ port: Number.parseInt(e.target.value) || 22 })}
+              placeholder="22"
+            />
+            <FieldError>{getError('port')}</FieldError>
+          </FieldContent>
+        </Field>
+      </div>
+
+      <Tabs value={credentialType} onValueChange={handleTypeChange}>
+        <TabsList className="tm:h-8 tm:p-0.5">
+          <TabsTrigger
+            value="password"
+            className={credentialTabTriggerCls}
+          >
+            {localeService.t('terminal-ui.host-dialog.credential.password')}
+          </TabsTrigger>
+          <TabsTrigger
+            value="rsa"
+            className={credentialTabTriggerCls}
+          >
+            {localeService.t('terminal-ui.host-dialog.credential.rsa')}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="password" className="tm:mt-3">
+          <FieldGroup className="tm:gap-3">
+            <Field data-invalid={!!getError('credential.username')}>
+              <FieldLabel htmlFor="host-username-pwd">{localeService.t('terminal-ui.host-dialog.field.username')}</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="host-username-pwd"
+                  className={compactInputCls}
+                  value={data.credential?.username ?? ''}
+                  onChange={(e) => onChange({
+                    credential: { ...data.credential, username: e.target.value } as ICredential,
+                  })}
+                  placeholder="root"
+                />
+                <FieldError>{getError('credential.username')}</FieldError>
+              </FieldContent>
+            </Field>
+
+            <Field data-invalid={!!getError('credential.password')}>
+              <FieldLabel htmlFor="host-password">{localeService.t('terminal-ui.host-dialog.field.password')}</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="host-password"
+                  className={compactInputCls}
+                  type="password"
+                  value={(data.credential as { password?: string })?.password ?? ''}
+                  onChange={(e) => onChange({
+                    credential: { ...data.credential, type: 'password', password: e.target.value } as ICredential,
+                  })}
+                />
+                <FieldError>{getError('credential.password')}</FieldError>
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+        </TabsContent>
+
+        <TabsContent value="rsa" className="tm:mt-3">
+          <FieldGroup className="tm:gap-3">
+            <Field data-invalid={!!getError('credential.username')}>
+              <FieldLabel htmlFor="host-username-rsa">{localeService.t('terminal-ui.host-dialog.field.username')}</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="host-username-rsa"
+                  className={compactInputCls}
+                  value={data.credential?.username ?? ''}
+                  onChange={(e) => onChange({
+                    credential: { ...data.credential, username: e.target.value } as ICredential,
+                  })}
+                  placeholder="root"
+                />
+                <FieldError>{getError('credential.username')}</FieldError>
+              </FieldContent>
+            </Field>
+
+            <Field data-invalid={!!getError('credential.privateKey')}>
+              <FieldLabel htmlFor="host-privatekey">{localeService.t('terminal-ui.host-dialog.field.privateKey')}</FieldLabel>
+              <FieldContent>
+                <Textarea
+                  id="host-privatekey"
+                  className="tm:min-h-12 tm:px-2 tm:py-1 tm:text-xs"
+                  value={(data.credential as { privateKey?: string })?.privateKey ?? ''}
+                  onChange={(e) => onChange({
+                    credential: { ...data.credential, type: 'rsa', privateKey: e.target.value } as ICredential,
+                  })}
+                  rows={4}
+                  placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                />
+                <FieldError>{getError('credential.privateKey')}</FieldError>
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+        </TabsContent>
+      </Tabs>
+    </FieldGroup>
+  );
+}

@@ -1,0 +1,4 @@
+@import 'highlight.js/styles/github-dark-dimmed.css';
+
+@import 'tailwindcss/utilities' prefix(tm);
+@import '@termlnk/shared/tailwind/theme.css';

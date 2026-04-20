@@ -1,0 +1,4 @@
+{
+  "extends": "@termlnk/shared/tsconfig/node",
+  "include": ["vitest.config.ts"]
+}

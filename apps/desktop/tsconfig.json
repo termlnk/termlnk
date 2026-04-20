@@ -1,0 +1,4 @@
+{
+  "extends": "@termlnk/shared/tsconfig/base",
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
