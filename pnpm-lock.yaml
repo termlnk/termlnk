@@ -1301,6 +1301,9 @@ importers:
       '@termlnk/electron':
         specifier: workspace:*
         version: link:../electron
+      '@termlnk/island':
+        specifier: workspace:*
+        version: link:../island
       '@termlnk/island-ui':
         specifier: workspace:*
         version: link:../island-ui

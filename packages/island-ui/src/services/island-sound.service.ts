@@ -13,55 +13,17 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ICespEvent } from '@termlnk/island';
+import type { ICespEvent, IIslandSettings, IIslandSoundConfig, IIslandSoundEventConfig } from '@termlnk/island';
 import { createIdentifier, Disposable, ILogService, toDisposable } from '@termlnk/core';
-import { CespEventCategory } from '@termlnk/island';
+import { CespEventCategory, DEFAULT_ISLAND_SOUND_CONFIG, ISLAND_SETTINGS_CONFIG_KEY, normalizeIslandSoundConfig } from '@termlnk/island';
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { BehaviorSubject, filter } from 'rxjs';
 import { CESP_SOUND_ASSET_URLS } from '../assets/sound-urls';
 import { SOUND_DEBOUNCE_MS } from '../common/constants';
 import { IIslandUIStateService } from './island-state.service';
 
-const ISLAND_SETTINGS_CONFIG_KEY = 'island.settings';
-
-interface ISoundEventConfig {
-  enabled: boolean;
-}
-
-interface ISoundConfig {
-  enabled: boolean;
-  volume: number;
-  sessionStart: ISoundEventConfig;
-  taskComplete: ISoundEventConfig;
-  taskError: ISoundEventConfig;
-  needsApproval: ISoundEventConfig;
-  taskConfirmed: ISoundEventConfig;
-  contextLimit: ISoundEventConfig;
-  rapidSubmitDetection: ISoundEventConfig;
-}
-
-interface IIslandSettings {
-  enabled: boolean;
-  sound: ISoundConfig;
-}
-
-const DEFAULT_SOUND_CONFIG: ISoundConfig = {
-  enabled: true,
-  volume: 25,
-  sessionStart: { enabled: true },
-  taskComplete: { enabled: true },
-  taskError: { enabled: true },
-  needsApproval: { enabled: true },
-  taskConfirmed: { enabled: false },
-  contextLimit: { enabled: true },
-  rapidSubmitDetection: { enabled: false },
-};
-
-// ---------------------------------------------------------------------------
-// CESP category → settings-ui config key mapping
-// ---------------------------------------------------------------------------
-
-const CESP_TO_CONFIG_KEY: Partial<Record<CespEventCategory, keyof ISoundConfig>> = {
+/** CESP event category → key on {@link IIslandSoundConfig} controlling whether that sound plays. */
+const CESP_TO_CONFIG_KEY: Partial<Record<CespEventCategory, keyof IIslandSoundConfig>> = {
   [CespEventCategory.SessionStart]: 'sessionStart',
   [CespEventCategory.TaskAcknowledge]: 'taskConfirmed',
   [CespEventCategory.TaskComplete]: 'taskComplete',
@@ -82,7 +44,7 @@ export class IslandSoundService extends Disposable implements IIslandSoundServic
   private _audioContext: AudioContext | null = null;
   private _gainNode: GainNode | null = null;
   private readonly _audioBuffers = new Map<CespEventCategory, AudioBuffer>();
-  private readonly _soundConfig$ = new BehaviorSubject<ISoundConfig>(DEFAULT_SOUND_CONFIG);
+  private readonly _soundConfig$ = new BehaviorSubject<IIslandSoundConfig>(DEFAULT_ISLAND_SOUND_CONFIG);
   private readonly _lastPlayTimes = new Map<CespEventCategory, number>();
 
   constructor(
@@ -129,41 +91,12 @@ export class IslandSoundService extends Disposable implements IIslandSoundServic
         ISLAND_SETTINGS_CONFIG_KEY,
         'settings'
       );
-      const soundConfig = this._normalizeSoundConfig(settings?.sound);
+      const soundConfig = normalizeIslandSoundConfig(settings?.sound);
       this._soundConfig$.next(soundConfig);
       this._updateGain(soundConfig.volume);
     } catch (err) {
       this._logService.error('[IslandSoundService]', 'Failed to load config:', err);
     }
-  }
-
-  private _normalizeSoundConfig(value: Partial<ISoundConfig> | null | undefined): ISoundConfig {
-    if (!value) {
-      return { ...DEFAULT_SOUND_CONFIG };
-    }
-    return {
-      enabled: typeof value.enabled === 'boolean' ? value.enabled : DEFAULT_SOUND_CONFIG.enabled,
-      volume: typeof value.volume === 'number' ? Math.max(0, Math.min(100, value.volume)) : DEFAULT_SOUND_CONFIG.volume,
-      sessionStart: this._normalizeSoundEventConfig(value.sessionStart, DEFAULT_SOUND_CONFIG.sessionStart),
-      taskComplete: this._normalizeSoundEventConfig(value.taskComplete, DEFAULT_SOUND_CONFIG.taskComplete),
-      taskError: this._normalizeSoundEventConfig(value.taskError, DEFAULT_SOUND_CONFIG.taskError),
-      needsApproval: this._normalizeSoundEventConfig(value.needsApproval, DEFAULT_SOUND_CONFIG.needsApproval),
-      taskConfirmed: this._normalizeSoundEventConfig(value.taskConfirmed, DEFAULT_SOUND_CONFIG.taskConfirmed),
-      contextLimit: this._normalizeSoundEventConfig(value.contextLimit, DEFAULT_SOUND_CONFIG.contextLimit),
-      rapidSubmitDetection: this._normalizeSoundEventConfig(value.rapidSubmitDetection, DEFAULT_SOUND_CONFIG.rapidSubmitDetection),
-    };
-  }
-
-  private _normalizeSoundEventConfig(
-    value: Partial<ISoundEventConfig> | null | undefined,
-    fallback: ISoundEventConfig
-  ): ISoundEventConfig {
-    if (!value) {
-      return { ...fallback };
-    }
-    return {
-      enabled: typeof value.enabled === 'boolean' ? value.enabled : fallback.enabled,
-    };
   }
 
   private _preloadSounds(): void {
@@ -199,7 +132,7 @@ export class IslandSoundService extends Disposable implements IIslandSoundServic
 
     const configKey = CESP_TO_CONFIG_KEY[event.category];
     if (configKey) {
-      const eventConfig = config[configKey] as ISoundEventConfig | undefined;
+      const eventConfig = config[configKey] as IIslandSoundEventConfig | undefined;
       if (eventConfig && !eventConfig.enabled) {
         return;
       }
