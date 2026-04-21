@@ -99,9 +99,9 @@ export const DEFAULT_ISLAND_SOUND_CONFIG: IIslandSoundConfig = {
   taskComplete: { enabled: true },
   taskError: { enabled: true },
   needsApproval: { enabled: true },
-  taskConfirmed: { enabled: false },
+  taskConfirmed: { enabled: true },
   contextLimit: { enabled: true },
-  rapidSubmitDetection: { enabled: false },
+  rapidSubmitDetection: { enabled: true },
 };
 
 /** Outer settings payload persisted under {@link ISLAND_SETTINGS_CONFIG_KEY}. */
