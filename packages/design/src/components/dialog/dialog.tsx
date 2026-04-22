@@ -161,6 +161,13 @@ function useDraggable(
   const startPosRef = useRef({ x: 0, y: 0 });
   const startClientRef = useRef({ x: 0, y: 0 });
   const initializedRef = useRef(false);
+  // Once the user drags the dialog manually, we stop auto-recentering on
+  // content resize — their deliberate position wins over content-driven layout.
+  const userHasDraggedRef = useRef(false);
+  // Observer tracking the dialog element's own size; lets late-arriving content
+  // (e.g. data fetched after mount) re-center the dialog instead of leaving it
+  // anchored at the first render's smaller footprint.
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const lastKnownSizeRef = useRef<{ width: number; height: number } | null>(null);
 
   const getElementSize = useCallback((element?: HTMLElement | null) => {
@@ -249,6 +256,7 @@ function useDraggable(
     startPosRef.current = { ...position };
     startClientRef.current = { x: e.clientX, y: e.clientY };
     setIsDragging(true);
+    userHasDraggedRef.current = true;
 
     document.body.style.userSelect = 'none';
   }, [enabled, position]);
@@ -303,19 +311,52 @@ function useDraggable(
     isDragging,
     elementRef,
     setElementRef: (el: HTMLElement | null) => {
+      // Tear down any previous observer before switching elements (happens
+      // on every render because handleContentRef is a new closure each time).
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
+
       elementRef.current = el;
 
       if (!el) {
+        // Dialog closed or element detached — reset so the next open/mount
+        // cycle centers again from scratch.
+        initializedRef.current = false;
+        userHasDraggedRef.current = false;
         return;
       }
 
       const nextSize = getElementSize(el);
 
+      // First-paint centering: use the size available now, even if the
+      // dialog's content will grow later (ResizeObserver will catch up).
       if (!initializedRef.current && !options.defaultPosition) {
         const centeredPosition = getCenteredPosition(nextSize);
         setPosition(centeredPosition);
         startPosRef.current = centeredPosition;
         initializedRef.current = true;
+      }
+
+      // Follow-up centering: when content loads asynchronously (e.g. data
+      // fetched after mount), the dialog's size changes and it should
+      // re-center — unless the user has already chosen a position by
+      // dragging it, in which case we leave their choice alone.
+      if (!options.defaultPosition && typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver((entries) => {
+          if (userHasDraggedRef.current) return;
+          const entry = entries[0];
+          if (!entry) return;
+          const { width, height } = entry.contentRect;
+          if (width <= 0 || height <= 0) return;
+          lastKnownSizeRef.current = { width, height };
+          const centered = getCenteredPosition({ width, height });
+          setPosition(centered);
+          startPosRef.current = centered;
+        });
+        observer.observe(el);
+        resizeObserverRef.current = observer;
       }
     },
     handleMouseDown: startDrag,
