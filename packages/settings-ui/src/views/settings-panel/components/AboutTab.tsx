@@ -23,6 +23,24 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 type UpdateState = 'idle' | 'checking' | 'available' | 'latest' | 'error';
 type CopyState = 'idle' | 'success' | 'error';
 
+/** Status dot color classes keyed by UpdateState */
+const STATUS_DOT_CLASS: Record<UpdateState, string> = {
+  idle: 'tm:bg-grey-fg',
+  checking: 'tm:bg-blue tm:animate-pulse',
+  available: 'tm:bg-green',
+  latest: 'tm:bg-green',
+  error: 'tm:bg-red',
+};
+
+/** Status text color classes keyed by UpdateState */
+const STATUS_TEXT_CLASS: Record<UpdateState, string> = {
+  idle: 'tm:text-white',
+  checking: 'tm:text-white',
+  available: 'tm:text-green',
+  latest: 'tm:text-white',
+  error: 'tm:text-red',
+};
+
 interface IUpdateInfo {
   version?: string;
 }
@@ -178,16 +196,8 @@ export function AboutTab() {
     }
   }, [localeService, updateState]);
 
-  const statusClassName = useMemo(() => {
-    switch (updateState) {
-      case 'available':
-        return 'tm:text-green';
-      case 'error':
-        return 'tm:text-red';
-      default:
-        return 'tm:text-light-grey';
-    }
-  }, [updateState]);
+  const hasUpdate = updateState === 'available';
+  const isChecking = updateState === 'checking';
 
   const lastCheckedText = useMemo(() => {
     if (!lastCheckedAt) {
@@ -305,48 +315,68 @@ export function AboutTab() {
       </section>
 
       <section
-        className="
-          tm:grid tm:grid-cols-1 tm:gap-3
-          tm:sm:grid-cols-2
-        "
+        className={`
+          tm:flex tm:items-start tm:justify-between tm:gap-4 tm:rounded-xl tm:border tm:border-line tm:bg-one-bg/60
+          tm:px-4 tm:py-3
+        `}
       >
-        <article className="tm:rounded-xl tm:border tm:border-line tm:bg-one-bg/60 tm:p-4">
-          <p className="tm:text-xs tm:text-grey-fg">{localeService.t('settings-ui.about.current-version')}</p>
-          <p className="tm:mt-1 tm:text-3xl tm:leading-none tm:font-semibold tm:text-white">{currentVersion}</p>
-        </article>
+        <div className="tm:flex tm:min-w-0 tm:items-start tm:gap-3">
+          <span
+            aria-hidden
+            className={cn('tm:mt-1.5 tm:size-2 tm:shrink-0 tm:rounded-full', STATUS_DOT_CLASS[updateState])}
+          />
+          <div className="tm:min-w-0">
+            <p className={cn('tm:text-sm/tight tm:font-medium', STATUS_TEXT_CLASS[updateState])}>
+              {statusText}
+            </p>
+            <p className="tm:mt-1 tm:truncate tm:text-xs tm:text-grey-fg">
+              {hasUpdate && latestVersion !== '-'
+                ? (
+                  <>
+                    v
+                    {currentVersion}
+                    {' → '}
+                    <span className="tm:text-green">
+                      v
+                      {latestVersion}
+                    </span>
+                    {' · '}
+                    {localeService.t('settings-ui.about.last-check')}
+                    {' '}
+                    {lastCheckedText}
+                  </>
+                )
+                : (
+                  <>
+                    v
+                    {currentVersion}
+                    {' · '}
+                    {localeService.t('settings-ui.about.last-check')}
+                    {' '}
+                    {lastCheckedText}
+                  </>
+                )}
+            </p>
+          </div>
+        </div>
 
-        <article className="tm:rounded-xl tm:border tm:border-line tm:bg-one-bg/60 tm:p-4">
-          <p className="tm:text-xs tm:text-grey-fg">{localeService.t('settings-ui.about.latest-version')}</p>
-          <p className="tm:mt-1 tm:text-3xl tm:leading-none tm:font-semibold tm:text-light-grey">{latestVersion}</p>
-        </article>
-
-        <article className="tm:rounded-xl tm:border tm:border-line tm:bg-one-bg/60 tm:p-4">
-          <p className="tm:text-xs tm:text-grey-fg">{localeService.t('settings-ui.about.update-status')}</p>
-          <p
-            className={`
-              tm:mt-1 tm:text-xl/tight tm:font-semibold
-              ${statusClassName}
-            `}
-          >
-            {statusText}
-          </p>
-        </article>
-
-        <article className="tm:rounded-xl tm:border tm:border-line tm:bg-one-bg/60 tm:p-4">
-          <p className="tm:text-xs tm:text-grey-fg">{localeService.t('settings-ui.about.last-check')}</p>
-          <p className="tm:mt-1 tm:text-xl/tight tm:font-semibold tm:text-light-grey">{lastCheckedText}</p>
-        </article>
+        <Button
+          variant={hasUpdate ? 'default' : 'secondary'}
+          size="sm"
+          className="tm:shrink-0"
+          onClick={hasUpdate ? () => openExternal(RELEASES_URL) : () => void handleCheckForUpdates()}
+          disabled={isChecking}
+        >
+          {hasUpdate
+            ? <Download className="tm:size-3.5" />
+            : <RefreshCw className={cn('tm:size-3.5', { 'tm:animate-spin': isChecking })} />}
+          {hasUpdate
+            ? localeService.t('settings-ui.about.download-now')
+            : localeService.t('settings-ui.about.action-check-update')}
+        </Button>
       </section>
 
       <section className="tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/40 tm:p-2">
-        <ActionButton
-          icon={<RefreshCw className={cn('tm:size-4', { 'tm:animate-spin': updateState === 'checking' })} />}
-          iconClassName="tm:bg-blue/15 tm:text-blue"
-          title={localeService.t('settings-ui.about.action-check-update')}
-          description={localeService.t('settings-ui.about.action-check-update-desc')}
-          onClick={() => void handleCheckForUpdates()}
-          disabled={updateState === 'checking'}
-        />
         <ActionButton
           icon={<ScrollText className="tm:size-4" />}
           iconClassName="tm:bg-orange/15 tm:text-orange"
@@ -362,17 +392,6 @@ export function AboutTab() {
           onClick={() => openExternal(GITHUB_URL)}
         />
       </section>
-
-      <div className="tm:flex tm:justify-end tm:gap-2">
-        <Button variant="secondary" size="sm" onClick={() => void handleCheckForUpdates()} disabled={updateState === 'checking'}>
-          <RefreshCw className={cn('tm:size-3.5', { 'tm:animate-spin': updateState === 'checking' })} />
-          {localeService.t('settings-ui.about.action-check-update')}
-        </Button>
-        <Button variant="default" size="sm" onClick={() => openExternal(RELEASES_URL)}>
-          <Download className="tm:size-3.5" />
-          {localeService.t('settings-ui.about.download-now')}
-        </Button>
-      </div>
     </div>
   );
 }
