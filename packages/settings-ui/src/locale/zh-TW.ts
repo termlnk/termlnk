@@ -274,7 +274,7 @@ const locale: typeof enUS = {
       'repository-filter-all': '全部儲存庫',
       'repository-filter-local': '僅本機技能',
       'installed-empty': '尚未發現任何技能',
-      'installed-empty-hint': '將技能目錄放入 ~/.termlnk/skills/ 後，點擊重新整理即可重新掃描。',
+      'installed-empty-hint': '將技能目錄放入 ~/.config/termlnk/skills/ 後，點擊重新整理即可重新掃描。',
       'filtered-empty': '沒有符合的技能',
       'filtered-empty-hint': '嘗試更換關鍵字，或切換技能儲存庫篩選。',
       'section-builtin': '內建技能',

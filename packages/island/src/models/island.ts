@@ -50,7 +50,7 @@ export interface IIslandSession {
   readonly agent: ExternalAgentType;
   /**
    * Whether the session originated from a Termlnk PTY or from a terminal
-   * outside Termlnk (discovered via `~/.termlnk/runtime.json`). Drives the
+   * outside Termlnk (discovered via `~/.config/termlnk/runtime.json`). Drives the
    * `External` marker shown next to the session in the island UI.
    */
   readonly source: AgentSessionSource;

@@ -110,7 +110,7 @@ export function restoreEnvOverrides(setup: IShellIntegrationSetup): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Write shell integration scripts to ~/.termlnk/shell-integration/ and return the base directory.
+ * Write shell integration scripts to ~/.config/termlnk/shell-integration/ and return the base directory.
  * Returns null if the shell is unsupported or file creation fails.
  */
 function ensureShellIntegrationFiles(shellName: string, configPath: string): string | null {

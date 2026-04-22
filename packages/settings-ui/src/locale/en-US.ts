@@ -272,7 +272,7 @@ const locale = {
       'repository-filter-all': 'All repositories',
       'repository-filter-local': 'Local skills only',
       'installed-empty': 'No skills found yet',
-      'installed-empty-hint': 'Place skill directories in ~/.termlnk/skills/ and refresh to scan again.',
+      'installed-empty-hint': 'Place skill directories in ~/.config/termlnk/skills/ and refresh to scan again.',
       'filtered-empty': 'No matching skills found',
       'filtered-empty-hint': 'Try another keyword or switch the repository filter.',
       'section-builtin': 'Built-in',

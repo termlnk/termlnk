@@ -301,7 +301,7 @@ export abstract class BaseConfigFileAdapter extends Disposable implements IAgent
    * Build the shell command the agent runs for a single hook event.
    *
    * Yields a single-line, shell-quoted invocation of
-   * `~/.termlnk/bin/termlnk-hook --agent <name> --event <type>` with the
+   * `~/.config/termlnk/bin/termlnk-hook --agent <name> --event <type>` with the
    * `TERMLNK_HOOK` marker comment so the uninstall path can identify and
    * remove termlnk-managed entries.
    */

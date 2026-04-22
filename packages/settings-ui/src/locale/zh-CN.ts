@@ -274,7 +274,7 @@ const locale: typeof enUS = {
       'repository-filter-all': '全部仓库',
       'repository-filter-local': '仅本地技能',
       'installed-empty': '尚未发现任何技能',
-      'installed-empty-hint': '将技能目录放入 ~/.termlnk/skills/ 后，点击刷新即可重新扫描。',
+      'installed-empty-hint': '将技能目录放入 ~/.config/termlnk/skills/ 后，点击刷新即可重新扫描。',
       'filtered-empty': '没有匹配的技能',
       'filtered-empty-hint': '尝试更换关键词，或切换技能仓库筛选。',
       'section-builtin': '内置技能',

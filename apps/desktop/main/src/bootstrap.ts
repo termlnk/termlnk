@@ -240,7 +240,7 @@ app.whenReady().then(async () => {
   syncBundledSkills(bundledSkillsSrcDir, skillsDir);
 
   // Resolve the agent-hook-cli source bundle so HookLauncherService can
-  // copy the POSIX/Windows launchers + Node helper into ~/.termlnk/bin/.
+  // copy the POSIX/Windows launchers + Node helper into ~/.config/termlnk/bin/.
   // In dev, read straight from the monorepo; in prod, read from the vite-
   // bundled copy inside the main process dist directory (see
   // `copyAgentHookCliAssets` in configs/main.config.ts).

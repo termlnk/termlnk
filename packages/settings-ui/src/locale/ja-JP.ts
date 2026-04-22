@@ -274,7 +274,7 @@ const locale: typeof enUS = {
       'repository-filter-all': 'すべてのリポジトリ',
       'repository-filter-local': 'ローカルスキルのみ',
       'installed-empty': 'スキルが見つかりません',
-      'installed-empty-hint': 'スキルディレクトリを ~/.termlnk/skills/ に配置し、更新してスキャンしてください。',
+      'installed-empty-hint': 'スキルディレクトリを ~/.config/termlnk/skills/ に配置し、更新してスキャンしてください。',
       'filtered-empty': '一致するスキルが見つかりません',
       'filtered-empty-hint': '別のキーワードを試すか、リポジトリフィルターを切り替えてください。',
       'section-builtin': '組み込み',

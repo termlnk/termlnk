@@ -274,7 +274,7 @@ const locale: typeof enUS = {
       'repository-filter-all': '전체 저장소',
       'repository-filter-local': '로컬 스킬만',
       'installed-empty': '아직 스킬을 찾지 못했습니다',
-      'installed-empty-hint': '~/.termlnk/skills/에 스킬 디렉토리를 배치하고 새로고침하세요.',
+      'installed-empty-hint': '~/.config/termlnk/skills/에 스킬 디렉토리를 배치하고 새로고침하세요.',
       'filtered-empty': '일치하는 스킬을 찾을 수 없습니다',
       'filtered-empty-hint': '다른 키워드를 시도하거나 저장소 필터를 전환하세요.',
       'section-builtin': '내장',

@@ -46,7 +46,7 @@ const copyBundledSkillAssets = (): Plugin => ({
  * Bundle the `@termlnk/agent-hook-cli` sources (POSIX launcher, Windows .cmd
  * launcher, Node helper) into the main process dist directory. At runtime,
  * `IHookLauncherService.install()` copies these files into
- * `~/.termlnk/bin/` so external AI agents can invoke the hook helper
+ * `~/.config/termlnk/bin/` so external AI agents can invoke the hook helper
  * regardless of which terminal they run in.
  */
 const copyAgentHookCliAssets = (): Plugin => ({
