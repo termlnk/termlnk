@@ -23,8 +23,8 @@ import { is } from '@electron-toolkit/utils';
 import { AgentCorePlugin } from '@termlnk/agent-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, SQLiteAdaptor } from '@termlnk/database';
-import { ElectronPlugin } from '@termlnk/electron';
-import { ElectronMainPlugin, FileDialogService } from '@termlnk/electron-main';
+import { ElectronPlugin, IUpdaterService } from '@termlnk/electron';
+import { ElectronMainPlugin, FileDialogService, MockUpdaterService } from '@termlnk/electron-main';
 import { IExtensionStateService, IExtensionStorageService } from '@termlnk/extension';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IslandCorePlugin } from '@termlnk/island-core';
@@ -261,9 +261,18 @@ app.whenReady().then(async () => {
     ],
   });
   core.registerPlugin(ElectronPlugin);
+
+  // Dev-only: swap the real UpdaterService for a scripted mock when
+  // TERMLNK_MOCK_UPDATER is set, so the updater UI (button + dialog +
+  // progress bar) can be exercised without a packaged build. Accepts
+  // `normal`, `check-error`, `download-error`, or `no-update`.
+  const useMockUpdater = !app.isPackaged && process.env.TERMLNK_MOCK_UPDATER !== undefined;
   core.registerPlugin(ElectronMainPlugin, {
     url,
     preload: join(appRoot, '../preload/index.mjs'),
+    override: useMockUpdater
+      ? [[IUpdaterService, { useClass: MockUpdaterService }]]
+      : undefined,
   });
   core.start();
 
