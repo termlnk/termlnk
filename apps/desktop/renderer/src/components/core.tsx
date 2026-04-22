@@ -18,7 +18,7 @@ import type { ITerminalUIConfig } from '@termlnk/terminal-ui';
 import { AgentUIPlugin } from '@termlnk/agent-ui';
 import { Core, LocaleType, LogLevel, merge } from '@termlnk/core';
 import { ElectronPlugin } from '@termlnk/electron';
-import { ElectronRendererPlugin } from '@termlnk/electron-renderer';
+import { ElectronRendererPlugin, UpdaterUIPlugin } from '@termlnk/electron-renderer';
 import { ExtensionPlugin } from '@termlnk/extension';
 import { ExtensionUIPlugin } from '@termlnk/extension-ui';
 import { RPCPlugin } from '@termlnk/rpc';
@@ -68,6 +68,7 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   });
   core.registerPlugin(ElectronPlugin);
   core.registerPlugin(ElectronRendererPlugin);
+  core.registerPlugin(UpdaterUIPlugin);
   core.registerPlugin(TerminalPlugin);
   core.registerPlugin(TerminalUIPlugin, terminalUIConfig);
   core.registerPlugin(SFTPUIPlugin);

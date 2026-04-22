@@ -22,7 +22,6 @@ import { UIPlugin } from '@termlnk/ui';
 import { defaultPluginConfig, ELECTRON_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { HeaderController } from './controllers/header.controller';
 import { TransparencyController } from './controllers/transparency.controller';
-import { UpdaterController } from './controllers/updater.controller';
 import { RPCClientService } from './services/rpc/rpc-client.service';
 import { UpdaterService } from './services/updater/updater.service';
 import { WindowManagerService } from './services/window-manager/window-manager.service';
@@ -54,7 +53,6 @@ export class ElectronRendererPlugin extends Plugin {
     touchDependencies(this._injector, [
       [HeaderController],
       [TransparencyController],
-      [UpdaterController],
     ]);
   }
 
@@ -66,7 +64,6 @@ export class ElectronRendererPlugin extends Plugin {
 
       [HeaderController],
       [TransparencyController],
-      [UpdaterController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }

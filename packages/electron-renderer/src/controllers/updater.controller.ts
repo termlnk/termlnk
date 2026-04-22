@@ -15,8 +15,8 @@
 
 import { Disposable, Inject, Injector } from '@termlnk/core';
 import { connectInjector } from '@termlnk/design';
-import { IUpdaterService, UpdateStatus } from '@termlnk/electron';
-import { BuiltInUIPart, ComponentManagerService, IDialogService, IUIPartsService } from '@termlnk/ui';
+import { IUpdaterService } from '@termlnk/electron';
+import { BuiltInUIPart, ComponentManagerService, IUIPartsService } from '@termlnk/ui';
 import { UpdateButton } from '../views/updater/UpdateButton';
 import { UPDATE_DIALOG_COMPONENT_NAME, UpdateDialog } from '../views/updater/UpdateDialog';
 
@@ -26,7 +26,6 @@ export class UpdaterController extends Disposable {
   constructor(
     @Inject(Injector) private readonly _injector: Injector,
     @Inject(ComponentManagerService) private readonly _componentManagerService: ComponentManagerService,
-    @IDialogService private readonly _dialogService: IDialogService,
     @IUIPartsService private readonly _uiPartsService: IUIPartsService,
     @IUpdaterService private readonly _updaterService: IUpdaterService
   ) {
@@ -43,27 +42,6 @@ export class UpdaterController extends Disposable {
       this._uiPartsService.registerComponent(BuiltInUIPart.SIDE_TAB_BAR, () => connectInjector(UpdateButton, this._injector))
     );
 
-    this.disposeWithMe(
-      this._updaterService.status$.subscribe((status) => {
-        if (status === UpdateStatus.AVAILABLE) {
-          this._openUpdateDialog();
-        }
-      })
-    );
-
     this._updaterService.checkForUpdates();
-  }
-
-  private _openUpdateDialog(): void {
-    this._dialogService.open({
-      id: UPDATE_DIALOG_ID,
-      draggable: true,
-      width: 480,
-      className: 'tm:overflow-hidden',
-      disableAutoFocus: true,
-      title: { title: '软件更新' },
-      children: { componentId: UPDATE_DIALOG_COMPONENT_NAME },
-      onClose: () => this._dialogService.close(UPDATE_DIALOG_ID),
-    });
   }
 }

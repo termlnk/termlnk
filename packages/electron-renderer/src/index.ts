@@ -20,4 +20,5 @@ export type { IElectronRendererConfig } from './controllers/config.schema';
 export { HeaderController } from './controllers/header.controller';
 export { UpdaterController } from './controllers/updater.controller';
 export { ELECTRON_RENDERER_PLUGIN_NAME, ElectronRendererPlugin } from './plugin';
+export { UPDATER_UI_PLUGIN_NAME, UpdaterUIPlugin } from './plugin-updater-ui';
 export { WindowManagerService } from './services/window-manager/window-manager.service';
