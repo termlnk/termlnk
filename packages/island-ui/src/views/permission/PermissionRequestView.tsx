@@ -16,7 +16,7 @@
 import type { IAnswerMap, IAskUserQuestionRequestPayload, IPendingInteractionPayload } from '@termlnk/island';
 import { LocaleService } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
-import { toPermissionViewModel } from '@termlnk/island';
+import { toPermissionViewModel, toQuestionViewModel } from '@termlnk/island';
 import { useCallback, useMemo } from 'react';
 import { IPermissionRequestService } from '../../services/permission-request.service';
 import { usePermissionKeyboard } from '../hooks/use-permission-keyboard';
@@ -64,9 +64,10 @@ export function PermissionRequestView({ request }: { request: IPendingInteractio
   );
 
   if (viewModel.isQuestion) {
+    const questionViewModel = toQuestionViewModel(request as IAskUserQuestionRequestPayload);
     return (
       <QuestionPanel
-        request={request as IAskUserQuestionRequestPayload}
+        viewModel={questionViewModel}
         onSubmitSingleLabel={onSubmitSingleLabel}
         onSubmitAnswers={onSubmitAnswers}
         onDeny={onDeny}

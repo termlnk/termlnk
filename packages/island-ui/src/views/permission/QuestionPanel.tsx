@@ -13,14 +13,16 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAnswerMap, IAskUserQuestion, IAskUserQuestionRequestPayload } from '@termlnk/island';
+import type { IAnswerMap, IQuestionViewModel } from '@termlnk/island';
 import { LocaleService } from '@termlnk/core';
 import { cn, useDependency } from '@termlnk/design';
+import { deriveQuestionFacets } from '@termlnk/island';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { QuestionBreadcrumb } from './QuestionBreadcrumb';
 import { QuestionOption } from './QuestionOption';
 
 interface IQuestionPanelProps {
-  readonly request: IAskUserQuestionRequestPayload;
+  readonly viewModel: IQuestionViewModel;
   /** Single-question single-pick no-customise no-secret → submit a bare label. */
   readonly onSubmitSingleLabel: (label: string) => void;
   /** Any other shape → submit a multi-question answer map. */
@@ -32,8 +34,8 @@ interface IQuestionPanelProps {
 /**
  * Per-question local state: which predefined labels are picked, whether
  * the "Other…" free-text affordance is active, and the free-text value.
- * Keyed by {@link IAskUserQuestion.id} so answers survive navigating
- * between questions in a multi-question set.
+ * Keyed by `IAskUserQuestion.id` so answers survive navigating between
+ * questions in a multi-question set.
  */
 interface IPerQuestionState {
   readonly labels: readonly string[];
@@ -44,41 +46,20 @@ interface IPerQuestionState {
 const EMPTY_STATE: IPerQuestionState = { labels: [], otherActive: false, customText: '' };
 
 /**
- * Full-surface renderer for an AskUserQuestion-style picker. Handles:
+ * Full-surface renderer for an AskUserQuestion-style picker. Consumes a
+ * pre-derived {@link IQuestionViewModel} so every branch (multi-select
+ * vs single, multi-question vs single, quick-path vs explicit submit)
+ * is decided at the view-model layer instead of sprinkled inline.
  *
- * - 1-N question paging with a `1/N` progress indicator
- * - Single / multi-select with space-toggle and ⌘1-9 quick pick
- * - Optional "Other…" free-text affordance (`allowCustom`)
- * - Masked secret input (`isSecret`)
- * - Per-option preview pane that expands under the focused option when
- *   the option carries a Markdown/HTML preview snippet
- * - Keyboard navigation: ↑↓ to change focus, Space/Enter to toggle or
- *   advance, ⌘← for previous question, ⌘Y to advance/submit, ⌘N/Esc
- *   to cancel. Number keys 1-9 also quick-pick.
- *
- * Quick-path: when the set contains a single single-select question
- * with no customise/secret requirement, tapping an option bypasses the
- * pagination flow and submits {@link onSubmitSingleLabel} directly,
- * which lets Claude Code's macOS keyboard-injection mirror continue to
- * fast-path without constructing an {@link IAnswerMap}.
+ * Quick-path — only enabled when `viewModel.isQuickPath` — lets Claude
+ * Code's keyboard-injection mirror continue to fast-forward single-pick
+ * single-question prompts by forwarding a bare label. Every other shape
+ * goes through `onSubmitAnswers(IAnswerMap)` and requires an explicit
+ * Submit click (or ⌘Y / ⌘→ on the last question).
  */
-export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, onDeny }: IQuestionPanelProps) {
+export function QuestionPanel({ viewModel, onSubmitSingleLabel, onSubmitAnswers, onDeny }: IQuestionPanelProps) {
   const localeService = useDependency(LocaleService);
-
-  // Prefer the new `questionSet` carrier; fall back to the single-question
-  // alias so older payloads still render.
-  const questions = useMemo<readonly IAskUserQuestion[]>(
-    () => request.questionSet?.questions ?? [request.question],
-    [request.questionSet, request.question]
-  );
-
-  const isQuickPath = useMemo(() => {
-    if (questions.length !== 1) {
-      return false;
-    }
-    const q = questions[0]!;
-    return !q.multiSelect && !q.allowCustom && !q.isSecret;
-  }, [questions]);
+  const { request, questions, totalQuestions, isMultiQuestion, isQuickPath } = viewModel;
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [state, setState] = useState<Record<string, IPerQuestionState>>(() =>
@@ -89,17 +70,17 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
   const otherInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentQ = questions[currentIdx]!;
-  const totalFocusable = currentQ.options.length + (currentQ.allowCustom ? 1 : 0);
+  const facets = useMemo(() => deriveQuestionFacets(currentQ), [currentQ]);
+  const totalFocusable = currentQ.options.length + (facets.hasCustomSlot && !facets.isSecret ? 1 : 0);
   const otherSlotIndex = currentQ.options.length;
 
-  // Reset focus at each question turn so the first entry always starts
-  // highlighted; autofocus the password/input when the field is live.
+  // Reset focus on every question turn; autofocus the secret input when live.
   useEffect(() => {
     setFocusedOpt(0);
-    if (currentQ.isSecret) {
+    if (facets.isSecret) {
       secretInputRef.current?.focus();
     }
-  }, [currentIdx, currentQ.isSecret]);
+  }, [currentIdx, facets.isSecret]);
 
   const currentState = state[currentQ.id] ?? EMPTY_STATE;
 
@@ -109,7 +90,7 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
 
   const toggleLabel = useCallback((label: string) => {
     updateState((prev) => {
-      if (currentQ.multiSelect) {
+      if (facets.isMultiSelect) {
         const has = prev.labels.includes(label);
         return {
           ...prev,
@@ -118,20 +99,19 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
       }
       return { ...prev, labels: [label], otherActive: false };
     });
-  }, [updateState, currentQ.multiSelect]);
+  }, [updateState, facets.isMultiSelect]);
 
   const toggleOther = useCallback(() => {
     updateState((prev) => {
       const next = !prev.otherActive;
       // In single-select mode, activating Other clears the label pick.
-      if (!currentQ.multiSelect && next) {
+      if (!facets.isMultiSelect && next) {
         return { ...prev, otherActive: true, labels: [] };
       }
       return { ...prev, otherActive: next };
     });
-    // Give focus to the text field so the user can start typing immediately.
     queueMicrotask(() => otherInputRef.current?.focus());
-  }, [updateState, currentQ.multiSelect]);
+  }, [updateState, facets.isMultiSelect]);
 
   const setCustomText = useCallback((value: string) => {
     updateState((prev) => ({ ...prev, customText: value }));
@@ -143,7 +123,7 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
       const entry = state[q.id] ?? EMPTY_STATE;
       const labels = [...entry.labels];
       const customTrimmed = entry.customText.trim();
-      const includeCustom = (q.isSecret || entry.otherActive) && customTrimmed.length > 0;
+      const includeCustom = (q.isSecret === true || entry.otherActive) && customTrimmed.length > 0;
       if (labels.length === 0 && !includeCustom) {
         continue;
       }
@@ -154,13 +134,15 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
     return answers;
   }, [questions, state]);
 
-  const advanceOrSubmit = useCallback(() => {
-    if (currentIdx < questions.length - 1) {
-      setCurrentIdx(currentIdx + 1);
-      return;
-    }
-    // Quick-path single-question single-pick: submit as a bare label so the
-    // keyboard-injection fast lane in the server stays live.
+  // Which question slots already have a user-visible answer? Fuels the
+  // breadcrumb fill and lets ⌘→ submit when all questions are answered.
+  const answeredMask = useMemo(() => questions.map((q) => {
+    const entry = state[q.id] ?? EMPTY_STATE;
+    const hasCustom = (q.isSecret === true || entry.otherActive) && entry.customText.trim().length > 0;
+    return entry.labels.length > 0 || hasCustom;
+  }), [questions, state]);
+
+  const submitAll = useCallback(() => {
     if (isQuickPath) {
       const only = state[currentQ.id]?.labels[0];
       if (only) {
@@ -169,7 +151,15 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
       }
     }
     onSubmitAnswers(buildAnswers());
-  }, [currentIdx, questions.length, isQuickPath, state, currentQ.id, onSubmitSingleLabel, onSubmitAnswers, buildAnswers]);
+  }, [isQuickPath, state, currentQ.id, onSubmitSingleLabel, onSubmitAnswers, buildAnswers]);
+
+  const goNext = useCallback(() => {
+    if (currentIdx < totalQuestions - 1) {
+      setCurrentIdx(currentIdx + 1);
+      return;
+    }
+    submitAll();
+  }, [currentIdx, totalQuestions, submitAll]);
 
   const goPrev = useCallback(() => {
     if (currentIdx > 0) {
@@ -177,17 +167,22 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
     }
   }, [currentIdx]);
 
+  const jumpTo = useCallback((idx: number) => {
+    if (idx >= 0 && idx < totalQuestions) {
+      setCurrentIdx(idx);
+    }
+  }, [totalQuestions]);
+
   // Keyboard bindings scoped to the active question turn.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const typingInField = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
 
-      // Meta-modified shortcuts always win (work even while typing).
       if (e.metaKey) {
         if (e.key === 'y' || e.key === 'Y') {
           e.preventDefault();
-          advanceOrSubmit();
+          submitAll();
           return;
         }
         if (e.key === 'n' || e.key === 'N') {
@@ -198,6 +193,11 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
         if (e.key === 'ArrowLeft') {
           e.preventDefault();
           goPrev();
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          goNext();
           return;
         }
         const num = Number.parseInt(e.key, 10);
@@ -223,7 +223,7 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
         onDeny();
         return;
       }
-      if (currentQ.isSecret) {
+      if (facets.isSecret) {
         return;
       }
       if (e.key === 'ArrowDown') {
@@ -241,20 +241,29 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
         if (focusedOpt < currentQ.options.length) {
           const opt = currentQ.options[focusedOpt]!;
           toggleLabel(opt.label);
+          // Enter on a quick-path question doubles as "submit my pick".
+          // Space never submits — reserved for toggling without commit.
           if (e.key === 'Enter' && isQuickPath) {
             onSubmitSingleLabel(opt.label);
           }
-        } else if (currentQ.allowCustom) {
+        }
+        else if (facets.hasCustomSlot && !facets.isSecret) {
           toggleOther();
         }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [currentQ, totalFocusable, focusedOpt, isQuickPath, advanceOrSubmit, goPrev, onDeny, onSubmitSingleLabel, toggleLabel, toggleOther]);
+  }, [currentQ, facets, totalFocusable, focusedOpt, isQuickPath, submitAll, goPrev, goNext, onDeny, onSubmitSingleLabel, toggleLabel, toggleOther]);
 
   const t = (key: string, ...params: string[]) => localeService.t(key, ...params);
-  const progress = t('island-ui.permission.question.progress', String(currentIdx + 1), String(questions.length));
+  const progress = t('island-ui.permission.question.progress', String(currentIdx + 1), String(totalQuestions));
+
+  const showPrev = isMultiQuestion;
+  const showNext = isMultiQuestion && currentIdx < totalQuestions - 1;
+  const showSubmit = !isMultiQuestion || currentIdx === totalQuestions - 1;
+  const selectAtLeastOne
+    = facets.isMultiSelect && currentState.labels.length === 0 && !currentState.otherActive;
 
   return (
     <>
@@ -280,10 +289,19 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
             {currentQ.header}
           </span>
         )}
-        {questions.length > 1 && (
-          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>
-            {progress}
-          </span>
+        {isMultiQuestion && (
+          <div className={cn('tm:flex tm:items-center tm:gap-1.5')}>
+            <QuestionBreadcrumb
+              total={totalQuestions}
+              currentIdx={currentIdx}
+              answeredMask={answeredMask}
+              headers={questions.map((q) => q.header ?? q.question)}
+              onJump={jumpTo}
+            />
+            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>
+              {progress}
+            </span>
+          </div>
         )}
         {request.source === 'external' && (
           <span
@@ -309,13 +327,20 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
           {currentQ.question}
         </div>
 
-        {currentQ.multiSelect && (
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>
-            {t('island-ui.permission.question.select-all-that-apply')}
+        {facets.isMultiSelect && (
+          <div
+            style={{
+              fontSize: 9,
+              color: selectAtLeastOne ? 'var(--color-alert, #f97316)' : 'rgba(255,255,255,0.5)',
+            }}
+          >
+            {selectAtLeastOne
+              ? t('island-ui.permission.question.select-at-least-one')
+              : t('island-ui.permission.question.select-all-that-apply')}
           </div>
         )}
 
-        {currentQ.isSecret
+        {facets.isSecret
           ? (
             <input
               ref={secretInputRef}
@@ -342,9 +367,12 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
                   option={opt}
                   selected={currentState.labels.includes(opt.label)}
                   focused={focusedOpt === i && !currentState.otherActive}
-                  multiSelect={currentQ.multiSelect ?? false}
+                  multiSelect={facets.isMultiSelect}
                   onToggle={() => {
                     toggleLabel(opt.label);
+                    // Quick-path only: a single click commits. Multi-select /
+                    // multi-question / custom-slot prompts require explicit
+                    // Submit so users can revise without premature commit.
                     if (isQuickPath) {
                       onSubmitSingleLabel(opt.label);
                     }
@@ -352,63 +380,73 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
                   onFocus={() => setFocusedOpt(i)}
                 />
               ))}
-              {currentQ.allowCustom && (
-                <div className={cn('tm:flex tm:flex-col tm:gap-1')}>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFocusedOpt(otherSlotIndex);
-                      toggleOther();
-                    }}
-                    onMouseEnter={() => setFocusedOpt(otherSlotIndex)}
-                    className={cn(`
-                      tm:flex tm:w-full tm:cursor-pointer tm:items-center tm:gap-2 tm:border-none tm:text-left
-                    `)}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: 6,
-                      background: currentState.otherActive
-                        ? 'rgba(6,182,212,0.2)'
-                        : focusedOpt === otherSlotIndex
-                          ? 'rgba(6,182,212,0.12)'
-                          : 'rgba(255,255,255,0.06)',
-                      outline: focusedOpt === otherSlotIndex ? '1px solid rgba(6,182,212,0.5)' : 'none',
-                      outlineOffset: -1,
-                      fontSize: 10,
-                      color: 'rgba(255,255,255,0.85)',
-                    }}
-                  >
-                    <span
-                      className={cn('tm:flex tm:items-center tm:justify-center')}
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: currentQ.multiSelect ? 2 : '50%',
-                        border: `1.25px solid ${currentState.otherActive ? 'rgba(6,182,212,1)' : 'rgba(255,255,255,0.4)'}`,
-                        background: currentState.otherActive ? 'rgba(6,182,212,0.9)' : 'transparent',
-                      }}
-                    />
-                    <span style={{ fontStyle: 'italic' }}>
-                      {t('island-ui.permission.question.other-placeholder')}
-                    </span>
-                  </button>
-                  {currentState.otherActive && (
-                    <input
-                      ref={otherInputRef}
-                      type="text"
-                      value={currentState.customText}
-                      onChange={(e) => setCustomText(e.target.value)}
-                      className={cn('tm:w-full tm:rounded-sm tm:border-none tm:font-mono tm:outline-none')}
-                      style={{
-                        padding: '5px 10px',
-                        background: 'rgba(255,255,255,0.08)',
-                        color: 'rgba(255,255,255,0.92)',
-                        fontSize: 11,
-                      }}
-                      autoFocus
-                    />
+              {facets.hasCustomSlot && !facets.isSecret && (
+                <div
+                  className={cn(
+                    `
+                      tm:flex tm:w-full tm:items-center tm:gap-2 tm:border-none
+                    `,
+                    { 'tm:cursor-pointer': !currentState.otherActive }
                   )}
+                  onClick={(e) => {
+                    if (currentState.otherActive) {
+                      return;
+                    }
+                    e.stopPropagation();
+                    setFocusedOpt(otherSlotIndex);
+                    toggleOther();
+                  }}
+                  onMouseEnter={() => setFocusedOpt(otherSlotIndex)}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    background: currentState.otherActive
+                      ? 'rgba(6,182,212,0.2)'
+                      : focusedOpt === otherSlotIndex
+                        ? 'rgba(6,182,212,0.12)'
+                        : 'rgba(255,255,255,0.06)',
+                    outline: focusedOpt === otherSlotIndex ? '1px solid rgba(6,182,212,0.5)' : 'none',
+                    outlineOffset: -1,
+                    fontSize: 10,
+                    color: 'rgba(255,255,255,0.85)',
+                    minHeight: 28,
+                  }}
+                >
+                  <span
+                    className={cn('tm:flex tm:shrink-0 tm:items-center tm:justify-center')}
+                    style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: facets.isMultiSelect ? 2 : '50%',
+                      border: `1.25px solid ${currentState.otherActive ? 'rgba(6,182,212,1)' : 'rgba(255,255,255,0.4)'}`,
+                      background: currentState.otherActive ? 'rgba(6,182,212,0.9)' : 'transparent',
+                    }}
+                  />
+                  {currentState.otherActive
+                    ? (
+                      <input
+                        ref={otherInputRef}
+                        type="text"
+                        value={currentState.customText}
+                        onChange={(e) => setCustomText(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        placeholder={t('island-ui.permission.question.other-input-placeholder')}
+                        className={cn(
+                          `
+                            tm:flex-1 tm:border-none tm:bg-transparent tm:font-mono tm:outline-none
+                          `
+                        )}
+                        style={{
+                          fontSize: 11,
+                          color: 'rgba(255,255,255,0.92)',
+                        }}
+                      />
+                    )
+                    : (
+                      <span className={cn('tm:flex-1 tm:italic')} style={{ fontStyle: 'italic' }}>
+                        {t('island-ui.permission.question.other-placeholder')}
+                      </span>
+                    )}
                 </div>
               )}
             </div>
@@ -435,13 +473,17 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
           {' '}
           <kbd className={cn('tm:font-mono')} style={{ fontSize: 8, opacity: 0.5 }}>&#8984;N</kbd>
         </button>
-        {currentIdx > 0 && (
+        {showPrev && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               goPrev();
             }}
-            className={cn('tm:cursor-pointer tm:border-none')}
+            disabled={currentIdx === 0}
+            className={cn(
+              'tm:cursor-pointer tm:border-none',
+              { 'tm:cursor-not-allowed tm:opacity-40': currentIdx === 0 }
+            )}
             style={{
               padding: '5px 12px',
               borderRadius: 6,
@@ -454,11 +496,32 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
             {t('island-ui.permission.question.previous')}
           </button>
         )}
-        {!isQuickPath && (
+        {showNext && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              advanceOrSubmit();
+              goNext();
+            }}
+            className={cn('tm:flex-1 tm:cursor-pointer tm:border-none')}
+            style={{
+              padding: '5px 12px',
+              borderRadius: 6,
+              fontSize: 10,
+              fontWeight: 500,
+              background: 'rgba(255,255,255,0.2)',
+              color: 'rgba(255,255,255,0.9)',
+            }}
+          >
+            {t('island-ui.permission.question.next')}
+            {' '}
+            <kbd className={cn('tm:font-mono')} style={{ fontSize: 8, opacity: 0.5 }}>&#8984;&#8594;</kbd>
+          </button>
+        )}
+        {showSubmit && !isQuickPath && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              submitAll();
             }}
             className={cn('tm:flex-1 tm:cursor-pointer tm:border-none')}
             style={{
@@ -470,9 +533,7 @@ export function QuestionPanel({ request, onSubmitSingleLabel, onSubmitAnswers, o
               color: '#fff',
             }}
           >
-            {currentIdx < questions.length - 1
-              ? t('island-ui.permission.question.next')
-              : t('island-ui.permission.question.submit')}
+            {t('island-ui.permission.question.submit')}
             {' '}
             <kbd className={cn('tm:font-mono')} style={{ fontSize: 8, opacity: 0.6 }}>&#8984;Y</kbd>
           </button>

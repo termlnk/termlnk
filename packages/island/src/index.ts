@@ -17,8 +17,8 @@ export { AGENT_COLORS, AGENT_DISPLAY_NAMES, AUTO_COLLAPSE_DELAY_MS, CAROUSEL_INT
 export type { ISceneSize, IslandScene, IStateColors } from './common/constants';
 export { deriveScene, getSceneShadow, getSceneSize, NOTCH_OFFSET } from './common/island-scene';
 export { computeIslandView, pickActiveSession, toIslandSession } from './common/island-view';
-export { toPermissionViewModel } from './common/permission-view-model';
-export type { IPermissionViewModel } from './common/permission-view-model';
+export { deriveQuestionFacets, toPermissionViewModel, toQuestionViewModel } from './common/permission-view-model';
+export type { IPermissionViewModel, IQuestionFacets, IQuestionViewModel } from './common/permission-view-model';
 export { ISLAND_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IIslandPluginConfig } from './controllers/config.schema';
 export { CESP_SOUND_CATEGORIES, CespEventCategory, DEFAULT_ISLAND_SOUND_CONFIG, ISLAND_SETTINGS_CONFIG_KEY, normalizeIslandSoundConfig } from './models/cesp';
