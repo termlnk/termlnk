@@ -102,6 +102,42 @@ export function asBoolean(value: unknown): boolean {
 }
 
 /**
+ * Lenient boolean reader dedicated to the `multiSelect` family across
+ * spelling variants. Accepts `true`, `1`, `"1"`, and case-insensitive
+ * `"true"` / `"yes"`, which covers real-world drift in hook helpers that
+ * string-encode booleans or agents that ship snake_case payloads. Any
+ * other value (including `null`, `"no"`, `0`) is treated as `false`.
+ *
+ * Scope is intentionally narrow: `isSecret` / `isOther` stay on the
+ * stricter {@link asBoolean}; only the multi-select flag needs this
+ * breadth because the four supported agents spell it differently
+ * (`multiSelect` / `multi_select` / `multiple`) and pre-release helpers
+ * occasionally lowercase or quote the value.
+ */
+export function readMultiSelect(
+  rec: Record<string, unknown>,
+  primary: string,
+  ...fallbacks: readonly string[]
+): boolean {
+  for (const key of [primary, ...fallbacks]) {
+    if (coerceFlag(rec[key])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function coerceFlag(value: unknown): boolean {
+  if (value === true || value === 1) {
+    return true;
+  }
+  if (typeof value === 'string') {
+    return /^(1|true|yes)$/i.test(value);
+  }
+  return false;
+}
+
+/**
  * Extract a non-empty string, or `undefined`. Used for optional fields
  * like `header` / `id` so we never forward empty strings downstream.
  */

@@ -14,7 +14,7 @@
  */
 
 import type { IAskUserQuestion, IAskUserQuestionSet } from '@termlnk/agent';
-import { asBoolean, asOptionalString, extractOptions, parseQuestionSet, synthesiseQuestionId } from './parse-question-helpers';
+import { asOptionalString, extractOptions, parseQuestionSet, readMultiSelect, synthesiseQuestionId } from './parse-question-helpers';
 
 /**
  * Parse Kimi Code's `AskUserQuestion` (Pydantic schema in
@@ -46,7 +46,7 @@ function parseOneQuestion(raw: unknown, index: number): IAskUserQuestion | null 
     question: questionText,
     header: asOptionalString(rec.header),
     options,
-    multiSelect: asBoolean(rec.multi_select),
+    multiSelect: readMultiSelect(rec, 'multi_select', 'multiSelect', 'multiselect'),
     allowCustom: true,
   };
 }

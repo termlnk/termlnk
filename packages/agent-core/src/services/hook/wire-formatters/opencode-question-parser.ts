@@ -14,7 +14,7 @@
  */
 
 import type { IAskUserQuestion, IAskUserQuestionSet } from '@termlnk/agent';
-import { asBoolean, asOptionalString, extractOptions, parseQuestionSet, synthesiseQuestionId } from './parse-question-helpers';
+import { asOptionalString, extractOptions, parseQuestionSet, readMultiSelect, synthesiseQuestionId } from './parse-question-helpers';
 
 /**
  * Parse opencode's `question` tool (`packages/opencode/src/tool/question.ts`).
@@ -46,7 +46,7 @@ function parseOneQuestion(raw: unknown, index: number): IAskUserQuestion | null 
     question: questionText,
     header: asOptionalString(rec.header),
     options,
-    multiSelect: asBoolean(rec.multiple),
+    multiSelect: readMultiSelect(rec, 'multiple', 'multiSelect', 'multi_select'),
     allowCustom: rec.custom !== false,
   };
 }

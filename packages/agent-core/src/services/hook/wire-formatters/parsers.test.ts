@@ -147,3 +147,77 @@ describe('parseOpenCodeQuestion', () => {
     expect(result!.questions[0]!.allowCustom).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// multiSelect spelling / typing drift — hook helpers and third-party agents
+// have been observed to ship snake_case, lowercase, string-encoded or 1/0
+// flags instead of the SDK's documented `multiSelect: true`. `readMultiSelect`
+// accepts the full drift matrix so one renderer works end-to-end.
+// ---------------------------------------------------------------------------
+
+describe('multiSelect drift tolerance', () => {
+  const baseOptions = [{ label: 'A' }, { label: 'B' }];
+
+  it('Claude accepts multi_select fallback', () => {
+    const result = parseClaudeAskUserQuestion({
+      questions: [{ question: 'Q?', options: baseOptions, multi_select: true }],
+    });
+    expect(result!.questions[0]!.multiSelect).toBe(true);
+  });
+
+  it('Claude accepts lowercase multiselect fallback', () => {
+    const result = parseClaudeAskUserQuestion({
+      questions: [{ question: 'Q?', options: baseOptions, multiselect: 'TRUE' }],
+    });
+    expect(result!.questions[0]!.multiSelect).toBe(true);
+  });
+
+  it('Claude treats "no" as false', () => {
+    const result = parseClaudeAskUserQuestion({
+      questions: [{ question: 'Q?', options: baseOptions, multiSelect: 'no' }],
+    });
+    expect(result!.questions[0]!.multiSelect).toBe(false);
+  });
+
+  it('Claude defaults to false when flag absent', () => {
+    const result = parseClaudeAskUserQuestion({
+      questions: [{ question: 'Q?', options: baseOptions }],
+    });
+    expect(result!.questions[0]!.multiSelect).toBe(false);
+  });
+
+  it('Kimi accepts camelCase fallback', () => {
+    const result = parseKimiAskUserQuestion({
+      questions: [{ question: 'Q?', options: baseOptions, multiSelect: true }],
+    });
+    expect(result!.questions[0]!.multiSelect).toBe(true);
+  });
+
+  it('Kimi accepts numeric 1', () => {
+    const result = parseKimiAskUserQuestion({
+      questions: [{ question: 'Q?', options: baseOptions, multi_select: 1 }],
+    });
+    expect(result!.questions[0]!.multiSelect).toBe(true);
+  });
+
+  it('OpenCode accepts multiSelect fallback when "multiple" is absent', () => {
+    const result = parseOpenCodeQuestion({
+      questions: [{ question: 'Q?', options: baseOptions, multiSelect: true }],
+    });
+    expect(result!.questions[0]!.multiSelect).toBe(true);
+  });
+
+  it('Codex stays single-select regardless of drift', () => {
+    const result = parseCodexRequestUserInput({
+      questions: [{
+        id: 'q1',
+        question: 'Q?',
+        options: [{ label: 'A' }],
+        // Codex intentionally ignores any multi-select flag — it is always single-pick.
+        multiSelect: true,
+        multi_select: true,
+      }],
+    });
+    expect(result!.questions[0]!.multiSelect).toBeUndefined();
+  });
+});
