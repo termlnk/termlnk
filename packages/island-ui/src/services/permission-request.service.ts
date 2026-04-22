@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IPendingInteractionPayload, IPermissionDecision, IPermissionViewModel } from '@termlnk/island';
+import type { IAnswerMap, IPendingInteractionPayload, IPermissionDecision, IPermissionViewModel } from '@termlnk/island';
 import type { Observable } from 'rxjs';
 import { createIdentifier, Disposable } from '@termlnk/core';
 import { toPermissionViewModel } from '@termlnk/island';
@@ -50,9 +50,19 @@ export interface IPermissionRequestService {
    * the ⌘1–⌘9 shortcuts; label-mode by click handlers. Index lookup runs
    * against the live `activeRequest$` — stale indices (option list
    * changed between keypress and handler) are silently dropped.
+   *
+   * Single-question single-select quick path; for multi-question or
+   * multi-select pickers, use {@link submitAnswers}.
    */
   selectOption(requestId: string, label: string): void;
   selectOptionByIndex(requestId: string, index: number): void;
+
+  /**
+   * Submit a full multi-question answer map. Used by the QuestionPanel
+   * when any question uses multiSelect / allowCustom / isSecret, or when
+   * there is more than one question in the set.
+   */
+  submitAnswers(requestId: string, answers: IAnswerMap): void;
 }
 
 export const IPermissionRequestService = createIdentifier<IPermissionRequestService>('island-ui.permission-request-service');
@@ -99,6 +109,10 @@ export class PermissionRequestService extends Disposable implements IPermissionR
       return;
     }
     this._respond(requestId, { kind: 'answer', label: option.label });
+  }
+
+  submitAnswers(requestId: string, answers: IAnswerMap): void {
+    this._respond(requestId, { kind: 'answers', answers });
   }
 
   private _respond(requestId: string, decision: IPermissionDecision): void {

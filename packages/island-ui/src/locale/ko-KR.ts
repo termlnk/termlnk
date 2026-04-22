@@ -31,6 +31,16 @@ const locale: typeof enUS = {
       deny: '거부',
       'permission-request': '권한 요청',
       allow: '허용',
+      question: {
+        next: '다음',
+        previous: '이전',
+        skip: '건너뛰기',
+        submit: '제출',
+        progress: '{0}/{1}',
+        'other-placeholder': '기타…',
+        'secret-placeholder': '내용을 입력하세요',
+        'select-all-that-apply': '해당되는 것을 모두 선택하세요.',
+      },
     },
   },
 };

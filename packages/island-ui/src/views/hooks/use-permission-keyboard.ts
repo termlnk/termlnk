@@ -26,14 +26,22 @@ interface IOptionKeyboardConfig {
  * Callers pass pre-bound intents (from `IPermissionRequestService`) so
  * this hook stays free of business logic — it only maps keystrokes to
  * the provided callbacks.
+ *
+ * When `disabled` is true (set by the caller when a `QuestionPanel` is
+ * rendering and owns its own keyboard scheme), the hook unbinds its
+ * listener so the two keyboard owners never race for the same keystroke.
  */
 export function usePermissionKeyboard(
   requestId: string,
   onAllow: () => void,
   onDeny: () => void,
-  options?: IOptionKeyboardConfig
+  options?: IOptionKeyboardConfig,
+  disabled?: boolean
 ): void {
   useEffect(() => {
+    if (disabled) {
+      return;
+    }
     const handler = (e: KeyboardEvent) => {
       if (!e.metaKey) {
         return;
@@ -58,5 +66,5 @@ export function usePermissionKeyboard(
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [requestId, onAllow, onDeny, options]);
+  }, [requestId, onAllow, onDeny, options, disabled]);
 }

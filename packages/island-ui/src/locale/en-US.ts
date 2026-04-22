@@ -29,6 +29,16 @@ const locale = {
       deny: 'Deny',
       'permission-request': 'Permission Request',
       allow: 'Allow',
+      question: {
+        next: 'Next',
+        previous: 'Back',
+        skip: 'Skip',
+        submit: 'Submit',
+        progress: '{0}/{1}',
+        'other-placeholder': 'Other…',
+        'secret-placeholder': 'Type your answer',
+        'select-all-that-apply': 'Select all that apply.',
+      },
     },
   },
 };

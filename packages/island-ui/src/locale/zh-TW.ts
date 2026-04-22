@@ -31,6 +31,16 @@ const locale: typeof enUS = {
       deny: '拒絕',
       'permission-request': '權限請求',
       allow: '允許',
+      question: {
+        next: '下一題',
+        previous: '上一題',
+        skip: '跳過',
+        submit: '完成',
+        progress: '{0}/{1}',
+        'other-placeholder': '其他…',
+        'secret-placeholder': '請輸入內容',
+        'select-all-that-apply': '可多選。',
+      },
     },
   },
 };

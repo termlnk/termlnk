@@ -31,6 +31,16 @@ const locale: typeof enUS = {
       deny: '拒否',
       'permission-request': '権限リクエスト',
       allow: '許可',
+      question: {
+        next: '次へ',
+        previous: '戻る',
+        skip: 'スキップ',
+        submit: '送信',
+        progress: '{0}/{1}',
+        'other-placeholder': 'その他…',
+        'secret-placeholder': '入力してください',
+        'select-all-that-apply': '該当するものをすべて選択してください。',
+      },
     },
   },
 };
