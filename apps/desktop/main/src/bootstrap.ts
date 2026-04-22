@@ -30,7 +30,7 @@ import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IslandCorePlugin } from '@termlnk/island-core';
 import { RPCPlugin } from '@termlnk/rpc';
 import { IFileDialogService, RPCServerPlugin } from '@termlnk/rpc-server';
-import { githubLight } from '@termlnk/themes';
+import { chadracula } from '@termlnk/themes';
 import { app, protocol } from 'electron';
 import { dirname, join } from 'pathe';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
@@ -219,7 +219,7 @@ app.whenReady().then(async () => {
   await dbAdaptor.initialize();
 
   const core = new Core({
-    theme: githubLight,
+    theme: chadracula,
     logLevel: LogLevel.INFO,
     locale: LocaleType.EN_US,
     locales: { enUS, zhCN, jaJP, koKR, zhTW },

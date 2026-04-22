@@ -27,7 +27,7 @@ import { SettingsUIPlugin } from '@termlnk/settings-ui';
 import { SFTPUIPlugin } from '@termlnk/sftp-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
 import { TerminalUIPlugin } from '@termlnk/terminal-ui';
-import { githubLight } from '@termlnk/themes';
+import { chadracula } from '@termlnk/themes';
 import { UIPlugin } from '@termlnk/ui';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
 import '@termlnk/design/global.css';
@@ -53,7 +53,7 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
 
   const defaultOptions: Partial<ICoreConfig> = merge(
     {
-      theme: githubLight,
+      theme: chadracula,
       logLevel: LogLevel.INFO,
       locale: LocaleType.EN_US,
       locales: { enUS, zhCN, jaJP, koKR, zhTW },
