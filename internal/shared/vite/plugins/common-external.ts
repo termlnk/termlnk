@@ -58,7 +58,7 @@ export default {
   electron: {
     global: 'electron',
     name: 'electron',
-    version: '40.8.5',
+    version: '40.9.2',
   },
 
   // Node.js native / server-side packages (not bundleable by Rollup)
@@ -85,14 +85,14 @@ export default {
   'better-sqlite3': {
     global: 'better-sqlite3',
     name: 'better-sqlite3',
-    version: '^12.8.0',
+    version: '^12.9.0',
   },
 
   // Design package dependencies
   '@lobehub/icons': {
     global: '@lobehub/icons',
     name: '@lobehub/icons',
-    version: '^5.0.1',
+    version: '^5.5.4',
   },
   'lucide-react': {
     global: 'lucide-react',
@@ -107,11 +107,11 @@ export default {
   nanoid: {
     global: 'nanoid',
     name: 'nanoid',
-    version: '^5.1.7',
+    version: '^5.1.9',
   },
   'react-resizable-panels': {
     global: 'react-resizable-panels',
     name: 'react-resizable-panels',
-    version: '^4.8.0',
+    version: '^4.10.0',
   },
 };
