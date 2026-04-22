@@ -339,20 +339,47 @@ export interface IAgentHookDefinition {
 /**
  * Structured multi-choice question surfaced by an agent.
  *
- * Claude Code's `AskUserQuestion` tool input maps to this shape directly;
- * Kimi / OpenCode / other agents can surface equivalent picker dialogs
- * through their own tools — adapters normalise the payload into this
- * contract so the island renders a single picker UI regardless of origin.
+ * Claude Code's `AskUserQuestion`, Codex's `request_user_input`, Kimi's
+ * `AskUserQuestion`, and OpenCode's `question` all map to this shape via
+ * per-adapter parsers. The island renders a single picker UI regardless of
+ * origin.
  */
 export interface IAskUserQuestionOption {
   readonly label: string;
   readonly description?: string;
+  /**
+   * Optional HTML or Markdown preview rendered beside the option when
+   * focused. Claude Code TypeScript SDK exposes this when `previewFormat`
+   * is set; other agents leave it `undefined`.
+   */
+  readonly preview?: string;
 }
 
 export interface IAskUserQuestion {
+  /**
+   * Stable key used to index `IAnswerMap`. Codex emits it natively; for
+   * other agents the parser fills `idx-<n>` from the source position so
+   * answers always key back by index, not by raw question text (which
+   * could collide across two same-text questions).
+   */
+  readonly id: string;
   readonly question: string;
   readonly header?: string;
   readonly options: readonly IAskUserQuestionOption[];
+  /** Claude.multiSelect / Kimi.multi_select / opencode.multiple. */
+  readonly multiSelect?: boolean;
+  /** Codex.isOther / opencode auto-Other — accepts free-text. */
+  readonly allowCustom?: boolean;
+  /** Codex.isSecret — masked input, never logged. */
+  readonly isSecret?: boolean;
+}
+
+/**
+ * 1-N questions bundled in a single AskUserQuestion-style tool call.
+ * The 4 supported agents all allow up to 4 questions per invocation.
+ */
+export interface IAskUserQuestionSet {
+  readonly questions: readonly IAskUserQuestion[];
 }
 
 /**
@@ -400,6 +427,15 @@ export interface IPermissionRequestPayload extends IPendingInteractionBase {
 /** Multi-choice question (`AskUserQuestion` et al.) with parsed options. */
 export interface IAskUserQuestionRequestPayload extends IPendingInteractionBase {
   readonly kind: 'question';
+  /** Primary carrier — one or more questions bundled for this tool call. */
+  readonly questionSet: IAskUserQuestionSet;
+  /**
+   * Convenience alias pointing to `questionSet.questions[0]`. Set by the
+   * server when constructing the payload so single-question consumers
+   * keep working verbatim during the questionSet rollout.
+   *
+   * @deprecated Read `questionSet.questions` directly.
+   */
   readonly question: IAskUserQuestion;
 }
 
@@ -409,18 +445,38 @@ export type IPendingInteractionPayload =
   | IAskUserQuestionRequestPayload;
 
 /**
+ * Per-question user selection: zero or more pre-defined option labels plus
+ * an optional free-text value (used for Codex/opencode `Other` or Codex
+ * `isSecret` inputs).
+ */
+export interface IAnswerEntry {
+  readonly labels: readonly string[];
+  readonly custom?: string;
+}
+
+/**
+ * Multi-question answer map, keyed by `IAskUserQuestion.id`. Formatters
+ * rebuild agent-native response shapes (Claude `updatedInput.answers`,
+ * Codex `answers[id].answers`, opencode `string[][]`, …) from this.
+ */
+export type IAnswerMap = Record<string, IAnswerEntry>;
+
+/**
  * The user's decision for a pending interaction.
  *
  * - `allow` / `deny` — classic permission outcomes (approval dialog).
- * - `answer` — user picked one of the `AskUserQuestion` options; adapters
- *   translate this into whatever the agent needs to resume with the answer
- *   (Claude Code ⇒ `PreToolUse` with `updatedInput.answers`; other agents
- *   ⇒ `behavior: deny` with a `message` that carries the selected label).
+ * - `answer` — single-question single-pick quick path. Kept so the
+ *   existing non-blocking keyboard-injection flow (Claude Code CLI TUI
+ *   mirroring) continues to use a single label without constructing an
+ *   `IAnswerMap`.
+ * - `answers` — multi-question and/or multi-select answer bundle.
+ *   Formatters translate this into whatever the agent needs to resume.
  */
 export type IPermissionDecision =
   | { readonly kind: 'allow' }
   | { readonly kind: 'deny' }
-  | { readonly kind: 'answer'; readonly label: string };
+  | { readonly kind: 'answer'; readonly label: string }
+  | { readonly kind: 'answers'; readonly answers: IAnswerMap };
 
 /**
  * Response to a pending interaction (permission or question).

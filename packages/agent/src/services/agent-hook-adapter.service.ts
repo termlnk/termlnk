@@ -14,7 +14,7 @@
  */
 
 import type { Observable } from 'rxjs';
-import type { AgentHookEventType, ExternalAgentType, IAgentHookDefinition, IAskUserQuestion, IPermissionDecision } from '../models/agent-hook';
+import type { AgentHookEventType, ExternalAgentType, IAgentHookDefinition, IAskUserQuestion, IAskUserQuestionSet, IPermissionDecision } from '../models/agent-hook';
 
 /**
  * Individual adapter interface for external AI agent hook integration.
@@ -76,12 +76,18 @@ export interface IAgentHookAdapter {
   mapEvent(agentEventName: string): AgentHookEventType | undefined;
 
   /**
-   * Parse an {@link IAskUserQuestion} out of a tool input for this agent, or
-   * return `null` when the tool is not an AskUserQuestion-style picker. Used
-   * by the hook server to decide between the "permission" and "question"
-   * blocking paths without embedding Claude Code-specific knowledge.
+   * Parse an {@link IAskUserQuestionSet} out of a tool input for this agent,
+   * or return `null` when the tool is not an AskUserQuestion-style picker.
+   * Used by the hook server to decide between the "permission" and
+   * "question" blocking paths without embedding agent-specific knowledge.
+   *
+   * Adapters normalise across Claude `AskUserQuestion`, Codex
+   * `request_user_input`, Kimi `AskUserQuestion`, and opencode `question`.
+   * Each question gets a stable `id` (agent-native when available, else
+   * `idx-<n>`) so answers key back by index rather than by raw question
+   * text.
    */
-  parseQuestion(toolName: string, toolInput: Record<string, unknown>): IAskUserQuestion | null;
+  parseQuestion(toolName: string, toolInput: Record<string, unknown>): IAskUserQuestionSet | null;
 
   /**
    * Serialise a user decision into the response body this agent's hook
@@ -89,9 +95,10 @@ export interface IAgentHookAdapter {
    * back to stdout, so this method fully owns agent-specific wire format.
    *
    * `context.isQuestion` flips on when the originating request was an
-   * AskUserQuestion-style picker — this enables `updatedInput.answers`
-   * output for agents that support it (Claude Code `PreToolUse`), and a
-   * plain deny-with-message for the rest.
+   * AskUserQuestion-style picker — enables multi-question answer maps
+   * (Claude `updatedInput.answers`, Codex `answers[id]`, …). `question`
+   * is the deprecated single-question alias; new formatters should prefer
+   * `questionSet`.
    */
   formatResponse(
     decision: IPermissionDecision,
@@ -99,6 +106,7 @@ export interface IAgentHookAdapter {
       readonly isQuestion: boolean;
       readonly toolInput?: Record<string, unknown>;
       readonly question?: IAskUserQuestion;
+      readonly questionSet?: IAskUserQuestionSet;
     },
   ): string;
 

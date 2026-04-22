@@ -17,13 +17,13 @@ import type { IAskUserQuestion, IAskUserQuestionSet } from '@termlnk/agent';
 import { asBoolean, asOptionalString, extractOptions, parseQuestionSet, synthesiseQuestionId } from './parse-question-helpers';
 
 /**
- * Parse Claude Code's `AskUserQuestion` tool input (1-4 questions, each
- * with up to 4 options, plus optional `multiSelect` and per-option
- * HTML/Markdown `preview` snippets from the TS SDK's `previewFormat`
- * config). Kimi sends the same shape but spells multi-pick
- * `multi_select` — Kimi has its own parser.
+ * Parse Codex CLI's `request_user_input` (see
+ * `codex-rs/protocol/src/request_user_input.rs`). Codex is always
+ * single-pick; `isOther` → `allowCustom`, `isSecret` → `isSecret`. The
+ * server-authoritative `id` is preserved so {@link CodexWireFormatter}
+ * can round-trip it as the response's `answers[id].answers` key.
  */
-export function parseClaudeAskUserQuestion(
+export function parseCodexRequestUserInput(
   toolInput: Record<string, unknown>
 ): IAskUserQuestionSet | null {
   return parseQuestionSet(toolInput, parseOneQuestion);
@@ -38,8 +38,12 @@ function parseOneQuestion(raw: unknown, index: number): IAskUserQuestion | null 
   if (!questionText) {
     return null;
   }
+  const isSecret = asBoolean(rec.isSecret);
+  const allowCustom = asBoolean(rec.isOther) || isSecret;
   const options = extractOptions(rec.options);
-  if (options.length === 0) {
+  // Secret prompts typically have no predefined options — accept if
+  // either options exist OR the secret flag forces a free-text field.
+  if (options.length === 0 && !isSecret) {
     return null;
   }
   return {
@@ -47,6 +51,7 @@ function parseOneQuestion(raw: unknown, index: number): IAskUserQuestion | null 
     question: questionText,
     header: asOptionalString(rec.header),
     options,
-    multiSelect: asBoolean(rec.multiSelect),
+    allowCustom,
+    isSecret,
   };
 }

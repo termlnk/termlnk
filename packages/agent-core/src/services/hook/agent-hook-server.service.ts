@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ExternalAgentType, IAgentHookEvent, IAgentHookRegistryService, IAgentHookServerService, IAskUserQuestion, IKeyboardInjectorService, IPendingInteractionPayload, IPermissionDecision } from '@termlnk/agent';
+import type { ExternalAgentType, IAgentHookEvent, IAgentHookRegistryService, IAgentHookServerService, IAskUserQuestion, IAskUserQuestionSet, IKeyboardInjectorService, IPendingInteractionPayload, IPermissionDecision } from '@termlnk/agent';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Observable } from 'rxjs';
@@ -76,7 +76,16 @@ interface IPendingRecord {
   readonly timeoutId: ReturnType<typeof setTimeout>;
   /** Raw tool input as the agent sent it — reused when formatting answers. */
   readonly toolInput: Record<string, unknown>;
-  /** Parsed question (only for `kind: 'question'`). */
+  /** Parsed question set (only for `kind: 'question'`). */
+  readonly questionSet: IAskUserQuestionSet | undefined;
+  /**
+   * Alias for the first question in the set — preserved alongside
+   * `questionSet` so existing single-question code paths (keyboard
+   * injection, log lines) keep reading `record.question` verbatim during
+   * the rollout window.
+   *
+   * @deprecated Read `questionSet.questions[0]` directly.
+   */
   readonly question: IAskUserQuestion | undefined;
 }
 
@@ -334,16 +343,16 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
     const requestId = randomBytes(16).toString('hex');
     const source = this._deriveSource(event.sessionId);
 
-    let question: IAskUserQuestion | undefined;
-    if (kind === 'question') {
-      // Try to parse via the owning adapter; fall back to a neutral "Answer"
-      // prompt so the island still surfaces something actionable.
-      const adapter = this._hookRegistryService.getAdapter(event.agent);
-      const parsed = adapter?.parseQuestion(toolName, toolInput);
-      question = parsed ?? undefined;
-    }
+    // Route may be /hook/ask-user-question OR /hook/permission. Either
+    // way, ask the owning adapter whether this tool looks like an
+    // AskUserQuestion picker — if yes, upgrade to `kind: 'question'` so
+    // the island renders the structured UI instead of a JSON dump.
+    const adapter = this._hookRegistryService.getAdapter(event.agent);
+    const parsedSet = adapter?.parseQuestion(toolName, toolInput) ?? undefined;
+    const effectiveKind: 'question' | 'permission' = parsedSet ? 'question' : kind;
+    const firstQuestion = parsedSet?.questions[0];
 
-    const payload: IPendingInteractionPayload = kind === 'question' && question
+    const payload: IPendingInteractionPayload = effectiveKind === 'question' && parsedSet && firstQuestion
       ? {
         kind: 'question',
         requestId,
@@ -354,7 +363,8 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
         agent: event.agent,
         source,
         timestamp: Date.now(),
-        question,
+        questionSet: parsedSet,
+        question: firstQuestion,
       }
       : {
         kind: 'permission',
@@ -368,13 +378,25 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
         timestamp: Date.now(),
       };
 
-    // Decide mode up-front so the res/timeout bookkeeping is consistent.
-    // Questions can only go non-blocking when the injector is live —
-    // otherwise there's no way to deliver the island's answer to the CLI.
-    const mode: 'blocking' | 'non-blocking' = (kind === 'question' && this._keyboardInjector.supported)
-      ? 'non-blocking'
-      : 'blocking';
+    // Capability gate — keyboard injection only understands a single
+    // `DOWN×N + ENTER` sequence, which covers single-pick single-question
+    // prompts. Any multiSelect / allowCustom / isSecret / multi-question
+    // payload needs the island to be the authoritative responder instead,
+    // so we force blocking mode (the HTTP response stays open until the
+    // user submits). Single-pick single-question Claude Code prompts on
+    // macOS with Accessibility keep the existing fast non-blocking
+    // mirroring behaviour.
+    const isQuestion = effectiveKind === 'question';
+    const mode: 'blocking' | 'non-blocking'
+      = isQuestion && this._keyboardInjector.supported && isInjectionSafe(parsedSet)
+        ? 'non-blocking'
+        : 'blocking';
 
+    // Questions (blocking or not) get the longer window — multi-question,
+    // multi-select, or free-text picks take more deliberation than a
+    // plain allow/deny. Only classic permission prompts use the shorter
+    // INTERACTION timeout.
+    const timeoutMs = isQuestion ? QUESTION_PENDING_TIMEOUT_MS : INTERACTION_TIMEOUT_MS;
     const timeoutId = setTimeout(() => {
       const rec = this._pending.get(requestId);
       if (!rec) {
@@ -387,7 +409,7 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
         this._logService.log('[AgentHookServer]', `Question ${requestId} expired (post-tool-use never arrived)`);
       }
       this._removePending(requestId);
-    }, mode === 'blocking' ? INTERACTION_TIMEOUT_MS : QUESTION_PENDING_TIMEOUT_MS);
+    }, timeoutMs);
 
     this._pending.set(requestId, {
       payload,
@@ -395,7 +417,8 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
       res: mode === 'non-blocking' ? null : res,
       timeoutId,
       toolInput,
-      question,
+      questionSet: parsedSet,
+      question: firstQuestion,
     });
 
     if (mode === 'non-blocking') {
@@ -488,6 +511,7 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
         isQuestion: payload.kind === 'question',
         toolInput: pending.toolInput,
         question: pending.question,
+        questionSet: pending.questionSet,
       })
       : decision.kind === 'allow' ? '{}' : JSON.stringify({ decision: 'block' });
 
@@ -608,4 +632,17 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
       req.on('error', reject);
     });
   }
+}
+
+/**
+ * Keyboard injection speaks a single `DOWN×N + ENTER` sequence — only
+ * single-pick single-question prompts without free-text / secret input
+ * qualify for the non-blocking fast lane.
+ */
+function isInjectionSafe(set: IAskUserQuestionSet | undefined): boolean {
+  if (!set || set.questions.length !== 1) {
+    return false;
+  }
+  const q = set.questions[0]!;
+  return !q.multiSelect && !q.allowCustom && !q.isSecret;
 }

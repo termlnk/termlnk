@@ -28,4 +28,4 @@ export type { IIslandSession } from './models/island';
 export type { IIslandState } from './models/island-state';
 export { IslandPlugin } from './plugin';
 export { IIslandStateService } from './services/island-state.service';
-export type { AgentTodoStatus, ExternalAgentType, IAgentTodo, IAskUserQuestion, IAskUserQuestionOption, IAskUserQuestionRequestPayload, IExternalAgentSession, IPendingInteractionPayload, IPermissionDecision, IPermissionRequestPayload } from '@termlnk/agent';
+export type { AgentTodoStatus, ExternalAgentType, IAgentTodo, IAnswerEntry, IAnswerMap, IAskUserQuestion, IAskUserQuestionOption, IAskUserQuestionRequestPayload, IAskUserQuestionSet, IExternalAgentSession, IPendingInteractionPayload, IPermissionDecision, IPermissionRequestPayload } from '@termlnk/agent';

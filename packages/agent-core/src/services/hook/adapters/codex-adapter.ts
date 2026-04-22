@@ -13,13 +13,17 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ExternalAgentType, IAgentHookDefinition } from '@termlnk/agent';
+import type { ExternalAgentType, IAgentHookDefinition, IAskUserQuestionSet } from '@termlnk/agent';
+import type { IAgentWireFormatter } from '../wire-formatters';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { CodexWireFormatter, parseCodexRequestUserInput } from '../wire-formatters';
 import { BaseConfigFileAdapter } from './base-config-adapter';
 
 export class CodexHookAdapter extends BaseConfigFileAdapter {
   readonly agentType: ExternalAgentType = 'codex';
+
+  protected override readonly _wireFormatter: IAgentWireFormatter = new CodexWireFormatter();
 
   readonly definition: IAgentHookDefinition = {
     name: 'codex',
@@ -33,8 +37,24 @@ export class CodexHookAdapter extends BaseConfigFileAdapter {
       { agentEvent: 'SessionStart', termlnkEvent: 'session-start' },
       { agentEvent: 'UserPromptSubmit', termlnkEvent: 'prompt-submit' },
       { agentEvent: 'Stop', termlnkEvent: 'stop' },
+      // Blocking picker — Codex runs the hook and waits for a JSON body
+      // shaped `{ answers: { [id]: { answers: [...] } } }` on stdout.
+      {
+        agentEvent: 'PreToolUse',
+        termlnkEvent: 'ask-user-question',
+        matcher: 'request_user_input',
+        timeoutSec: 120,
+        blocking: true,
+      },
     ],
   };
+
+  override parseQuestion(toolName: string, toolInput: Record<string, unknown>): IAskUserQuestionSet | null {
+    if (toolName !== 'request_user_input') {
+      return null;
+    }
+    return parseCodexRequestUserInput(toolInput);
+  }
 
   /**
    * Override install to add codex_hooks feature flag in config.toml.

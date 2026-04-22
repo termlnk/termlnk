@@ -15,7 +15,7 @@
 
 import type { IPermissionDecision } from '@termlnk/agent';
 import type { IAgentWireFormatter, IWireFormatContext } from './wire-formatter';
-import { denyReasonFor } from './wire-formatter';
+import { denyReasonFor, joinAnswer, resolveQuestions } from './wire-formatter';
 
 /**
  * Claude Code wire formatter.
@@ -23,25 +23,28 @@ import { denyReasonFor } from './wire-formatter';
  * Two output shapes depending on the originating hook:
  *
  * - **AskUserQuestion (`PreToolUse` + matcher=AskUserQuestion, blocking)** —
- *   when the user picks an option we emit `permissionDecision: "allow"` plus
- *   `updatedInput` echoing the original `questions` with an `answers` map.
- *   Claude Code consumes the tool without ever opening the CLI TUI picker
- *   and the assistant proceeds as if the user had typed the choice.
+ *   when the user submits one or more answers we emit
+ *   `permissionDecision: "allow"` plus `updatedInput` echoing the original
+ *   `questions` with an `answers` map keyed by each question's text.
+ *   Claude Code then consumes the tool without ever opening the CLI TUI
+ *   picker and the assistant proceeds as if the user had typed the choice.
+ *
+ *   Answers are rebuilt in the **original `questions` order** (tracked
+ *   through {@link IAskUserQuestion.id}) rather than by looking up by raw
+ *   question text, so two questions with the same phrasing don't collide
+ *   and whitespace/case drift doesn't break the match.
  *
  * - **PermissionRequest (classic approval)** — we emit a top-level
  *   `hookSpecificOutput.decision.behavior` of allow or deny. `answer` is
- *   not a concept here; it degrades to deny + reason ("User selected: X"),
- *   preserving back-compat for the legacy AskUserQuestion-via-permission
- *   path that some users may still hit.
+ *   not a concept here; it degrades to deny + reason.
  */
 export class ClaudeCodeWireFormatter implements IAgentWireFormatter {
   formatResponse(decision: IPermissionDecision, ctx: IWireFormatContext): string {
-    if (ctx.isQuestion && ctx.question && decision.kind === 'answer') {
-      return this._formatQuestionAnswer(decision.label, ctx.toolInput, ctx.question.question);
-    }
-
     if (ctx.isQuestion) {
-      // deny or allow on a question — deny maps to cancellation, allow has
+      if (decision.kind === 'answer' || decision.kind === 'answers') {
+        return formatAllowWithAnswers(decision, ctx);
+      }
+      // deny / allow on a question — deny maps to cancellation, allow has
       // no legitimate meaning so we degrade it too. Claude Code's
       // AskUserQuestion then exits with the denial reason surfaced to the
       // assistant as the tool_result.
@@ -61,28 +64,45 @@ export class ClaudeCodeWireFormatter implements IAgentWireFormatter {
       hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: inner },
     });
   }
+}
 
-  /**
-   * Build the PreToolUse "allow with updatedInput" payload. The answers map
-   * is keyed by the question text — Claude Code matches it against the
-   * `questions[].question` string, so echoing the raw toolInput back verbatim
-   * (plus our `answers` field) is the safest shape.
-   */
-  private _formatQuestionAnswer(
-    label: string,
-    toolInput: Record<string, unknown> | undefined,
-    questionText: string
-  ): string {
-    const updatedInput: Record<string, unknown> = {
-      ...(toolInput ?? {}),
-      answers: { [questionText]: label },
-    };
-    return JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'allow',
-        updatedInput,
-      },
-    });
+type AnswerDecision = Extract<IPermissionDecision, { kind: 'answer' } | { kind: 'answers' }>;
+
+function formatAllowWithAnswers(decision: AnswerDecision, ctx: IWireFormatContext): string {
+  const updatedInput: Record<string, unknown> = {
+    ...(ctx.toolInput ?? {}),
+    answers: buildAnswersByText(decision, ctx),
+  };
+  return JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'allow',
+      updatedInput,
+    },
+  });
+}
+
+function buildAnswersByText(decision: AnswerDecision, ctx: IWireFormatContext): Record<string, string> {
+  const questions = resolveQuestions(ctx);
+  const out: Record<string, string> = {};
+
+  if (decision.kind === 'answer') {
+    const q0 = questions[0];
+    if (q0) {
+      out[q0.question] = decision.label;
+    }
+    return out;
   }
+
+  for (const q of questions) {
+    const entry = decision.answers[q.id];
+    if (!entry) {
+      continue;
+    }
+    const joined = joinAnswer(entry);
+    if (joined.length > 0) {
+      out[q.question] = joined;
+    }
+  }
+  return out;
 }

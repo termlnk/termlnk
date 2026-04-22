@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAgentHookEventMapping, IAskUserQuestion, IPermissionDecision } from '@termlnk/agent';
+import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAgentHookEventMapping, IAskUserQuestion, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
 import type { ILogService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
 import type { IAgentWireFormatter } from '../wire-formatters';
@@ -64,15 +64,20 @@ export abstract class BaseConfigFileAdapter extends Disposable implements IAgent
 
   /**
    * Default implementation: no question parsing. Subclasses that speak an
-   * AskUserQuestion-like tool override to return a structured question.
+   * AskUserQuestion-like tool override to return a structured question set.
    */
-  parseQuestion(_toolName: string, _toolInput: Record<string, unknown>): IAskUserQuestion | null {
+  parseQuestion(_toolName: string, _toolInput: Record<string, unknown>): IAskUserQuestionSet | null {
     return null;
   }
 
   formatResponse(
     decision: IPermissionDecision,
-    context: { readonly isQuestion: boolean; readonly toolInput?: Record<string, unknown>; readonly question?: IAskUserQuestion }
+    context: {
+      readonly isQuestion: boolean;
+      readonly toolInput?: Record<string, unknown>;
+      readonly question?: IAskUserQuestion;
+      readonly questionSet?: IAskUserQuestionSet;
+    }
   ): string {
     return this._wireFormatter.formatResponse(decision, context);
   }

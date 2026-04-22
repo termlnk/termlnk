@@ -15,23 +15,20 @@
 
 import type { IPermissionDecision } from '@termlnk/agent';
 import type { IAgentWireFormatter, IWireFormatContext } from './wire-formatter';
-import { denyReasonFor } from './wire-formatter';
+import { formatGenericFallback } from './wire-formatter';
 
 /**
  * Default wire formatter for agents without a documented AskUserQuestion
- * answer path (OpenCode, Codex, Kimi Code today). Encodes the decision as
- * the lowest-common-denominator `decision: 'block' | undefined` shape:
+ * answer path. Encodes the decision as the lowest-common-denominator
+ * `decision: 'block' | undefined` shape:
  *
  * - `allow` — empty object (accept).
- * - `deny` / `answer` — `{ decision: "block", reason: "…" }` so the
- *   assistant sees the reason as the tool_result and can read the user's
- *   selected label from the text.
+ * - `deny` / `answer` / `answers` — `{ decision: "block", reason: "…" }`
+ *   so the assistant sees the reason as the tool_result and can read the
+ *   user's selected label(s) from the text.
  */
 export class GenericWireFormatter implements IAgentWireFormatter {
   formatResponse(decision: IPermissionDecision, _ctx: IWireFormatContext): string {
-    if (decision.kind === 'allow') {
-      return '{}';
-    }
-    return JSON.stringify({ decision: 'block', reason: denyReasonFor(decision) });
+    return formatGenericFallback(decision);
   }
 }

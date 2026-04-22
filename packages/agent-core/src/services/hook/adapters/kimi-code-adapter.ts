@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAskUserQuestion, IPermissionDecision } from '@termlnk/agent';
+import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
 import type { ILogService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
 import type { IAgentWireFormatter, IWireFormatContext } from '../wire-formatters';
@@ -23,7 +23,7 @@ import { join } from 'node:path';
 import { TERMLNK_HOOK_MARKER } from '@termlnk/agent';
 import { Disposable, toDisposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
-import { GenericWireFormatter } from '../wire-formatters';
+import { KimiCodeWireFormatter, parseKimiAskUserQuestion } from '../wire-formatters';
 
 const KIMI_CONFIG_DIR = join(homedir(), '.kimi');
 const KIMI_CONFIG_FILE = join(KIMI_CONFIG_DIR, 'config.toml');
@@ -74,13 +74,23 @@ export class KimiCodeHookAdapter extends Disposable implements IAgentHookAdapter
       { agentEvent: 'SubagentStop', termlnkEvent: 'subagent-stop' },
       { agentEvent: 'PreCompact', termlnkEvent: 'pre-compact' },
       { agentEvent: 'PostCompact', termlnkEvent: 'post-compact' },
+      // Kimi surfaces AskUserQuestion through PreToolUse + matcher=AskUserQuestion.
+      // Treat it as blocking so the island is the authoritative responder
+      // (Kimi's other hooks are fire-and-forget).
+      {
+        agentEvent: 'PreToolUse',
+        termlnkEvent: 'ask-user-question',
+        matcher: 'AskUserQuestion',
+        timeoutSec: 120,
+        blocking: true,
+      },
     ],
   };
 
   private readonly _installed$ = new BehaviorSubject<boolean>(false);
   readonly installed$: Observable<boolean> = this._installed$.asObservable();
 
-  private readonly _wireFormatter: IAgentWireFormatter = new GenericWireFormatter();
+  private readonly _wireFormatter: IAgentWireFormatter = new KimiCodeWireFormatter();
 
   constructor(
     private readonly _logService: ILogService,
@@ -92,8 +102,11 @@ export class KimiCodeHookAdapter extends Disposable implements IAgentHookAdapter
     }));
   }
 
-  parseQuestion(_toolName: string, _toolInput: Record<string, unknown>): IAskUserQuestion | null {
-    return null;
+  parseQuestion(toolName: string, toolInput: Record<string, unknown>): IAskUserQuestionSet | null {
+    if (toolName !== 'AskUserQuestion') {
+      return null;
+    }
+    return parseKimiAskUserQuestion(toolInput);
   }
 
   formatResponse(decision: IPermissionDecision, context: IWireFormatContext): string {

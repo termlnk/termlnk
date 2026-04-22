@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAskUserQuestion, IPermissionDecision } from '@termlnk/agent';
+import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
 import type { ILogService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
 import type { IAgentWireFormatter, IWireFormatContext } from '../wire-formatters';
@@ -22,7 +22,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { Disposable, toDisposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
-import { GenericWireFormatter } from '../wire-formatters';
+import { OpenCodeWireFormatter, parseOpenCodeQuestion } from '../wire-formatters';
 
 const OPENCODE_CONFIG_DIR = join(homedir(), '.config', 'opencode');
 const OPENCODE_PLUGINS_DIR = join(OPENCODE_CONFIG_DIR, 'plugins');
@@ -64,7 +64,7 @@ export class OpenCodeHookAdapter extends Disposable implements IAgentHookAdapter
   private readonly _installed$ = new BehaviorSubject<boolean>(false);
   readonly installed$: Observable<boolean> = this._installed$.asObservable();
 
-  private readonly _wireFormatter: IAgentWireFormatter = new GenericWireFormatter();
+  private readonly _wireFormatter: IAgentWireFormatter = new OpenCodeWireFormatter();
 
   constructor(
     private readonly _logService: ILogService,
@@ -76,8 +76,12 @@ export class OpenCodeHookAdapter extends Disposable implements IAgentHookAdapter
     }));
   }
 
-  parseQuestion(_toolName: string, _toolInput: Record<string, unknown>): IAskUserQuestion | null {
-    return null;
+  parseQuestion(toolName: string, toolInput: Record<string, unknown>): IAskUserQuestionSet | null {
+    // opencode tool names are lowercase; the `question` tool is the picker.
+    if (toolName !== 'question') {
+      return null;
+    }
+    return parseOpenCodeQuestion(toolInput);
   }
 
   formatResponse(decision: IPermissionDecision, context: IWireFormatContext): string {

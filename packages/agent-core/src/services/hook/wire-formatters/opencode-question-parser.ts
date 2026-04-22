@@ -17,13 +17,12 @@ import type { IAskUserQuestion, IAskUserQuestionSet } from '@termlnk/agent';
 import { asBoolean, asOptionalString, extractOptions, parseQuestionSet, synthesiseQuestionId } from './parse-question-helpers';
 
 /**
- * Parse Claude Code's `AskUserQuestion` tool input (1-4 questions, each
- * with up to 4 options, plus optional `multiSelect` and per-option
- * HTML/Markdown `preview` snippets from the TS SDK's `previewFormat`
- * config). Kimi sends the same shape but spells multi-pick
- * `multi_select` — Kimi has its own parser.
+ * Parse opencode's `question` tool (`packages/opencode/src/tool/question.ts`).
+ * `multiple` maps to `multiSelect`; the server auto-adds a free-text slot,
+ * so `allowCustom` defaults to `true` unless the tool input explicitly
+ * disables it via `custom: false`.
  */
-export function parseClaudeAskUserQuestion(
+export function parseOpenCodeQuestion(
   toolInput: Record<string, unknown>
 ): IAskUserQuestionSet | null {
   return parseQuestionSet(toolInput, parseOneQuestion);
@@ -47,6 +46,7 @@ function parseOneQuestion(raw: unknown, index: number): IAskUserQuestion | null 
     question: questionText,
     header: asOptionalString(rec.header),
     options,
-    multiSelect: asBoolean(rec.multiSelect),
+    multiSelect: asBoolean(rec.multiple),
+    allowCustom: rec.custom !== false,
   };
 }

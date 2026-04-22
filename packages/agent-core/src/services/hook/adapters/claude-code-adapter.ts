@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ExternalAgentType, IAgentHookDefinition, IAskUserQuestion } from '@termlnk/agent';
+import type { ExternalAgentType, IAgentHookDefinition, IAskUserQuestionSet } from '@termlnk/agent';
 import type { ILogService } from '@termlnk/core';
 import type { IAgentWireFormatter } from '../wire-formatters';
 import { existsSync, unlinkSync } from 'node:fs';
@@ -123,7 +123,7 @@ export class ClaudeCodeHookAdapter extends BaseConfigFileAdapter {
     await super.uninstall();
   }
 
-  override parseQuestion(toolName: string, toolInput: Record<string, unknown>): IAskUserQuestion | null {
+  override parseQuestion(toolName: string, toolInput: Record<string, unknown>): IAskUserQuestionSet | null {
     if (toolName !== 'AskUserQuestion') {
       return null;
     }
