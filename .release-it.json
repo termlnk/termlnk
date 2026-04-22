@@ -19,7 +19,11 @@
     "@release-it-plugins/workspaces": {
       "skipChecks": true,
       "publish": false,
-      "workspaces": ["packages/*", "apps/desktop"]
+      "workspaces": [
+        "packages/*",
+        "internal/*",
+        "apps/desktop"
+      ]
     }
   }
 }
