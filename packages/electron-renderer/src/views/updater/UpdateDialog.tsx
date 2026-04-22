@@ -15,8 +15,9 @@
 
 import type { IUpdateError, IUpdateInfo, IUpdateProgress } from '@termlnk/electron';
 import { LocaleService } from '@termlnk/core';
-import { Button, useDependency, useObservable } from '@termlnk/design';
+import { Button, useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
 import { IUpdaterService, UpdateStatus } from '@termlnk/electron';
+import { ArrowRight } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 export const UPDATE_DIALOG_COMPONENT_NAME = 'electron-renderer.update-dialog';
@@ -34,9 +35,10 @@ function formatSpeed(bytesPerSecond: number): string {
 export function UpdateDialog() {
   const updaterService = useDependency(IUpdaterService);
   const localeService = useDependency(LocaleService);
+  useUpdateBinder(localeService.localeChanged$);
   const status = useObservable(updaterService.status$, UpdateStatus.IDLE);
   const progress = useObservable<IUpdateProgress | undefined>(updaterService.progress$, undefined);
-  const updateInfo = useObservable<IUpdateInfo | undefined>(updaterService.updateInfo$, undefined);
+  const updateInfo = useObservable<IUpdateInfo | null>(updaterService.updateInfo$, null);
   const error = useObservable<IUpdateError | undefined>(updaterService.error$, undefined);
 
   const [currentVersion, setCurrentVersion] = useState<string>('');
@@ -59,27 +61,47 @@ export function UpdateDialog() {
 
   return (
     <div className="tm:flex tm:flex-col tm:gap-4 tm:p-4">
-      <p className="tm:text-sm tm:text-grey-fg">
-        {localeService.t('electron-renderer.updater.new-version-available')}
-      </p>
-
       {/* Version comparison */}
       {updateInfo && (
-        <div className="tm:flex tm:items-center tm:justify-center tm:gap-4 tm:py-2">
-          <div className="tm:text-center">
-            <div className="tm:text-xs tm:text-grey">{localeService.t('electron-renderer.updater.current-version')}</div>
-            <div className="tm:mt-1 tm:text-lg tm:font-semibold tm:text-light-grey">
+        <div className="tm:flex tm:items-stretch tm:justify-center tm:gap-3">
+          <div
+            className={`
+              tm:flex tm:flex-1 tm:flex-col tm:items-center tm:justify-center tm:gap-1 tm:rounded-md tm:border
+              tm:border-line tm:bg-one-bg tm:px-3 tm:py-2.5
+            `}
+          >
+            <span className="tm:text-[11px] tm:text-grey">
+              {localeService.t('electron-renderer.updater.current-version')}
+            </span>
+            <span className="tm:font-mono tm:text-base tm:font-semibold tm:text-grey-fg2">
               v
               {currentVersion}
+            </span>
+          </div>
+
+          <div className="tm:flex tm:items-center">
+            <div
+              className={`
+                tm:flex tm:size-7 tm:items-center tm:justify-center tm:rounded-full tm:bg-green/15 tm:text-green
+              `}
+            >
+              <ArrowRight className="tm:size-4" />
             </div>
           </div>
-          <span className="tm:text-grey-fg">&rarr;</span>
-          <div className="tm:text-center">
-            <div className="tm:text-xs tm:text-grey">{localeService.t('electron-renderer.updater.new-version')}</div>
-            <div className="tm:mt-1 tm:text-lg tm:font-semibold tm:text-green">
+
+          <div
+            className={`
+              tm:flex tm:flex-1 tm:flex-col tm:items-center tm:justify-center tm:gap-1 tm:rounded-md tm:border
+              tm:border-green/40 tm:bg-green/10 tm:px-3 tm:py-2.5
+            `}
+          >
+            <span className="tm:text-[11px] tm:text-green/80">
+              {localeService.t('electron-renderer.updater.new-version')}
+            </span>
+            <span className="tm:font-mono tm:text-base tm:font-semibold tm:text-green">
               v
               {updateInfo.version}
-            </div>
+            </span>
           </div>
         </div>
       )}
@@ -87,11 +109,11 @@ export function UpdateDialog() {
       {/* Release notes */}
       {updateInfo?.releaseNotes && (
         <div className="tm:flex tm:flex-col tm:gap-1">
-          <div className="tm:text-xs tm:font-medium tm:text-grey-fg">{localeService.t('electron-renderer.updater.release-notes')}</div>
+          <div className="tm:text-xs tm:font-medium tm:text-white">{localeService.t('electron-renderer.updater.release-notes')}</div>
           <div
             className={`
               tm:max-h-[160px] tm:overflow-y-auto tm:rounded-sm tm:border tm:border-line tm:bg-darker-black tm:p-3
-              tm:text-xs/relaxed tm:text-light-grey
+              tm:text-xs/relaxed tm:text-white
             `}
           >
             <pre className="tm:font-sans tm:whitespace-pre-wrap">{updateInfo.releaseNotes}</pre>
@@ -131,7 +153,7 @@ export function UpdateDialog() {
       {/* Actions */}
       <div className="tm:flex tm:justify-end tm:gap-2 tm:pt-1">
         {status === UpdateStatus.AVAILABLE && (
-          <Button variant="default" size="sm" onClick={handleDownload}>
+          <Button variant="primary" size="sm" onClick={handleDownload}>
             {localeService.t('electron-renderer.updater.download-update')}
           </Button>
         )}
@@ -143,12 +165,12 @@ export function UpdateDialog() {
           </Button>
         )}
         {status === UpdateStatus.DOWNLOADED && (
-          <Button variant="default" size="sm" onClick={handleInstall}>
+          <Button variant="primary" size="sm" onClick={handleInstall}>
             {localeService.t('electron-renderer.updater.install-now')}
           </Button>
         )}
         {status === UpdateStatus.ERROR && (
-          <Button variant="default" size="sm" onClick={handleRetry}>
+          <Button variant="primary" size="sm" onClick={handleRetry}>
             {localeService.t('electron-renderer.updater.retry')}
           </Button>
         )}

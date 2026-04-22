@@ -16,7 +16,9 @@
 const locale = {
   'electron-renderer': {
     updater: {
+      'dialog-title': 'New Version',
       'new-version-available': 'New version available',
+      'update-ready': 'Update ready',
       'current-version': 'Current Version',
       'new-version': 'New Version',
       'release-notes': 'Release Notes',

@@ -13,7 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
+import { LocaleService } from '@termlnk/core';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
 import { IUpdaterService, UpdateStatus } from '@termlnk/electron';
 import { IDialogService } from '@termlnk/ui';
 import { ArrowDownToLine } from 'lucide-react';
@@ -29,7 +30,9 @@ const VISIBLE_STATUSES = new Set([
 export function UpdateButton() {
   const updaterService = useDependency(IUpdaterService);
   const dialogService = useDependency(IDialogService);
+  const localeService = useDependency(LocaleService);
   const status = useObservable(updaterService.status$, UpdateStatus.IDLE);
+  useUpdateBinder(localeService.localeChanged$);
 
   if (!VISIBLE_STATUSES.has(status)) {
     return null;
@@ -44,7 +47,7 @@ export function UpdateButton() {
       width: 480,
       className: 'tm:overflow-hidden',
       disableAutoFocus: true,
-      title: { title: '软件更新' },
+      title: { title: 'electron-renderer.updater.dialog-title' },
       children: { componentId: UPDATE_DIALOG_COMPONENT_NAME },
       onClose: () => dialogService.close(UPDATE_DIALOG_ID),
     });
@@ -75,7 +78,9 @@ export function UpdateButton() {
           </div>
         </TooltipTrigger>
         <TooltipContent side="right">
-          {status === UpdateStatus.DOWNLOADED ? '更新已就绪' : '软件更新'}
+          {status === UpdateStatus.DOWNLOADED
+            ? localeService.t('electron-renderer.updater.update-ready')
+            : localeService.t('electron-renderer.updater.new-version-available')}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

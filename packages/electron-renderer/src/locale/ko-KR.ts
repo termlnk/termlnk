@@ -18,7 +18,9 @@ import type enUS from './en-US';
 const locale: typeof enUS = {
   'electron-renderer': {
     updater: {
+      'dialog-title': '새 버전',
       'new-version-available': '새 버전을 사용할 수 있습니다',
+      'update-ready': '업데이트 준비 완료',
       'current-version': '현재 버전',
       'new-version': '새 버전',
       'release-notes': '릴리스 노트',
