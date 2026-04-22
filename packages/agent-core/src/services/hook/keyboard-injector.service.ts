@@ -71,11 +71,11 @@ export class KeyboardInjectorService extends Disposable implements IKeyboardInje
     return trusted;
   }
 
-  async injectOption(session: IExternalAgentSession, optionIndex: number): Promise<boolean> {
+  async injectSequence(session: IExternalAgentSession, sequence: string): Promise<boolean> {
     if (!this.supported || !this._addon) {
       return false;
     }
-    if (optionIndex < 0 || !Number.isInteger(optionIndex)) {
+    if (typeof sequence !== 'string' || sequence.length === 0) {
       return false;
     }
     const tty = session.externalMeta?.tty;
@@ -102,13 +102,12 @@ export class KeyboardInjectorService extends Disposable implements IKeyboardInje
       return false;
     }
 
-    const sequence = this._buildOptionSequence(optionIndex);
     try {
       const ok = this._addon.injectKeysByTty(tty, sequence);
       if (!ok) {
         this._logService.warn(
           '[KeyboardInjector]',
-          `injectKeysByTty(${tty}) returned false — terminal app not found or permission denied`
+          `injectKeysByTty(${tty}) returned false — terminal app not found, permission denied, or sequence contained an unparsable token`
         );
       }
       return ok;
@@ -116,24 +115,6 @@ export class KeyboardInjectorService extends Disposable implements IKeyboardInje
       this._logService.error('[KeyboardInjector]', 'injectKeysByTty threw:', err);
       return false;
     }
-  }
-
-  /**
-   * Build the keystroke token sequence for selecting the Nth option in
-   * Claude Code's CLI AskUserQuestion picker. The cursor starts on the
-   * first option, so N `DOWN` keystrokes (0 for the top option) followed
-   * by `ENTER` commit the choice. This mirrors what a keyboard user
-   * would type and is stable across Claude Code terminal-renderer
-   * updates — unlike digit-shortcut alternatives, which some releases
-   * require modifiers for.
-   */
-  private _buildOptionSequence(optionIndex: number): string {
-    const tokens: string[] = [];
-    for (let i = 0; i < optionIndex; i++) {
-      tokens.push('DOWN');
-    }
-    tokens.push('ENTER');
-    return tokens.join(' ');
   }
 
   private _loadAddon(): IMacosUtilsKeyboardAddon | null {

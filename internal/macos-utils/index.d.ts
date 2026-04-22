@@ -44,7 +44,11 @@ export function checkAccessibilityTrusted(prompt?: boolean): boolean;
  * `sequence` is a space-delimited list of tokens — see the addon source
  * for the supported set. Typical Claude Code AskUserQuestion usage:
  * `"DOWN DOWN ENTER"` selects the third option (0-indexed, with the
- * cursor starting on the first option).
+ * cursor starting on the first option). For free-text input (e.g. the
+ * `Other…` slot in a multi-select picker), use a `TEXT:<base64>` token;
+ * the payload is decoded as UTF-8 and each character is posted via
+ * `CGEventKeyboardSetUnicodeString` so the terminal sees it as typed
+ * input regardless of the target keyboard layout.
  *
  * Requires Accessibility permission (see {@link checkAccessibilityTrusted}).
  * Returns `false` when the tty cannot be resolved, the terminal app is

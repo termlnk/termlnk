@@ -31,7 +31,7 @@ import { createIdentifier } from '@termlnk/core';
  * tool call with the selected answer. Either end can drive the decision.
  *
  * Platform support: macOS only (CGEventPostToPid + Accessibility API).
- * On other platforms `supported` is false and `injectOption` always
+ * On other platforms `supported` is false and `injectSequence` always
  * returns false; callers fall back to the original blocking-hook flow.
  */
 export interface IKeyboardInjectorService {
@@ -49,16 +49,18 @@ export interface IKeyboardInjectorService {
   requestPermission(): Promise<boolean>;
 
   /**
-   * Synthesise the keystrokes needed to select option `optionIndex`
-   * (0-based, cursor assumed on the first option) into the terminal app
-   * that owns `session.externalMeta.tty`.
+   * Post a space-delimited token sequence into the terminal app that
+   * owns `session.externalMeta.tty`. Supported tokens (see native addon
+   * source for the full set): `UP / DOWN / LEFT / RIGHT / ENTER / TAB /
+   * SPACE / ESC / DIGIT:1..9 / TEXT:<base64-utf8>`.
    *
    * Returns true only when every step succeeded: platform supported,
    * Accessibility granted, tty resolved to a known app, and every key
-   * token posted. Any failure returns false — the caller should keep
-   * the pending island state and let the user respond in the CLI TUI.
+   * token parsed and posted. Any failure returns false — the caller
+   * should keep the pending island state and let the user respond in
+   * the CLI TUI directly.
    */
-  injectOption(session: IExternalAgentSession, optionIndex: number): Promise<boolean>;
+  injectSequence(session: IExternalAgentSession, sequence: string): Promise<boolean>;
 }
 
 export const IKeyboardInjectorService = createIdentifier<IKeyboardInjectorService>(

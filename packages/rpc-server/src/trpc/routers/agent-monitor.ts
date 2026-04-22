@@ -57,6 +57,19 @@ export const agentMonitorRouter = router({
         z.object({ kind: z.literal('allow') }),
         z.object({ kind: z.literal('deny') }),
         z.object({ kind: z.literal('answer'), label: z.string().min(1) }),
+        // Multi-question / multi-select / custom-input bundle. Keyed by
+        // IAskUserQuestion.id; each entry carries zero or more predefined
+        // labels and an optional free-text `custom` value (Other / secret).
+        z.object({
+          kind: z.literal('answers'),
+          answers: z.record(
+            z.string(),
+            z.object({
+              labels: z.array(z.string()).readonly(),
+              custom: z.string().optional(),
+            })
+          ),
+        }),
       ]),
     }))
     .mutation(({ ctx, input }) => {

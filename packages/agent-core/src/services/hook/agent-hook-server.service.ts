@@ -28,6 +28,7 @@ import { IAgentHookRegistryService as IAgentHookRegistryServiceId, IAgentMonitor
 import { Disposable, IConfigService, ILogService, toDisposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { AGENT_CORE_PLUGIN_CONFIG_KEY } from '../../controllers/config.schema';
+import { buildQuestionSetSequence } from './keyboard-sequence';
 
 /** Maximum request body size (64 KB) */
 const MAX_BODY_SIZE = 64 * 1024;
@@ -221,12 +222,13 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
 
     this._logService.log('[AgentHookServer]', `Decision ${decision.kind} for ${requestId} (${pending.payload.kind}, ${pending.mode})`);
 
-    if (pending.mode === 'non-blocking' && pending.payload.kind === 'question' && decision.kind === 'answer') {
+    const isAnswerDecision = decision.kind === 'answer' || decision.kind === 'answers';
+    if (pending.mode === 'non-blocking' && pending.payload.kind === 'question' && isAnswerDecision) {
       // CLI TUI is showing the picker; synthesise keystrokes so the user's
       // island-pick drives it. The post-tool-use hook will come back
       // shortly and call `dismissQuestionByToolUseId` (idempotent with our
       // immediate `_removePending` below).
-      void this._injectAnswerIntoCli(pending, decision.label);
+      void this._injectDecisionIntoCli(pending, decision);
       this._removePending(requestId);
       return;
     }
@@ -352,6 +354,23 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
     const effectiveKind: 'question' | 'permission' = parsedSet ? 'question' : kind;
     const firstQuestion = parsedSet?.questions[0];
 
+    // Trace the parsed shape so field-drift bugs (agent shipped multiSelect
+    // but the island rendered single-pick) are diagnosable from logs alone.
+    // Logged only on a successful parse — noise-free for non-question paths.
+    if (parsedSet) {
+      this._logService.log(
+        '[AgentHookServer]',
+        `questionSet agent=${event.agent} tool=${toolName} count=${parsedSet.questions.length}`
+      );
+      for (const [i, q] of parsedSet.questions.entries()) {
+        this._logService.log(
+          '[AgentHookServer]',
+          `  q[${i}] id=${q.id} multiSelect=${q.multiSelect === true} `
+          + `allowCustom=${q.allowCustom === true} isSecret=${q.isSecret === true} opts=${q.options.length}`
+        );
+      }
+    }
+
     const payload: IPendingInteractionPayload = effectiveKind === 'question' && parsedSet && firstQuestion
       ? {
         kind: 'question',
@@ -450,10 +469,20 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
   }
 
   /**
-   * Hand off an answered question to the keyboard injector. Failure is
-   * logged but swallowed — the user can still respond in the CLI TUI.
+   * Hand off an answered question to the keyboard injector. Drives the
+   * CLI TUI for the full decision shape — single label, multi-select
+   * labels, and free-text "Other" inputs all go through the same token
+   * sequence builder.
+   *
+   * Failure is logged but swallowed — the user can still respond in the
+   * CLI TUI (which is still visible because the HTTP response was
+   * released immediately when the record was enqueued in non-blocking
+   * mode).
    */
-  private async _injectAnswerIntoCli(record: IPendingRecord, label: string): Promise<void> {
+  private async _injectDecisionIntoCli(
+    record: IPendingRecord,
+    decision: IPermissionDecision
+  ): Promise<void> {
     const payload = record.payload;
     if (payload.kind !== 'question') {
       return;
@@ -466,19 +495,28 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
       );
       return;
     }
-    const optionIndex = payload.question.options.findIndex((o) => o.label === label);
-    if (optionIndex < 0) {
+    const questionSet = record.questionSet
+      ?? (record.question ? { questions: [record.question] } : undefined);
+    if (!questionSet) {
       this._logService.warn(
         '[AgentHookServer]',
-        `Answer label "${label}" not in question options; skipping injection`
+        `Question record for ${payload.requestId} has no questionSet; skipping injection`
       );
       return;
     }
-    const ok = await this._keyboardInjector.injectOption(session, optionIndex);
+    const sequence = buildQuestionSetSequence(questionSet, decision);
+    if (!sequence) {
+      this._logService.warn(
+        '[AgentHookServer]',
+        `Decision shape for ${payload.requestId} not injectable (isSecret or empty); user must pick in the CLI TUI`
+      );
+      return;
+    }
+    const ok = await this._keyboardInjector.injectSequence(session, sequence);
     if (!ok) {
       this._logService.warn(
         '[AgentHookServer]',
-        `Keyboard injection for "${label}" failed; user must pick in the CLI TUI`
+        `Keyboard injection failed for ${payload.requestId}; user must pick in the CLI TUI`
       );
     }
   }
@@ -635,14 +673,21 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
 }
 
 /**
- * Keyboard injection speaks a single `DOWN×N + ENTER` sequence — only
- * single-pick single-question prompts without free-text / secret input
- * qualify for the non-blocking fast lane.
+ * Keyboard injection now speaks the full AskUserQuestion CLI grammar
+ * (see {@link buildQuestionSetSequence}): multi-question sets, multi-
+ * select toggles, and free-text "Other" entries all drive the TUI via
+ * synthesised keystrokes. The only shape still reserved for the
+ * blocking HTTP path is `isSecret`, where routing passwords or tokens
+ * through the accessibility bridge is deliberately refused.
  */
 function isInjectionSafe(set: IAskUserQuestionSet | undefined): boolean {
-  if (!set || set.questions.length !== 1) {
+  if (!set || set.questions.length === 0) {
     return false;
   }
-  const q = set.questions[0]!;
-  return !q.multiSelect && !q.allowCustom && !q.isSecret;
+  for (const q of set.questions) {
+    if (q.isSecret === true) {
+      return false;
+    }
+  }
+  return true;
 }

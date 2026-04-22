@@ -49,6 +49,28 @@ static bool ReadString(napi_env env, napi_value arg, char* buf, size_t bufSize) 
   return true;
 }
 
+// Allocate a heap buffer and copy a JS string of arbitrary length into it.
+// Used for the sequence argument — short fixed buffers truncated long TEXT
+// base64 payloads silently, which produced half-decoded keystrokes.
+// Caller must free() the returned pointer on success.
+static char* ReadStringAlloc(napi_env env, napi_value arg) {
+  size_t len = 0;
+  if (napi_get_value_string_utf8(env, arg, NULL, 0, &len) != napi_ok) {
+    return NULL;
+  }
+  char* buf = (char*)malloc(len + 1);
+  if (!buf) {
+    return NULL;
+  }
+  size_t copied = 0;
+  if (napi_get_value_string_utf8(env, arg, buf, len + 1, &copied) != napi_ok) {
+    free(buf);
+    return NULL;
+  }
+  buf[copied] = '\0';
+  return buf;
+}
+
 // ---------------------------------------------------------------------------
 // Token → virtual keycode mapping
 // ---------------------------------------------------------------------------
@@ -116,6 +138,61 @@ static void PostKeyToPid(pid_t pid, CGKeyCode keycode) {
   }
 }
 
+// Post an arbitrary Unicode string as a single keyboard event pair.
+// CGEventKeyboardSetUnicodeString replaces the keycode-derived character
+// with the caller-supplied string, which is how a running app receives
+// free-form user input from the synthetic event. Each character is posted
+// as its own keyDown/keyUp pair — many terminal TUIs only commit input on
+// keyUp boundaries, and a single multi-character event is silently dropped
+// or reinterpreted by some apps.
+static bool PostUnicodeStringToPid(pid_t pid, NSString* text) {
+  if (text.length == 0) {
+    return true;
+  }
+  NSUInteger length = text.length;
+  UniChar* buffer = (UniChar*)malloc(sizeof(UniChar) * length);
+  if (!buffer) {
+    return false;
+  }
+  [text getCharacters:buffer range:NSMakeRange(0, length)];
+  for (NSUInteger i = 0; i < length; i++) {
+    CGEventRef keyDown = CGEventCreateKeyboardEvent(NULL, 0, true);
+    CGEventRef keyUp = CGEventCreateKeyboardEvent(NULL, 0, false);
+    if (keyDown) {
+      CGEventKeyboardSetUnicodeString(keyDown, 1, &buffer[i]);
+      CGEventPostToPid(pid, keyDown);
+      CFRelease(keyDown);
+    }
+    if (keyUp) {
+      CGEventKeyboardSetUnicodeString(keyUp, 1, &buffer[i]);
+      CGEventPostToPid(pid, keyUp);
+      CFRelease(keyUp);
+    }
+    usleep(8 * 1000);  // 8ms — faster than named-key cadence, avoids missed chars
+  }
+  free(buffer);
+  return true;
+}
+
+// Decode a TEXT:<base64> token's body into an autoreleased NSString.
+// Returns nil on malformed base64 or non-UTF8 payloads so the caller can
+// mark the sequence as partially invalid but keep posting later tokens.
+static NSString* DecodeTextToken(const char* body, size_t len) {
+  if (len == 0) {
+    return @"";
+  }
+  NSString* encoded = [[NSString alloc] initWithBytes:body length:len encoding:NSASCIIStringEncoding];
+  if (!encoded) {
+    return nil;
+  }
+  NSData* data = [[NSData alloc] initWithBase64EncodedString:encoded options:0];
+  if (!data) {
+    return nil;
+  }
+  NSString* decoded = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+  return decoded;  // may be nil on non-UTF8 payload
+}
+
 /**
  * Post each token in `sequence` as a key-down + key-up to `pid`.
  * Returns true when every token parsed successfully (events were posted);
@@ -142,6 +219,25 @@ static bool PostSequenceToPid(pid_t pid, const char* sequence) {
       cursor++;
     }
     size_t len = (size_t)(cursor - start);
+
+    // TEXT:<base64> — arbitrary UTF-8 string injected as unicode key events.
+    // base64 is used so the payload can contain spaces / control chars
+    // without colliding with the space-delimited token grammar.
+    if (len >= 5 && strncmp(start, "TEXT:", 5) == 0) {
+      NSString* text = DecodeTextToken(start + 5, len - 5);
+      if (!text) {
+        allValid = false;
+        continue;
+      }
+      if (!PostUnicodeStringToPid(pid, text)) {
+        allValid = false;
+      }
+      // Named-key cadence for the gap BETWEEN a text block and the
+      // following token — most TUIs need a tick to flush the input buffer.
+      usleep(25 * 1000);
+      continue;
+    }
+
     TokenKey tk = ParseToken(start, len);
     if (!tk.valid) {
       allValid = false;
@@ -276,20 +372,22 @@ static napi_value InjectKeysByTty(napi_env env, napi_callback_info info) {
   }
 
   char ttyPath[256];
-  char sequence[1024];
   if (!ReadString(env, args[0], ttyPath, sizeof(ttyPath))) {
     return BoolResult(env, false);
   }
-  if (!ReadString(env, args[1], sequence, sizeof(sequence))) {
+  char* sequence = ReadStringAlloc(env, args[1]);
+  if (!sequence) {
     return BoolResult(env, false);
   }
 
   @autoreleasepool {
     if (!AXIsProcessTrusted()) {
+      free(sequence);
       return BoolResult(env, false);
     }
     pid_t pid = FindTerminalAppForTty(ttyPath);
     if (pid == 0) {
+      free(sequence);
       return BoolResult(env, false);
     }
     // Bring the terminal app forward so CGEvent is actually delivered.
@@ -304,6 +402,7 @@ static napi_value InjectKeysByTty(napi_env env, napi_callback_info info) {
       usleep(60 * 1000);
     }
     bool ok = PostSequenceToPid(pid, sequence);
+    free(sequence);
     return BoolResult(env, ok);
   }
 }
@@ -326,13 +425,14 @@ static napi_value InjectKeysByPid(napi_env env, napi_callback_info info) {
   if (napi_get_value_int32(env, args[0], &pidRaw) != napi_ok || pidRaw <= 0) {
     return BoolResult(env, false);
   }
-  char sequence[1024];
-  if (!ReadString(env, args[1], sequence, sizeof(sequence))) {
+  char* sequence = ReadStringAlloc(env, args[1]);
+  if (!sequence) {
     return BoolResult(env, false);
   }
 
   @autoreleasepool {
     if (!AXIsProcessTrusted()) {
+      free(sequence);
       return BoolResult(env, false);
     }
     NSRunningApplication* app = [NSRunningApplication runningApplicationWithProcessIdentifier:pidRaw];
@@ -341,6 +441,7 @@ static napi_value InjectKeysByPid(napi_env env, napi_callback_info info) {
       usleep(60 * 1000);
     }
     bool ok = PostSequenceToPid((pid_t)pidRaw, sequence);
+    free(sequence);
     return BoolResult(env, ok);
   }
 }
