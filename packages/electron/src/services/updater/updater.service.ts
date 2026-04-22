@@ -19,7 +19,12 @@ import { createIdentifier } from '@termlnk/core';
 
 export interface IUpdaterService {
   status$: Observable<UpdateStatus>;
-  updateInfo$: Observable<IUpdateInfo>;
+  /**
+   * Latest known update info, or null when no update has been discovered yet.
+   * Emits the current value immediately on subscribe so late subscribers
+   * (e.g. a dialog opened in response to status=AVAILABLE) don't miss it.
+   */
+  updateInfo$: Observable<IUpdateInfo | null>;
   progress$: Observable<IUpdateProgress>;
   error$: Observable<IUpdateError>;
 

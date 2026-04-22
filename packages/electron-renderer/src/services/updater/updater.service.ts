@@ -34,7 +34,7 @@ export class UpdaterService extends Disposable implements IUpdaterService {
     (opts) => this._client.status$.subscribe(undefined, opts)
   );
 
-  readonly updateInfo$: Observable<IUpdateInfo> = trpcSubscriptionToObservable(
+  readonly updateInfo$: Observable<IUpdateInfo | null> = trpcSubscriptionToObservable(
     (opts) => this._client.updateInfo$.subscribe(undefined, opts)
   );
 

@@ -20,8 +20,12 @@ import { UpdateStatus } from '@termlnk/electron';
 import { app } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { BehaviorSubject, interval, Subject, switchMap } from 'rxjs';
+import { gt as semverGt, prerelease as semverPrerelease } from 'semver';
 
-/** Internal candidate returned by a single-channel check */
+/** Default stable channel name used by electron-builder (maps to `latest-<os>.yml`) */
+const STABLE_CHANNEL = 'latest';
+
+/** Candidate returned by a single-channel check */
 interface IUpdateCandidate {
   info: IUpdateInfo;
   version: string;
@@ -35,8 +39,8 @@ export class UpdaterService extends Disposable implements IUpdaterService {
   private readonly _status$ = new BehaviorSubject<UpdateStatus>(UpdateStatus.IDLE);
   readonly status$: Observable<UpdateStatus> = this._status$.asObservable();
 
-  private readonly _updateInfo$ = new Subject<IUpdateInfo>();
-  readonly updateInfo$: Observable<IUpdateInfo> = this._updateInfo$.asObservable();
+  private readonly _updateInfo$ = new BehaviorSubject<IUpdateInfo | null>(null);
+  readonly updateInfo$: Observable<IUpdateInfo | null> = this._updateInfo$.asObservable();
 
   private readonly _progress$ = new Subject<IUpdateProgress>();
   readonly progress$: Observable<IUpdateProgress> = this._progress$.asObservable();
@@ -58,11 +62,9 @@ export class UpdaterService extends Disposable implements IUpdaterService {
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
 
-    // Detect prerelease channel from current version (e.g. "beta" from "0.0.1-beta.0")
-    // so GenericProvider fetches beta-mac.yml instead of latest-mac.yml
-    this._prereleaseChannel = this._extractPrereleaseChannel(app.getVersion());
+    this._prereleaseChannel = extractPrereleaseChannel(app.getVersion());
     if (this._prereleaseChannel) {
-      this._switchChannel(this._prereleaseChannel);
+      this._setChannel(this._prereleaseChannel);
     }
 
     this._bindEvents();
@@ -94,23 +96,23 @@ export class UpdaterService extends Disposable implements IUpdaterService {
 
     this._status$.next(UpdateStatus.CHECKING);
 
-    try {
-      if (!this._prereleaseChannel) {
-        // Stable version: single channel check
-        const result = await autoUpdater.checkForUpdates();
-        if (!result) {
-          return null;
-        }
-        return this._mapUpdateInfo(result.updateInfo);
-      }
+    const currentVersion = app.getVersion();
+    const channels = this._prereleaseChannel
+      ? [this._prereleaseChannel, STABLE_CHANNEL]
+      : [STABLE_CHANNEL];
 
-      // Prerelease version: check both prerelease and stable channels,
-      // so beta users can also discover stable releases
-      return await this._checkDualChannels();
-    } catch (err) {
-      this._logService.warn('[UpdaterService] Update check failed', err);
+    const best = await this._pickBestAcrossChannels(channels, currentVersion);
+
+    if (!best) {
+      this._status$.next(UpdateStatus.NOT_AVAILABLE);
       return null;
     }
+
+    // Pin the winning channel so a subsequent downloadUpdate() fetches the right artifact
+    this._setChannel(best.channel);
+    this._status$.next(UpdateStatus.AVAILABLE);
+    this._updateInfo$.next(best.info);
+    return best.info;
   }
 
   async downloadUpdate(): Promise<void> {
@@ -127,73 +129,74 @@ export class UpdaterService extends Disposable implements IUpdaterService {
   }
 
   // ---------------------------------------------------------------------------
-  // Dual-channel update logic
+  // Channel orchestration
   // ---------------------------------------------------------------------------
 
   /**
-   * Check both prerelease and stable channels, pick the newer available version.
-   * This ensures beta users can upgrade to stable releases when they come out.
+   * Query each channel sequentially and return the candidate with the highest
+   * semver version (per `semver.gt`). Returns `null` if no channel surfaces a
+   * newer version than `currentVersion`.
+   *
+   * Version algebra (prerelease ordering, cross-channel compare, etc.) is
+   * delegated to the `semver` package — the same one electron-updater uses
+   * internally — so this service never hand-rolls version comparisons.
    */
-  private async _checkDualChannels(): Promise<IUpdateInfo | null> {
-    this._isMultiChannelChecking = true;
-    const currentVersion = app.getVersion();
-
+  private async _pickBestAcrossChannels(
+    channels: string[],
+    currentVersion: string
+  ): Promise<IUpdateCandidate | null> {
+    this._isMultiChannelChecking = channels.length > 1;
     try {
-      const prerelease = await this._checkChannel(this._prereleaseChannel!, currentVersion);
-      const stable = await this._checkChannel('latest', currentVersion);
-      const best = this._pickBestCandidate(prerelease, stable);
-
-      if (!best) {
-        this._status$.next(UpdateStatus.NOT_AVAILABLE);
-        return null;
+      let best: IUpdateCandidate | null = null;
+      for (const channel of channels) {
+        const candidate = await this._checkChannel(channel, currentVersion);
+        if (!candidate) {
+          continue;
+        }
+        if (!best || semverGt(candidate.version, best.version)) {
+          best = candidate;
+        }
       }
-
-      // Set channel to the winner so subsequent downloadUpdate() uses the correct file
-      this._switchChannel(best.channel);
-      this._status$.next(UpdateStatus.AVAILABLE);
-      this._updateInfo$.next(best.info);
-
-      return best.info;
+      return best;
     } finally {
       this._isMultiChannelChecking = false;
     }
   }
 
-  /** Check a single channel and return a candidate if a newer version is found */
+  /**
+   * Fetch a single channel's manifest and return a candidate iff its version
+   * is strictly greater than `currentVersion`. Errors (network, 404, invalid
+   * yml) are swallowed so one missing channel cannot break the other.
+   */
   private async _checkChannel(channel: string, currentVersion: string): Promise<IUpdateCandidate | null> {
-    this._switchChannel(channel);
+    this._setChannel(channel);
     try {
       const result = await autoUpdater.checkForUpdates();
-      if (result && this._compareVersions(result.updateInfo.version, currentVersion) > 0) {
-        return {
-          info: this._mapUpdateInfo(result.updateInfo),
-          version: result.updateInfo.version,
-          channel,
-        };
+      if (!result) {
+        return null;
       }
-      return null;
+      const remoteVersion = result.updateInfo.version;
+      if (!semverGt(remoteVersion, currentVersion)) {
+        return null;
+      }
+      return {
+        info: mapUpdateInfo(result.updateInfo),
+        version: remoteVersion,
+        channel,
+      };
     } catch (err) {
       this._logService.warn(`[UpdaterService] Channel "${channel}" check failed`, err);
       return null;
     }
   }
 
-  /** Return whichever candidate has the higher version, or null if both are null */
-  private _pickBestCandidate(a: IUpdateCandidate | null, b: IUpdateCandidate | null): IUpdateCandidate | null {
-    if (!a) {
-      return b;
-    }
-    if (!b) {
-      return a;
-    }
-    return this._compareVersions(a.version, b.version) >= 0 ? a : b;
-  }
-
   /**
-   * Switch autoUpdater to a different channel.
-   * The channel setter internally forces `allowDowngrade = true`, so we always reset it.
+   * Point electron-updater at `channel`. Setting `channel` via the setter
+   * implicitly flips `allowDowngrade` to `true` (see AppUpdater.ts upstream);
+   * we force it back to `false` so beta users are never silently rolled back
+   * to an older stable than they are currently running.
    */
-  private _switchChannel(channel: string): void {
+  private _setChannel(channel: string): void {
     autoUpdater.channel = channel;
     autoUpdater.allowDowngrade = false;
   }
@@ -203,7 +206,9 @@ export class UpdaterService extends Disposable implements IUpdaterService {
   // ---------------------------------------------------------------------------
 
   private _startAutoCheck(): void {
-    if (!app.isPackaged) return;
+    if (!app.isPackaged) {
+      return;
+    }
 
     this.disposeWithMe(
       interval(UpdaterService._AUTO_CHECK_INTERVAL_MS).pipe(
@@ -222,7 +227,7 @@ export class UpdaterService extends Disposable implements IUpdaterService {
     autoUpdater.on('update-available', (info) => {
       if (!this._isMultiChannelChecking) {
         this._status$.next(UpdateStatus.AVAILABLE);
-        this._updateInfo$.next(this._mapUpdateInfo(info));
+        this._updateInfo$.next(mapUpdateInfo(info));
       }
     });
 
@@ -244,7 +249,7 @@ export class UpdaterService extends Disposable implements IUpdaterService {
 
     autoUpdater.on('update-downloaded', (info) => {
       this._status$.next(UpdateStatus.DOWNLOADED);
-      this._updateInfo$.next(this._mapUpdateInfo(info));
+      this._updateInfo$.next(mapUpdateInfo(info));
     });
 
     autoUpdater.on('error', (err) => {
@@ -257,112 +262,46 @@ export class UpdaterService extends Disposable implements IUpdaterService {
       }
     });
   }
+}
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Pure helpers (no DI, stateless, unit-testable)
+// ---------------------------------------------------------------------------
 
-  private _mapUpdateInfo(info: { version: string; releaseDate: string; releaseNotes?: string | { version: string; note: string | null }[] | null }): IUpdateInfo {
-    let releaseNotes: string | null = null;
-    if (typeof info.releaseNotes === 'string') {
-      releaseNotes = info.releaseNotes;
-    } else if (Array.isArray(info.releaseNotes)) {
-      releaseNotes = info.releaseNotes.map((n) => `${n.version}: ${n.note ?? ''}`).join('\n');
-    }
+/**
+ * Extract the prerelease channel name from a semver string.
+ *
+ * Delegates to `semver.prerelease()` so behavior matches electron-updater's
+ * own `hasPrereleaseComponents()` check. Returns `null` for stable releases,
+ * and the first identifier (e.g. `"beta"`, `"alpha"`) otherwise.
+ *
+ * Examples:
+ *   "0.0.1-beta.0"  -> "beta"
+ *   "1.0.0-rc.1"    -> "rc"
+ *   "1.0.0"         -> null
+ *   "0.0.0"         -> null
+ *   "invalid"       -> null
+ */
+function extractPrereleaseChannel(version: string): string | null {
+  const parts = semverPrerelease(version);
+  if (!parts || parts.length === 0) {
+    return null;
+  }
+  const head = parts[0];
+  return typeof head === 'string' ? head : null;
+}
 
-    return {
-      version: info.version,
-      releaseDate: info.releaseDate,
-      releaseNotes,
-    };
+function mapUpdateInfo(info: { version: string; releaseDate: string; releaseNotes?: string | { version: string; note: string | null }[] | null }): IUpdateInfo {
+  let releaseNotes: string | null = null;
+  if (typeof info.releaseNotes === 'string') {
+    releaseNotes = info.releaseNotes;
+  } else if (Array.isArray(info.releaseNotes)) {
+    releaseNotes = info.releaseNotes.map((n) => `${n.version}: ${n.note ?? ''}`).join('\n');
   }
 
-  /**
-   * Extract the prerelease channel name from a semver string.
-   * e.g. "0.0.1-beta.0" -> "beta", "1.0.0-alpha.3" -> "alpha", "1.0.0" -> null
-   */
-  private _extractPrereleaseChannel(version: string): string | null {
-    const hyphenIndex = version.indexOf('-');
-    if (hyphenIndex === -1) {
-      return null;
-    }
-    const prerelease = version.slice(hyphenIndex + 1);
-    const dotIndex = prerelease.indexOf('.');
-    const channel = dotIndex === -1 ? prerelease : prerelease.slice(0, dotIndex);
-    return channel || null;
-  }
-
-  /**
-   * Compare two semver version strings.
-   * Returns positive if a > b, negative if a < b, zero if equal.
-   *
-   * Handles prerelease ordering per semver spec:
-   * - A release version has higher precedence than its prerelease (1.0.0 > 1.0.0-beta.1)
-   * - Prerelease identifiers are compared left-to-right: numeric < numeric, string < string
-   */
-  private _compareVersions(a: string, b: string): number {
-    const parse = (v: string) => {
-      const hyphenIndex = v.indexOf('-');
-      const main = hyphenIndex === -1 ? v : v.slice(0, hyphenIndex);
-      const pre = hyphenIndex === -1 ? null : v.slice(hyphenIndex + 1);
-      return { parts: main.split('.').map(Number), pre };
-    };
-
-    const va = parse(a);
-    const vb = parse(b);
-
-    // Compare major.minor.patch
-    for (let i = 0; i < 3; i++) {
-      const diff = (va.parts[i] || 0) - (vb.parts[i] || 0);
-      if (diff !== 0) {
-        return diff;
-      }
-    }
-
-    // Same main version: release > prerelease
-    if (!va.pre && vb.pre) {
-      return 1;
-    }
-    if (va.pre && !vb.pre) {
-      return -1;
-    }
-    if (!va.pre && !vb.pre) {
-      return 0;
-    }
-
-    // Both have prerelease: compare identifiers left-to-right
-    const aParts = va.pre!.split('.');
-    const bParts = vb.pre!.split('.');
-    const len = Math.max(aParts.length, bParts.length);
-    for (let i = 0; i < len; i++) {
-      if (i >= aParts.length) {
-        return -1;
-      }
-      if (i >= bParts.length) {
-        return 1;
-      }
-      const aNum = Number(aParts[i]);
-      const bNum = Number(bParts[i]);
-      const aIsNum = !Number.isNaN(aNum);
-      const bIsNum = !Number.isNaN(bNum);
-      if (aIsNum && bIsNum) {
-        if (aNum !== bNum) {
-          return aNum - bNum;
-        }
-      } else if (aIsNum !== bIsNum) {
-        // Numeric identifiers have lower precedence than string identifiers
-        return aIsNum ? -1 : 1;
-      } else {
-        // Both strings: lexicographic compare
-        if (aParts[i] < bParts[i]) {
-          return -1;
-        }
-        if (aParts[i] > bParts[i]) {
-          return 1;
-        }
-      }
-    }
-
-    return 0;
-  }
+  return {
+    version: info.version,
+    releaseDate: info.releaseDate,
+    releaseNotes,
+  };
 }

@@ -832,6 +832,9 @@ importers:
       electron-updater:
         specifier: ^6.8.3
         version: 6.8.3
+      semver:
+        specifier: ^7.7.4
+        version: 7.7.4
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -842,6 +845,9 @@ importers:
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared
+      '@types/semver':
+        specifier: ^7.7.1
+        version: 7.7.1
       electron:
         specifier: 40.8.5
         version: 40.8.5
@@ -6012,6 +6018,9 @@ packages:
 
   '@types/retry@0.12.0':
     resolution: {integrity: sha512-wWKOClTTiizcZhXnPY4wikVAwmdYHp8q6DmC+EJUzAMsycb7HB32Kh9RN4+0gExjmPmZSAQjgURXIGATPegAvA==}
+
+  '@types/semver@7.7.1':
+    resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
 
   '@types/ssh2@1.15.5':
     resolution: {integrity: sha512-N1ASjp/nXH3ovBHddRJpli4ozpk6UdDYIX4RJWFa9L1YKnzdhTlVmiGHm4DZnj/jLbqZpes4aeR30EFGQtvhQQ==}
@@ -17554,6 +17563,8 @@ snapshots:
       '@types/node': 25.5.0
 
   '@types/retry@0.12.0': {}
+
+  '@types/semver@7.7.1': {}
 
   '@types/ssh2@1.15.5':
     dependencies:
