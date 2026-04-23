@@ -29,6 +29,10 @@ const locale: typeof enUS = {
       'install-now': '今すぐインストール',
       retry: '再試行',
     },
+    header: {
+      'pin-enable': 'ウィンドウを最前面に固定',
+      'pin-disable': '最前面固定を解除',
+    },
   },
 };
 

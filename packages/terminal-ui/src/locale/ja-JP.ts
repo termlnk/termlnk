@@ -22,6 +22,9 @@ const locale: typeof enUS = {
     },
     'hosts-explorer': {
       title: 'ホストエクスプローラー',
+      'add-host': 'ホストを追加',
+      'add-group': 'グループを追加',
+      refresh: '更新',
     },
     'host-dialog': {
       title: {
@@ -154,6 +157,17 @@ const locale: typeof enUS = {
       'create-new-host': '新しいホストを作成',
       'maximize-session': 'セッションの最大化/復元',
       'open-local-terminal': '新しいローカルターミナル',
+    },
+    pane: {
+      'split-right': '右に分割',
+      'split-down': '下に分割',
+      maximize: '最大化',
+      restore: '元に戻す',
+      close: '閉じる',
+    },
+    'tab-bar': {
+      'new-session': '新しいターミナル',
+      'tab-list': 'タブ一覧を表示',
     },
   },
 };

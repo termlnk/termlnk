@@ -15,6 +15,7 @@
 
 import { Button, cn, PinIcon, useDependency } from '@termlnk/design';
 import { IWindowManagerService } from '@termlnk/electron';
+import { TooltipWrapper } from '@termlnk/ui';
 import { useCallback } from 'react';
 
 interface IWindowPinToggleProps {
@@ -33,19 +34,24 @@ export function WindowPinToggle({ windowId, alwaysOnTop }: IWindowPinToggleProps
   }, [windowManagerService, windowId, alwaysOnTop]);
 
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      onClick={handleToggle}
+    <TooltipWrapper
+      side="bottom"
+      labelKey={alwaysOnTop ? 'electron-renderer.header.pin-disable' : 'electron-renderer.header.pin-enable'}
     >
-      <PinIcon
-        size={14}
-        strokeWidth={1.5}
-        fill={alwaysOnTop ? 'currentColor' : 'none'}
-        className={cn('tm:transition-transform', {
-          'tm:rotate-45': !alwaysOnTop,
-        })}
-      />
-    </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={handleToggle}
+      >
+        <PinIcon
+          size={14}
+          strokeWidth={1.5}
+          fill={alwaysOnTop ? 'currentColor' : 'none'}
+          className={cn('tm:transition-transform', {
+            'tm:rotate-45': !alwaysOnTop,
+          })}
+        />
+      </Button>
+    </TooltipWrapper>
   );
 }

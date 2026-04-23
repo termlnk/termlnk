@@ -18,8 +18,11 @@ import type { PointerEvent as ReactPointerEvent, WheelEvent } from 'react';
 import type { ITabDisplayItem } from '../../models/workspace.model';
 import { isDefined } from '@termlnk/core';
 import { Button, cn, useDependency } from '@termlnk/design';
+import { TooltipWrapper } from '@termlnk/ui';
 import { Ellipsis, Plus } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { OpenLocalTerminalCommand } from '../../commands/open-local-terminal.command';
+import { ToggleTabListCommand } from '../../commands/toggle-tab-list.command';
 import { ITabListDropdownService } from '../../services/tab-list-dropdown/tab-list-dropdown.service';
 import { TerminalTabItem } from './TerminalTabItem';
 import { WorkspaceTabItem } from './WorkspaceTabItem';
@@ -554,15 +557,20 @@ export function TerminalTabs(props: ITerminalTabsProps) {
 
         {/* Inline "+" button when NOT overflowing */}
         {onAddSession && !isOverflowing && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className={cn('electron-no-drag tm:mx-1 tm:my-auto')}
-            onClick={onAddSession}
-            title="New Session"
+          <TooltipWrapper
+            side="bottom"
+            labelKey="terminal-ui.tab-bar.new-session"
+            commandId={OpenLocalTerminalCommand.id}
           >
-            <Plus size={14} strokeWidth={1.5} />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className={cn('electron-no-drag tm:mx-1 tm:my-auto')}
+              onClick={onAddSession}
+            >
+              <Plus size={14} strokeWidth={1.5} />
+            </Button>
+          </TooltipWrapper>
         )}
       </div>
 
@@ -573,24 +581,34 @@ export function TerminalTabs(props: ITerminalTabsProps) {
             electron-no-drag tm:flex tm:h-full tm:min-w-17 tm:items-center tm:gap-0.5 tm:bg-darker-black tm:px-1
           `}
         >
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleToggleTabList}
-            title="Tab List"
+          <TooltipWrapper
+            side="bottom"
+            labelKey="terminal-ui.tab-bar.tab-list"
+            commandId={ToggleTabListCommand.id}
           >
-            <Ellipsis size={14} strokeWidth={1.5} />
-          </Button>
-
-          {onAddSession && (
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={onAddSession}
-              title="New Session"
+              onClick={handleToggleTabList}
             >
-              <Plus size={14} strokeWidth={1.5} />
+              <Ellipsis size={14} strokeWidth={1.5} />
             </Button>
+          </TooltipWrapper>
+
+          {onAddSession && (
+            <TooltipWrapper
+              side="bottom"
+              labelKey="terminal-ui.tab-bar.new-session"
+              commandId={OpenLocalTerminalCommand.id}
+            >
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onAddSession}
+              >
+                <Plus size={14} strokeWidth={1.5} />
+              </Button>
+            </TooltipWrapper>
           )}
         </div>
       )}

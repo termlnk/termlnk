@@ -20,8 +20,11 @@ import { Platform, platform } from '@termlnk/core';
 import { Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { ISSHService } from '@termlnk/rpc-client';
 import { IPTYService } from '@termlnk/terminal';
+import { TooltipWrapper } from '@termlnk/ui';
 import { Columns2, Loader2, Maximize2, Minimize2, Rows2, Terminal, X } from 'lucide-react';
 import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { CloseActiveTabCommand } from '../../commands/close-active-tab.command';
+import { MaximizeSessionCommand } from '../../commands/maximize-session.command';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
 import { IWorkspaceService } from '../../services/workspace/workspace.service';
 import { useWindowTransparency } from '../hooks';
@@ -337,7 +340,7 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
           )}
         >
           <PaneActionButton
-            title="Split Right"
+            labelKey="terminal-ui.pane.split-right"
             onClick={(e) => {
               e.stopPropagation();
               handleSplit('horizontal');
@@ -347,7 +350,7 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
           </PaneActionButton>
 
           <PaneActionButton
-            title="Split Down"
+            labelKey="terminal-ui.pane.split-down"
             onClick={(e) => {
               e.stopPropagation();
               handleSplit('vertical');
@@ -357,7 +360,8 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
           </PaneActionButton>
 
           <PaneActionButton
-            title={isMagnified ? 'Restore' : 'Maximize'}
+            labelKey={isMagnified ? 'terminal-ui.pane.restore' : 'terminal-ui.pane.maximize'}
+            commandId={MaximizeSessionCommand.id}
             onClick={handleMagnify}
           >
             {isMagnified
@@ -365,7 +369,11 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
               : <Maximize2 size={12} strokeWidth={1.5} />}
           </PaneActionButton>
 
-          <PaneActionButton title="Close" onClick={handleClose}>
+          <PaneActionButton
+            labelKey="terminal-ui.pane.close"
+            commandId={CloseActiveTabCommand.id}
+            onClick={handleClose}
+          >
             <X size={12} strokeWidth={1.5} />
           </PaneActionButton>
         </div>
@@ -536,24 +544,26 @@ function ConnectionDot({ type, status }: { type: string; status: TerminalSession
   );
 }
 
-function PaneActionButton({ title, onClick, children }: {
-  title: string;
+function PaneActionButton({ labelKey, commandId, onClick, children }: {
+  labelKey: string;
+  commandId?: string;
   onClick: (e: MouseEvent) => void;
   children: ReactNode;
 }) {
   return (
-    <Button
-      variant="ghost"
-      size="icon-xs"
-      title={title}
-      className="
-        tm:size-5 tm:p-1 tm:duration-100
-        tm:hover:bg-one-bg2
-      "
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
+    <TooltipWrapper side="bottom" labelKey={labelKey} commandId={commandId}>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        className="
+          tm:size-5 tm:p-1 tm:duration-100
+          tm:hover:bg-one-bg2
+        "
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={onClick}
+      >
+        {children}
+      </Button>
+    </TooltipWrapper>
   );
 }

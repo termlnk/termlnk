@@ -57,8 +57,8 @@ function TooltipContent({
         sideOffset={sideOffset}
         className={cn(
           `
-            tm:z-50 tm:w-fit tm:max-w-xs tm:origin-(--radix-tooltip-content-transform-origin) tm:rounded-md tm:bg-black2
-            tm:px-3 tm:py-1.5 tm:text-xs tm:text-white
+            tm:z-50 tm:w-fit tm:max-w-xs tm:origin-(--radix-tooltip-content-transform-origin) tm:rounded-md
+            tm:border tm:border-line tm:bg-black2 tm:px-3 tm:py-1.5 tm:text-xs tm:text-white
             tm:data-[side=bottom]:slide-in-from-top-2
             tm:data-[side=left]:slide-in-from-right-2
             tm:data-[side=right]:slide-in-from-left-2

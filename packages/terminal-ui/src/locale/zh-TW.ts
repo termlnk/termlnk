@@ -22,6 +22,9 @@ const locale: typeof enUS = {
     },
     'hosts-explorer': {
       title: '資源管理器',
+      'add-host': '新建主機',
+      'add-group': '新建分組',
+      refresh: '重新整理',
     },
     'host-dialog': {
       title: {
@@ -154,6 +157,17 @@ const locale: typeof enUS = {
       'create-new-host': '建立新主機',
       'maximize-session': '最大化/還原工作階段',
       'open-local-terminal': '新建本機終端機',
+    },
+    pane: {
+      'split-right': '向右分割',
+      'split-down': '向下分割',
+      maximize: '最大化',
+      restore: '還原',
+      close: '關閉',
+    },
+    'tab-bar': {
+      'new-session': '新建終端機',
+      'tab-list': '顯示分頁清單',
     },
   },
 };

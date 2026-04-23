@@ -13,16 +13,16 @@
  * governing permissions and limitations under the License.
  */
 
-import { ICommandService, LocaleService } from '@termlnk/core';
+import { ICommandService } from '@termlnk/core';
 import { Button, useDependency, useObservable } from '@termlnk/design';
 import { useCallback } from 'react';
 import { ToggleRightSidebarCommand } from '../../../commands/toggle-right-sidebar.command';
 import { ResizableService } from '../../../services/resizable/resizable.service';
+import { TooltipWrapper } from '../tooltip/TooltipWrapper';
 
 export function RightSidebarToggle() {
   const resizableService = useDependency(ResizableService);
   const commandService = useDependency(ICommandService);
-  const localeService = useDependency(LocaleService);
   const layout = useObservable(resizableService.layout$, resizableService.layout);
   const isOpen = layout.right > 0;
 
@@ -31,16 +31,19 @@ export function RightSidebarToggle() {
   }, [commandService]);
 
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      onClick={handleToggle}
-      title={isOpen
-        ? localeService.t('ui.right-sidebar-toggle.close-title')
-        : localeService.t('ui.right-sidebar-toggle.open-title')}
+    <TooltipWrapper
+      side="bottom"
+      commandId={ToggleRightSidebarCommand.id}
+      labelKey={isOpen ? 'ui.right-sidebar-toggle.close-title' : 'ui.right-sidebar-toggle.open-title'}
     >
-      <PanelRightFilledIcon size={14} strokeWidth={1.5} isOpen={isOpen} />
-    </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={handleToggle}
+      >
+        <PanelRightFilledIcon size={14} strokeWidth={1.5} isOpen={isOpen} />
+      </Button>
+    </TooltipWrapper>
   );
 }
 

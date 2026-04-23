@@ -52,3 +52,5 @@ export type { IComponentContainerProps } from './views/components/ComponentConta
 export type { ICustomWrapperProps } from './views/components/custom-wrapper';
 export { CustomWrapper } from './views/components/custom-wrapper';
 export { NotificationIcon, NotificationPanel } from './views/components/notification';
+export { TooltipWrapper } from './views/components/tooltip/TooltipWrapper';
+export type { ITooltipWrapperProps } from './views/components/tooltip/TooltipWrapper';

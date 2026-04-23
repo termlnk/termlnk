@@ -26,7 +26,7 @@ function Kbd({ className, ...props }: React.ComponentProps<'kbd'>) {
           tm:rounded-xs tm:bg-one-bg tm:px-1 tm:font-sans tm:text-xs tm:font-medium tm:text-grey-fg tm:select-none
         `,
         "tm:[&_svg:not([class*='size-'])]:size-3",
-        'tm:in-data-[slot=tooltip-content]:bg-black/15 tm:in-data-[slot=tooltip-content]:text-black',
+        'tm:in-data-[slot=tooltip-content]:bg-darker-black tm:in-data-[slot=tooltip-content]:text-white',
         className
       )}
       {...props}

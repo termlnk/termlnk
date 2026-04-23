@@ -13,16 +13,16 @@
  * governing permissions and limitations under the License.
  */
 
-import { ICommandService, LocaleService } from '@termlnk/core';
+import { ICommandService } from '@termlnk/core';
 import { Button, useDependency, useObservable } from '@termlnk/design';
 import { useCallback } from 'react';
 import { ToggleLeftSidebarCommand } from '../../../commands/toggle-left-sidebar.command';
 import { SideTabBarService } from '../../../services/side-tab-bar/side-tab-bar.service';
+import { TooltipWrapper } from '../tooltip/TooltipWrapper';
 
 export function LeftSidebarToggle() {
   const sideTabBarService = useDependency(SideTabBarService);
   const commandService = useDependency(ICommandService);
-  const localeService = useDependency(LocaleService);
   const isOpen = useObservable(sideTabBarService.visible$, sideTabBarService.visible);
 
   const handleToggle = useCallback(() => {
@@ -30,16 +30,19 @@ export function LeftSidebarToggle() {
   }, [commandService]);
 
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      onClick={handleToggle}
-      title={isOpen
-        ? localeService.t('ui.left-sidebar-toggle.close-title')
-        : localeService.t('ui.left-sidebar-toggle.open-title')}
+    <TooltipWrapper
+      side="bottom"
+      commandId={ToggleLeftSidebarCommand.id}
+      labelKey={isOpen ? 'ui.left-sidebar-toggle.close-title' : 'ui.left-sidebar-toggle.open-title'}
     >
-      <PanelLeftFilledIcon size={14} strokeWidth={1.5} isOpen={isOpen} />
-    </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={handleToggle}
+      >
+        <PanelLeftFilledIcon size={14} strokeWidth={1.5} isOpen={isOpen} />
+      </Button>
+    </TooltipWrapper>
   );
 }
 

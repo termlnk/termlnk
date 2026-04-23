@@ -14,7 +14,7 @@
  */
 
 import { LocaleService } from '@termlnk/core';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
+import { Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
 import { IUpdaterService, UpdateStatus } from '@termlnk/electron';
 import { IDialogService } from '@termlnk/ui';
 import { ArrowDownToLine } from 'lucide-react';
@@ -54,35 +54,33 @@ export function UpdateButton() {
   };
 
   return (
-    <TooltipProvider delay={2000}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={`
+            tm:grid tm:h-[2.8rem] tm:w-full tm:cursor-pointer tm:grid-cols-[2px_1fr_2px] tm:items-center
+            tm:overflow-hidden tm:text-center
+            tm:hover:text-white
+          `}
+          onClick={openDialog}
+        >
+          <span aria-hidden />
+          <span
             className={`
-              tm:grid tm:h-[2.8rem] tm:w-full tm:cursor-pointer tm:grid-cols-[2px_1fr_2px] tm:items-center
-              tm:overflow-hidden tm:text-center
-              tm:hover:text-white
+              tm:flex tm:items-center tm:justify-center
+              ${isDownloading ? 'tm:animate-bounce' : ''}
             `}
-            onClick={openDialog}
           >
-            <span aria-hidden />
-            <span
-              className={`
-                tm:flex tm:items-center tm:justify-center
-                ${isDownloading ? 'tm:animate-bounce' : ''}
-              `}
-            >
-              <ArrowDownToLine size="1.2rem" />
-            </span>
-            <span aria-hidden />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          {status === UpdateStatus.DOWNLOADED
-            ? localeService.t('electron-renderer.updater.update-ready')
-            : localeService.t('electron-renderer.updater.new-version-available')}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+            <ArrowDownToLine size="1.2rem" />
+          </span>
+          <span aria-hidden />
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {status === UpdateStatus.DOWNLOADED
+          ? localeService.t('electron-renderer.updater.update-ready')
+          : localeService.t('electron-renderer.updater.new-version-available')}
+      </TooltipContent>
+    </Tooltip>
   );
 }

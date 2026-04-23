@@ -29,6 +29,10 @@ const locale: typeof enUS = {
       'install-now': '지금 설치',
       retry: '재시도',
     },
+    header: {
+      'pin-enable': '창 고정',
+      'pin-disable': '창 고정 해제',
+    },
   },
 };
 

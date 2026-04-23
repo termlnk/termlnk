@@ -14,10 +14,10 @@
  */
 
 import { Button, cn, useDependency, useObservable } from '@termlnk/design';
-import { DEFAULT_PAGE_ID, IContentRouterService } from '@termlnk/ui';
+import { DEFAULT_PAGE_ID, IContentRouterService, TooltipWrapper } from '@termlnk/ui';
 import { FolderSync } from 'lucide-react';
 import { useCallback } from 'react';
-import { SFTP_PAGE_ID } from '../commands/navigate-sftp.command';
+import { NavigateToSFTPCommand, SFTP_PAGE_ID } from '../commands/navigate-sftp.command';
 
 export function SFTPHeaderButton() {
   const contentRouterService = useDependency(IContentRouterService);
@@ -30,29 +30,34 @@ export function SFTPHeaderButton() {
   }, [isActive, contentRouterService]);
 
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      className={cn('tm:relative', {
-        'tm:text-white': isActive,
-      })}
-      onClick={handleClick}
-      type="button"
-      title="SFTP"
+    <TooltipWrapper
+      side="bottom"
+      commandId={NavigateToSFTPCommand.id}
+      labelKey={isActive ? 'sftp-ui.header.toggle-exit' : 'sftp-ui.header.toggle-enter'}
     >
-      <div
-        className="tm:flex tm:size-4 tm:shrink-0 tm:items-center tm:justify-center tm:text-white"
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className={cn('tm:relative', {
+          'tm:text-white': isActive,
+        })}
+        onClick={handleClick}
+        type="button"
       >
-        <FolderSync size={14} strokeWidth={1.5} />
-      </div>
+        <div
+          className="tm:flex tm:size-4 tm:shrink-0 tm:items-center tm:justify-center tm:text-white"
+        >
+          <FolderSync size={14} strokeWidth={1.5} />
+        </div>
 
-      {isActive && (
-        <span
-          className={`
-            tm:absolute tm:-bottom-px tm:left-1/2 tm:size-1 tm:-translate-x-1/2 tm:rounded-full tm:bg-nord-blue
-          `}
-        />
-      )}
-    </Button>
+        {isActive && (
+          <span
+            className={`
+              tm:absolute tm:-bottom-px tm:left-1/2 tm:size-1 tm:-translate-x-1/2 tm:rounded-full tm:bg-nord-blue
+            `}
+          />
+        )}
+      </Button>
+    </TooltipWrapper>
   );
 }

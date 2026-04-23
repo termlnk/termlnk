@@ -20,6 +20,10 @@ const locale: typeof enUS = {
     menu: {
       sftp: 'SFTP',
     },
+    header: {
+      'toggle-enter': '打开 SFTP 浏览器',
+      'toggle-exit': '关闭 SFTP 浏览器',
+    },
     connection: {
       title: 'SFTP 连接',
       status: {

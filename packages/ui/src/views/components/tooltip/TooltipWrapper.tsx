@@ -14,32 +14,75 @@
  */
 
 import type { ReactNode } from 'react';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@termlnk/design';
-import { forwardRef } from 'react';
-
-export interface ITooltipWrapperRef {
-  el: HTMLSpanElement | null;
-}
+import { LocaleService } from '@termlnk/core';
+import { Kbd, KbdGroup, Tooltip, TooltipContent, TooltipTrigger, useDependency, useUpdateBinder } from '@termlnk/design';
+import { useMemo } from 'react';
+import { IShortcutService } from '../../../services/shortcut/shortcut.service';
 
 export interface ITooltipWrapperProps {
   children: ReactNode;
+  labelKey?: string;
+  labelArgs?: string[];
   title?: string;
+  commandId?: string;
+  shortcut?: string;
   side?: 'top' | 'bottom' | 'left' | 'right';
+  sideOffset?: number;
 }
 
-export const TooltipWrapper = forwardRef<ITooltipWrapperRef, ITooltipWrapperProps>((props, ref) => {
-  const { children, title, side = 'top', ...restProps } = props;
+export function TooltipWrapper(props: ITooltipWrapperProps) {
+  const { children, labelKey, labelArgs, title, commandId, shortcut, side = 'top', sideOffset } = props;
 
-  return title
-    ? (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {children}
-        </TooltipTrigger>
-        <TooltipContent side={side}>{title}</TooltipContent>
-      </Tooltip>
-    )
-    : (
-      children
-    );
-});
+  const localeService = useDependency(LocaleService);
+  const shortcutService = useDependency(IShortcutService);
+
+  useUpdateBinder(localeService.localeChanged$);
+  useUpdateBinder(shortcutService.shortcutChanged$);
+
+  const text = useMemo(() => {
+    if (title !== undefined) {
+      return title;
+    }
+    if (labelKey) {
+      return localeService.t(labelKey, ...(labelArgs ?? []));
+    }
+    return '';
+  }, [title, labelKey, labelArgs, localeService]);
+
+  const shortcutParts = useMemo(() => {
+    const display = shortcut ?? (commandId ? shortcutService.getShortcutDisplayOfCommand(commandId) : null);
+    if (!display) {
+      return [];
+    }
+    return display.split('+').map((part) => part.trim()).filter(Boolean);
+  }, [shortcut, commandId, shortcutService]);
+
+  const hasShortcut = shortcutParts.length > 0;
+  const hasText = Boolean(text);
+
+  if (!hasText && !hasShortcut) {
+    return <>{children}</>;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side={side} sideOffset={sideOffset}>
+        <div className="tm:flex tm:items-center tm:gap-2">
+          {hasText && <span>{text}</span>}
+          {hasShortcut && (
+            <KbdGroup>
+              {shortcutParts.map((key) => (
+                <Kbd key={key}>
+                  {key}
+                </Kbd>
+              ))}
+            </KbdGroup>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}

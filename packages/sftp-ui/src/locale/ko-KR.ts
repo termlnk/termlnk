@@ -18,6 +18,10 @@ import type enUS from './en-US';
 const locale: typeof enUS = {
   'sftp-ui': {
     menu: { sftp: 'SFTP' },
+    header: {
+      'toggle-enter': 'SFTP 브라우저 열기',
+      'toggle-exit': 'SFTP 브라우저 닫기',
+    },
     connection: {
       title: 'SFTP 연결',
       status: { connecting: '연결 중...', authenticating: '인증 중...', opening: 'SFTP 열는 중...', ready: '연결됨', error: '연결 실패' },

@@ -23,6 +23,7 @@ import { ICommandService, LocaleService } from '@termlnk/core';
 import { Button, useDependency } from '@termlnk/design';
 import { IHostManagerService } from '@termlnk/rpc-client';
 import { DEFAULT_HOST_ROOT, HostType } from '@termlnk/terminal';
+import { TooltipWrapper } from '@termlnk/ui';
 import { CirclePlus, FolderPlus, RotateCw } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { debounceTime } from 'rxjs';
@@ -325,27 +326,43 @@ export function HostExplorer() {
         <div
           className="tm:flex tm:h-full tm:min-w-17 tm:items-center"
         >
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => addHost()}
+          <TooltipWrapper
+            side="bottom"
+            labelKey="terminal-ui.hosts-explorer.add-host"
+            commandId={ToggleHostDialogCommand.id}
           >
-            <CirclePlus strokeWidth={1.5} size={14} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => addGroup()}
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => addHost()}
+            >
+              <CirclePlus strokeWidth={1.5} size={14} />
+            </Button>
+          </TooltipWrapper>
+          <TooltipWrapper
+            side="bottom"
+            labelKey="terminal-ui.hosts-explorer.add-group"
           >
-            <FolderPlus strokeWidth={1.5} size={14} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => refresh()}
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => addGroup()}
+            >
+              <FolderPlus strokeWidth={1.5} size={14} />
+            </Button>
+          </TooltipWrapper>
+          <TooltipWrapper
+            side="bottom"
+            labelKey="terminal-ui.hosts-explorer.refresh"
           >
-            <RotateCw strokeWidth={1.5} size={14} />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => refresh()}
+            >
+              <RotateCw strokeWidth={1.5} size={14} />
+            </Button>
+          </TooltipWrapper>
         </div>
       </div>
 

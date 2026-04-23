@@ -18,6 +18,10 @@ const locale = {
     menu: {
       sftp: 'SFTP',
     },
+    header: {
+      'toggle-enter': 'Open SFTP browser',
+      'toggle-exit': 'Close SFTP browser',
+    },
     connection: {
       title: 'SFTP Connection',
       status: {

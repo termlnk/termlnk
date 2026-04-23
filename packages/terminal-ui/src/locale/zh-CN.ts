@@ -22,6 +22,9 @@ const locale: typeof enUS = {
     },
     'hosts-explorer': {
       title: '资源管理器',
+      'add-host': '新建主机',
+      'add-group': '新建分组',
+      refresh: '刷新',
     },
     'host-dialog': {
       title: {
@@ -154,6 +157,17 @@ const locale: typeof enUS = {
       'create-new-host': '新建主机',
       'maximize-session': '最大化/还原会话',
       'open-local-terminal': '新建本地终端',
+    },
+    pane: {
+      'split-right': '向右分屏',
+      'split-down': '向下分屏',
+      maximize: '最大化',
+      restore: '还原',
+      close: '关闭',
+    },
+    'tab-bar': {
+      'new-session': '新建终端',
+      'tab-list': '显示标签列表',
     },
   },
 };

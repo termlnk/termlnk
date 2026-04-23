@@ -13,14 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
-import { INotificationService, LocaleService } from '@termlnk/core';
+import { INotificationService } from '@termlnk/core';
 import { Button, useDependency, useObservable } from '@termlnk/design';
 import { Bell, BellRing } from 'lucide-react';
 import { useCallback } from 'react';
+import { TooltipWrapper } from '../tooltip/TooltipWrapper';
 
 export function NotificationIcon() {
   const notificationService = useDependency(INotificationService);
-  const localeService = useDependency(LocaleService);
   const unreadCount = useObservable(notificationService.unreadCount$, 0);
   const isPanelOpen = useObservable(notificationService.isPanelOpen$, false);
 
@@ -31,42 +31,45 @@ export function NotificationIcon() {
   const hasUnread = unreadCount > 0;
 
   return (
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      onClick={handleClick}
-      data-notification-trigger="true"
-      className="tm:relative"
-      title={hasUnread
-        ? localeService.t('ui.notification-icon.unread-title', String(unreadCount))
-        : localeService.t('ui.notification-icon.title')}
+    <TooltipWrapper
+      side="bottom"
+      labelKey={hasUnread ? 'ui.notification-icon.unread-title' : 'ui.notification-icon.title'}
+      labelArgs={hasUnread ? [String(unreadCount)] : undefined}
     >
-      {hasUnread
-        ? (
-          <BellRing size={14} strokeWidth={1.5} className="tm:text-yellow" />
-        )
-        : (
-          <Bell size={14} strokeWidth={1.5} className="tm:text-white" />
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={handleClick}
+        data-notification-trigger="true"
+        className="tm:relative"
+      >
+        {hasUnread
+          ? (
+            <BellRing size={14} strokeWidth={1.5} className="tm:text-yellow" />
+          )
+          : (
+            <Bell size={14} strokeWidth={1.5} className="tm:text-white" />
+          )}
+
+        {hasUnread && (
+          <span
+            className={`
+              tm:absolute tm:top-0 tm:right-0.5 tm:flex tm:h-3 tm:min-w-3 tm:items-center tm:justify-center
+              tm:rounded-full tm:bg-red tm:px-0.5 tm:text-[8px] tm:leading-none tm:text-[#fff]
+            `}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
         )}
 
-      {hasUnread && (
-        <span
-          className={`
-            tm:absolute tm:top-0 tm:right-0.5 tm:flex tm:h-3 tm:min-w-3 tm:items-center tm:justify-center
-            tm:rounded-full tm:bg-red tm:px-0.5 tm:text-[8px] tm:leading-none tm:text-[#fff]
-          `}
-        >
-          {unreadCount > 99 ? '99+' : unreadCount}
-        </span>
-      )}
-
-      {isPanelOpen && (
-        <span
-          className="
-            tm:absolute tm:-bottom-px tm:left-1/2 tm:size-1 tm:-translate-x-1/2 tm:rounded-full tm:bg-nord-blue
-          "
-        />
-      )}
-    </Button>
+        {isPanelOpen && (
+          <span
+            className="
+              tm:absolute tm:-bottom-px tm:left-1/2 tm:size-1 tm:-translate-x-1/2 tm:rounded-full tm:bg-nord-blue
+            "
+          />
+        )}
+      </Button>
+    </TooltipWrapper>
   );
 }

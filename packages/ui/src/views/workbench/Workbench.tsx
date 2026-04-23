@@ -16,7 +16,7 @@
 import type { IUIConfig } from '../../controllers/config.schema';
 import type { IWorkbenchOptions } from '../../controllers/ui/ui.controller';
 import { IThemeService, LocaleService } from '@termlnk/core';
-import { cn, ConfigContext, ConfigProvider, useDependency } from '@termlnk/design';
+import { cn, ConfigContext, ConfigProvider, TooltipProvider, useDependency } from '@termlnk/design';
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { UI_PLUGIN_CONFIG_KEY } from '../../controllers/config.schema';
@@ -104,42 +104,44 @@ export function DesktopWorkbenchContent(props: ITermlnkWorkbenchProps) {
 
   return (
     <ConfigProvider locale={locale?.design} mountContainer={portalContainer}>
-      <div
-        data-u-comp="workbench-layout"
-        className={cn('tm:flex tm:h-full tm:min-h-0 tm:flex-col tm:bg-black', {
-          'tm:dark': isDarkMode,
-        })}
-        // tabIndex={-1}
-        // onBlur={(e) => e.stopPropagation()}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        {/* header */}
-        {header && (
-          <div
-            className="tm:relative tm:flex tm:min-h-0 tm:flex-col tm:bg-black tm:text-white"
-          >
-            <ComponentContainer key="header" components={headerComponents} />
-          </div>
-        )}
-
-        <section
-          data-u-comp="workbench-content"
-          className="tm:relative tm:flex tm:min-h-0 tm:flex-1 tm:flex-col"
-          ref={contentRef}
+      <TooltipProvider delay={400}>
+        <div
+          data-u-comp="workbench-layout"
+          className={cn('tm:flex tm:h-full tm:min-h-0 tm:flex-col tm:bg-black', {
+            'tm:dark': isDarkMode,
+          })}
+          // tabIndex={-1}
+          // onBlur={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
         >
-          <ComponentContainer key="container" components={containerComponents} />
-
-          {/* footer */}
-          {footer && (
-            <footer className="tm:bg-darker-black">
-              <ComponentContainer key="footer" components={footerComponents} sharedProps={{ contextMenu }} />
-            </footer>
+          {/* header */}
+          {header && (
+            <div
+              className="tm:relative tm:flex tm:min-h-0 tm:flex-col tm:bg-black tm:text-white"
+            >
+              <ComponentContainer key="header" components={headerComponents} />
+            </div>
           )}
-        </section>
-      </div>
 
-      <ComponentContainer key="global" components={globalComponents} />
-      <FloatingContainer />
+          <section
+            data-u-comp="workbench-content"
+            className="tm:relative tm:flex tm:min-h-0 tm:flex-1 tm:flex-col"
+            ref={contentRef}
+          >
+            <ComponentContainer key="container" components={containerComponents} />
+
+            {/* footer */}
+            {footer && (
+              <footer className="tm:bg-darker-black">
+                <ComponentContainer key="footer" components={footerComponents} sharedProps={{ contextMenu }} />
+              </footer>
+            )}
+          </section>
+        </div>
+
+        <ComponentContainer key="global" components={globalComponents} />
+        <FloatingContainer />
+      </TooltipProvider>
     </ConfigProvider>
   );
 }

@@ -15,7 +15,7 @@
 
 import type { IDisplayMenuItem, IMenuItem } from '../../../services/menu/menu';
 import { ICommandService, LocaleService } from '@termlnk/core';
-import { cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
+import { cn, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { useMemo } from 'react';
 import { isObservable, Observable } from 'rxjs';
 import { ComponentManagerService } from '../../../services/component/component-manager.service';
@@ -69,7 +69,7 @@ export function TabItem(props: IDisplayMenuItem<IMenuItem>) {
       {iconReal && (
         <span className="tm:flex tm:items-center tm:justify-center">
           <Icon
-            className={cn('tm:flex tm:h-[1.333rem] tm:w-[1.333rem] tm:items-center tm:text-center')}
+            className={cn('tm:flex tm:size-[1.333rem] tm:items-center tm:text-center')}
           />
         </span>
       )}
@@ -82,15 +82,13 @@ export function TabItem(props: IDisplayMenuItem<IMenuItem>) {
   }
 
   return (
-    <TooltipProvider delay={2000}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {renderButtonItem()}
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          {tooltipTitle}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {renderButtonItem()}
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {tooltipTitle}
+      </TooltipContent>
+    </Tooltip>
   );
 }

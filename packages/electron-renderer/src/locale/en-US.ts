@@ -27,6 +27,10 @@ const locale = {
       'install-now': 'Install Now',
       retry: 'Retry',
     },
+    header: {
+      'pin-enable': 'Pin window',
+      'pin-disable': 'Unpin window',
+    },
   },
 };
 

@@ -29,6 +29,10 @@ const locale: typeof enUS = {
       'install-now': '立即安裝',
       retry: '重試',
     },
+    header: {
+      'pin-enable': '視窗置頂',
+      'pin-disable': '取消置頂',
+    },
   },
 };
 

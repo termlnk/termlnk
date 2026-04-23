@@ -20,6 +20,9 @@ const locale = {
     },
     'hosts-explorer': {
       title: 'Hosts Explorer',
+      'add-host': 'New host',
+      'add-group': 'New group',
+      refresh: 'Refresh',
     },
     'host-dialog': {
       title: {
@@ -152,6 +155,17 @@ const locale = {
       'create-new-host': 'Create New Host',
       'maximize-session': 'Maximize/Restore Session',
       'open-local-terminal': 'New Local Terminal',
+    },
+    pane: {
+      'split-right': 'Split right',
+      'split-down': 'Split down',
+      maximize: 'Maximize',
+      restore: 'Restore',
+      close: 'Close',
+    },
+    'tab-bar': {
+      'new-session': 'New terminal',
+      'tab-list': 'Show tab list',
     },
   },
 };

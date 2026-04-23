@@ -22,6 +22,9 @@ const locale: typeof enUS = {
     },
     'hosts-explorer': {
       title: '호스트 탐색기',
+      'add-host': '호스트 추가',
+      'add-group': '그룹 추가',
+      refresh: '새로고침',
     },
     'host-dialog': {
       title: {
@@ -154,6 +157,17 @@ const locale: typeof enUS = {
       'create-new-host': '새 호스트 생성',
       'maximize-session': '세션 최대화/복원',
       'open-local-terminal': '새 로컬 터미널',
+    },
+    pane: {
+      'split-right': '오른쪽으로 분할',
+      'split-down': '아래로 분할',
+      maximize: '최대화',
+      restore: '복원',
+      close: '닫기',
+    },
+    'tab-bar': {
+      'new-session': '새 터미널',
+      'tab-list': '탭 목록 표시',
     },
   },
 };
