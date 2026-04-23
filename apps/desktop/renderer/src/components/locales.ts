@@ -13,8 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-// Automatically generate it, don't edit it!!
-
 import agentuienUS from '@termlnk/agent-ui/locale/en-US';
 
 import agentuijaJP from '@termlnk/agent-ui/locale/ja-JP';

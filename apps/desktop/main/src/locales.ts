@@ -13,8 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-// Automatically generate it, don't edit it!!
-
 import { merge } from '@termlnk/core';
 
 export const enUS = merge(
