@@ -16,9 +16,10 @@
 import { LocaleService } from '@termlnk/core';
 import { Button, useDependency } from '@termlnk/design';
 import { IAIAgentClientService, IChatSessionClientService } from '@termlnk/rpc-client';
-import { ResizableService } from '@termlnk/ui';
+import { ResizableService, TooltipWrapper } from '@termlnk/ui';
 import { ArrowLeft, History, Plus, Trash2, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
+import { ToggleAIPanelCommand } from '../../commands/toggle-ai-panel.command';
 
 interface IChatHeaderProps {
   showHistory: boolean;
@@ -62,50 +63,60 @@ export function ChatHeader({ showHistory, onToggleHistory, sessionTitle }: IChat
       <div className="tm:flex tm:items-center tm:gap-0.5 tm:select-none">
         {showHistory
           ? (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={onToggleHistory}
-              title={localeService.t('agent-ui.chat.back-to-chat')}
-            >
-              <ArrowLeft size={14} />
-            </Button>
-          )
-          : (
-            <>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={handleNewChat}
-                title={localeService.t('agent-ui.chat.new-chat')}
-              >
-                <Plus size={14} />
-              </Button>
+            <TooltipWrapper side="bottom" labelKey="agent-ui.chat.back-to-chat">
               <Button
                 variant="ghost"
                 size="icon-xs"
                 onClick={onToggleHistory}
-                title={localeService.t('agent-ui.chat.history')}
               >
-                <History size={14} />
+                <ArrowLeft size={14} />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={handleClear}
-                title={localeService.t('agent-ui.chat.clear')}
-              >
-                <Trash2 size={14} />
-              </Button>
+            </TooltipWrapper>
+          )
+          : (
+            <>
+              <TooltipWrapper side="bottom" labelKey="agent-ui.chat.new-chat">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={handleNewChat}
+                >
+                  <Plus size={14} />
+                </Button>
+              </TooltipWrapper>
+              <TooltipWrapper side="bottom" labelKey="agent-ui.chat.history">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={onToggleHistory}
+                >
+                  <History size={14} />
+                </Button>
+              </TooltipWrapper>
+              <TooltipWrapper side="bottom" labelKey="agent-ui.chat.clear">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={handleClear}
+                >
+                  <Trash2 size={14} />
+                </Button>
+              </TooltipWrapper>
             </>
           )}
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={handleClose}
+        <TooltipWrapper
+          side="bottom"
+          labelKey="ui.right-sidebar-toggle.close-title"
+          commandId={ToggleAIPanelCommand.id}
         >
-          <X size={14} />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={handleClose}
+          >
+            <X size={14} />
+          </Button>
+        </TooltipWrapper>
       </div>
     </div>
   );
