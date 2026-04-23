@@ -16,7 +16,6 @@
 import type { ReactNode } from 'react';
 import { LocaleService } from '@termlnk/core';
 import { Kbd, KbdGroup, Tooltip, TooltipContent, TooltipTrigger, useDependency, useUpdateBinder } from '@termlnk/design';
-import { useMemo } from 'react';
 import { IShortcutService } from '../../../services/shortcut/shortcut.service';
 
 export interface ITooltipWrapperProps {
@@ -39,23 +38,17 @@ export function TooltipWrapper(props: ITooltipWrapperProps) {
   useUpdateBinder(localeService.localeChanged$);
   useUpdateBinder(shortcutService.shortcutChanged$);
 
-  const text = useMemo(() => {
-    if (title !== undefined) {
-      return title;
-    }
-    if (labelKey) {
-      return localeService.t(labelKey, ...(labelArgs ?? []));
-    }
-    return '';
-  }, [title, labelKey, labelArgs, localeService]);
+  let text = '';
+  if (title !== undefined) {
+    text = title;
+  } else if (labelKey) {
+    text = localeService.t(labelKey, ...(labelArgs ?? []));
+  }
 
-  const shortcutParts = useMemo(() => {
-    const display = shortcut ?? (commandId ? shortcutService.getShortcutDisplayOfCommand(commandId) : null);
-    if (!display) {
-      return [];
-    }
-    return display.split('+').map((part) => part.trim()).filter(Boolean);
-  }, [shortcut, commandId, shortcutService]);
+  const shortcutDisplay = shortcut ?? (commandId ? shortcutService.getShortcutDisplayOfCommand(commandId) : null);
+  const shortcutParts = shortcutDisplay
+    ? shortcutDisplay.split('+').map((part) => part.trim()).filter(Boolean)
+    : [];
 
   const hasShortcut = shortcutParts.length > 0;
   const hasText = Boolean(text);
