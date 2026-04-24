@@ -157,18 +157,16 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
   }
 
   private _mergeInto(source: MenuSchemaType, target: MenuSchemaType): void {
-    for (const [key, value] of Object.entries(target)) {
-      if (key in source) {
-        const _key = key as keyof MenuSchemaType;
-        target[_key] = merge({}, target[_key], source[_key]);
-      } else if (typeof value === 'object') {
-        this._mergeInto(source, value);
-      }
-    }
-    // Append any top-level keys from source that do not yet exist on target.
+    // Single-level merge: deep-merge when the position exists on target,
+    // otherwise append as a fresh top-level entry. Must NOT recurse into
+    // unrelated target subtrees — doing so leaks new positions into every
+    // existing one (e.g. a new context-menu key ending up nested inside
+    // `side-tab-bar`).
     for (const [key, value] of Object.entries(source)) {
-      if (!(key in target)) {
-        const _key = key as keyof MenuSchemaType;
+      const _key = key as keyof MenuSchemaType;
+      if (key in target) {
+        target[_key] = merge({}, target[_key], value);
+      } else {
         target[_key] = merge({}, value);
       }
     }
