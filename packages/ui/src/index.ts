@@ -27,6 +27,8 @@ export { ComponentManagerService } from './services/component/component-manager.
 export type { ComponentList, ComponentType, IComponent, IComponentOptions } from './services/component/component-manager.service';
 export { ContentRouterService, DEFAULT_PAGE_ID, IContentRouterService } from './services/content-router/content-router.service';
 export type { IContentPage } from './services/content-router/content-router.service';
+export { ContextMenuService, IContextMenuService } from './services/contextmenu/contextmenu.service';
+export type { IContextMenuHandler } from './services/contextmenu/contextmenu.service';
 export { DialogService, IDialogService } from './services/dialog/dialog.service';
 export { DOMEventObserver } from './services/event/dom-event-observer';
 export type { IIMEState } from './services/event/dom-event-observer';

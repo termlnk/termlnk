@@ -24,6 +24,7 @@ import { ComponentManagerService } from '../../services/component/component-mana
 import { ILayoutService } from '../../services/layout/layout.service';
 import { BuiltInUIPart, IUIPartsService } from '../../services/parts/parts.service';
 import { IRenderManagerService } from '../../services/render/render-manager.service';
+import { DesktopContextMenu } from '../../views/components/context-menu/DesktopContextMenu';
 import { LeftSidebarToggle } from '../../views/components/left-sidebar/LeftSidebarToggle';
 import { ResizablePanel } from '../../views/components/resizable/ResizablePanel';
 import { RightSidebarToggle } from '../../views/components/right-sidebar/RightSidebarToggle';
@@ -60,6 +61,7 @@ export class DesktopUIController extends BaseUIController {
     this.disposeWithMe(uiPartsService.registerComponent(BuiltInUIPart.CONTAINER, () => connectInjector(ResizablePanel, this._injector)));
     this.disposeWithMe(uiPartsService.registerComponent(BuiltInUIPart.HEADER_ACTION, () => connectInjector(LeftSidebarToggle, this._injector)));
     this.disposeWithMe(uiPartsService.registerComponent(BuiltInUIPart.HEADER_TRAILING, () => connectInjector(RightSidebarToggle, this._injector)));
+    this.disposeWithMe(uiPartsService.registerComponent(BuiltInUIPart.FLOATING, () => connectInjector(DesktopContextMenu, this._injector)));
   }
 }
 

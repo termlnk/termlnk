@@ -23,6 +23,7 @@ import { DesktopUIController } from './controllers/ui/desktop-ui.controller';
 import { IUIController } from './controllers/ui/ui.controller';
 import { ComponentManagerService } from './services/component/component-manager.service';
 import { ContentRouterService, IContentRouterService } from './services/content-router/content-router.service';
+import { ContextMenuService, IContextMenuService } from './services/contextmenu/contextmenu.service';
 import { DialogService, IDialogService } from './services/dialog/dialog.service';
 import { DesktopLayoutService, ILayoutService } from './services/layout/layout.service';
 import { IMenuManagerService, MenuManagerService } from './services/menu/menu-manager.service';
@@ -81,11 +82,12 @@ export class UIPlugin extends Plugin {
       [IShortcutService, { useClass: ShortcutService }],
       [IPlatformService, { useClass: PlatformService }],
       [IMenuManagerService, { useClass: MenuManagerService }],
+      [IContextMenuService, { useClass: ContextMenuService }],
       [IDialogService, { useClass: DialogService, lazy: true }],
       [IStatusBarService, { useClass: StatusBarService }],
 
       [IUIController, {
-        // eslint-disable-next-line react/no-unnecessary-use-prefix
+        // eslint-disable-next-line react/no-unnecessary-use-prefix,react/component-hook-factories
         useFactory: (injector: Injector) => injector.createInstance(DesktopUIController, this._config),
         deps: [Injector],
       }],
