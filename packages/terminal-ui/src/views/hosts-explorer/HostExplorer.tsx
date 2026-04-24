@@ -19,16 +19,18 @@ import type { FocusEvent, MouseEvent } from 'react';
 import type { IToggleHostDialogParams } from '../../commands/toggle-host-dialog.command';
 import { asyncDataLoaderFeature, dragAndDropFeature, hotkeysCoreFeature, renamingFeature, selectionFeature } from '@headless-tree/core';
 import { AssistiveTreeDescription, useTree } from '@headless-tree/react';
-import { ICommandService, LocaleService } from '@termlnk/core';
+import { ICommandService, IContextService, LocaleService } from '@termlnk/core';
 import { Button, useDependency } from '@termlnk/design';
 import { IHostManagerService } from '@termlnk/rpc-client';
 import { DEFAULT_HOST_ROOT, HostType } from '@termlnk/terminal';
-import { TooltipWrapper } from '@termlnk/ui';
+import { IContextMenuService, TooltipWrapper } from '@termlnk/ui';
 import { CirclePlus, FolderPlus, RotateCw } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { debounceTime } from 'rxjs';
 import { ToggleHostDialogCommand } from '../../commands/toggle-host-dialog.command';
 import { HostDialogMode } from '../../models/host-dialog.state';
+import { HOSTS_EXPLORER_BLANK_MENU, HOSTS_EXPLORER_FOCUSED_CONTEXT } from '../../services/hosts-explorer/contextmenu-positions';
+import { IHostExplorerService } from '../../services/hosts-explorer/hosts-explorer.service';
 import { InlineGroupInput } from './GroupInput';
 import { TreeItem } from './TreeItem';
 
@@ -36,6 +38,9 @@ export function HostExplorer() {
   const hostsManagerService = useDependency(IHostManagerService);
   const localeService = useDependency(LocaleService);
   const commandService = useDependency(ICommandService);
+  const contextMenuService = useDependency(IContextMenuService);
+  const hostExplorerService = useDependency(IHostExplorerService);
+  const contextService = useDependency(IContextService);
 
   const [loadingItemData, setLoadingItemData] = useState<string[]>([]);
   const [loadingItemChildrens, setLoadingItemChildrens] = useState<string[]>([]);
@@ -169,6 +174,41 @@ export function HostExplorer() {
   });
 
   useEffect(() => {
+    const subscription = hostExplorerService.renameRequest$.subscribe((itemId) => {
+      const instance = tree.getItemInstance(itemId);
+      if (!instance || instance.isRenaming()) {
+        return;
+      }
+      instance.setFocused();
+      instance.startRenaming();
+    });
+    return () => subscription.unsubscribe();
+  }, [hostExplorerService, tree]);
+
+  // `addGroup` closes over state/setters that change every render; read via
+  // a latest-value ref so we don't resubscribe on each render.
+  const addGroupRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const subscription = hostExplorerService.createGroupRequest$.subscribe(() => {
+      addGroupRef.current();
+    });
+    return () => subscription.unsubscribe();
+  }, [hostExplorerService]);
+
+  // Mirror tree focus into `focusedHost$` — the shared source of truth that
+  // commands and menu items read from.
+  useEffect(() => {
+    if (!focusedItem) {
+      hostExplorerService.setFocusedHost(null);
+      return;
+    }
+    const data = tree.getItemInstance(focusedItem)?.getItemData();
+    if (data && data.type !== HostType.UNKNOWN) {
+      hostExplorerService.setFocusedHost(data);
+    }
+  }, [focusedItem, hostExplorerService, tree]);
+
+  useEffect(() => {
     const subscription = hostsManagerService.onChanged$().pipe(
       debounceTime(50)
     ).subscribe((event) => {
@@ -233,6 +273,8 @@ export function HostExplorer() {
     setNewGroupInput({ parentId, level });
   };
 
+  addGroupRef.current = addGroup;
+
   const handleConfirmNewGroup = async (name: string) => {
     if (!newGroupInput) return;
     const { parentId } = newGroupInput;
@@ -272,14 +314,16 @@ export function HostExplorer() {
   const handleContainerBlur = useCallback((e: FocusEvent<HTMLDivElement>) => {
     if (containerRef.current && !containerRef.current.contains(e.relatedTarget as Node)) {
       setTreeFocused(false);
+      contextService.setContextValue(HOSTS_EXPLORER_FOCUSED_CONTEXT, false);
     }
-  }, []);
+  }, [contextService]);
 
   const handleContainerFocus = useCallback((e: FocusEvent<HTMLDivElement>) => {
     if (containerRef.current && containerRef.current.contains(e.target as Node)) {
       setTreeFocused(true);
+      contextService.setContextValue(HOSTS_EXPLORER_FOCUSED_CONTEXT, true);
     }
-  }, []);
+  }, [contextService]);
 
   const handleTreeBodyMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -288,6 +332,14 @@ export function HostExplorer() {
       setFocusedItem(null);
     }
   }, []);
+
+  const handleBodyContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget) {
+      return;
+    }
+    e.preventDefault();
+    contextMenuService.triggerContextMenu(e.nativeEvent, HOSTS_EXPLORER_BLANK_MENU);
+  }, [contextMenuService]);
 
   useEffect(() => {
     const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
@@ -300,6 +352,14 @@ export function HostExplorer() {
     document.addEventListener('mousedown', handleDocumentMouseDown, true);
     return () => document.removeEventListener('mousedown', handleDocumentMouseDown, true);
   }, []);
+
+  // Blur doesn't fire when the panel unmounts while focused; reset manually
+  // so the shortcut precondition can't stay armed.
+  useEffect(() => {
+    return () => {
+      contextService.setContextValue(HOSTS_EXPLORER_FOCUSED_CONTEXT, false);
+    };
+  }, [contextService]);
 
   const treeContainerProps = tree.getContainerProps();
 
@@ -373,6 +433,7 @@ export function HostExplorer() {
           treeContainerProps.onMouseDown?.(e);
           handleTreeBodyMouseDown(e);
         }}
+        onContextMenu={handleBodyContextMenu}
         className="tm:flex tm:size-full tm:flex-col tm:overflow-visible tm:select-none"
       >
         <AssistiveTreeDescription key="hosts-explorer-desc" tree={tree} />

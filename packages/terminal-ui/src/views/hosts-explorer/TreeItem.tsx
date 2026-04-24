@@ -19,11 +19,14 @@ import type { MouseEvent } from 'react';
 import { ICommandService } from '@termlnk/core';
 import { cn, useDependency } from '@termlnk/design';
 import { HostType } from '@termlnk/terminal';
+import { IContextMenuService } from '@termlnk/ui';
 import { ChevronRight, Folder, FolderOpen, Pencil, TerminalSquare } from 'lucide-react';
 import { Fragment } from 'react';
 import { ConnectHostCommand } from '../../commands/connect-host.command';
 import { ToggleHostDialogCommand } from '../../commands/toggle-host-dialog.command';
 import { HostDialogMode } from '../../models/host-dialog.state';
+import { HOSTS_EXPLORER_FOLDER_ITEM_MENU, HOSTS_EXPLORER_HOST_ITEM_MENU } from '../../services/hosts-explorer/contextmenu-positions';
+import { IHostExplorerService } from '../../services/hosts-explorer/hosts-explorer.service';
 
 export interface ITreeItemProps {
   item: ItemInstance<HostItem>;
@@ -35,6 +38,8 @@ export interface ITreeItemProps {
 export function TreeItem(props: ITreeItemProps) {
   const { item, focusedItemId, treeFocused, suppressSelectionStyle = false } = props;
   const commandService = useDependency(ICommandService);
+  const contextMenuService = useDependency(IContextMenuService);
+  const hostExplorerService = useDependency(IHostExplorerService);
   const itemData = item.getItemData();
 
   if (item.isRenaming()) {
@@ -66,6 +71,28 @@ export function TreeItem(props: ITreeItemProps) {
     }
   };
 
+  const handleContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (itemData.type === HostType.UNKNOWN) {
+      return;
+    }
+
+    item.setFocused();
+    item.select();
+
+    // Publish focus before opening — menu items read `focusedHost$` when
+    // evaluating `disabled$` at render time.
+    hostExplorerService.setFocusedHost(itemData);
+
+    const menuType = itemData.type === HostType.GROUP
+      ? HOSTS_EXPLORER_FOLDER_ITEM_MENU
+      : HOSTS_EXPLORER_HOST_ITEM_MENU;
+
+    contextMenuService.triggerContextMenu(e.nativeEvent, menuType);
+  };
+
   const isSelected = item.isSelected();
   const isFocusedItem = focusedItemId === item.getId();
   const isActiveSelected = !suppressSelectionStyle && treeFocused && isSelected;
@@ -77,6 +104,7 @@ export function TreeItem(props: ITreeItemProps) {
       key={item.getId()}
       {...itemProps}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       className={cn(`
         tm:group
         tm:relative tm:box-border tm:flex tm:h-[22px] tm:w-full tm:cursor-pointer tm:flex-row tm:items-center
@@ -122,17 +150,17 @@ function TreeItemIcon({ item }: ITreeItemProps) {
         <Fragment>
           <ChevronRight
             strokeWidth={1}
-            className={cn('tm:mr-0.5 tm:h-[16px] tm:w-[16px] tm:transition-all tm:duration-250 tm:ease-in-out', {
+            className={cn('tm:mr-0.5 tm:size-[16px] tm:transition-all tm:duration-250 tm:ease-in-out', {
               'tm:rotate-90': item.isExpanded(),
             })}
           />
-          {!item.isExpanded() && <Folder strokeWidth={1} className="tm:h-[14px] tm:w-[14px]" />}
-          {item.isExpanded() && <FolderOpen strokeWidth={1} className="tm:h-[14px] tm:w-[14px]" />}
+          {!item.isExpanded() && <Folder strokeWidth={1} className="tm:size-[14px]" />}
+          {item.isExpanded() && <FolderOpen strokeWidth={1} className="tm:size-[14px]" />}
         </Fragment>
       )}
       {!item.isFolder() && (
         <div className="tm:ml-[18px] tm:flex tm:h-full tm:items-center">
-          <TerminalSquare strokeWidth={1} className="tm:h-[14px] tm:w-[14px] tm:text-green" />
+          <TerminalSquare strokeWidth={1} className="tm:size-[14px] tm:text-green" />
         </div>
       )}
     </div>

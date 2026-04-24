@@ -25,6 +25,10 @@ const locale: typeof enUS = {
       'add-host': '新建主机',
       'add-group': '新建分组',
       refresh: '刷新',
+      'context-menu': {
+        rename: '重命名',
+        delete: '删除',
+      },
     },
     'host-dialog': {
       title: {

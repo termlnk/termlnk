@@ -27,6 +27,7 @@ import { TerminalPersistenceController } from './controllers/terminal-persistenc
 import { TerminalUIController } from './controllers/terminal-ui.controller';
 import { WorkspaceController } from './controllers/workspace/workspace.controller';
 import { HostDialogService } from './services/host-dialog/host-dialog.service';
+import { HostExplorerService, IHostExplorerService } from './services/hosts-explorer/hosts-explorer.service';
 import { ILastCwdService, LastCwdService } from './services/local-terminal/last-cwd.service';
 import { ITabListDropdownService, TabListDropdownService } from './services/tab-list-dropdown/tab-list-dropdown.service';
 import { ITerminalInputService, TerminalInputService } from './services/terminal-input/terminal-input.service';
@@ -72,6 +73,7 @@ export class TerminalUIPlugin extends Plugin {
   private _initDependencies(): void {
     const dependencies: Dependency[] = [
       [HostDialogService, { useClass: HostDialogService }],
+      [IHostExplorerService, { useClass: HostExplorerService }],
       [ITerminalUIService, { useClass: TerminalUIService }],
       [ITerminalViewRegistry, { useClass: TerminalViewRegistry }],
       [ITabListDropdownService, { useClass: TabListDropdownService }],

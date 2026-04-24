@@ -23,6 +23,10 @@ const locale = {
       'add-host': 'New host',
       'add-group': 'New group',
       refresh: 'Refresh',
+      'context-menu': {
+        rename: 'Rename',
+        delete: 'Delete',
+      },
     },
     'host-dialog': {
       title: {

@@ -25,6 +25,10 @@ const locale: typeof enUS = {
       'add-host': '호스트 추가',
       'add-group': '그룹 추가',
       refresh: '새로고침',
+      'context-menu': {
+        rename: '이름 바꾸기',
+        delete: '삭제',
+      },
     },
     'host-dialog': {
       title: {
