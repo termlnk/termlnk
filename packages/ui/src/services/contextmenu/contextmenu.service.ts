@@ -23,31 +23,13 @@ export interface IContextMenuHandler {
 }
 
 export interface IContextMenuService {
-  /**
-   * Globally enable/disable contextmenu triggering. When disabled, any call to
-   * `triggerContextMenu` is a no-op. Useful for immersive/full-screen modes or
-   * read-only application states that suppress every context menu at once.
-   */
   disabled: boolean;
   get visible(): boolean;
 
   enable(): void;
   disable(): void;
-
-  /**
-   * Trigger contextmenu at the cursor for a given position key. Callers are
-   * expected to update any relevant domain service (e.g. "focused host") with
-   * the current target *before* invoking this method — menu items and their
-   * target commands read that state through DI, not through parameters.
-   */
   triggerContextMenu(event: MouseEvent, menuType: string): void;
   hideContextMenu(): void;
-
-  /**
-   * Register the single active consumer. Registering a new handler replaces
-   * the previous one so at most one context menu can be alive, mirroring the
-   * `univer` design (contextmenu-host pattern) and preventing menu overlap.
-   */
   registerContextMenuHandler(handler: IContextMenuHandler): IDisposable;
 }
 export const IContextMenuService = createIdentifier<IContextMenuService>('ui.context-menu-service');
