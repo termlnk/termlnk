@@ -67,6 +67,7 @@ export const STATE_GLOW: Record<AnimationState, string> = {
   [AnimationState.Thinking]: ', 0 0 15px rgba(139,92,246,0.15)',
   [AnimationState.Error]: ', 0 0 15px rgba(239,68,68,0.15)',
   [AnimationState.Done]: ', 0 0 15px rgba(34,197,94,0.15)',
+  [AnimationState.Question]: ', 0 0 18px rgba(250,204,21,0.2)',
 };
 
 // ---------------------------------------------------------------------------
@@ -87,6 +88,7 @@ export const STATE_COLORS: Record<AnimationState, IStateColors> = {
   [AnimationState.Thinking]: { dot: '#8b5cf6', bg: '#000000', text: '#a78bfa', glow: '0 0 12px rgba(139,92,246,0.3)' },
   [AnimationState.Error]: { dot: '#ef4444', bg: '#000000', text: '#fca5a5', glow: '0 0 12px rgba(239,68,68,0.3)' },
   [AnimationState.Done]: { dot: '#22c55e', bg: '#000000', text: '#4ade80', glow: '0 0 12px rgba(34,197,94,0.3)' },
+  [AnimationState.Question]: { dot: '#facc15', bg: '#000000', text: '#fde047', glow: '0 0 14px rgba(250,204,21,0.3)' },
 };
 
 // ---------------------------------------------------------------------------
@@ -98,6 +100,13 @@ export const STATE_COLORS: Record<AnimationState, IStateColors> = {
  * session — preserves the original brand color in the default state.
  */
 export const DEFAULT_BRAND_COLOR = '#3b82f6';
+
+/**
+ * Yellow accent used by the pet glyph when an AskUserQuestion is pending.
+ * Matches the Tailwind `yellow-400` palette so the Question state reads
+ * clearly against the `DEFAULT_BRAND_COLOR` sky-blue family.
+ */
+export const QUESTION_BRAND_COLOR = '#facc15';
 
 /**
  * Accent color per external agent. Used by `BrandGlyph` to tint the pixel

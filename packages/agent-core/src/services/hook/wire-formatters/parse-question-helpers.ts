@@ -13,62 +13,17 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAskUserQuestion, IAskUserQuestionOption, IAskUserQuestionSet } from '@termlnk/agent';
+import type { IAskUserQuestion, IAskUserQuestionSet } from '@termlnk/agent';
 
 /**
- * Normalise an option entry across agents. Accepts a plain string
- * (Cline-shape; also tolerant of malformed Claude inputs) or an object
- * with `label` / `description` / `preview` / `value` fields. Returns
- * `null` for shapes that cannot be interpreted (nullish, arrays,
- * objects with no extractable label).
+ * Parse the AskUserQuestion-style tool input shared by Claude Code, Codex,
+ * Kimi Code and OpenCode. The 4 agents all use the same `{ questions: [...] }`
+ * shape with `id?`, `question`, `header?`; the island only needs identification
+ * so we drop options / multiSelect / isSecret. Returns `null` when nothing
+ * parses.
  */
-export function normaliseOption(raw: unknown): IAskUserQuestionOption | null {
-  if (typeof raw === 'string') {
-    return raw.length > 0 ? { label: raw } : null;
-  }
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return null;
-  }
-  const rec = raw as Record<string, unknown>;
-  const label = asOptionalString(rec.label) ?? asOptionalString(rec.value);
-  if (!label) {
-    return null;
-  }
-  const description = asOptionalString(rec.description);
-  const preview = asOptionalString(rec.preview);
-  return {
-    label,
-    ...(description !== undefined ? { description } : {}),
-    ...(preview !== undefined ? { preview } : {}),
-  };
-}
-
-/**
- * Map a raw array of option entries through {@link normaliseOption},
- * dropping entries that cannot be interpreted.
- */
-export function extractOptions(raw: unknown): IAskUserQuestionOption[] {
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-  const out: IAskUserQuestionOption[] = [];
-  for (const entry of raw) {
-    const opt = normaliseOption(entry);
-    if (opt) {
-      out.push(opt);
-    }
-  }
-  return out;
-}
-
-/**
- * Shared shell for every AskUserQuestion-style parser: validates the
- * top-level `questions` array, delegates per-question parsing to
- * `parseOne`, and returns `null` when nothing parses.
- */
-export function parseQuestionSet(
-  toolInput: Record<string, unknown>,
-  parseOne: (raw: unknown, index: number) => IAskUserQuestion | null
+export function parseUniformQuestionSet(
+  toolInput: Record<string, unknown>
 ): IAskUserQuestionSet | null {
   const rawQuestions = toolInput.questions;
   if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) {
@@ -76,7 +31,7 @@ export function parseQuestionSet(
   }
   const questions: IAskUserQuestion[] = [];
   for (const [index, raw] of rawQuestions.entries()) {
-    const parsed = parseOne(raw, index);
+    const parsed = parseOneQuestion(raw, index);
     if (parsed) {
       questions.push(parsed);
     }
@@ -84,63 +39,22 @@ export function parseQuestionSet(
   return questions.length === 0 ? null : { questions };
 }
 
-/**
- * Synthesise a stable question id when the agent does not provide one.
- * Position-based so answers key back by index rather than by raw
- * question text (which can collide across two same-text questions).
- */
-export function synthesiseQuestionId(index: number): string {
-  return `idx-${index}`;
-}
-
-/**
- * Strict boolean coercion — only literal `true` passes. Ignores string
- * `"true"` to avoid silent truthy coercion from half-baked payloads.
- */
-export function asBoolean(value: unknown): boolean {
-  return value === true;
-}
-
-/**
- * Lenient boolean reader dedicated to the `multiSelect` family across
- * spelling variants. Accepts `true`, `1`, `"1"`, and case-insensitive
- * `"true"` / `"yes"`, which covers real-world drift in hook helpers that
- * string-encode booleans or agents that ship snake_case payloads. Any
- * other value (including `null`, `"no"`, `0`) is treated as `false`.
- *
- * Scope is intentionally narrow: `isSecret` / `isOther` stay on the
- * stricter {@link asBoolean}; only the multi-select flag needs this
- * breadth because the four supported agents spell it differently
- * (`multiSelect` / `multi_select` / `multiple`) and pre-release helpers
- * occasionally lowercase or quote the value.
- */
-export function readMultiSelect(
-  rec: Record<string, unknown>,
-  primary: string,
-  ...fallbacks: readonly string[]
-): boolean {
-  for (const key of [primary, ...fallbacks]) {
-    if (coerceFlag(rec[key])) {
-      return true;
-    }
+function parseOneQuestion(raw: unknown, index: number): IAskUserQuestion | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
   }
-  return false;
+  const rec = raw as Record<string, unknown>;
+  const questionText = asOptionalString(rec.question);
+  if (!questionText) {
+    return null;
+  }
+  return {
+    id: asOptionalString(rec.id) ?? `idx-${index}`,
+    question: questionText,
+    header: asOptionalString(rec.header),
+  };
 }
 
-function coerceFlag(value: unknown): boolean {
-  if (value === true || value === 1) {
-    return true;
-  }
-  if (typeof value === 'string') {
-    return /^(1|true|yes)$/i.test(value);
-  }
-  return false;
-}
-
-/**
- * Extract a non-empty string, or `undefined`. Used for optional fields
- * like `header` / `id` so we never forward empty strings downstream.
- */
-export function asOptionalString(value: unknown): string | undefined {
+function asOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }

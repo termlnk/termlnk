@@ -16,7 +16,7 @@
 import type { IAgentPluginConfig } from '@termlnk/agent';
 import type { Dependency } from '@termlnk/core';
 import type { IAgentCorePluginConfig } from './controllers/config.schema';
-import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_MCP_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IAgentToolRegistryService, IAIAgentService, ICommandPermissionService, IHookLauncherService, IKeyboardInjectorService, ILLMProviderService, IMcpRegistryService, IMcpService, IMyMcpService, IPlatformContextService, ISkillDiscoveryService, ISkillInstallerService, ISkillPromptService, ISkillStateService, ISystemPromptService, SKILL_CONFIG_KEY } from '@termlnk/agent';
+import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_MCP_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IAgentToolRegistryService, IAIAgentService, ICommandPermissionService, IHookLauncherService, ILLMProviderService, IMcpRegistryService, IMcpService, IMyMcpService, IPlatformContextService, ISkillDiscoveryService, ISkillInstallerService, ISkillPromptService, ISkillStateService, ISystemPromptService, SKILL_CONFIG_KEY } from '@termlnk/agent';
 import { DependentOn, IConfigService, ILogService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { AgentHookController } from './controllers/agent-hook.controller';
@@ -32,7 +32,6 @@ import { AIAgentService } from './services/agent/ai-agent.service';
 import { AgentHookRegistryService } from './services/hook/agent-hook-registry.service';
 import { AgentHookServerService } from './services/hook/agent-hook-server.service';
 import { HookLauncherService } from './services/hook/hook-launcher.service';
-import { KeyboardInjectorService } from './services/hook/keyboard-injector.service';
 import { LLMProviderService } from './services/llm-provider/llm-provider.service';
 import { AgentToolRegistryService } from './services/mcp/agent-tool-registry.service';
 import { McpRegistryService } from './services/mcp/mcp-registry.service';
@@ -92,7 +91,6 @@ export class AgentCorePlugin extends Plugin {
       [IAgentMonitorService, { useClass: AgentMonitorService }],
       [IAgentHookServerService, { useClass: AgentHookServerService }],
       [IAgentHookRegistryService, { useClass: AgentHookRegistryService }],
-      [IKeyboardInjectorService, { useClass: KeyboardInjectorService }],
       [IHookLauncherService, {
         // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
         useFactory: (logService: ILogService) => new HookLauncherService(

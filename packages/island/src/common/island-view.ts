@@ -16,7 +16,7 @@
 import type { IExternalAgentSession, IPendingInteractionPayload } from '@termlnk/agent';
 import type { IIslandSession } from '../models/island';
 import type { IIslandState } from '../models/island-state';
-import { animationPriority, AnimationState, phaseToAnimationState, statusToPhase } from '../models/island';
+import { animationPriority, AnimationState, sessionToAnimationState, statusToPhase } from '../models/island';
 
 /**
  * Pure reducer that projects raw monitor sessions + pending interactions
@@ -27,10 +27,17 @@ export function computeIslandView(
   rawSessions: readonly IExternalAgentSession[],
   pendingInteractions: readonly IPendingInteractionPayload[]
 ): IIslandState {
-  const sessions: IIslandSession[] = rawSessions.map(toIslandSession);
+  const questionSessionIds = new Set(
+    pendingInteractions
+      .filter((p) => p.kind === 'question')
+      .map((p) => p.terminalSessionId)
+  );
+  const sessions: IIslandSession[] = rawSessions.map((s) =>
+    toIslandSession(s, questionSessionIds.has(s.terminalSessionId))
+  );
   const activeSession = pickActiveSession(sessions);
   const animationState = activeSession
-    ? phaseToAnimationState(activeSession.phase)
+    ? sessionToAnimationState(activeSession)
     : AnimationState.Idle;
 
   return {
@@ -45,9 +52,13 @@ export function computeIslandView(
  * Project a monitor-side `IExternalAgentSession` onto the island-facing
  * `IIslandSession`. Only static presentational fields survive; everything
  * that needs live mutation (lastEventAt, status, etc.) is already
- * immutable at this boundary.
+ * immutable at this boundary. `hasPendingQuestion` is computed by the
+ * caller from the matching `pendingInteractions` list.
  */
-export function toIslandSession(s: IExternalAgentSession): IIslandSession {
+export function toIslandSession(
+  s: IExternalAgentSession,
+  hasPendingQuestion: boolean
+): IIslandSession {
   return {
     terminalSessionId: s.terminalSessionId,
     agent: s.agent,
@@ -63,6 +74,7 @@ export function toIslandSession(s: IExternalAgentSession): IIslandSession {
     title: s.title,
     project: s.project,
     todos: s.todos,
+    hasPendingQuestion,
   };
 }
 
@@ -75,8 +87,8 @@ export function pickActiveSession(sessions: readonly IIslandSession[]): IIslandS
     return null;
   }
   return sessions.reduce((best, s) => {
-    const bestPriority = animationPriority(phaseToAnimationState(best.phase));
-    const sPriority = animationPriority(phaseToAnimationState(s.phase));
+    const bestPriority = animationPriority(sessionToAnimationState(best));
+    const sPriority = animationPriority(sessionToAnimationState(s));
     if (sPriority > bestPriority) {
       return s;
     }

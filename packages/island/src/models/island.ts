@@ -31,7 +31,8 @@ export enum SessionPhase {
 
 /**
  * Visual animation states for the Dynamic Island.
- * Derived from SessionPhase, drives color/animation/icon selection.
+ * Derived from SessionPhase + pending-interaction kind, drives
+ * color / animation / icon selection on the pet glyph.
  */
 export enum AnimationState {
   Idle = 'idle',
@@ -40,6 +41,13 @@ export enum AnimationState {
   Thinking = 'thinking',
   Error = 'error',
   Done = 'done',
+  /**
+   * A `kind: 'question'` pending interaction (AskUserQuestion). The island
+   * never renders a picker for these — each agent's CLI TUI handles the
+   * pick natively — so the pet turns yellow with a small `?` glyph above
+   * it as a pure visual hint that user input is needed in the terminal.
+   */
+  Question = 'question',
 }
 
 /**
@@ -71,6 +79,25 @@ export interface IIslandSession {
    * Rendered as the task section of the session card when non-empty.
    */
   readonly todos?: readonly IAgentTodo[];
+  /**
+   * True when this session has at least one pending AskUserQuestion. The
+   * agent's CLI TUI is rendering the picker natively; the island uses
+   * this to flip the session-level pet glyph to its Question state
+   * independently of `phase`.
+   */
+  readonly hasPendingQuestion: boolean;
+}
+
+/**
+ * Resolve the AnimationState for a single session, layering pending-
+ * question state over the phase mapping. Used by both the active-session
+ * picker and per-session UI cards so they stay observably consistent.
+ */
+export function sessionToAnimationState(session: IIslandSession): AnimationState {
+  if (session.hasPendingQuestion) {
+    return AnimationState.Question;
+  }
+  return phaseToAnimationState(session.phase);
 }
 
 /**
@@ -132,9 +159,11 @@ export function animationPriority(state: AnimationState): number {
       return 2;
     case AnimationState.Working:
       return 3;
-    case AnimationState.Error:
+    case AnimationState.Question:
       return 4;
-    case AnimationState.NeedsYou:
+    case AnimationState.Error:
       return 5;
+    case AnimationState.NeedsYou:
+      return 6;
   }
 }

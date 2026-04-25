@@ -22,7 +22,7 @@ export { AGENT_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IAgentPluginConfig } from './controllers/config.schema';
 export type { AgentStatus, ChatRole, IAgentConfig, IChatMessage, IChatToolCall, IChatUsage, IImageAttachment, ISendMessageOptions, MessageDeliveryMode, ThinkingLevel, ToolCallStatus } from './models/agent';
 export { AGENT_DISPLAY_NAMES, AGENT_HOOK_CONFIG_KEY, DEFAULT_AGENT_HOOK_CONFIG, TERMLNK_HOOK_MARKER } from './models/agent-hook';
-export type { AgentHookEventType, AgentHookFormat, AgentSessionSource, AgentSessionStatus, AgentTodoStatus, ExternalAgentType, IAgentHookConfig, IAgentHookDefinition, IAgentHookEvent, IAgentHookEventMapping, IAgentHookEventMeta, IAgentTodo, IAnswerEntry, IAnswerMap, IAskUserQuestion, IAskUserQuestionOption, IAskUserQuestionRequestPayload, IAskUserQuestionSet, IExternalAgentSession, IPendingInteractionPayload, IPermissionDecision, IPermissionRequestPayload, IPermissionResponsePayload, PendingInteractionKind } from './models/agent-hook';
+export type { AgentHookEventType, AgentHookFormat, AgentSessionSource, AgentSessionStatus, AgentTodoStatus, ExternalAgentType, IAgentHookConfig, IAgentHookDefinition, IAgentHookEvent, IAgentHookEventMapping, IAgentHookEventMeta, IAgentTodo, IAskUserQuestion, IAskUserQuestionRequestPayload, IAskUserQuestionSet, IExternalAgentSession, IPendingInteractionPayload, IPermissionDecision, IPermissionRequestPayload, IPermissionResponsePayload, PendingInteractionKind } from './models/agent-hook';
 export { KNOWN_API_TYPES } from './models/api-metadata';
 export type { IApiTypeMetadata } from './models/api-metadata';
 export { COMPACT_CONFIG_MAX_KEEP_RECENT, COMPACT_CONFIG_MAX_THRESHOLD_PERCENT, COMPACT_CONFIG_MIN_KEEP_RECENT, COMPACT_CONFIG_MIN_THRESHOLD_PERCENT, DEFAULT_COMPACT_CONFIG, normalizeCompactConfig } from './models/compact';
@@ -46,7 +46,6 @@ export { IAgentToolRegistryService } from './services/agent-tool-registry.servic
 export { IAIAgentService } from './services/ai-agent.service';
 export { ICommandPermissionService } from './services/command-permission.service';
 export { IHookLauncherService } from './services/hook-launcher.service';
-export { IKeyboardInjectorService } from './services/keyboard-injector.service';
 export { ILLMProviderService } from './services/llm-provider.service';
 export { IMcpRegistryService } from './services/mcp-registry.service';
 export { IMyMcpService } from './services/mcp-server.service';

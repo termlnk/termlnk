@@ -41,21 +41,22 @@ export function useAutoCollapse(
   const collapseTimerRef = useRef<TimeoutId | undefined>(undefined);
   const expandTimerRef = useRef<TimeoutId | undefined>(undefined);
 
-  const hasPendingInteraction = pendingInteractions.length > 0;
-  // Mirror into a ref so the long-lived CESP subscription reads the latest
-  // value without re-subscribing on every render.
-  const hasPendingInteractionRef = useRef(hasPendingInteraction);
-  hasPendingInteractionRef.current = hasPendingInteraction;
+  // Only classic permission pendings gate the collapse — AskUserQuestion
+  // pendings are visual-only (pet Question state) and must not lock the
+  // island open on hover-out.
+  const hasPermissionPending = pendingInteractions.some((p) => p.kind === 'permission');
+  const hasPermissionPendingRef = useRef(hasPermissionPending);
+  hasPermissionPendingRef.current = hasPermissionPending;
 
   const onMouseLeave = useCallback(() => {
     clearTimer(expandTimerRef);
-    if (hasPendingInteraction) {
+    if (hasPermissionPending) {
       return;
     }
     collapseTimerRef.current = setTimeout(() => {
       setExpanded(false);
     }, AUTO_COLLAPSE_DELAY_MS);
-  }, [hasPendingInteraction, setExpanded]);
+  }, [hasPermissionPending, setExpanded]);
 
   const onMouseEnter = useCallback(() => {
     // Shared with the task-complete flash timer, so hover naturally cancels it.
@@ -75,14 +76,14 @@ export function useAutoCollapse(
       if (event.category !== CespEventCategory.TaskComplete) {
         return;
       }
-      if (hasPendingInteractionRef.current) {
+      if (hasPermissionPendingRef.current) {
         return;
       }
       setExpanded(true);
       clearTimer(collapseTimerRef);
       collapseTimerRef.current = setTimeout(() => {
-        // A new request may have landed during the display window.
-        if (hasPendingInteractionRef.current) {
+        // A new permission request may have landed during the display window.
+        if (hasPermissionPendingRef.current) {
           return;
         }
         setExpanded(false);

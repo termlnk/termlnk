@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAgentHookEventMapping, IAskUserQuestion, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
+import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAgentHookEventMapping, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
 import type { ILogService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
 import type { IAgentWireFormatter } from '../wire-formatters';
@@ -70,16 +70,8 @@ export abstract class BaseConfigFileAdapter extends Disposable implements IAgent
     return null;
   }
 
-  formatResponse(
-    decision: IPermissionDecision,
-    context: {
-      readonly isQuestion: boolean;
-      readonly toolInput?: Record<string, unknown>;
-      readonly question?: IAskUserQuestion;
-      readonly questionSet?: IAskUserQuestionSet;
-    }
-  ): string {
-    return this._wireFormatter.formatResponse(decision, context);
+  formatResponse(decision: IPermissionDecision): string {
+    return this._wireFormatter.formatResponse(decision);
   }
 
   async install(_port: number, _token: string): Promise<void> {

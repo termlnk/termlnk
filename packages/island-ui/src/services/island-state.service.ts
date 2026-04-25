@@ -207,8 +207,18 @@ export class IslandUIStateService extends Disposable implements IIslandUIStateSe
 
     // Project raw sessions → IIslandSession using the same reducer the
     // main process runs, so divergence is structurally impossible.
-    this.sessions$ = this._rawSessions$.pipe(
-      map((raw) => raw.map(toIslandSession))
+    // `hasPendingQuestion` is sourced from `_pendingInteractions$` so the
+    // session-level pet glyph (e.g. expanded list cards) flips to its
+    // Question state independently of `phase`.
+    this.sessions$ = combineLatest([this._rawSessions$, this._pendingInteractions$]).pipe(
+      map(([raw, pending]) => {
+        const questionSessionIds = new Set(
+          pending.filter((p) => p.kind === 'question').map((p) => p.terminalSessionId)
+        );
+        return raw.map((s) =>
+          toIslandSession(s, questionSessionIds.has(s.terminalSessionId))
+        );
+      })
     );
 
     this.activeSession$ = this.sessions$.pipe(
@@ -216,14 +226,20 @@ export class IslandUIStateService extends Disposable implements IIslandUIStateSe
       distinctUntilChanged()
     );
 
-    // Animation state follows the computeIslandView contract: a pending
-    // interaction always upgrades the island to NeedsYou, otherwise we
-    // derive from the winning session phase. Combine both streams so the
-    // state reacts to interaction arrivals in the absence of phase flips.
+    // Animation state:
+    // - any classic permission request → NeedsYou (island auto-expands so
+    //   the user can allow/deny)
+    // - else any AskUserQuestion pending → Question (pet turns yellow +
+    //   shows `?`; island does NOT auto-expand because there is no picker
+    //   — the agent's CLI TUI handles the pick natively)
+    // - else derive from the winning session phase.
     this.animationState$ = combineLatest([this._rawSessions$, this._pendingInteractions$]).pipe(
       map(([raw, pending]) => {
-        if (pending.length > 0) {
+        if (pending.some((p) => p.kind === 'permission')) {
           return AnimationState.NeedsYou;
+        }
+        if (pending.some((p) => p.kind === 'question')) {
+          return AnimationState.Question;
         }
         return computeIslandView(raw, pending).animationState;
       }),
@@ -285,22 +301,27 @@ export class IslandUIStateService extends Disposable implements IIslandUIStateSe
   }
 
   /**
-   * Auto-expand while a blocking interaction is pending; collapse back
-   * once the user has resolved (or the 120 s server-side timeout fires).
+   * Auto-expand while a classic permission request is pending; collapse
+   * back once the user has resolved (or the 120 s server-side timeout
+   * fires).
+   *
+   * AskUserQuestion pendings do NOT trigger auto-expand — the island only
+   * shows the pet's Question state because each agent's CLI TUI renders
+   * its own picker natively.
    */
   private _initAutoExpand(): void {
-    let hadPending = false;
+    let hadPermission = false;
     this.disposeWithMe(
       this._pendingInteractions$.pipe(
-        map((interactions) => interactions.length > 0),
+        map((interactions) => interactions.some((p) => p.kind === 'permission')),
         distinctUntilChanged()
-      ).subscribe((hasPending) => {
-        if (hasPending) {
+      ).subscribe((hasPermission) => {
+        if (hasPermission) {
           this._expanded$.next(true);
-        } else if (hadPending) {
+        } else if (hadPermission) {
           this._expanded$.next(false);
         }
-        hadPending = hasPending;
+        hadPermission = hasPermission;
       })
     );
   }

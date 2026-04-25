@@ -17,7 +17,7 @@ import type { AgentTodoStatus, AnimationState, IAgentTodo, IIslandSession } from
 import type { ReactNode } from 'react';
 import { LocaleService } from '@termlnk/core';
 import { cn, useDependency } from '@termlnk/design';
-import { AGENT_COLORS, AGENT_DISPLAY_NAMES, DEFAULT_BRAND_COLOR, phaseToAnimationState, SessionPhase, STATE_COLORS } from '@termlnk/island';
+import { AGENT_COLORS, AGENT_DISPLAY_NAMES, DEFAULT_BRAND_COLOR, SessionPhase, sessionToAnimationState, STATE_COLORS } from '@termlnk/island';
 import { Moon } from 'lucide-react';
 import { useElapsedTime } from '../hooks/use-elapsed-time';
 import { BrandGlyph } from '../island/BrandGlyph';
@@ -188,7 +188,7 @@ function TodoListSection({ todos }: { todos: readonly IAgentTodo[] }) {
 
 function SessionCard({ session }: { session: IIslandSession }) {
   const localeService = useDependency(LocaleService);
-  const anim = phaseToAnimationState(session.phase);
+  const anim = sessionToAnimationState(session);
   const colors = STATE_COLORS[anim];
   const agentName = AGENT_DISPLAY_NAMES[session.agent] || session.agent;
   const elapsed = useElapsedTime(session.startedAt);

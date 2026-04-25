@@ -24,16 +24,13 @@ export const NOTCH_OFFSET = SCENE_SIZES.compact.h;
 /** Empty-overview fixed height (sleeping-moon glyph only). */
 const EMPTY_OVERVIEW_HEIGHT = 110;
 
-/** Height budget for the AskUserQuestion picker layout. */
-const QUESTION_HEADER_HEIGHT = 28;
-const QUESTION_TEXT_HEIGHT = 20;
-const QUESTION_OPTION_HEIGHT = 32;
-const QUESTION_FOOTER_HEIGHT = 40;
-const QUESTION_PADDING = 16;
-
 /**
  * Derive the current scene from UI-level inputs. Pure — drives both the
  * main-process window size computation and the renderer's layer selection.
+ *
+ * `approval` is reserved for classic permission dialogs (Bash / Edit /
+ * WebFetch / …). AskUserQuestion (`kind: 'question'`) does NOT promote
+ * the scene — the island only changes the pet's animation state for it.
  */
 export function deriveScene(
   expanded: boolean,
@@ -42,21 +39,20 @@ export function deriveScene(
   if (!expanded) {
     return 'compact';
   }
-  if (pendingInteractions.length > 0) {
+  if (pendingInteractions.some((p) => p.kind === 'permission')) {
     return 'approval';
   }
   return 'overview';
 }
 
 /**
- * Compute the scene's base size. The approval scene's height depends on
- * whether the active interaction is an AskUserQuestion (variable option
- * count) or a plain permission prompt (fixed layout).
+ * Compute the scene's base size. The approval scene always uses the fixed
+ * permission layout now that AskUserQuestion no longer surfaces a picker.
  */
 export function getSceneSize(
   scene: IslandScene,
   sessionCount: number,
-  activeInteraction: IPendingInteractionPayload | undefined
+  _activeInteraction: IPendingInteractionPayload | undefined
 ): ISceneSize {
   let base: ISceneSize;
 
@@ -68,14 +64,6 @@ export function getSceneSize(
         OVERVIEW_MAX_HEIGHT
       );
     base = { w: SCENE_SIZES.overview.w, h, r: SCENE_SIZES.overview.r };
-  } else if (scene === 'approval' && activeInteraction?.kind === 'question') {
-    const optionCount = activeInteraction.question.options.length;
-    const h = QUESTION_HEADER_HEIGHT
-      + QUESTION_TEXT_HEIGHT
-      + optionCount * QUESTION_OPTION_HEIGHT
-      + QUESTION_FOOTER_HEIGHT
-      + QUESTION_PADDING;
-    base = { w: SCENE_SIZES.approval.w, h, r: SCENE_SIZES.approval.r };
   } else {
     base = SCENE_SIZES[scene];
   }

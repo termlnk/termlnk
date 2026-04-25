@@ -16,13 +16,13 @@
 import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
 import type { ILogService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
-import type { IAgentWireFormatter, IWireFormatContext } from '../wire-formatters';
+import type { IAgentWireFormatter } from '../wire-formatters';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { Disposable, toDisposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
-import { OpenCodeWireFormatter, parseOpenCodeQuestion } from '../wire-formatters';
+import { GenericWireFormatter, parseUniformQuestionSet } from '../wire-formatters';
 
 const OPENCODE_CONFIG_DIR = join(homedir(), '.config', 'opencode');
 const OPENCODE_PLUGINS_DIR = join(OPENCODE_CONFIG_DIR, 'plugins');
@@ -64,7 +64,7 @@ export class OpenCodeHookAdapter extends Disposable implements IAgentHookAdapter
   private readonly _installed$ = new BehaviorSubject<boolean>(false);
   readonly installed$: Observable<boolean> = this._installed$.asObservable();
 
-  private readonly _wireFormatter: IAgentWireFormatter = new OpenCodeWireFormatter();
+  private readonly _wireFormatter: IAgentWireFormatter = new GenericWireFormatter();
 
   constructor(
     private readonly _logService: ILogService,
@@ -81,11 +81,11 @@ export class OpenCodeHookAdapter extends Disposable implements IAgentHookAdapter
     if (toolName !== 'question') {
       return null;
     }
-    return parseOpenCodeQuestion(toolInput);
+    return parseUniformQuestionSet(toolInput);
   }
 
-  formatResponse(decision: IPermissionDecision, context: IWireFormatContext): string {
-    return this._wireFormatter.formatResponse(decision, context);
+  formatResponse(decision: IPermissionDecision): string {
+    return this._wireFormatter.formatResponse(decision);
   }
 
   async install(_port: number, _token: string): Promise<void> {

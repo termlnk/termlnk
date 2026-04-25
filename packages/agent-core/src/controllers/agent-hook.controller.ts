@@ -15,7 +15,7 @@
 
 import type { IAgentHookConfig } from '@termlnk/agent';
 import process from 'node:process';
-import { AGENT_HOOK_CONFIG_KEY, DEFAULT_AGENT_HOOK_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IHookLauncherService, IKeyboardInjectorService } from '@termlnk/agent';
+import { AGENT_HOOK_CONFIG_KEY, DEFAULT_AGENT_HOOK_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IHookLauncherService } from '@termlnk/agent';
 import { Disposable, IConfigService, ILogService } from '@termlnk/core';
 import { ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { ClaudeCodeHookAdapter } from '../services/hook/adapters/claude-code-adapter';
@@ -33,7 +33,6 @@ export class AgentHookController extends Disposable {
     @IAgentHookServerService private readonly _hookServerService: IAgentHookServerService,
     @IAgentHookRegistryService private readonly _hookRegistryService: IAgentHookRegistryService,
     @IAgentMonitorService private readonly _agentMonitorService: IAgentMonitorService,
-    @IKeyboardInjectorService private readonly _keyboardInjector: IKeyboardInjectorService,
     @ITerminalSessionNotifyService private readonly _sessionNotifyService: ITerminalSessionNotifyService,
     @IConfigService private readonly _configService: IConfigService,
     @ILogService private readonly _logService: ILogService
@@ -58,7 +57,7 @@ export class AgentHookController extends Disposable {
 
     const launcherPath = this._hookLauncherService.getLauncherPath();
     const adapters = [
-      new ClaudeCodeHookAdapter(this._logService, launcherPath, this._keyboardInjector.supported),
+      new ClaudeCodeHookAdapter(this._logService, launcherPath),
       new CodexHookAdapter(this._logService, launcherPath),
       new CursorHookAdapter(this._logService, launcherPath),
       new GeminiHookAdapter(this._logService, launcherPath),

@@ -15,47 +15,23 @@
 
 import { useEffect } from 'react';
 
-interface IOptionKeyboardConfig {
-  readonly optionCount: number;
-  readonly onSelectOption: (index: number) => void;
-}
-
 /**
- * Bind ⌘Y / ⌘N / ⌘1–⌘9 to the currently active pending interaction.
+ * Bind ⌘Y / ⌘N to the currently active permission request.
  *
  * Callers pass pre-bound intents (from `IPermissionRequestService`) so
  * this hook stays free of business logic — it only maps keystrokes to
  * the provided callbacks.
- *
- * When `disabled` is true (set by the caller when a `QuestionPanel` is
- * rendering and owns its own keyboard scheme), the hook unbinds its
- * listener so the two keyboard owners never race for the same keystroke.
  */
 export function usePermissionKeyboard(
   requestId: string,
   onAllow: () => void,
-  onDeny: () => void,
-  options?: IOptionKeyboardConfig,
-  disabled?: boolean
+  onDeny: () => void
 ): void {
   useEffect(() => {
-    if (disabled) {
-      return;
-    }
     const handler = (e: KeyboardEvent) => {
       if (!e.metaKey) {
         return;
       }
-
-      if (options) {
-        const num = Number.parseInt(e.key, 10);
-        if (num >= 1 && num <= options.optionCount) {
-          e.preventDefault();
-          options.onSelectOption(num - 1);
-          return;
-        }
-      }
-
       if (e.key === 'y' || e.key === 'Y') {
         e.preventDefault();
         onAllow();
@@ -66,5 +42,5 @@ export function usePermissionKeyboard(
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [requestId, onAllow, onDeny, options, disabled]);
+  }, [requestId, onAllow, onDeny]);
 }

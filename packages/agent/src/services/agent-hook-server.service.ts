@@ -49,15 +49,6 @@ export interface IAgentHookServerService {
   respondPermission(requestId: string, decision: IPermissionDecision): void;
 
   /**
-   * Forget any pending AskUserQuestion interaction whose originating
-   * tool-use id matches `toolUseId`. Called from the monitor when a
-   * post-tool-use event arrives — it's the signal that the CLI TUI
-   * user answered directly (or the injected keystrokes landed), so the
-   * island can close its picker. No-op when there's no match (idempotent).
-   */
-  dismissQuestionByToolUseId(toolUseId: string): void;
-
-  /**
    * Enable or disable external-terminal monitoring. When enabled, the server
    * writes its `(port, token)` to `<configPath>/runtime.json` so agents running
    * in any terminal on this machine can discover it. When disabled, the file

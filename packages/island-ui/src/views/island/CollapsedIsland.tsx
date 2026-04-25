@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AnimationState, IIslandSession } from '@termlnk/island';
+import type { IIslandSession } from '@termlnk/island';
 import { cn } from '@termlnk/design';
-import { AGENT_COLORS, AGENT_DISPLAY_NAMES, DEFAULT_BRAND_COLOR, SessionPhase } from '@termlnk/island';
+import { AGENT_COLORS, AGENT_DISPLAY_NAMES, AnimationState, DEFAULT_BRAND_COLOR, QUESTION_BRAND_COLOR, SessionPhase } from '@termlnk/island';
 import { BrandGlyph } from './BrandGlyph';
 
 interface ICollapsedIslandProps {
@@ -26,11 +26,22 @@ interface ICollapsedIslandProps {
 }
 
 export function CollapsedIsland({ sessions, activeSession, animationState, onClick }: ICollapsedIslandProps) {
-  const animated = animationState === 'working';
-  // Brand glyph tracks the active agent; collapsed idle keeps the default sky-blue.
-  const brandColor = activeSession
-    ? AGENT_COLORS[activeSession.agent] ?? DEFAULT_BRAND_COLOR
-    : DEFAULT_BRAND_COLOR;
+  const isQuestioning = animationState === AnimationState.Question;
+  // Pulse for both Working and Question states — Question reuses the same
+  // pulse rhythm but with a yellow accent so "terminal needs input" reads
+  // at a glance.
+  const animated = animationState === AnimationState.Working || isQuestioning;
+  // Brand glyph tracks the active agent; collapsed idle keeps the default
+  // sky-blue. A pending AskUserQuestion overrides to yellow regardless of
+  // agent so the Question state is unambiguous.
+  let brandColor: string;
+  if (isQuestioning) {
+    brandColor = QUESTION_BRAND_COLOR;
+  } else if (activeSession) {
+    brandColor = AGENT_COLORS[activeSession.agent] ?? DEFAULT_BRAND_COLOR;
+  } else {
+    brandColor = DEFAULT_BRAND_COLOR;
+  }
 
   // Once the turn ends, fall back to the stable `project · title` label
   // instead of the stale tool activity (mirrors the Done marker).
@@ -65,7 +76,7 @@ export function CollapsedIsland({ sessions, activeSession, animationState, onCli
       onClick={onClick}
       className={cn('tm:flex tm:size-full tm:items-center tm:gap-2')}
     >
-      <BrandGlyph accentColor={brandColor} animated={animated} />
+      <BrandGlyph accentColor={brandColor} animated={animated} questioning={isQuestioning} />
       <span
         className={cn('tm:flex-1 tm:truncate')}
         style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)' }}

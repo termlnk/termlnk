@@ -13,67 +13,30 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAnswerMap, IAskUserQuestionRequestPayload, IPendingInteractionPayload } from '@termlnk/island';
+import type { IPermissionRequestPayload } from '@termlnk/island';
 import { LocaleService } from '@termlnk/core';
-import { cn, useDependency, useObservable } from '@termlnk/design';
-import { toPermissionViewModel, toQuestionViewModel } from '@termlnk/island';
+import { cn, useDependency } from '@termlnk/design';
+import { toPermissionViewModel } from '@termlnk/island';
 import { useCallback, useMemo } from 'react';
 import { IPermissionRequestService } from '../../services/permission-request.service';
 import { usePermissionKeyboard } from '../hooks/use-permission-keyboard';
-import { QuestionPanel } from './QuestionPanel';
 import { ToolContentView } from './ToolContentView';
 
 /**
- * Pure renderer for the active pending interaction. Branches on the
- * discriminator carried by the payload (`kind: 'question' | 'permission'`)
- * — no more tool-name sniffing in the React component.
+ * Pure renderer for the active permission request. AskUserQuestion no
+ * longer surfaces here — those pending interactions only drive the pet's
+ * Question animation state; each agent's CLI TUI handles the pick.
  */
-export function PermissionRequestView({ request }: { request: IPendingInteractionPayload }) {
+export function PermissionRequestView({ request }: { request: IPermissionRequestPayload }) {
   const permissionService = useDependency(IPermissionRequestService);
   const localeService = useDependency(LocaleService);
 
-  // Subscribe to the active view-model just to keep re-renders in sync
-  // with service mutations; reuse the pure helper for static derivation.
-  useObservable(permissionService.activeViewModel$, null);
   const viewModel = useMemo(() => toPermissionViewModel(request), [request]);
 
   const onAllow = useCallback(() => permissionService.allow(request.requestId), [permissionService, request.requestId]);
   const onDeny = useCallback(() => permissionService.deny(request.requestId), [permissionService, request.requestId]);
-  const onSelectByIndex = useCallback(
-    (index: number) => permissionService.selectOptionByIndex(request.requestId, index),
-    [permissionService, request.requestId]
-  );
-  const onSubmitSingleLabel = useCallback(
-    (label: string) => permissionService.selectOption(request.requestId, label),
-    [permissionService, request.requestId]
-  );
-  const onSubmitAnswers = useCallback(
-    (answers: IAnswerMap) => permissionService.submitAnswers(request.requestId, answers),
-    [permissionService, request.requestId]
-  );
 
-  // QuestionPanel owns its own keyboard (↑↓/Space/Enter/⌘Y/⌘N/⌘1-9/⌘←
-  // over its internal state). Keep the shared hook bound only for the
-  // classic allow/deny approval path.
-  usePermissionKeyboard(
-    request.requestId,
-    onAllow,
-    onDeny,
-    viewModel.isQuestion ? { optionCount: viewModel.optionCount, onSelectOption: onSelectByIndex } : undefined,
-    /* disabled */ viewModel.isQuestion
-  );
-
-  if (viewModel.isQuestion) {
-    const questionViewModel = toQuestionViewModel(request as IAskUserQuestionRequestPayload);
-    return (
-      <QuestionPanel
-        viewModel={questionViewModel}
-        onSubmitSingleLabel={onSubmitSingleLabel}
-        onSubmitAnswers={onSubmitAnswers}
-        onDeny={onDeny}
-      />
-    );
-  }
+  usePermissionKeyboard(request.requestId, onAllow, onDeny);
 
   return (
     <>

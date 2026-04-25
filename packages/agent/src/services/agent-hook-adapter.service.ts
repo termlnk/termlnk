@@ -14,7 +14,7 @@
  */
 
 import type { Observable } from 'rxjs';
-import type { AgentHookEventType, ExternalAgentType, IAgentHookDefinition, IAskUserQuestion, IAskUserQuestionSet, IPermissionDecision } from '../models/agent-hook';
+import type { AgentHookEventType, ExternalAgentType, IAgentHookDefinition, IAskUserQuestionSet, IPermissionDecision } from '../models/agent-hook';
 
 /**
  * Individual adapter interface for external AI agent hook integration.
@@ -90,25 +90,13 @@ export interface IAgentHookAdapter {
   parseQuestion(toolName: string, toolInput: Record<string, unknown>): IAskUserQuestionSet | null;
 
   /**
-   * Serialise a user decision into the response body this agent's hook
-   * runtime expects. The helper echoes whatever the server returns straight
-   * back to stdout, so this method fully owns agent-specific wire format.
-   *
-   * `context.isQuestion` flips on when the originating request was an
-   * AskUserQuestion-style picker — enables multi-question answer maps
-   * (Claude `updatedInput.answers`, Codex `answers[id]`, …). `question`
-   * is the deprecated single-question alias; new formatters should prefer
-   * `questionSet`.
+   * Serialise an allow/deny decision into the response body this agent's
+   * hook runtime expects. AskUserQuestion no longer passes through this
+   * path — its hook is released with `{}` immediately so the agent's CLI
+   * TUI handles the pick natively. Only classic permission dialogs reach
+   * this method.
    */
-  formatResponse(
-    decision: IPermissionDecision,
-    context: {
-      readonly isQuestion: boolean;
-      readonly toolInput?: Record<string, unknown>;
-      readonly question?: IAskUserQuestion;
-      readonly questionSet?: IAskUserQuestionSet;
-    },
-  ): string;
+  formatResponse(decision: IPermissionDecision): string;
 
   /** Dispose resources held by this adapter */
   dispose(): void;

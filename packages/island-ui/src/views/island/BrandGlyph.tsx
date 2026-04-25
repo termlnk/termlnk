@@ -51,9 +51,16 @@ const PET_PIXELS = [
 interface IBrandGlyphProps {
   accentColor: string;
   animated: boolean;
+  /**
+   * Render a small `?` glyph above the pet's head. Signals that an
+   * AskUserQuestion is pending and the user should answer in the
+   * originating terminal's TUI. The island itself is not interactive
+   * for question-kind pendings.
+   */
+  questioning?: boolean;
 }
 
-export function BrandGlyph({ accentColor, animated }: IBrandGlyphProps) {
+export function BrandGlyph({ accentColor, animated, questioning }: IBrandGlyphProps) {
   return (
     <div
       className={cn(
@@ -76,6 +83,24 @@ export function BrandGlyph({ accentColor, animated }: IBrandGlyphProps) {
           }}
         />
       ))}
+      {questioning && (
+        <span
+          className={cn('tm:pointer-events-none tm:absolute tm:font-mono')}
+          style={{
+            top: -8,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: 10,
+            fontWeight: 700,
+            lineHeight: 1,
+            color: accentColor,
+            textShadow: `0 0 6px ${accentColor}`,
+            animation: 'vi-pulse 1.4s ease-in-out infinite',
+          }}
+        >
+          ?
+        </span>
+      )}
     </div>
   );
 }
