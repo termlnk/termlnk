@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
-    "@mariozechner/pi-agent-core": "^0.68.1",
+    "@mariozechner/pi-agent-core": "^0.70.2",
     "@sinclair/typebox": "^0.34.49",
     "@termlnk/agent": "workspace:*",
     "@termlnk/core": "workspace:*",
