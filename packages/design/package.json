@@ -55,20 +55,20 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
-    "@lobehub/icons": "^5.5.4",
-    "lucide-react": "^1.8.0",
+    "@lobehub/icons": "^5.6.0",
+    "lucide-react": "^1.11.0",
     "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
     "react-dom": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
-    "@lobehub/icons": "^5.5.4",
+    "@lobehub/icons": "^5.6.0",
     "@wendellhu/redi": "^1.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "dayjs": "^1.11.20",
-    "lucide-react": "^1.8.0",
+    "lucide-react": "^1.11.0",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.4.3",
     "rc-virtual-list": "^3.19.2",

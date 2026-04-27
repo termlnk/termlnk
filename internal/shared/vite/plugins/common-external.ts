@@ -92,12 +92,12 @@ export default {
   '@lobehub/icons': {
     global: '@lobehub/icons',
     name: '@lobehub/icons',
-    version: '^5.5.4',
+    version: '^5.6.0',
   },
   'lucide-react': {
     global: 'lucide-react',
     name: 'lucide-react',
-    version: '^1.8.0',
+    version: '^1.11.0',
   },
   dayjs: {
     global: 'dayjs',
