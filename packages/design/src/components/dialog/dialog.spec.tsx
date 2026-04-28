@@ -113,7 +113,7 @@ describe('Dialog', () => {
     expect(dialogContent?.style.top).toBe('50px');
   });
 
-  it('centers draggable dialogs inside the workbench content area', () => {
+  it('centers draggable dialogs in the full viewport regardless of workbench-content', () => {
     const workbenchContent = document.createElement('section');
     workbenchContent.dataset.uComp = 'workbench-content';
     document.body.appendChild(workbenchContent);
@@ -152,7 +152,7 @@ describe('Dialog', () => {
     const dialogContent = document.body.querySelector('[data-slot="dialog-content"]') as HTMLDivElement | null;
     expect(dialogContent).not.toBeNull();
     expect(dialogContent?.style.left).toBe('120px');
-    expect(dialogContent?.style.top).toBe('119px');
+    expect(dialogContent?.style.top).toBe('100px');
 
     workbenchContent.remove();
   });

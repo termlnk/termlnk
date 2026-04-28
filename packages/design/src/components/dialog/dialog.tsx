@@ -23,26 +23,10 @@ import { DialogContent, DialogDescription, DialogFooter, DialogHeader, Dialog as
 const DIALOG_VIEWPORT_GUTTER = 16;
 const DIALOG_VIEWPORT_MAX_WIDTH = `calc(100vw - ${DIALOG_VIEWPORT_GUTTER * 2}px)`;
 const DIALOG_VIEWPORT_MAX_HEIGHT = `calc(100vh - ${DIALOG_VIEWPORT_GUTTER * 2}px)`;
-const WORKBENCH_CONTENT_SELECTOR = '[data-u-comp="workbench-content"]';
 
-function getDialogViewportRect() {
-  const workbenchContent = document.querySelector(WORKBENCH_CONTENT_SELECTOR);
-  if (workbenchContent instanceof HTMLElement) {
-    const rect = workbenchContent.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      return rect;
-    }
-  }
-
+function getViewportSize() {
   const { clientWidth, clientHeight } = document.documentElement;
-  return {
-    left: 0,
-    top: 0,
-    width: clientWidth,
-    height: clientHeight,
-    right: clientWidth,
-    bottom: clientHeight,
-  };
+  return { width: clientWidth, height: clientHeight };
 }
 
 export interface IDialogProps {
@@ -195,11 +179,11 @@ function useDraggable(
         return nextPosition;
       }
 
-      const viewportRect = getDialogViewportRect();
-      const minX = viewportRect.left + DIALOG_VIEWPORT_GUTTER;
-      const minY = viewportRect.top + DIALOG_VIEWPORT_GUTTER;
-      const maxX = Math.max(minX, viewportRect.right - targetSize.width - DIALOG_VIEWPORT_GUTTER);
-      const maxY = Math.max(minY, viewportRect.bottom - targetSize.height - DIALOG_VIEWPORT_GUTTER);
+      const { width: viewportWidth, height: viewportHeight } = getViewportSize();
+      const minX = DIALOG_VIEWPORT_GUTTER;
+      const minY = DIALOG_VIEWPORT_GUTTER;
+      const maxX = Math.max(minX, viewportWidth - targetSize.width - DIALOG_VIEWPORT_GUTTER);
+      const maxY = Math.max(minY, viewportHeight - targetSize.height - DIALOG_VIEWPORT_GUTTER);
 
       return {
         x: Math.min(Math.max(nextPosition.x, minX), maxX),
@@ -211,18 +195,18 @@ function useDraggable(
 
   const getCenteredPosition = useCallback((size?: { width: number; height: number } | null) => {
     const targetSize = size ?? getElementSize();
-    const viewportRect = getDialogViewportRect();
+    const { width: viewportWidth, height: viewportHeight } = getViewportSize();
 
     if (!targetSize) {
       return clampPositionToViewport({
-        x: viewportRect.left + viewportRect.width / 2,
-        y: viewportRect.top + viewportRect.height / 2,
+        x: viewportWidth / 2,
+        y: viewportHeight / 2,
       }, { width: 0, height: 0 });
     }
 
     return clampPositionToViewport({
-      x: viewportRect.left + (viewportRect.width - targetSize.width) / 2,
-      y: viewportRect.top + (viewportRect.height - targetSize.height) / 2,
+      x: (viewportWidth - targetSize.width) / 2,
+      y: (viewportHeight - targetSize.height) / 2,
     }, targetSize);
   }, [clampPositionToViewport, getElementSize]);
 
@@ -344,14 +328,12 @@ function useDraggable(
       // re-center — unless the user has already chosen a position by
       // dragging it, in which case we leave their choice alone.
       if (!options.defaultPosition && typeof ResizeObserver !== 'undefined') {
-        const observer = new ResizeObserver((entries) => {
+        const observer = new ResizeObserver(() => {
           if (userHasDraggedRef.current) return;
-          const entry = entries[0];
-          if (!entry) return;
-          const { width, height } = entry.contentRect;
-          if (width <= 0 || height <= 0) return;
-          lastKnownSizeRef.current = { width, height };
-          const centered = getCenteredPosition({ width, height });
+          // entry.contentRect excludes padding/border; re-measure via border-box.
+          const nextSize = getElementSize(el);
+          if (!nextSize || nextSize.width <= 0 || nextSize.height <= 0) return;
+          const centered = getCenteredPosition(nextSize);
           setPosition(centered);
           startPosRef.current = centered;
         });
