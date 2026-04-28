@@ -14,7 +14,11 @@
  */
 
 import type { IMcpRegistryInstallInput, IMcpRegistryInstallOption, IMcpRegistryItem, IMcpRegistryService, McpRegistryCategory, McpServerConfig } from '@termlnk/agent';
-import { Disposable, ILogService } from '@termlnk/core';
+import type { IProxy } from '@termlnk/terminal';
+import type { FetchLike } from './proxy-fetch';
+import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { ConfigRepository } from '@termlnk/database';
+import { createProxyFetch } from './proxy-fetch';
 
 const COMMUNITY_REGISTRY_URL = 'https://ravitemer.github.io/mcp-registry/registry.json';
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -72,6 +76,7 @@ export class McpRegistryService extends Disposable implements IMcpRegistryServic
   private _pendingFetch: Promise<IMcpRegistryItem[]> | null = null;
 
   constructor(
+    @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository,
     @ILogService private readonly _logService: ILogService
   ) {
     super();
@@ -145,7 +150,9 @@ export class McpRegistryService extends Disposable implements IMcpRegistryServic
   }
 
   private async _fetchItems(): Promise<IMcpRegistryItem[]> {
-    const response = await fetch(COMMUNITY_REGISTRY_URL, {
+    const proxy = await this._getEnabledProxy();
+    const fetcher: FetchLike = proxy ? createProxyFetch(proxy) : fetch;
+    const response = await fetcher(COMMUNITY_REGISTRY_URL, {
       headers: {
         Accept: 'application/json',
         'User-Agent': 'Termlnk-MCP-Marketplace',
@@ -328,5 +335,13 @@ export class McpRegistryService extends Disposable implements IMcpRegistryServic
     }
 
     return new Date(value * 1000).toISOString();
+  }
+
+  private async _getEnabledProxy(): Promise<IProxy | undefined> {
+    const proxy = await this._configRepository.getField<IProxy>('network.config', 'proxy');
+    if (!proxy?.enabled) {
+      return undefined;
+    }
+    return proxy;
   }
 }
