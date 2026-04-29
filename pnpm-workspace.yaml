@@ -40,4 +40,4 @@ overrides:
   hono: ^4.12.14
   follow-redirects: ^1.16.0
   '@hono/node-server': ^1.19.13
-  'fast-xml-parser': ^5.7.0
+  fast-xml-parser: ^5.7.0
