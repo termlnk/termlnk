@@ -48,9 +48,9 @@ export function InlineGroupInput({ level, onConfirm, onCancel }: IInlineGroupInp
       <div className="tm:mr-1.5 tm:flex tm:h-full tm:items-center">
         <ChevronRight
           strokeWidth={1}
-          className="tm:mr-0.5 tm:h-[16px] tm:w-[16px]"
+          className="tm:mr-0.5 tm:size-[16px]"
         />
-        <Folder strokeWidth={1} className="tm:h-[14px] tm:w-[14px]" />
+        <Folder strokeWidth={1} className="tm:size-[14px]" />
       </div>
       <input
         ref={(el) => el?.focus()}
