@@ -428,24 +428,10 @@ export class DynamicIslandController extends Disposable {
         if (key === 'n') {
           event.preventDefault();
           this._hookServerService.respondPermission(request.requestId, { kind: 'deny' });
-          return;
         }
-        // ⌘1–⌘9: pick an AskUserQuestion option. The question is already
-        // parsed server-side into request.question, so the handler just
-        // indexes into it and sends the chosen label back through the
-        // adapter's wire formatter (Claude Code → updatedInput.answers,
-        // others → deny + message).
-        const num = Number.parseInt(input.key, 10);
-        if (num >= 1 && num <= 9 && request.kind === 'question') {
-          event.preventDefault();
-          const option = request.question.options[num - 1];
-          if (option) {
-            this._hookServerService.respondPermission(
-              request.requestId,
-              { kind: 'answer', label: option.label }
-            );
-          }
-        }
+        // AskUserQuestion has no island-handled answer path — the agent's
+        // CLI TUI is the sole responder. ⌘Y / ⌘N only apply to permission
+        // requests; ⌘1-9 was removed when option/picker support was dropped.
       };
       win.webContents.on('before-input-event', handler);
       this._beforeInputHandlers.set(win.id, handler);
