@@ -16,6 +16,10 @@
 import type { IAgentTool, IAgentToolRegistryService, IAgentToolResult } from '@termlnk/agent';
 import type { IDisposable, ILogService } from '@termlnk/core';
 import type { FetchLike } from '../services/mcp/proxy-fetch';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+
+const BLOCKED_HOST_REASON = 'Fetching private, loopback, link-local or metadata addresses is not allowed.';
 
 export type GetFetchFn = () => Promise<FetchLike>;
 
@@ -51,15 +55,16 @@ function createWebFetchTool(logService: ILogService, getFetch: GetFetchFn): IAge
       try {
         parsed = new URL(url);
       } catch {
-        return createErrorResult('Invalid URL format.');
+        return jsonError('Invalid URL format.');
       }
 
       if (!['http:', 'https:'].includes(parsed.protocol)) {
-        return createErrorResult('Only http and https URLs are supported.');
+        return jsonError('Only http and https URLs are supported.');
       }
 
-      if (isPrivateHost(parsed.hostname)) {
-        return createErrorResult('Fetching private/internal URLs is not allowed.');
+      const blockReason = await resolveAndCheckHost(parsed.hostname);
+      if (blockReason) {
+        return jsonError(blockReason);
       }
 
       try {
@@ -70,47 +75,132 @@ function createWebFetchTool(logService: ILogService, getFetch: GetFetchFn): IAge
         });
 
         if (!response.ok) {
-          return createErrorResult(`HTTP ${response.status}: ${response.statusText}`);
+          return jsonError(`HTTP ${response.status}: ${response.statusText}`);
         }
 
         let text = await response.text();
-
         const contentType = response.headers.get('content-type') ?? '';
         if (contentType.includes('html')) {
           text = stripHtml(text);
         }
-
         if (text.length > maxChars) {
           text = `${text.substring(0, maxChars)}\n... (truncated)`;
         }
 
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({ url, length: text.length, content: text }, null, 2),
-          }],
-        };
+        return jsonOk({ url, length: text.length, content: text });
       } catch (err) {
         logService.error('[WebFetchTool]', 'fetch failed:', err);
-        return createErrorResult(`Fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+        return jsonError(`Fetch failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
   };
 }
 
-function isPrivateHost(hostname: string): boolean {
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+/**
+ * Resolve hostname and reject any IP that falls in a blocked range.
+ * Closes the DNS-rebinding gap left by literal-only checks: an attacker-controlled
+ * hostname pointing at a private/loopback/metadata IP is rejected before fetch.
+ */
+async function resolveAndCheckHost(hostname: string): Promise<string | null> {
+  if (hostname.toLowerCase() === 'localhost') {
+    return BLOCKED_HOST_REASON;
+  }
+
+  const literalKind = isIP(hostname);
+  if (literalKind !== 0) {
+    return isBlockedAddress(literalKind, hostname) ? BLOCKED_HOST_REASON : null;
+  }
+
+  try {
+    const records = await lookup(hostname, { all: true });
+    for (const { family, address } of records) {
+      if (isBlockedAddress(family, address)) {
+        return `Hostname "${hostname}" resolves to a blocked address (${address}).`;
+      }
+    }
+  } catch {
+    return `Hostname "${hostname}" could not be resolved.`;
+  }
+  return null;
+}
+
+function isBlockedAddress(family: number, address: string): boolean {
+  if (family === 4) {
+    return isBlockedIPv4(address);
+  }
+  if (family === 6) {
+    return isBlockedIPv6(address);
+  }
+  return false;
+}
+
+function isBlockedIPv4(ip: string): boolean {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) {
     return true;
   }
-  const parts = hostname.split('.').map(Number);
-  if (parts[0] === 10) {
+  const [a, b] = parts;
+  // 0.0.0.0/8 — "this network"
+  if (a === 0) {
     return true;
   }
-  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) {
+  // 10.0.0.0/8 — RFC1918 private
+  if (a === 10) {
     return true;
   }
-  if (parts[0] === 192 && parts[1] === 168) {
+  // 100.64.0.0/10 — CGNAT
+  if (a === 100 && b >= 64 && b <= 127) {
     return true;
+  }
+  // 127.0.0.0/8 — loopback
+  if (a === 127) {
+    return true;
+  }
+  // 169.254.0.0/16 — link-local + cloud metadata (169.254.169.254)
+  if (a === 169 && b === 254) {
+    return true;
+  }
+  // 172.16.0.0/12 — RFC1918 private
+  if (a === 172 && b >= 16 && b <= 31) {
+    return true;
+  }
+  // 192.168.0.0/16 — RFC1918 private
+  if (a === 192 && b === 168) {
+    return true;
+  }
+  // 224.0.0.0/4 multicast + 240.0.0.0/4 reserved
+  if (a >= 224) {
+    return true;
+  }
+  return false;
+}
+
+function isBlockedIPv6(ip: string): boolean {
+  const lower = ip.toLowerCase();
+  // ::1 — loopback (and forms like 0000:0000:...:1)
+  if (lower === '::1' || /^(0+:){7}0*1$/.test(lower)) {
+    return true;
+  }
+  // :: — unspecified
+  if (lower === '::' || lower === '0:0:0:0:0:0:0:0') {
+    return true;
+  }
+  // fe80::/10 — link-local
+  if (/^fe[89ab][0-9a-f]?:/.test(lower)) {
+    return true;
+  }
+  // fc00::/7 — unique local (fc.. or fd..)
+  if (/^f[cd][0-9a-f]{0,2}:/.test(lower)) {
+    return true;
+  }
+  // ff00::/8 — multicast
+  if (lower.startsWith('ff')) {
+    return true;
+  }
+  // ::ffff:0:0/96 — IPv4-mapped — extract embedded v4 and re-check
+  const v4Mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4Mapped) {
+    return isBlockedIPv4(v4Mapped[1]);
   }
   return false;
 }
@@ -129,6 +219,13 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-function createErrorResult(message: string): IAgentToolResult {
-  return { content: [{ type: 'text', text: message }], isError: true };
+function jsonOk(data: Record<string, unknown>): IAgentToolResult {
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+}
+
+function jsonError(message: string): IAgentToolResult {
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ error: message }, null, 2) }],
+    isError: true,
+  };
 }
