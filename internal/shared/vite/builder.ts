@@ -63,7 +63,7 @@ async function buildESM(inlineConfig: InlineConfig, options: IBuildExecuterOptio
           entryRoot: 'src',
           outDir: 'lib/types',
           clearPureImport: false,
-          exclude: ['**/__tests__/**'],
+          exclude: ['**/__tests__/**', '**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx'],
         })
       );
     }
