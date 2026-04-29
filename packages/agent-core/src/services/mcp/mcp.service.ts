@@ -185,16 +185,18 @@ export class McpService extends Disposable implements IMcpService {
 
   async getBuiltinTools(): Promise<IMcpRemoteTool[]> {
     const tools = this._mcpToolRegistryService.getTools();
-    return tools.map((tool) => ({
-      id: `builtin_${tool.name}`,
-      name: tool.name,
-      label: tool.label,
-      description: tool.description,
-      inputSchema: tool.inputSchema as unknown as Record<string, unknown>,
-      serverId: '__builtin__',
-      serverName: 'Termlnk',
-      category: tool.category,
-    }));
+    return tools
+      .filter((tool) => !tool.hidden)
+      .map((tool) => ({
+        id: `builtin_${tool.name}`,
+        name: tool.name,
+        label: tool.label,
+        description: tool.description,
+        inputSchema: tool.inputSchema as unknown as Record<string, unknown>,
+        serverId: '__builtin__',
+        serverName: 'Termlnk',
+        category: tool.category,
+      }));
   }
 
   async callTool(serverId: string, toolName: string, args: Record<string, unknown>): Promise<unknown> {

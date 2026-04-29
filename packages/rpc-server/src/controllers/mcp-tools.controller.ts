@@ -53,12 +53,14 @@ export class McpToolsController extends Disposable {
       }
 
       const terminalDisposables = registerTerminalTools(
-        this._toolRegistryService,
-        this._sshToolService,
-        this._logService,
-        ptySessionService,
-        permissionService,
-        this._commandBlockService
+        {
+          sshToolService: this._sshToolService,
+          logService: this._logService,
+          ptySessionService,
+          permissionService,
+          commandBlockService: this._commandBlockService,
+        },
+        this._toolRegistryService
       );
       for (const d of terminalDisposables) {
         this.disposeWithMe(d);
@@ -82,7 +84,7 @@ export class McpToolsController extends Disposable {
         this.disposeWithMe(d);
       }
 
-      this._logService.log('[McpToolsController]', 'MCP host/terminal/file tools registered.');
+      this._logService.log('[McpToolsController]', 'Built-in host/terminal/file tools registered.');
     } catch (err) {
       this._logService.warn('[McpToolsController]', 'Failed to register MCP tools:', err);
     }

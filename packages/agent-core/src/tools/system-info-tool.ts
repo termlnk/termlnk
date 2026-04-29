@@ -18,19 +18,19 @@ import type { IDisposable, ILogService } from '@termlnk/core';
 import { cpus, freemem, homedir, hostname, platform, release, totalmem, uptime } from 'node:os';
 import process from 'node:process';
 
-export function registerProcessTool(
+export function registerSystemInfoTool(
   toolRegistry: IAgentToolRegistryService,
   logService: ILogService
 ): IDisposable {
-  return toolRegistry.registerTool(createProcessInfoTool(logService));
+  return toolRegistry.registerTool(createSystemInfoTool(logService));
 }
 
-function createProcessInfoTool(logService: ILogService): IAgentTool {
+function createSystemInfoTool(logService: ILogService): IAgentTool {
   return {
     name: 'termlnk_system_info',
     label: 'System Info',
     category: 'other',
-    description: 'Get local system resource information including OS details, CPU model/cores, memory usage, and Node.js process stats. This only reports the local machine — for remote host info, use termlnk_terminal_execute with commands like uname, free, df, or top instead.',
+    description: 'Get local system resource information (OS, CPU, memory, Node.js process stats). Local machine only — for remote host info, run uname/free/df/top via termlnk_terminal_run.',
     isReadOnly: true,
     inputSchema: {
       type: 'object',
@@ -42,10 +42,9 @@ function createProcessInfoTool(logService: ILogService): IAgentTool {
         const totalMem = totalmem();
         const freeMem = freemem();
         const usedMem = totalMem - freeMem;
-
         const processMem = process.memoryUsage();
 
-        const info = {
+        return jsonOk({
           os: {
             platform: platform(),
             release: release(),
@@ -72,17 +71,10 @@ function createProcessInfoTool(logService: ILogService): IAgentTool {
               heapTotal: formatBytes(processMem.heapTotal),
             },
           },
-        };
-
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify(info, null, 2),
-          }],
-        };
+        });
       } catch (err) {
-        logService.error('[ProcessInfoTool]', 'failed:', err);
-        return createErrorResult(`Failed to get process info: ${err instanceof Error ? err.message : String(err)}`);
+        logService.error('[SystemInfoTool]', 'failed:', err);
+        return jsonError(`Failed to get system info: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
   };
@@ -117,6 +109,13 @@ function formatUptime(seconds: number): string {
   return parts.join(' ');
 }
 
-function createErrorResult(message: string): IAgentToolResult {
-  return { content: [{ type: 'text', text: message }], isError: true };
+function jsonOk(data: Record<string, unknown>): IAgentToolResult {
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+}
+
+function jsonError(message: string): IAgentToolResult {
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ error: message }, null, 2) }],
+    isError: true,
+  };
 }

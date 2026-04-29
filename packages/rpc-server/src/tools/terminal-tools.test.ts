@@ -106,12 +106,13 @@ function createHarness(sessionId: string, options: IHarnessOptions = {}): ITestH
   } as unknown as IAgentToolRegistryService;
 
   registerTerminalTools(
-    registry,
-    createFakeSshToolService(),
-    logService,
-    ptySessionService,
-    undefined,
-    commandBlockService
+    {
+      sshToolService: createFakeSshToolService(),
+      logService,
+      ptySessionService,
+      commandBlockService,
+    },
+    registry
   );
 
   return { tools, dataStream, commandBlockService, writeCalls };

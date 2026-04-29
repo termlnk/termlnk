@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-export type AgentToolCategory = 'network' | 'terminal' | 'file' | 'mcp' | 'other';
+export type AgentToolCategory = 'network' | 'terminal' | 'file' | 'host' | 'mcp' | 'other';
 
 export interface IAgentToolPropertySchema {
   type: string;
@@ -62,4 +62,10 @@ export interface IAgentTool {
   isDestructive?: boolean;
   /** Maximum characters in tool result. Results exceeding this are truncated. */
   maxResultChars?: number;
+  /**
+   * Hide from user-facing tool selectors. The tool is still available to the LLM,
+   * but does not appear in the chat tool picker. Use for internal/protocol tools
+   * (e.g. widget renderer) that the user should not toggle.
+   */
+  hidden?: boolean;
 }

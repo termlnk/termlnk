@@ -19,7 +19,7 @@ import { IMcpService } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, Checkbox, cn, Collapsible, CollapsibleContent, CollapsibleTrigger, HoverCard, HoverCardContent, HoverCardTrigger, HoverPanel, HoverPanelBody, HoverPanelContent, HoverPanelFooter, HoverPanelHeader, HoverPanelTrigger, Switch, useDependency } from '@termlnk/design';
 import { IChatSessionClientService } from '@termlnk/rpc-client';
-import { Check, ChevronDown, ChevronRight, FolderOpen, Globe, Loader2, Plug2, RefreshCw, TerminalSquare, Wrench } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, FolderOpen, Globe, Loader2, Plug2, RefreshCw, Server, TerminalSquare, Wrench } from 'lucide-react';
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface IChatSelectableTool {
@@ -35,14 +35,16 @@ interface IChatSelectableTool {
 const CATEGORY_ORDER: Record<AgentToolCategory, number> = {
   network: 0,
   terminal: 1,
-  file: 2,
-  mcp: 3,
-  other: 4,
+  host: 2,
+  file: 3,
+  mcp: 4,
+  other: 5,
 };
 
 const CATEGORY_META: Record<AgentToolCategory, { icon: typeof Globe; labelKey: string }> = {
   network: { icon: Globe, labelKey: 'agent-ui.chat.tools-category-network' },
   terminal: { icon: TerminalSquare, labelKey: 'agent-ui.chat.tools-category-terminal' },
+  host: { icon: Server, labelKey: 'agent-ui.chat.tools-category-host' },
   file: { icon: FolderOpen, labelKey: 'agent-ui.chat.tools-category-file' },
   mcp: { icon: Plug2, labelKey: 'agent-ui.chat.tools-category-mcp' },
   other: { icon: Wrench, labelKey: 'agent-ui.chat.tools-category-other' },

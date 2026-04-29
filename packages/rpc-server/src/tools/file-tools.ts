@@ -16,184 +16,170 @@
 import type { IAgentTool, IAgentToolRegistryService, IAgentToolResult } from '@termlnk/agent';
 import type { IDisposable, ILogService, Injector } from '@termlnk/core';
 import { Buffer } from 'node:buffer';
-import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, truncateHead } from '../common/truncate';
+import { appendFile, readFile, stat, writeFile } from 'node:fs/promises';
+import { isAbsolute, resolve } from 'node:path';
 import { ISFTPSessionService } from '../services/sftp/sftp-session.service';
 
-export function registerFileTools(toolRegistry: IAgentToolRegistryService, injector: Injector, logService: ILogService): IDisposable[] {
-  const disposables: IDisposable[] = [];
+const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 
-  disposables.push(
-    toolRegistry.registerTool(createRemoteReadTool(injector, logService))
-  );
-
-  disposables.push(
-    toolRegistry.registerTool(createRemoteEditTool(injector, logService))
-  );
-
-  disposables.push(
-    toolRegistry.registerTool(createRemoteWriteTool(injector, logService))
-  );
-
-  return disposables;
+/**
+ * Unified file tools — local fs when sessionId is omitted, SFTP when sessionId is supplied.
+ */
+export function registerFileTools(
+  toolRegistry: IAgentToolRegistryService,
+  injector: Injector,
+  logService: ILogService
+): IDisposable[] {
+  return [
+    toolRegistry.registerTool(createFileReadTool(injector, logService)),
+    toolRegistry.registerTool(createFileEditTool(injector, logService)),
+    toolRegistry.registerTool(createFileWriteTool(injector, logService)),
+  ];
 }
 
-// ---------------------------------------------------------------------------
-// Read tool — with truncation, offset/limit
-// ---------------------------------------------------------------------------
-
-function createRemoteReadTool(injector: Injector, logService: ILogService): IAgentTool {
+function createFileReadTool(injector: Injector, logService: ILogService): IAgentTool {
   return {
-    name: 'termlnk_sftp_read',
-    label: 'SFTP Read',
+    name: 'termlnk_file_read',
+    label: 'File Read',
     category: 'file',
-    description: `Read the contents of a remote file via SFTP. Output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.`,
+    description: 'Read a file. Local when sessionId is omitted; remote (SFTP) when sessionId is set. Up to 1MB; use startLine/endLine for portions of large files. Path must be absolute.',
     isReadOnly: true,
+    maxResultChars: 200000,
     inputSchema: {
       type: 'object',
       properties: {
-        sessionId: {
-          type: 'string',
-          description: 'SFTP session ID for the remote host connection',
-        },
-        path: {
-          type: 'string',
-          description: 'Absolute path to the file to read',
-        },
-        offset: {
-          type: 'number',
-          description: 'Line number to start reading from (1-indexed)',
-        },
-        limit: {
-          type: 'number',
-          description: 'Maximum number of lines to read',
-        },
+        path: { type: 'string', description: 'Absolute path to the file.' },
+        sessionId: { type: 'string', description: 'SFTP session ID. Omit to read a local file.' },
+        encoding: { type: 'string', description: 'Text encoding. Default: utf-8.' },
+        startLine: { type: 'number', description: '1-based start line (inclusive). Optional.' },
+        endLine: { type: 'number', description: '1-based end line (inclusive). Optional.' },
       },
-      required: ['sessionId', 'path'],
+      required: ['path'],
     },
     handler: async (args) => {
+      const filePath = String(args.path ?? '');
+      const sessionId = typeof args.sessionId === 'string' && args.sessionId ? args.sessionId : null;
+      const encoding = String(args.encoding || 'utf-8') as BufferEncoding;
+      const startLine = args.startLine ? Number(args.startLine) : undefined;
+      const endLine = args.endLine ? Number(args.endLine) : undefined;
+
+      if (!filePath || !isAbsolute(filePath)) {
+        return jsonError('An absolute file path is required.');
+      }
+
       try {
-        const sftpSessionService = injector.get(ISFTPSessionService);
-        const sessionId = args.sessionId as string;
-        const path = args.path as string;
-        const offset = args.offset as number | undefined;
-        const limit = args.limit as number | undefined;
+        let buffer: Buffer;
+        let totalSize: number;
+        let resolvedPath: string;
 
-        const buf = await sftpSessionService.readFile(sessionId, path);
-        const textContent = buf.toString('utf-8');
-        const allLines = textContent.split('\n');
-        const totalFileLines = allLines.length;
-
-        // Apply offset (1-indexed)
-        const startLine = offset ? Math.max(0, offset - 1) : 0;
-        const startLineDisplay = startLine + 1;
-
-        if (startLine >= allLines.length) {
-          return _textResult(`Offset ${offset} is beyond end of file (${allLines.length} lines total)`);
-        }
-
-        // Apply user limit
-        let selectedContent: string;
-        let userLimitedLines: number | undefined;
-        if (limit !== undefined) {
-          const endLine = Math.min(startLine + limit, allLines.length);
-          selectedContent = allLines.slice(startLine, endLine).join('\n');
-          userLimitedLines = endLine - startLine;
-        } else {
-          selectedContent = allLines.slice(startLine).join('\n');
-        }
-
-        // Apply truncation
-        const truncation = truncateHead(selectedContent);
-        let outputText: string;
-
-        if (truncation.truncated) {
-          const endLineDisplay = startLineDisplay + truncation.outputLines - 1;
-          const nextOffset = endLineDisplay + 1;
-          outputText = truncation.content;
-
-          if (truncation.truncatedBy === 'lines') {
-            outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. Use offset=${nextOffset} to continue.]`;
-          } else {
-            outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`;
+        if (sessionId) {
+          const sftp = injector.get(ISFTPSessionService);
+          buffer = await sftp.readFile(sessionId, filePath);
+          totalSize = buffer.byteLength;
+          resolvedPath = filePath;
+          if (totalSize > MAX_FILE_SIZE) {
+            return jsonError(`File is too large (${(totalSize / 1024 / 1024).toFixed(1)}MB). Maximum is 1MB. Use startLine/endLine to read portions.`);
           }
-        } else if (userLimitedLines !== undefined && startLine + userLimitedLines < allLines.length) {
-          const remaining = allLines.length - (startLine + userLimitedLines);
-          const nextOffset = startLine + userLimitedLines + 1;
-          outputText = truncation.content;
-          outputText += `\n\n[${remaining} more lines in file. Use offset=${nextOffset} to continue.]`;
         } else {
-          outputText = truncation.content;
+          resolvedPath = resolve(filePath);
+          const fileStat = await stat(resolvedPath);
+          if (!fileStat.isFile()) {
+            return jsonError(`"${filePath}" is not a file.`);
+          }
+          if (fileStat.size > MAX_FILE_SIZE) {
+            return jsonError(`File is too large (${(fileStat.size / 1024 / 1024).toFixed(1)}MB). Maximum is 1MB. Use startLine/endLine to read portions.`);
+          }
+          buffer = await readFile(resolvedPath);
+          totalSize = fileStat.size;
         }
 
-        return _textResult(outputText);
+        let content = buffer.toString(encoding);
+        const allLines = content.split('\n');
+        const totalLines = allLines.length;
+
+        if (startLine !== undefined || endLine !== undefined) {
+          const start = Math.max((startLine ?? 1) - 1, 0);
+          const end = endLine ? Math.min(endLine, allLines.length) : allLines.length;
+          content = allLines.slice(start, end).join('\n');
+        }
+
+        return jsonOk({
+          path: resolvedPath,
+          remote: Boolean(sessionId),
+          size: totalSize,
+          totalLines,
+          content,
+        });
       } catch (err) {
         logService.error('[FileTools]', 'file_read failed:', err);
-        return _errorResult(`Error reading file "${args.path}": ${err instanceof Error ? err.message : String(err)}`);
+        return jsonError(`Failed to read file: ${formatError(err)}`);
       }
     },
   };
 }
 
-// ---------------------------------------------------------------------------
-// Edit tool — find-and-replace
-// ---------------------------------------------------------------------------
-
-function createRemoteEditTool(injector: Injector, logService: ILogService): IAgentTool {
+function createFileEditTool(injector: Injector, logService: ILogService): IAgentTool {
   return {
-    name: 'termlnk_sftp_edit',
-    label: 'SFTP Edit',
+    name: 'termlnk_file_edit',
+    label: 'File Edit',
     category: 'file',
-    description: 'Edit a remote file by replacing exact text via SFTP. The oldText must match exactly (including whitespace). Use this for precise, surgical edits.',
+    description: 'Edit a file by replacing exact text. Local when sessionId is omitted; remote (SFTP) when sessionId is set. oldText must match exactly (whitespace + newlines). Path must be absolute.',
+    isDestructive: true,
     inputSchema: {
       type: 'object',
       properties: {
-        sessionId: {
-          type: 'string',
-          description: 'SFTP session ID for the remote host connection',
-        },
-        path: {
-          type: 'string',
-          description: 'Absolute path to the file to edit',
-        },
-        oldText: {
-          type: 'string',
-          description: 'Exact text to find and replace (must match exactly)',
-        },
-        newText: {
-          type: 'string',
-          description: 'New text to replace the old text with',
-        },
+        path: { type: 'string', description: 'Absolute path to the file.' },
+        sessionId: { type: 'string', description: 'SFTP session ID. Omit to edit a local file.' },
+        oldText: { type: 'string', description: 'Exact text to find (must match exactly).' },
+        newText: { type: 'string', description: 'Replacement text.' },
       },
-      required: ['sessionId', 'path', 'oldText', 'newText'],
+      required: ['path', 'oldText', 'newText'],
     },
     handler: async (args) => {
+      const filePath = String(args.path ?? '');
+      const sessionId = typeof args.sessionId === 'string' && args.sessionId ? args.sessionId : null;
+      const oldText = String(args.oldText ?? '');
+      const newText = String(args.newText ?? '');
+
+      if (!filePath || !isAbsolute(filePath)) {
+        return jsonError('An absolute file path is required.');
+      }
+
       try {
-        const sftpSessionService = injector.get(ISFTPSessionService);
-        const sessionId = args.sessionId as string;
-        const path = args.path as string;
-        const oldText = args.oldText as string;
-        const newText = args.newText as string;
+        let original: string;
+        let resolvedPath: string;
 
-        const buf = await sftpSessionService.readFile(sessionId, path);
-        const content = buf.toString('utf-8');
-
-        // Normalize line endings for matching
-        const normalizedContent = content.replace(/\r\n/g, '\n');
-        const normalizedOld = oldText.replace(/\r\n/g, '\n');
-        const normalizedNew = newText.replace(/\r\n/g, '\n');
-        const index = normalizedContent.indexOf(normalizedOld);
-        if (index === -1) {
-          return _errorResult(
-            `Could not find the exact text in ${path}. The old text must match exactly including all whitespace and newlines.`
-          );
+        if (sessionId) {
+          const sftp = injector.get(ISFTPSessionService);
+          const buffer = await sftp.readFile(sessionId, filePath);
+          if (buffer.byteLength > MAX_FILE_SIZE) {
+            return jsonError(`File is too large (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB). Maximum is 1MB.`);
+          }
+          original = buffer.toString('utf-8');
+          resolvedPath = filePath;
+        } else {
+          resolvedPath = resolve(filePath);
+          const fileStat = await stat(resolvedPath);
+          if (!fileStat.isFile()) {
+            return jsonError(`"${filePath}" is not a file.`);
+          }
+          if (fileStat.size > MAX_FILE_SIZE) {
+            return jsonError(`File is too large (${(fileStat.size / 1024 / 1024).toFixed(1)}MB). Maximum is 1MB.`);
+          }
+          original = (await readFile(resolvedPath, 'utf-8')) as string;
         }
 
-        // Check for multiple occurrences
+        const normalizedContent = original.replace(/\r\n/g, '\n');
+        const normalizedOld = oldText.replace(/\r\n/g, '\n');
+        const normalizedNew = newText.replace(/\r\n/g, '\n');
+
+        const index = normalizedContent.indexOf(normalizedOld);
+        if (index === -1) {
+          return jsonError(`Could not find the exact text in ${filePath}. The old text must match exactly including all whitespace and newlines.`);
+        }
         const secondIndex = normalizedContent.indexOf(normalizedOld, index + 1);
         if (secondIndex !== -1) {
-          return _errorResult(
-            `Found multiple occurrences of the text in ${path}. Please provide more context to make it unique.`
-          );
+          return jsonError(`Found multiple occurrences of the text in ${filePath}. Provide more context to make it unique.`);
         }
 
         const newContent = normalizedContent.substring(0, index)
@@ -201,72 +187,101 @@ function createRemoteEditTool(injector: Injector, logService: ILogService): IAge
           + normalizedContent.substring(index + normalizedOld.length);
 
         if (normalizedContent === newContent) {
-          return _errorResult(`No changes made to ${path}. The replacement produced identical content.`);
+          return jsonError(`No changes made to ${filePath}. The replacement produced identical content.`);
         }
 
-        // Restore original line endings if file used CRLF
-        const finalContent = content.includes('\r\n') ? newContent.replace(/\n/g, '\r\n') : newContent;
-        await sftpSessionService.writeFile(sessionId, path, Buffer.from(finalContent, 'utf-8'));
+        // Preserve original line endings if file used CRLF
+        const finalContent = original.includes('\r\n') ? newContent.replace(/\n/g, '\r\n') : newContent;
 
-        return _textResult(`Successfully replaced text in ${path}.`);
+        if (sessionId) {
+          const sftp = injector.get(ISFTPSessionService);
+          await sftp.writeFile(sessionId, filePath, Buffer.from(finalContent, 'utf-8'));
+        } else {
+          await writeFile(resolvedPath, finalContent, 'utf-8');
+        }
+
+        return jsonOk({ success: true, path: resolvedPath, remote: Boolean(sessionId) });
       } catch (err) {
         logService.error('[FileTools]', 'file_edit failed:', err);
-        return _errorResult(`Error editing file "${args.path}": ${err instanceof Error ? err.message : String(err)}`);
+        return jsonError(`Failed to edit file: ${formatError(err)}`);
       }
     },
   };
 }
 
-// ---------------------------------------------------------------------------
-// Write tool — create or overwrite
-// ---------------------------------------------------------------------------
-
-function createRemoteWriteTool(injector: Injector, logService: ILogService): IAgentTool {
+function createFileWriteTool(injector: Injector, logService: ILogService): IAgentTool {
   return {
-    name: 'termlnk_sftp_write',
-    label: 'SFTP Write',
+    name: 'termlnk_file_write',
+    label: 'File Write',
     category: 'file',
-    description: 'Write content to a remote file via SFTP. Creates the file if it doesn\'t exist, overwrites if it does.',
+    description: 'Write a file. Local when sessionId is omitted; remote (SFTP) when sessionId is set. Default overwrites; pass append=true to add to end. SFTP append is not supported. Path must be absolute. Do not write secrets.',
     isDestructive: true,
     inputSchema: {
       type: 'object',
       properties: {
-        sessionId: {
-          type: 'string',
-          description: 'SFTP session ID for the remote host connection',
-        },
-        path: {
-          type: 'string',
-          description: 'Absolute path to the file to write',
-        },
-        content: {
-          type: 'string',
-          description: 'Content to write to the file',
-        },
+        path: { type: 'string', description: 'Absolute path to the file.' },
+        sessionId: { type: 'string', description: 'SFTP session ID. Omit to write a local file.' },
+        content: { type: 'string', description: 'Content to write.' },
+        append: { type: 'boolean', description: 'Append to existing file instead of overwriting (local only). Default: false.' },
       },
-      required: ['sessionId', 'path', 'content'],
+      required: ['path', 'content'],
     },
     handler: async (args) => {
-      try {
-        const sftpSessionService = injector.get(ISFTPSessionService);
-        const sessionId = args.sessionId as string;
-        const path = args.path as string;
-        const content = args.content as string;
+      const filePath = String(args.path ?? '');
+      const sessionId = typeof args.sessionId === 'string' && args.sessionId ? args.sessionId : null;
+      const content = String(args.content ?? '');
+      const append = Boolean(args.append);
 
-        await sftpSessionService.writeFile(sessionId, path, Buffer.from(content, 'utf-8'));
-        return _textResult(`Successfully wrote ${content.length} bytes to ${path}`);
+      if (!filePath || !isAbsolute(filePath)) {
+        return jsonError('An absolute file path is required.');
+      }
+
+      if (sessionId && append) {
+        return jsonError('append=true is not supported on remote (SFTP) writes. Read + concat + write instead.');
+      }
+
+      try {
+        let resolvedPath: string;
+
+        if (sessionId) {
+          const sftp = injector.get(ISFTPSessionService);
+          await sftp.writeFile(sessionId, filePath, Buffer.from(content, 'utf-8'));
+          resolvedPath = filePath;
+        } else {
+          resolvedPath = resolve(filePath);
+          if (append) {
+            await appendFile(resolvedPath, content, 'utf-8');
+          } else {
+            await writeFile(resolvedPath, content, 'utf-8');
+          }
+        }
+
+        return jsonOk({
+          success: true,
+          path: resolvedPath,
+          remote: Boolean(sessionId),
+          mode: append ? 'append' : 'write',
+          bytesWritten: Buffer.byteLength(content, 'utf-8'),
+        });
       } catch (err) {
         logService.error('[FileTools]', 'file_write failed:', err);
-        return _errorResult(`Error writing file "${args.path}": ${err instanceof Error ? err.message : String(err)}`);
+        return jsonError(`Failed to write file: ${formatError(err)}`);
       }
     },
   };
 }
 
-function _textResult(text: string): IAgentToolResult {
-  return { content: [{ type: 'text', text }] };
+function jsonOk(data: Record<string, unknown>): IAgentToolResult {
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
 }
 
-function _errorResult(text: string): IAgentToolResult {
-  return { content: [{ type: 'text', text }], isError: true };
+function jsonError(message: string): IAgentToolResult {
+  return {
+    content: [{ type: 'text', text: JSON.stringify({ error: message }, null, 2) }],
+    isError: true,
+  };
+}
+
+function formatError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }

@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAgentTool, IAgentToolRegistryService } from '@termlnk/agent';
+import type { IAgentTool, IAgentToolRegistryService, IAgentToolResult } from '@termlnk/agent';
 import type { IDisposable, ILogService } from '@termlnk/core';
 import { buildGuidelines, WIDGET_GUIDELINE_MODULES } from './widget-guidelines';
 
@@ -34,6 +34,12 @@ export const WIDGET_TOOL_NAMES = [
   TERMLNK_BAR_CHART_TOOL,
 ] as const;
 
+// Render widgets are declarative entries — the actual UI is mounted by GenerativeUiBlock
+// keyed on toolName, so the tool result body is intentionally minimal.
+const RENDER_ACK: IAgentToolResult = {
+  content: [{ type: 'text', text: 'ok' }],
+};
+
 export function registerWidgetTools(
   toolRegistry: IAgentToolRegistryService,
   _logService: ILogService
@@ -41,8 +47,18 @@ export function registerWidgetTools(
   return [
     toolRegistry.registerTool(createWidgetReadmeTool()),
     toolRegistry.registerTool(createWidgetRendererTool()),
-    toolRegistry.registerTool(createPieChartTool()),
-    toolRegistry.registerTool(createBarChartTool()),
+    toolRegistry.registerTool(createChartTool(
+      TERMLNK_PIE_CHART_TOOL,
+      'Pie chart',
+      'Render an interactive pie chart inline in the chat. Provide a flat data series; the client renders a theme-aware SVG with hover tooltips. Use for proportional breakdowns (time allocation, market share, error type distribution). For non-proportional data use `termlnk_bar_chart`.',
+      'Slice'
+    )),
+    toolRegistry.registerTool(createChartTool(
+      TERMLNK_BAR_CHART_TOOL,
+      'Bar chart',
+      'Render an interactive bar chart inline in the chat. Provide a flat data series; the client renders a theme-aware SVG with hover tooltips. Use for comparisons across categories (rank, count, score).',
+      'Bar'
+    )),
   ];
 }
 
@@ -52,6 +68,7 @@ function createWidgetReadmeTool(): IAgentTool {
     label: 'Widget guidelines',
     category: 'other',
     isReadOnly: true,
+    hidden: true,
     description:
       'Returns design guidelines for `termlnk_widget_renderer` (CSS variables, layout rules, examples). '
       + 'Call once before your first `termlnk_widget_renderer` call to learn the theming and bridge APIs. '
@@ -69,15 +86,14 @@ function createWidgetReadmeTool(): IAgentTool {
           },
         },
       },
-      required: [],
     },
     handler: async (args) => {
-      const modules = Array.isArray(args.modules)
-        ? (args.modules as unknown[]).filter((m): m is string => typeof m === 'string')
-        : [];
-      const valid = modules.filter((m) => (WIDGET_GUIDELINE_MODULES as readonly string[]).includes(m));
-      const text = buildGuidelines(valid as ReadonlyArray<typeof WIDGET_GUIDELINE_MODULES[number]>);
-      return { content: [{ type: 'text', text }] };
+      const raw = Array.isArray(args.modules) ? args.modules : [];
+      const validModules = raw.filter(
+        (m): m is typeof WIDGET_GUIDELINE_MODULES[number] =>
+          typeof m === 'string' && (WIDGET_GUIDELINE_MODULES as readonly string[]).includes(m)
+      );
+      return { content: [{ type: 'text', text: buildGuidelines(validModules) }] };
     },
   };
 }
@@ -88,6 +104,7 @@ function createWidgetRendererTool(): IAgentTool {
     label: 'Widget renderer',
     category: 'other',
     isReadOnly: true,
+    hidden: true,
     description:
       'Render an interactive HTML/SVG widget inline in the chat. '
       + 'IMPORTANT: Call `termlnk_widget_readme` once before your first call to load design guidelines. '
@@ -116,23 +133,18 @@ function createWidgetRendererTool(): IAgentTool {
       },
       required: ['title', 'html'],
     },
-    handler: async () => ({
-      content: [{ type: 'text', text: '{"rendered":true}' }],
-    }),
+    handler: async () => RENDER_ACK,
   };
 }
 
-function createPieChartTool(): IAgentTool {
+function createChartTool(name: string, label: string, description: string, itemNoun: string): IAgentTool {
   return {
-    name: TERMLNK_PIE_CHART_TOOL,
-    label: 'Pie chart',
+    name,
+    label,
     category: 'other',
     isReadOnly: true,
-    description:
-      'Render an interactive pie chart inline in the chat. '
-      + 'Provide a flat data series; the client renders a theme-aware SVG with hover tooltips. '
-      + 'Use this for proportional breakdowns (time allocation, market share, error type distribution). '
-      + 'For non-proportional data use `termlnk_bar_chart`.',
+    hidden: true,
+    description,
     inputSchema: {
       type: 'object',
       properties: {
@@ -144,8 +156,8 @@ function createPieChartTool(): IAgentTool {
           items: {
             type: 'object',
             properties: {
-              label: { type: 'string', description: 'Slice label.' },
-              value: { type: 'number', description: 'Slice value (non-negative).' },
+              label: { type: 'string', description: `${itemNoun} label.` },
+              value: { type: 'number', description: `${itemNoun} value.` },
               color: { type: 'string', description: 'Optional CSS color.' },
             },
             required: ['label', 'value'],
@@ -154,45 +166,6 @@ function createPieChartTool(): IAgentTool {
       },
       required: ['title', 'data'],
     },
-    handler: async () => ({
-      content: [{ type: 'text', text: '{"rendered":true}' }],
-    }),
-  };
-}
-
-function createBarChartTool(): IAgentTool {
-  return {
-    name: TERMLNK_BAR_CHART_TOOL,
-    label: 'Bar chart',
-    category: 'other',
-    isReadOnly: true,
-    description:
-      'Render an interactive bar chart inline in the chat. '
-      + 'Provide a flat data series; the client renders a theme-aware SVG with hover tooltips. '
-      + 'Use this for comparisons across categories (rank, count, score).',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'Chart title.' },
-        description: { type: 'string', description: 'Brief subtitle. Optional.' },
-        data: {
-          type: 'array',
-          description: 'Array of { label: string, value: number, color?: string } items.',
-          items: {
-            type: 'object',
-            properties: {
-              label: { type: 'string', description: 'Bar label.' },
-              value: { type: 'number', description: 'Bar value.' },
-              color: { type: 'string', description: 'Optional CSS color.' },
-            },
-            required: ['label', 'value'],
-          },
-        },
-      },
-      required: ['title', 'data'],
-    },
-    handler: async () => ({
-      content: [{ type: 'text', text: '{"rendered":true}' }],
-    }),
+    handler: async () => RENDER_ACK,
   };
 }

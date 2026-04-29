@@ -22,17 +22,9 @@ export function registerHostTools(
   sshToolService: ISSHToolService,
   logService: ILogService
 ): IDisposable[] {
-  const disposables: IDisposable[] = [];
-
-  disposables.push(
-    toolRegistry.registerTool(createListHostsTool(sshToolService, logService))
-  );
-
-  disposables.push(
-    toolRegistry.registerTool(createConnectHostTool(sshToolService, logService))
-  );
-
-  return disposables;
+  return [
+    toolRegistry.registerTool(createListHostsTool(sshToolService, logService)),
+  ];
 }
 
 function createListHostsTool(
@@ -42,107 +34,45 @@ function createListHostsTool(
   return {
     name: 'termlnk_host_list',
     label: 'Host List',
-    category: 'terminal',
-    description: 'List all configured SSH hosts and host groups. Returns the host tree structure including names, addresses, ports, usernames, and group hierarchy. Use flat=true for a simple list, or omit for tree structure. Use parentId to list children of a specific group. Call this before termlnk_host_connect to find the correct hostId.',
+    category: 'host',
+    description: 'List configured SSH hosts and groups. Returns host tree (or flat list when flat=true). Use parentId to scope to a group. Call before opening a session via termlnk_terminal_create_session with the resulting hostId.',
     isReadOnly: true,
     inputSchema: {
       type: 'object',
       properties: {
         parentId: {
           type: 'string',
-          description: 'Parent group ID to list children of. If omitted, lists all root-level hosts and groups.',
+          description: 'Parent group ID to list children of. Omit to list root-level hosts and groups.',
         },
         flat: {
-          type: 'string',
-          description: 'If "true", returns a flat list instead of a tree structure.',
-          enum: ['true', 'false'],
+          type: 'boolean',
+          description: 'Return a flat list instead of a tree structure. Default: false.',
         },
       },
     },
     handler: async (args) => {
       try {
-        const parentId = args.parentId as string | undefined;
-        const flat = args.flat === 'true';
+        const parentId = typeof args.parentId === 'string' ? args.parentId : undefined;
+        const flat = args.flat === true;
 
         const hosts = await sshToolService.listHosts(parentId, flat);
 
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({ hosts, count: hosts.length }, null, 2),
-          }],
-        };
+        return jsonOk({ hosts, count: hosts.length });
       } catch (err) {
         logService.error('[HostTools]', 'list_hosts failed:', err);
-        return createErrorResult(`Failed to list hosts: ${err instanceof Error ? err.message : String(err)}`);
+        return jsonError(`Failed to list hosts: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
   };
 }
 
-function createConnectHostTool(
-  sshToolService: ISSHToolService,
-  logService: ILogService
-): IAgentTool {
-  return {
-    name: 'termlnk_host_connect',
-    label: 'Host Connect',
-    category: 'terminal',
-    description: 'Initiate an SSH connection to a configured host. Creates a new SSH session and returns the session ID. After connecting, use termlnk_terminal_execute with the returned sessionId to run commands on the remote host. Before connecting, check if there is already an active session to this host using termlnk_terminal_list_sessions — avoid creating duplicate connections.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        hostId: {
-          type: 'string',
-          description: 'The ID of the host to connect to.',
-        },
-        cols: {
-          type: 'number',
-          description: 'Terminal width in columns. Default: 80.',
-          default: 80,
-        },
-        rows: {
-          type: 'number',
-          description: 'Terminal height in rows. Default: 24.',
-          default: 24,
-        },
-      },
-      required: ['hostId'],
-    },
-    handler: async (args) => {
-      try {
-        const hostId = args.hostId as string;
-        const cols = Number(args.cols) || 80;
-        const rows = Number(args.rows) || 24;
-
-        if (!hostId) {
-          return createErrorResult('hostId is required.');
-        }
-
-        const result = await sshToolService.connectHost(hostId, cols, rows);
-
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              success: true,
-              sessionId: result.sessionId,
-              hostId: result.hostId,
-              hostLabel: result.hostLabel,
-            }, null, 2),
-          }],
-        };
-      } catch (err) {
-        logService.error('[HostTools]', 'host_connect failed:', err);
-        return createErrorResult(`Failed to connect to host: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    },
-  };
+function jsonOk(data: Record<string, unknown>): IAgentToolResult {
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
 }
 
-function createErrorResult(message: string): IAgentToolResult {
+function jsonError(message: string): IAgentToolResult {
   return {
-    content: [{ type: 'text', text: message }],
+    content: [{ type: 'text', text: JSON.stringify({ error: message }, null, 2) }],
     isError: true,
   };
 }

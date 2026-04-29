@@ -21,8 +21,7 @@ import { ConfigRepository } from '@termlnk/database';
 import { debounceTime, filter, from, switchMap } from 'rxjs';
 import { fetch as undiciFetch } from 'undici';
 import { createProxyFetch } from '../services/mcp/proxy-fetch';
-import { registerFileTools } from '../tools/file-tools';
-import { registerProcessTool } from '../tools/process-tool';
+import { registerSystemInfoTool } from '../tools/system-info-tool';
 import { registerWebFetchTool } from '../tools/web-fetch-tool';
 import { registerWebSearchTool } from '../tools/web-search-tool';
 import { registerWidgetTools } from '../tools/widget-tools';
@@ -61,14 +60,8 @@ export class MyMcpController extends Disposable {
       this.disposeWithMe(registerWebFetchTool(this._toolRegistryService, this._logService, getFetch));
       this.disposeWithMe(registerWebSearchTool(this._toolRegistryService, this._logService, getFetch));
 
-      // File tools
-      const fileDisposables = registerFileTools(this._toolRegistryService, this._logService);
-      for (const d of fileDisposables) {
-        this.disposeWithMe(d);
-      }
-
-      // Process info tool
-      this.disposeWithMe(registerProcessTool(this._toolRegistryService, this._logService));
+      // System info tool
+      this.disposeWithMe(registerSystemInfoTool(this._toolRegistryService, this._logService));
 
       // Widget tools (Generative UI Block protocol — always available regardless of session selection)
       const widgetDisposables = registerWidgetTools(this._toolRegistryService, this._logService);
@@ -76,7 +69,7 @@ export class MyMcpController extends Disposable {
         this.disposeWithMe(d);
       }
 
-      this._logService.log('[MCPController]', 'MCP tools registered successfully.');
+      this._logService.log('[MyMcpController]', 'Built-in network/system/widget tools registered.');
     } catch (err) {
       this._logService.warn('[MCPController]', 'Failed to register some MCP tools:', err);
     }
