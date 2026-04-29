@@ -34,6 +34,7 @@ export interface ILLMProviderService {
   getAvailableModels(): IProviderGroup[];
 
   refreshProviderModels(providerId: string): Promise<string[]>;
+  testProviderModel(providerId: string, modelId: string, signal?: AbortSignal): Promise<{ latencyMs: number }>;
   setActiveModel(modelId: string): void;
   getActiveModel(): IModelOption | null;
   toggleModel(providerId: string, modelId: string, enabled: boolean): Promise<void>;

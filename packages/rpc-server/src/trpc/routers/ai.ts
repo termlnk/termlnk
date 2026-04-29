@@ -15,7 +15,7 @@
 
 import { IAIAgentService, ILLMProviderService } from '@termlnk/agent';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
-import { addCustomModelSchema, addProviderSchema, cancelPendingSchema, compactConversationSchema, editUserMessageSchema, getProviderConfigSchema, invokeToolSchema, refreshProviderModelsSchema, removeCustomModelSchema, removeProviderSchema, resetModelOverridesSchema, retryMessageSchema, sendMessageSchema, setActiveModelSchema, setApiKeySchema, setModelSchema, setSystemPromptSchema, setThinkingLevelSchema, toggleModelSchema, updateModelOverridesSchema, updateProviderConfigSchema } from '../schema/ai.schema';
+import { addCustomModelSchema, addProviderSchema, cancelPendingSchema, compactConversationSchema, editUserMessageSchema, getProviderConfigSchema, invokeToolSchema, refreshProviderModelsSchema, removeCustomModelSchema, removeProviderSchema, resetModelOverridesSchema, retryMessageSchema, sendMessageSchema, setActiveModelSchema, setApiKeySchema, setModelSchema, setSystemPromptSchema, setThinkingLevelSchema, testProviderModelSchema, toggleModelSchema, updateModelOverridesSchema, updateProviderConfigSchema } from '../schema/ai.schema';
 import { publicProcedure, router } from '../trpc';
 
 export type AIRouter = typeof aiRouter;
@@ -161,6 +161,13 @@ export const aiRouter = router({
     .mutation(async ({ ctx, input }) => {
       const providerService = ctx.injector.get(ILLMProviderService);
       return providerService.refreshProviderModels(input.providerId);
+    }),
+
+  testProviderModel: publicProcedure
+    .input(testProviderModelSchema)
+    .mutation(async ({ ctx, input }) => {
+      const providerService = ctx.injector.get(ILLMProviderService);
+      return providerService.testProviderModel(input.providerId, input.modelId);
     }),
 
   // --- Model mutations ---

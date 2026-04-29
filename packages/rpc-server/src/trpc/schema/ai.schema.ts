@@ -100,6 +100,11 @@ export const refreshProviderModelsSchema = z.object({
   providerId: z.string().min(1),
 });
 
+export const testProviderModelSchema = z.object({
+  providerId: z.string().min(1),
+  modelId: z.string().min(1),
+});
+
 export const toggleModelSchema = z.object({
   providerId: z.string().min(1),
   modelId: z.string().min(1),

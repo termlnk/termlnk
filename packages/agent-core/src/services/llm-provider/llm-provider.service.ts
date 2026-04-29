@@ -17,7 +17,7 @@ import type { Api, KnownProvider, Model } from '@mariozechner/pi-ai';
 import type { ICustomModelDefinition, ILLMProvider, ILLMProviderService, IModelOption, IModelOverrides, IModelUserConfig, IProviderGroup, IProviderUserConfig } from '@termlnk/agent';
 import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity } from '@termlnk/database';
 import type { Observable } from 'rxjs';
-import { getModels, getProviders } from '@mariozechner/pi-ai';
+import { completeSimple, getModels, getProviders } from '@mariozechner/pi-ai';
 import { AGENT_PLUGIN_CONFIG_KEY, AI_STORAGE_PROVIDERS_KEY } from '@termlnk/agent';
 import { Disposable, Inject } from '@termlnk/core';
 import { ConfigRepository, ProviderRepository } from '@termlnk/database';
@@ -25,6 +25,8 @@ import { BehaviorSubject, combineLatest, map } from 'rxjs';
 import { applyModelOverride, buildModelFromCustomDef, toModelOption } from './utils';
 
 const MODEL_SYNC_TIMEOUT_MS = 12000;
+const MODEL_TEST_TIMEOUT_MS = 10000;
+const MODEL_TEST_PROMPT = 'hi';
 
 const DEFAULT_PROVIDER_BASE_URL: Record<string, string> = {
   anthropic: 'https://api.anthropic.com/v1',
@@ -343,6 +345,34 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
     await this._reloadAndRebuild();
     return modelIds;
+  }
+
+  async testProviderModel(
+    providerId: string,
+    modelId: string,
+    signal?: AbortSignal
+  ): Promise<{ latencyMs: number }> {
+    this.ensureNotDisposed();
+
+    const model = this.resolveModel(providerId, modelId);
+    if (!model) {
+      throw new Error(`Model "${providerId}/${modelId}" not found.`);
+    }
+
+    const config = this._providerConfigs.get(providerId);
+    const apiKey = this._requireApiKey(providerId, config?.apiKey);
+
+    // Provider SDKs default to multi-minute HTTP timeouts; cap the test ourselves.
+    const timeoutSignal = AbortSignal.timeout(MODEL_TEST_TIMEOUT_MS);
+    const mergedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+
+    const startedAt = Date.now();
+    await completeSimple(
+      model,
+      { messages: [{ role: 'user', content: MODEL_TEST_PROMPT, timestamp: startedAt }] },
+      { apiKey, maxTokens: 1, signal: mergedSignal, timeoutMs: MODEL_TEST_TIMEOUT_MS }
+    );
+    return { latencyMs: Date.now() - startedAt };
   }
 
   setActiveModel(modelId: string): void {

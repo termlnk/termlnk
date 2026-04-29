@@ -30,6 +30,7 @@ export interface IProviderConfigClientService {
   updateProviderConfig(providerId: string, patch: Partial<IProviderUserConfig>): Promise<void>;
   getProviderConfig(providerId: string): Promise<IProviderUserConfig | null>;
   refreshProviderModels(providerId: string): Promise<string[]>;
+  testProviderModel(providerId: string, modelId: string): Promise<{ latencyMs: number }>;
   setActiveModel(modelId: string): Promise<void>;
   getProviders(): Promise<IProviderGroup[]>;
   getActiveModel(): Promise<IModelOption | null>;
@@ -93,6 +94,10 @@ export class ProviderConfigClientService extends Disposable implements IProvider
 
   async refreshProviderModels(providerId: string): Promise<string[]> {
     return this._client.refreshProviderModels.mutate({ providerId });
+  }
+
+  async testProviderModel(providerId: string, modelId: string): Promise<{ latencyMs: number }> {
+    return this._client.testProviderModel.mutate({ providerId, modelId });
   }
 
   async setActiveModel(modelId: string): Promise<void> {

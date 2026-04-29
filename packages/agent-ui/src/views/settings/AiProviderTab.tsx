@@ -15,10 +15,10 @@
 
 import type { IModelOption } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
-import { Button, cn, Input, Switch, useDependency, useObservable } from '@termlnk/design';
+import { Button, cn, Input, Popover, PopoverContent, PopoverTrigger, Switch, useDependency, useObservable } from '@termlnk/design';
 import { IProviderConfigClientService } from '@termlnk/rpc-client';
-import { ChevronRight, RefreshCw, Search } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Zap } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddCustomModelDialog } from './AddCustomModelDialog';
 import { AddProviderDialog } from './AddProviderDialog';
 import { ModelConfigPanel } from './ModelConfigPanel';
@@ -54,6 +54,10 @@ export function AiProviderTab() {
   const [syncingProviderId, setSyncingProviderId] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<{ providerId: string; type: 'success' | 'error'; message: string } | null>(null);
   const [expandedModelId, setExpandedModelId] = useState<string | null>(null);
+  const [testingModelId, setTestingModelId] = useState<string | null>(null);
+  const [testModelQuery, setTestModelQuery] = useState('');
+  const [testPopoverOpen, setTestPopoverOpen] = useState(false);
+  const testRequestSeqRef = useRef(0);
 
   // Load provider configs on mount
   useEffect(() => {
@@ -92,7 +96,6 @@ export function AiProviderTab() {
   useEffect(() => {
     const orderedProviders = providers.toSorted(compareProviders);
 
-    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setSelectedProviderId((prev) => {
       if (prev && orderedProviders.some((p) => p.id === prev)) return prev;
       return orderedProviders[0]?.id ?? null;
@@ -144,6 +147,18 @@ export function AiProviderTab() {
     return selectedProvider?.models.filter((m) => m.enabled).length ?? 0;
   }, [selectedProvider]);
 
+  const filteredTestModels = useMemo<IModelOption[]>(() => {
+    if (!selectedProvider) {
+      return [];
+    }
+    const query = testModelQuery.trim().toLowerCase();
+    if (!query) {
+      return selectedProvider.models;
+    }
+    return selectedProvider.models.filter((m) =>
+      m.name.toLowerCase().includes(query) || m.id.toLowerCase().includes(query));
+  }, [selectedProvider, testModelQuery]);
+
   const defaultBaseUrl = selectedProvider ? getDefaultProviderBaseUrl(selectedProvider.id) : undefined;
 
   const handleSelectProvider = useCallback((providerId: string) => {
@@ -151,6 +166,10 @@ export function AiProviderTab() {
     setSyncFeedback(null);
     setModelQuery('');
     setExpandedModelId(null);
+    setTestModelQuery('');
+    setTestPopoverOpen(false);
+    testRequestSeqRef.current += 1;
+    setTestingModelId(null);
   }, []);
 
   const handleApiKeyChange = useCallback((providerId: string, value: string) => {
@@ -210,7 +229,45 @@ export function AiProviderTab() {
     setExpandedModelId((prev) => prev === modelId ? null : modelId);
   }, []);
 
+  const handleTestModel = useCallback(async (model: IModelOption) => {
+    setTestPopoverOpen(false);
+    setTestModelQuery('');
+    setSyncFeedback(null);
+    setTestingModelId(model.id);
+
+    const seq = ++testRequestSeqRef.current;
+    // IModelOption.id is `${providerId}/${bareModelId}`; the server expects the bare id.
+    const bareModelId = model.id.slice(model.providerId.length + 1);
+
+    try {
+      const result = await providerConfigService.testProviderModel(model.providerId, bareModelId);
+      if (seq !== testRequestSeqRef.current) {
+        return;
+      }
+      setSyncFeedback({
+        providerId: model.providerId,
+        type: 'success',
+        message: localeService.t('agent-ui.provider.test-model-success', model.name, String(result.latencyMs)),
+      });
+    } catch (error) {
+      if (seq !== testRequestSeqRef.current) {
+        return;
+      }
+      const detail = error instanceof Error ? error.message : String(error);
+      setSyncFeedback({
+        providerId: model.providerId,
+        type: 'error',
+        message: `${localeService.t('agent-ui.provider.test-model-failed', model.name)}: ${detail}`,
+      });
+    } finally {
+      if (seq === testRequestSeqRef.current) {
+        setTestingModelId(null);
+      }
+    }
+  }, [localeService, providerConfigService]);
+
   const isProviderSyncing = syncingProviderId && syncingProviderId === selectedProviderId;
+  const isTesting = testingModelId !== null;
 
   return (
     <div
@@ -357,10 +414,91 @@ export function AiProviderTab() {
                     <p className="tm:mt-1 tm:text-xs tm:text-white/80">{selectedProvider.id}</p>
                   </div>
 
-                  <Switch
-                    checked={selectedProvider.enabled}
-                    onCheckedChange={(checked) => void handleEnabledChange(selectedProvider.id, checked)}
-                  />
+                  <div className="tm:flex tm:items-center tm:gap-2">
+                    <Popover
+                      open={testPopoverOpen}
+                      onOpenChange={(open) => {
+                        if (!selectedProvider.enabled) {
+                          return;
+                        }
+                        setTestPopoverOpen(open);
+                        if (!open) {
+                          setTestModelQuery('');
+                        }
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="
+                            tm:h-7 tm:gap-1 tm:px-2 tm:text-white
+                            tm:disabled:opacity-50
+                          "
+                          disabled={!selectedProvider.enabled}
+                          title={selectedProvider.enabled
+                            ? localeService.t('agent-ui.provider.test-model')
+                            : localeService.t('agent-ui.provider.test-model-disabled')}
+                        >
+                          {isTesting
+                            ? <Loader2 size={13} className="tm:animate-spin tm:text-blue" />
+                            : <Zap size={13} />}
+                          <ChevronDown size={11} />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="end"
+                        className="tm:w-65 tm:p-2"
+                      >
+                        <div className="tm:relative">
+                          <Search
+                            size={12}
+                            className={`
+                              tm:pointer-events-none tm:absolute tm:top-1/2 tm:left-2 tm:-translate-y-1/2
+                              tm:text-white/70
+                            `}
+                          />
+                          <Input
+                            autoFocus
+                            className={cn(inputCls, 'tm:pl-7')}
+                            value={testModelQuery}
+                            onChange={(e) => setTestModelQuery(e.target.value)}
+                            placeholder={localeService.t('agent-ui.provider.test-model-search')}
+                          />
+                        </div>
+                        <div className="tm:mt-2 tm:max-h-65 tm:space-y-0.5 tm:overflow-y-auto">
+                          {filteredTestModels.length > 0
+                            ? filteredTestModels.map((model) => (
+                              <button
+                                key={model.id}
+                                type="button"
+                                onClick={() => void handleTestModel(model)}
+                                className={cn(
+                                  `
+                                    tm:flex tm:w-full tm:items-center tm:rounded-sm tm:px-2 tm:py-1.5 tm:text-left
+                                    tm:text-xs tm:text-white/90
+                                    tm:hover:bg-one-bg2
+                                  `,
+                                  { 'tm:bg-one-bg2': testingModelId === model.id }
+                                )}
+                              >
+                                <span className="tm:truncate">{model.name}</span>
+                              </button>
+                            ))
+                            : (
+                              <div className="tm:py-3 tm:text-center tm:text-xs tm:text-white/60">
+                                {localeService.t('agent-ui.model.no-models')}
+                              </div>
+                            )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
+                    <Switch
+                      checked={selectedProvider.enabled}
+                      onCheckedChange={(checked) => void handleEnabledChange(selectedProvider.id, checked)}
+                    />
+                  </div>
                 </div>
 
                 {syncFeedback?.providerId === selectedProvider.id && (
@@ -478,7 +616,7 @@ export function AiProviderTab() {
                     </div>
 
                     {/* Model list */}
-                    <div className="tm:mt-3 tm:max-h-[400px] tm:space-y-1.5 tm:overflow-y-auto">
+                    <div className="tm:mt-3 tm:max-h-100 tm:space-y-1.5 tm:overflow-y-auto">
                       {filteredModels.length > 0
                         ? filteredModels.map((model) => (
                           <div key={model.id}>
