@@ -21,7 +21,7 @@ import type { IPendingDeliveryMode } from '../../common/pending-message-queue';
 import { Agent } from '@mariozechner/pi-agent-core';
 import { getModel, streamSimple } from '@mariozechner/pi-ai';
 import { DEFAULT_COMPACT_CONFIG, DEFAULT_THINKING_LEVEL, ILLMProviderService, normalizeCompactConfig } from '@termlnk/agent';
-import { Disposable, generateRandomId, Inject } from '@termlnk/core';
+import { Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
 import { BehaviorSubject, combineLatest, map, Subject } from 'rxjs';
 import { PendingMessageQueue } from '../../common/pending-message-queue';
@@ -41,7 +41,9 @@ import {
 const COMPACT_MAX_OUTPUT_TOKENS = 20000;
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 2000;
-const RETRYABLE_ERROR_PATTERN = /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i;
+// 502 excluded: usually a structural rejection (gateway forwarded an invalid
+// request), not a transient failure — retrying the same body wastes time.
+const RETRYABLE_ERROR_PATTERN = /overloaded|rate.?limit|too many requests|429|500|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i;
 
 function buildUserMessageParts(content: string, images?: IImageAttachment[]): IMessagePart[] {
   const parts: IMessagePart[] = [];
@@ -152,9 +154,20 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
   constructor(
     @Inject(ILLMProviderService) private readonly _llmProviderService: ILLMProviderService,
-    @Inject(ChatRepository) private readonly _chatRepository: ChatRepository
+    @Inject(ChatRepository) private readonly _chatRepository: ChatRepository,
+    @Inject(ILogService) private readonly _logService: ILogService
   ) {
     super();
+
+    // Reset local state when the active session is deleted elsewhere — avoids
+    // stale FK references in subsequent _persistMessage calls.
+    this.disposeWithMe(
+      this._chatRepository.changed$.subscribe((event) => {
+        if (event.type === 'delete' && event.sessionId === this._currentSessionId$.getValue()) {
+          this._resetCurrentSessionState();
+        }
+      })
+    );
   }
 
   private readonly _messages$ = new BehaviorSubject<IChatMessage[]>([]);
@@ -720,6 +733,31 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     super.dispose();
   }
 
+  // Clears in-memory chat state; next sendMessage() lazily creates a new session.
+  private _resetCurrentSessionState(): void {
+    this._currentSessionId$.next(null);
+    this._messages$.next([]);
+    this._currentMessage$.next(null);
+    this._messageCounter = 0;
+    this._toolResults.clear();
+    this._pendingQueue.clear();
+    this._isStreaming$.next(false);
+    this._status$.next('idle');
+    this._cancelRetry();
+    this._agent?.reset();
+  }
+
+  private _isForeignKeyError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+    const e = error as { code?: string; message?: unknown };
+    if (e.code === 'SQLITE_CONSTRAINT_FOREIGNKEY') {
+      return true;
+    }
+    return typeof e.message === 'string' && /FOREIGN KEY constraint failed/i.test(e.message);
+  }
+
   private async _persistMessage(message: IChatMessage): Promise<void> {
     const sessionId = this._currentSessionId$.getValue();
     if (!sessionId) {
@@ -748,6 +786,11 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         });
       }
     } catch (error) {
+      if (this._isForeignKeyError(error)) {
+        this._logService.warn(`[AIAgentService] Session "${sessionId}" no longer exists; resetting local state.`);
+        this._resetCurrentSessionState();
+        return;
+      }
       console.error('[AIAgentService] Failed to persist message:', error);
     }
   }
