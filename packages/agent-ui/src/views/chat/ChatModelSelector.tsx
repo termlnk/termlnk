@@ -92,8 +92,8 @@ export function ChatModelSelector(props: IChatModelSelectorProps) {
             type="button"
             className={cn(
               `
-                tm:flex tm:cursor-pointer tm:items-center tm:gap-1.5 tm:rounded-md tm:bg-transparent tm:text-light-grey
-                tm:transition-colors
+                tm:flex tm:min-w-0 tm:cursor-pointer tm:items-center tm:gap-1.5 tm:rounded-md tm:bg-transparent
+                tm:text-light-grey tm:transition-colors
                 tm:hover:text-white
               `,
               triggerClassName
@@ -114,20 +114,37 @@ export function ChatModelSelector(props: IChatModelSelectorProps) {
               : (
                 <Sparkles className="tm:size-3.5 tm:shrink-0 tm:text-current" />
               )}
-            <span className="tm:min-w-0 tm:flex-1 tm:truncate tm:text-[0.75rem] tm:font-normal tm:text-current">
+            <span
+              className={`
+                tm:min-w-0 tm:flex-1 tm:truncate tm:text-[0.75rem] tm:font-normal tm:text-current
+                tm:@max-[220px]/chat-toolbar:hidden
+              `}
+            >
               {activeModel?.name ?? localeService.t('agent-ui.model.select-model')}
             </span>
             {showModelTag && modelTag && (
-              <span className="tm:shrink-0 tm:text-[0.72rem] tm:font-semibold tm:text-current">{modelTag}</span>
+              <span
+                className={`
+                  tm:shrink-0 tm:text-[0.72rem] tm:font-semibold tm:text-current
+                  tm:@max-[220px]/chat-toolbar:hidden
+                `}
+              >
+                {modelTag}
+              </span>
             )}
-            <ChevronDown className="tm:size-3.5 tm:shrink-0 tm:text-light-grey" />
+            <ChevronDown
+              className={`
+                tm:size-3.5 tm:shrink-0 tm:text-light-grey
+                tm:@max-[220px]/chat-toolbar:hidden
+              `}
+            />
           </button>
         </SearchSelectTrigger>
         <SearchSelectContent
           side="top"
           sideOffset={6}
           align="start"
-          className="tm:min-h-[240px] tm:w-[220px]"
+          className="tm:min-h-[240px] tm:w-[250px]"
         >
           <SearchSelectInput placeholder={localeService.t('agent-ui.model.search-models')} />
           <SearchSelectEmpty>{localeService.t('agent-ui.model.no-models')}</SearchSelectEmpty>

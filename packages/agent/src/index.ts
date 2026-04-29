@@ -20,7 +20,7 @@ export { SKILL_BUNDLED_DIR, SKILL_CONFIG_KEY, SKILL_PLUGIN_NAME, SKILL_PROJECT_D
 export { DEFAULT_MCP_CONFIG } from './config/config';
 export { AGENT_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IAgentPluginConfig } from './controllers/config.schema';
-export type { AgentStatus, ChatRole, IAgentConfig, IChatMessage, IChatToolCall, IChatUsage, IImageAttachment, ISendMessageOptions, MessageDeliveryMode, ThinkingLevel, ToolCallStatus } from './models/agent';
+export type { AgentStatus, ChatRole, IAgentConfig, IChatMessage, IChatUsage, IErrorPart, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, ITextPart, IThinkingPart, IToolOutput, IToolPart, MessageDeliveryMode, ThinkingLevel, ToolPartState } from './models/agent';
 export { AGENT_DISPLAY_NAMES, AGENT_HOOK_CONFIG_KEY, DEFAULT_AGENT_HOOK_CONFIG, TERMLNK_HOOK_MARKER } from './models/agent-hook';
 export type { AgentHookEventType, AgentHookFormat, AgentSessionSource, AgentSessionStatus, AgentTodoStatus, ExternalAgentType, IAgentHookConfig, IAgentHookDefinition, IAgentHookEvent, IAgentHookEventMapping, IAgentHookEventMeta, IAgentTodo, IAskUserQuestion, IAskUserQuestionRequestPayload, IAskUserQuestionSet, IExternalAgentSession, IPendingInteractionPayload, IPermissionDecision, IPermissionRequestPayload, IPermissionResponsePayload, PendingInteractionKind } from './models/agent-hook';
 export { KNOWN_API_TYPES } from './models/api-metadata';

@@ -135,5 +135,11 @@ export class AgentCorePlugin extends Plugin {
       [PlatformPromptController],
       [CompactController],
     ]);
+
+    const aiAgentService = this._injector.get(IAIAgentService);
+    const logService = this._injector.get(ILogService);
+    aiAgentService.restoreLastSession().catch((err) => {
+      logService.error('[AgentCorePlugin] restoreLastSession failed:', err);
+    });
   }
 }

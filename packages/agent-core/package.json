@@ -65,6 +65,7 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/rpc": "workspace:*",
+    "partial-json": "^0.1.7",
     "socks": "^2.8.7",
     "undici": "^8.1.0",
     "zod": "^4.3.6"

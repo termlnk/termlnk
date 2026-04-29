@@ -20,6 +20,7 @@ import { IAgentToolRegistryService, IAIAgentService, IMcpService } from '@termln
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
 import { sanitizeName } from '../common/sanitize-name';
+import { WIDGET_TOOL_NAMES } from '../tools/widget-tools';
 
 export class McpController extends Disposable {
   private _registeredAgentToolNames: string[] = [];
@@ -74,9 +75,9 @@ export class McpController extends Disposable {
         })
       );
 
-      this._logService.log('[MCPClientController] MCP Client system initialized');
+      this._logService.log('[McpController] MCP Client system initialized');
     } catch (err) {
-      this._logService.error(`[MCPClientController] Failed to initialize: ${err}`);
+      this._logService.error(`[McpController] Failed to initialize: ${err}`);
     }
   }
 
@@ -100,10 +101,13 @@ export class McpController extends Disposable {
     const agentTools: AgentTool<any>[] = [];
 
     // 1. Convert built-in tools (from IAgentToolRegistryService) to AgentTool[]
+    // Widget tools are always included regardless of session selection (mirrors alma's
+    // unconditional injection of widgetReadme/widgetRenderer/pieChart/barChart).
     const builtinTools = this._mcpToolRegistryService.getTools();
     for (const tool of builtinTools) {
       const builtinId = `builtin_${tool.name}`;
-      if (selectedToolIdSet && !selectedToolIdSet.has(builtinId)) {
+      const isWidgetTool = (WIDGET_TOOL_NAMES as readonly string[]).includes(tool.name);
+      if (selectedToolIdSet && !selectedToolIdSet.has(builtinId) && !isWidgetTool) {
         continue;
       }
       agentTools.push(this._convertBuiltinToolToAgentTool(tool));
@@ -123,7 +127,7 @@ export class McpController extends Disposable {
       this._aiAgentService.addTools(agentTools);
     }
 
-    this._logService.log(`[MCPClientController] Synced ${agentTools.length} tools to AI Agent (${builtinTools.length} builtin, ${remoteTools.length} remote)`);
+    this._logService.log(`[McpController] Synced ${agentTools.length} tools to AI Agent (${builtinTools.length} builtin, ${remoteTools.length} remote)`);
   }
 
   private _convertBuiltinToolToAgentTool(tool: IAgentTool): AgentTool<any> {
@@ -132,18 +136,20 @@ export class McpController extends Disposable {
       label: tool.label ?? tool.name,
       description: tool.description,
       parameters: Type.Unsafe(tool.inputSchema || { type: 'object' }),
-      execute: async (_toolCallId: string, params: Record<string, unknown>): Promise<AgentToolResult<any>> => {
+      execute: async (_toolCallId: string, params: unknown): Promise<AgentToolResult<any>> => {
         try {
-          const result = await tool.handler(params);
+          const result = await tool.handler(params as Record<string, unknown>);
           return {
-            content: result.content.map((c) => ({
-              type: 'text' as const,
-              text: c.text ?? '',
-            })),
+            content: result.content.map((c) => {
+              if (c.type === 'image') {
+                return { type: 'text' as const, text: c.data ? `[image:${c.mimeType ?? 'unknown'}]` : '' };
+              }
+              return { type: 'text' as const, text: c.text ?? '' };
+            }),
             details: result,
           };
         } catch (err) {
-          this._logService.error(`[MCPClientController] Builtin tool ${tool.name} failed: ${err}`);
+          this._logService.error(`[McpController] Builtin tool ${tool.name} failed: ${err}`);
           return {
             content: [{ type: 'text', text: `Error: ${err}` }],
             details: { error: String(err) },
@@ -160,16 +166,16 @@ export class McpController extends Disposable {
       label: `[${remoteTool.serverName}] ${remoteTool.name}`,
       description: remoteTool.description || remoteTool.name,
       parameters: Type.Unsafe(remoteTool.inputSchema || { type: 'object' }),
-      execute: async (_toolCallId: string, params: Record<string, unknown>): Promise<AgentToolResult<any>> => {
+      execute: async (_toolCallId: string, params: unknown): Promise<AgentToolResult<any>> => {
         try {
-          const result = await this._mcpService.callTool(remoteTool.serverId, remoteTool.name, params);
+          const result = await this._mcpService.callTool(remoteTool.serverId, remoteTool.name, params as Record<string, unknown>);
           const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
           return {
             content: [{ type: 'text', text }],
             details: result,
           };
         } catch (err) {
-          this._logService.error(`[MCPClientController] Tool ${toolName} failed: ${err}`);
+          this._logService.error(`[McpController] Tool ${toolName} failed: ${err}`);
           return {
             content: [{ type: 'text', text: `Error: ${err}` }],
             details: { error: String(err) },

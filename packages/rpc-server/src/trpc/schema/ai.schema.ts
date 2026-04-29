@@ -28,6 +28,20 @@ export const cancelPendingSchema = z.object({
   messageId: z.string().min(1),
 });
 
+export const retryMessageSchema = z.object({
+  messageId: z.string().min(1),
+});
+
+export const editUserMessageSchema = z.object({
+  messageId: z.string().min(1),
+  content: z.string().min(1),
+});
+
+export const invokeToolSchema = z.object({
+  toolName: z.string().min(1),
+  args: z.record(z.string(), z.unknown()).default({}),
+});
+
 export const setModelSchema = z.object({
   provider: z.string().min(1),
   modelId: z.string().min(1),

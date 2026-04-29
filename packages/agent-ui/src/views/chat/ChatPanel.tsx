@@ -73,7 +73,7 @@ export function ChatPanel() {
   }, []);
 
   return (
-    <div className="tm:flex tm:h-full tm:flex-col tm:bg-black">
+    <div className="tm:flex tm:h-full tm:min-w-0 tm:flex-col tm:overflow-hidden tm:bg-black">
       <ChatHeader showHistory={showHistory} onToggleHistory={handleToggleHistory} sessionTitle={sessionTitle} />
       {showHistory
         ? <ChatSessionList onSelectSession={handleSelectSession} />

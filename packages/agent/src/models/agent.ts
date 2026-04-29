@@ -17,20 +17,55 @@ import type { ICompactMetadata } from './compact';
 
 export type ChatRole = 'user' | 'assistant' | 'system' | 'compact_boundary';
 
-export type ToolCallStatus = 'running' | 'success' | 'error';
-
 export type AgentStatus = 'idle' | 'thinking' | 'tool_calling' | 'streaming' | 'error' | 'compacting';
 
 export type ThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
 
-export interface IChatToolCall {
-  id: string;
-  name: string;
-  args: Record<string, unknown>;
-  result?: string;
-  status: ToolCallStatus;
-  error?: string;
+export type ToolPartState = 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
+
+export interface ITextPart {
+  type: 'text';
+  text: string;
 }
+
+export interface IThinkingPart {
+  type: 'thinking';
+  thinking: string;
+  signature?: string;
+}
+
+export interface IToolPart {
+  type: 'tool';
+  toolCallId: string;
+  toolName: string;
+  state: ToolPartState;
+  input?: Record<string, unknown>;
+  inputRaw?: string;
+  output?: IToolOutput;
+}
+
+export interface IToolOutput {
+  text?: string;
+  isError?: boolean;
+}
+
+export interface IImagePart {
+  type: 'image';
+  data: string;
+  mimeType: string;
+}
+
+export interface IErrorPart {
+  type: 'error';
+  message: string;
+}
+
+export type IMessagePart =
+  | ITextPart
+  | IThinkingPart
+  | IToolPart
+  | IImagePart
+  | IErrorPart;
 
 export interface IChatUsage {
   promptTokens: number;
@@ -53,12 +88,8 @@ export interface ISendMessageOptions {
 export interface IChatMessage {
   id: string;
   role: ChatRole;
-  content: string;
-  thinking?: string;
-  toolCalls?: IChatToolCall[];
-  images?: IImageAttachment[];
+  parts: IMessagePart[];
   isStreaming?: boolean;
-  error?: string;
   usage?: IChatUsage;
   createdAt: number;
   compactMetadata?: ICompactMetadata;

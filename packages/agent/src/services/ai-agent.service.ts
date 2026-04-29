@@ -47,11 +47,39 @@ export interface IAIAgentService {
   createNewSession(): Promise<string>;
   getCurrentSessionId(): string | null;
 
+  /**
+   * Restore the most recently accessed chat session as the current one.
+   * Returns true on restore, false when no session exists in storage.
+   * Idempotent: returns true immediately if a session is already current.
+   */
+  restoreLastSession(): Promise<boolean>;
+
   compactConversation(options: ICompactOptions): Promise<void>;
   setCompactConfig(config: ICompactConfig): void;
 
   cancelPending(messageId: string): Promise<void>;
   clearPendingQueue(): void;
+
+  /**
+   * Re-run inference from the assistant message identified by `messageId`.
+   * Removes that message and everything after it, then prompts the agent again
+   * with the conversation up to (but not including) the removed message.
+   */
+  retryMessage(messageId: string): Promise<void>;
+
+  /**
+   * Replace the content of the user message identified by `messageId`, drop
+   * every message after it, and re-run inference with the edited prompt.
+   */
+  editUserMessage(messageId: string, content: string): Promise<void>;
+
+  /**
+   * Bypass-execute a registered agent tool (does not produce a chat message).
+   * Used by widget-driven tool-call actions where the widget consumes the
+   * result directly via postMessage. Returns the tool's structured result, or
+   * throws when the tool is unknown or its execute() rejects.
+   */
+  invokeTool(toolName: string, args: Record<string, unknown>): Promise<unknown>;
 }
 
 export const IAIAgentService = createIdentifier<IAIAgentService>('agent.ai-agent-service');

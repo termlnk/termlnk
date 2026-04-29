@@ -1,4 +1,114 @@
-@import 'highlight.js/styles/github-dark-dimmed.css';
-
 @import 'tailwindcss/utilities' prefix(tm);
 @import '@termlnk/shared/tailwind/theme.css';
+
+@layer components {
+  .tm-dotmatrix-cell {
+    background-color: var(--tm-light-grey, #828a99);
+    opacity: 0.18;
+    animation-name: tm-dotmatrix-pulse;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+    animation-fill-mode: both;
+  }
+
+  .tm-shimmer-text {
+    background-image: linear-gradient(
+      90deg,
+      var(--tm-grey-fg2, #717686) 0%,
+      var(--tm-grey-fg2, #717686) 35%,
+      var(--tm-white, #ffffff) 50%,
+      var(--tm-grey-fg2, #717686) 65%,
+      var(--tm-grey-fg2, #717686) 100%
+    );
+    background-size: 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: tm-shimmer 2.4s linear infinite;
+  }
+
+  .tm-thinking-pulse {
+    animation: tm-thinking-pulse 1.6s ease-in-out infinite;
+  }
+
+  .tm-stream-cursor {
+    display: inline-block;
+    width: 0.45em;
+    height: 1em;
+    margin-left: 2px;
+    vertical-align: -0.1em;
+    background-color: currentColor;
+    animation: tm-stream-cursor-blink 1s step-end infinite;
+  }
+}
+
+@keyframes tm-dotmatrix-pulse {
+  0%,
+  100% {
+    background-color: var(--tm-light-grey, #828a99);
+    opacity: 0.18;
+    transform: scale(1);
+  }
+  35% {
+    background-color: var(--tm-nord-blue, #81a1c1);
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+@keyframes tm-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes tm-thinking-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes tm-stream-cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-dotmatrix-cell {
+    animation: none;
+    background-color: var(--tm-light-grey, #828a99);
+    opacity: 0.6;
+  }
+
+  .tm-shimmer-text {
+    animation: none;
+    background: none;
+    color: var(--tm-light-grey, #828a99);
+    -webkit-text-fill-color: var(--tm-light-grey, #828a99);
+  }
+
+  .tm-thinking-pulse {
+    animation: none;
+    opacity: 0.8;
+  }
+
+  .tm-stream-cursor {
+    animation: none;
+    opacity: 0.6;
+  }
+}

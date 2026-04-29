@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "1c5c1222-f9cd-44d6-826d-041175ad3bdb",
+  "id": "32f8fb1d-f7f9-4c37-bf8d-8a9682435d0b",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -84,39 +84,9 @@
       "type": "text",
       "notNull": true,
       "autoincrement": false,
-      "default": "''",
-      "generated": null,
-      "name": "content",
-      "entityType": "columns",
-      "table": "chat_message"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "thinking",
-      "entityType": "columns",
-      "table": "chat_message"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "tool_calls",
-      "entityType": "columns",
-      "table": "chat_message"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "error",
+      "name": "parts",
       "entityType": "columns",
       "table": "chat_message"
     },

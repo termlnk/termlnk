@@ -25,6 +25,7 @@ import { registerFileTools } from '../tools/file-tools';
 import { registerProcessTool } from '../tools/process-tool';
 import { registerWebFetchTool } from '../tools/web-fetch-tool';
 import { registerWebSearchTool } from '../tools/web-search-tool';
+import { registerWidgetTools } from '../tools/widget-tools';
 
 const NETWORK_CONFIG_KEY = 'network.config';
 
@@ -68,6 +69,12 @@ export class MyMcpController extends Disposable {
 
       // Process info tool
       this.disposeWithMe(registerProcessTool(this._toolRegistryService, this._logService));
+
+      // Widget tools (Generative UI Block protocol — always available regardless of session selection)
+      const widgetDisposables = registerWidgetTools(this._toolRegistryService, this._logService);
+      for (const d of widgetDisposables) {
+        this.disposeWithMe(d);
+      }
 
       this._logService.log('[MCPController]', 'MCP tools registered successfully.');
     } catch (err) {

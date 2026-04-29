@@ -37,10 +37,7 @@ export const chatMessageEntity = sqliteTable('chat_message', {
   id: text('id').primaryKey().notNull(),
   sessionId: text('session_id').notNull().references(() => chatSessionEntity.id, { onDelete: 'cascade' }),
   role: text('role').notNull(), // 'user' | 'assistant' | 'system' | 'compact_boundary'
-  content: text('content').notNull().default(''),
-  thinking: text('thinking'),
-  toolCalls: text('tool_calls', { mode: 'json' }),
-  error: text('error'),
+  parts: text('parts', { mode: 'json' }).notNull().$type<unknown[]>(),
   usage: text('usage', { mode: 'json' }),
   compactMetadata: text('compact_metadata', { mode: 'json' }),
   hiddenInUI: integer('hidden_in_ui', { mode: 'boolean' }),

@@ -37,6 +37,9 @@ export interface IAIAgentClientService {
   clearMessages(): Promise<void>;
   abort(): Promise<void>;
   reset(): Promise<void>;
+  retryMessage(messageId: string): Promise<void>;
+  editUserMessage(messageId: string, content: string): Promise<void>;
+  invokeTool(toolName: string, args: Record<string, unknown>): Promise<unknown>;
   setModel(provider: string, modelId: string): Promise<void>;
   setSystemPrompt(prompt: string): Promise<void>;
   setThinkingLevel(level: ThinkingLevel): Promise<void>;
@@ -99,6 +102,18 @@ export class AIAgentClientService extends Disposable implements IAIAgentClientSe
 
   async cancelPending(messageId: string): Promise<void> {
     await this.client.cancelPending.mutate({ messageId });
+  }
+
+  async retryMessage(messageId: string): Promise<void> {
+    await this.client.retryMessage.mutate({ messageId });
+  }
+
+  async editUserMessage(messageId: string, content: string): Promise<void> {
+    await this.client.editUserMessage.mutate({ messageId, content });
+  }
+
+  async invokeTool(toolName: string, args: Record<string, unknown>): Promise<unknown> {
+    return this.client.invokeTool.mutate({ toolName, args });
   }
 
   async clearPendingQueue(): Promise<void> {

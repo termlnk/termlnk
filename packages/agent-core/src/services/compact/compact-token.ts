@@ -25,30 +25,51 @@ export function estimateTokensFromText(text: string): number {
 }
 
 export function estimateTokensFromMessage(message: IChatMessage): number {
-  let tokens = estimateTokensFromText(message.content ?? '');
-  if (message.thinking) {
-    tokens += estimateTokensFromText(message.thinking);
-  }
-  if (message.toolCalls) {
-    for (const call of message.toolCalls) {
-      try {
-        tokens += estimateTokensFromText(JSON.stringify(call.args ?? {}));
-      } catch {
-        // ignore unserializable args
+  let tokens = 0;
+  for (const part of message.parts) {
+    switch (part.type) {
+      case 'text': {
+        tokens += estimateTokensFromText(part.text);
+        break;
       }
-      if (call.error) {
-        tokens += estimateTokensFromText(call.error);
+      case 'thinking': {
+        tokens += estimateTokensFromText(part.thinking);
+        break;
+      }
+      case 'tool': {
+        try {
+          tokens += estimateTokensFromText(JSON.stringify(part.input ?? {}));
+        } catch {
+          // ignore unserializable input
+        }
+        if (part.output?.text) {
+          tokens += estimateTokensFromText(part.output.text);
+        }
+        break;
+      }
+      case 'error': {
+        tokens += estimateTokensFromText(part.message);
+        break;
+      }
+      default: {
+        break;
       }
     }
   }
   return tokens;
 }
 
-export function getLatestPromptTokens(messages: IChatMessage[]): number {
+// LLMs are stateless: every request packs the entire conversation history
+// (including the previous assistant reply) into the next prompt. So the next
+// request's input ≈ the previous request's totalTokens (input+output), NOT
+// just its promptTokens. Using totalTokens here keeps both the auto-compact
+// trigger and the UI "context usage" indicator aligned with what the model
+// will actually receive on the next turn.
+export function getLatestContextTokens(messages: IChatMessage[]): number {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const usage = messages[i]?.usage;
-    if (usage && typeof usage.promptTokens === 'number' && usage.promptTokens > 0) {
-      return usage.promptTokens;
+    if (usage && typeof usage.totalTokens === 'number' && usage.totalTokens > 0) {
+      return usage.totalTokens;
     }
   }
   return messages.reduce((sum, m) => sum + estimateTokensFromMessage(m), 0);

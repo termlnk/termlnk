@@ -142,7 +142,9 @@ export function ChatInput() {
 
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea) {
+      return;
+    }
     if (manualHeight !== null) {
       textarea.style.height = `${clampHeight(manualHeight)}px`;
       return;
@@ -154,7 +156,9 @@ export function ChatInput() {
 
   const updateResizeHeight = useCallback((clientY: number) => {
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea) {
+      return;
+    }
     const delta = resizeStartYRef.current - clientY;
     const nextHeight = clampHeight(resizeStartHeightRef.current + delta);
     setManualHeight(nextHeight);
@@ -252,7 +256,9 @@ export function ChatInput() {
 
   const handleSlashSelect = useCallback(
     (item: { name: string }) => {
-      if (!slashState.active) return;
+      if (!slashState.active) {
+        return;
+      }
       const before = value.slice(0, slashState.slashIndex);
       const after = value.slice(cursorPosition);
       const replacement = `${item.name} `;
@@ -279,7 +285,9 @@ export function ChatInput() {
   const handlePaste = useCallback(
     (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
       const items = e.clipboardData?.files;
-      if (!items || items.length === 0) return;
+      if (!items || items.length === 0) {
+        return;
+      }
       const imageFiles = [...items].filter((f) => ACCEPTED_IMAGE_TYPES.includes(f.type));
       if (imageFiles.length > 0) {
         e.preventDefault();
@@ -312,7 +320,9 @@ export function ChatInput() {
 
   const handleResizePointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea) {
+      return;
+    }
     e.preventDefault();
     isResizingRef.current = true;
     setIsResizing(true);
@@ -323,7 +333,9 @@ export function ChatInput() {
 
   const handleResizePointerMove = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (!isResizingRef.current) return;
+      if (!isResizingRef.current) {
+        return;
+      }
       e.preventDefault();
       updateResizeHeight(e.clientY);
     },
@@ -332,7 +344,9 @@ export function ChatInput() {
 
   const handleResizePointerUp = useCallback(
     (e: React.PointerEvent<HTMLButtonElement>) => {
-      if (!isResizingRef.current) return;
+      if (!isResizingRef.current) {
+        return;
+      }
       e.preventDefault();
       isResizingRef.current = false;
       setIsResizing(false);
@@ -348,18 +362,26 @@ export function ChatInput() {
     ? activeModel.contextWindow
     : DEFAULT_CONTEXT_WINDOW;
   const draftTokens = useMemo(() => Math.ceil(value.length / 3.8), [value.length]);
-  const latestPromptTokens = useMemo(() => {
+  // LLMs are stateless: every request packs the entire conversation history
+  // (including the previous assistant reply) into the next prompt. So the
+  // next request's input ≈ the previous request's totalTokens (input+output).
+  // Using totalTokens here keeps the indicator aligned with what the model
+  // will actually receive on the next turn, and matches the auto-compact
+  // trigger (see getLatestContextTokens in agent-core/compact-token).
+  const latestContextTokens = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
-      const promptTokens = messages[i]?.usage?.promptTokens;
-      if (typeof promptTokens === 'number' && promptTokens > 0) {
-        return promptTokens;
+      const totalTokens = messages[i]?.usage?.totalTokens;
+      if (typeof totalTokens === 'number' && totalTokens > 0) {
+        return totalTokens;
       }
     }
     return 0;
   }, [messages]);
-  const usedContextTokens = latestPromptTokens + draftTokens;
+  const usedContextTokens = latestContextTokens + draftTokens;
   const contextUsagePercent = useMemo(() => {
-    if (contextWindowTokens <= 0) return 0;
+    if (contextWindowTokens <= 0) {
+      return 0;
+    }
     const ratio = (usedContextTokens / contextWindowTokens) * 100;
     return Math.max(0, Math.min(100, Math.round(ratio)));
   }, [usedContextTokens, contextWindowTokens]);
@@ -389,13 +411,10 @@ export function ChatInput() {
         <Button
           variant="ghost"
           size="sm"
-          className={cn(
-            `
-              tm:absolute tm:inset-x-2 tm:top-0 tm:z-10 tm:flex tm:h-2 tm:cursor-row-resize tm:items-start
-              tm:justify-center tm:rounded-t-2xl
-            `,
-            isResizing && 'tm:cursor-row-resize'
-          )}
+          className={cn(`
+            tm:absolute tm:inset-x-2 tm:top-0 tm:z-10 tm:flex tm:h-2 tm:cursor-row-resize tm:items-start
+            tm:justify-center tm:rounded-t-2xl
+          `)}
           onPointerDown={handleResizePointerDown}
           onPointerMove={handleResizePointerMove}
           onPointerUp={handleResizePointerUp}
@@ -408,8 +427,11 @@ export function ChatInput() {
           <span
             className={cn(
               'tm:mt-px tm:h-0.5 tm:w-10 tm:rounded-full tm:bg-white/35 tm:transition-all tm:duration-150',
-              (isResizeHover || isResizing) ? 'tm:opacity-100' : 'tm:opacity-0',
-              isResizing && 'tm:bg-blue/60'
+              {
+                'tm:opacity-100': isResizeHover || isResizing,
+                'tm:opacity-0': !isResizeHover && !isResizing,
+                'tm:bg-blue/60': isResizing,
+              }
             )}
           />
         </Button>
@@ -452,13 +474,13 @@ export function ChatInput() {
           className="tm:hidden"
           onChange={handleFileInputChange}
         />
-        <div className="tm:mt-1 tm:flex tm:items-center tm:justify-between">
+        <div className="tm:mt-1 tm:flex tm:items-center tm:justify-between tm:@container/chat-toolbar">
           <div className="tm:flex tm:min-w-0 tm:flex-1 tm:items-center tm:gap-1">
             <Button
               variant="ghost"
               size="icon-xs"
               className={`
-                tm:flex tm:size-7 tm:text-light-grey
+                tm:flex tm:size-7 tm:shrink-0 tm:text-light-grey
                 tm:hover:text-white
               `}
               onClick={handleAttachClick}
@@ -470,9 +492,9 @@ export function ChatInput() {
             <ChatSkillSelector />
             <ChatThinkingLevelSelector />
             <ChatModelSelector
-              className="tm:inline-flex tm:max-w-[18rem] tm:min-w-0"
+              className="tm:inline-flex tm:min-w-0 tm:max-w-full"
               triggerClassName={`
-                tm:h-7 tm:w-auto tm:gap-1 tm:rounded-md tm:border-0 tm:bg-transparent tm:px-1.5 tm:pr-1
+                tm:h-7 tm:w-full tm:gap-1 tm:rounded-md tm:border-0 tm:bg-transparent tm:px-1.5 tm:pr-1
                 tm:text-[0.72rem] tm:text-light-grey
                 tm:hover:bg-one-bg2/45
                 tm:aria-expanded:bg-one-bg2/45 tm:aria-expanded:text-white
@@ -486,8 +508,9 @@ export function ChatInput() {
                     variant="ghost"
                     size="xs"
                     className={`
-                      tm:inline-flex tm:h-7 tm:shrink-0 tm:gap-2 tm:rounded-md tm:px-1.5 tm:text-light-grey
+                      tm:inline-flex tm:h-7 tm:shrink-0 tm:gap-1 tm:rounded-md tm:px-1.5 tm:text-light-grey
                       tm:hover:bg-one-bg2/45 tm:hover:text-white
+                      tm:@max-[260px]/chat-toolbar:hidden
                     `}
                     aria-label={contextUsageTitle}
                   >

@@ -15,7 +15,7 @@
 
 import type { AgentEvent, AgentTool } from '@mariozechner/pi-agent-core';
 import type { Api, AssistantMessage, Model, UserMessage } from '@mariozechner/pi-ai';
-import type { AgentStatus, IAIAgentService, IAIAgentState, IChatMessage, IChatToolCall, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, ISendMessageOptions, ThinkingLevel } from '@termlnk/agent';
+import type { AgentStatus, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import type { IPendingDeliveryMode } from '../../common/pending-message-queue';
 import { Agent } from '@mariozechner/pi-agent-core';
@@ -26,12 +26,85 @@ import { ChatRepository } from '@termlnk/database';
 import { BehaviorSubject, combineLatest, map, Subject } from 'rxjs';
 import { PendingMessageQueue } from '../../common/pending-message-queue';
 import { buildCompactUserPrompt, buildSummaryUserMessage, formatMessagesForCompaction } from '../compact/compact-prompt';
-import { getLatestPromptTokens, shouldAutoCompact } from '../compact/compact-token';
+import { getLatestContextTokens, shouldAutoCompact } from '../compact/compact-token';
+import {
+  appendErrorPart,
+  appendTextDelta,
+  appendThinkingDelta,
+  finalizeToolPart,
+  getErrorFromParts,
+  getTextFromParts,
+  getToolPartsFromParts,
+  upsertToolPartInputDelta,
+} from './message-parts';
 
 const COMPACT_MAX_OUTPUT_TOKENS = 20000;
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 2000;
 const RETRYABLE_ERROR_PATTERN = /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i;
+
+function buildUserMessageParts(content: string, images?: IImageAttachment[]): IMessagePart[] {
+  const parts: IMessagePart[] = [];
+  if (content) {
+    parts.push({ type: 'text', text: content });
+  }
+  if (images && images.length > 0) {
+    for (const img of images) {
+      const imagePart: IImagePart = {
+        type: 'image',
+        data: img.data,
+        mimeType: img.mimeType,
+      };
+      parts.push(imagePart);
+    }
+  }
+  return parts;
+}
+
+function messageHasError(message: IChatMessage): boolean {
+  return getErrorFromParts(message.parts) !== undefined;
+}
+
+function partsAsJsonValue(parts: IMessagePart[]): unknown[] {
+  return parts as unknown[];
+}
+
+// Extract a renderable text representation from a tool's AgentToolResult.
+// Walks every content item (not just content[0]) so multi-block results and
+// image-leading payloads still produce something visible. Falls back to a
+// JSON dump of the raw content when no text segments are present.
+function extractToolResultText(result: unknown, isError: boolean): string {
+  if (!result || typeof result !== 'object') {
+    return isError ? 'Tool execution failed' : '';
+  }
+  const content = (result as { content?: unknown }).content;
+  if (!Array.isArray(content)) {
+    return isError ? 'Tool execution failed' : '';
+  }
+  const segments: string[] = [];
+  for (const item of content) {
+    if (!item || typeof item !== 'object') {
+      continue;
+    }
+    const obj = item as Record<string, unknown>;
+    if (typeof obj.text === 'string' && obj.text.length > 0) {
+      segments.push(obj.text);
+    } else if (obj.type === 'image') {
+      segments.push('[image]');
+    }
+  }
+  if (segments.length > 0) {
+    return segments.join('\n\n');
+  }
+  if (isError) {
+    return 'Tool execution failed';
+  }
+  try {
+    return JSON.stringify(content);
+  } catch {
+    return '';
+  }
+}
 
 export class AIAgentService extends Disposable implements IAIAgentService {
   private _agent: Agent | null = null;
@@ -54,8 +127,8 @@ export class AIAgentService extends Disposable implements IAIAgentService {
   private _retryResolve: (() => void) | null = null;
   private _retryPromise: Promise<void> | null = null;
 
-  // Tool execution result tracking
-  private _toolResults = new Map<string, { status: 'success' | 'error'; error?: string }>();
+  // Tool execution result tracking — keyed by toolCallId, snapshots final outcome
+  private _toolResults = new Map<string, { isError: boolean; output: IToolOutput }>();
 
   // Carried across abort() → _ensureAgent() to preserve conversation context
   private _savedAgentMessages: any[] = [];
@@ -132,8 +205,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     const userMessage: IChatMessage = {
       id: generateRandomId(),
       role: 'user',
-      content,
-      images,
+      parts: buildUserMessageParts(content, images),
       createdAt: Date.now(),
     };
     this._appendMessage(userMessage);
@@ -154,8 +226,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       const errorMessage: IChatMessage = {
         id: generateRandomId(),
         role: 'assistant',
-        content: '',
-        error: 'No model configured. Please select a model in the settings first.',
+        parts: appendErrorPart([], 'No model configured. Please select a model in the settings first.'),
         createdAt: Date.now(),
         isStreaming: false,
       };
@@ -217,6 +288,80 @@ export class AIAgentService extends Disposable implements IAIAgentService {
   clearPendingQueue(): void {
     this._pendingQueue.clear();
     this._agent?.clearAllQueues();
+  }
+
+  async retryMessage(messageId: string): Promise<void> {
+    this.ensureNotDisposed();
+
+    if (this._isAgentRunning() || this._isStreaming$.getValue()) {
+      this.abort();
+    }
+
+    const messages = this._messages$.getValue();
+    const idx = messages.findIndex((m) => m.id === messageId);
+    if (idx < 0 || messages[idx].role !== 'assistant') {
+      return;
+    }
+
+    let userIdx = idx - 1;
+    while (userIdx >= 0 && messages[userIdx].role !== 'user') {
+      userIdx -= 1;
+    }
+    if (userIdx < 0) {
+      return;
+    }
+
+    const userMsg = messages[userIdx];
+    const userText = getTextFromParts(userMsg.parts);
+    const userImages = userMsg.parts
+      .filter((p): p is IImagePart => p.type === 'image')
+      .map((p) => ({ data: p.data, mimeType: p.mimeType }));
+
+    await this._truncateAndReset(messages.slice(0, userIdx));
+    await this.sendMessage(userText, { images: userImages });
+  }
+
+  async editUserMessage(messageId: string, content: string): Promise<void> {
+    this.ensureNotDisposed();
+
+    if (this._isAgentRunning() || this._isStreaming$.getValue()) {
+      this.abort();
+    }
+
+    const messages = this._messages$.getValue();
+    const idx = messages.findIndex((m) => m.id === messageId);
+    if (idx < 0 || messages[idx].role !== 'user') {
+      return;
+    }
+
+    const userImages = messages[idx].parts
+      .filter((p): p is IImagePart => p.type === 'image')
+      .map((p) => ({ data: p.data, mimeType: p.mimeType }));
+
+    await this._truncateAndReset(messages.slice(0, idx));
+    await this.sendMessage(content, { images: userImages });
+  }
+
+  /**
+   * Drop messages, persist the truncation, and reset every transient agent
+   * structure so the next sendMessage() starts on a clean slate. Caller is
+   * responsible for invoking sendMessage() afterwards.
+   */
+  private async _truncateAndReset(kept: IChatMessage[]): Promise<void> {
+    this._messages$.next(kept);
+    const sessionId = this._currentSessionId$.getValue();
+    if (sessionId) {
+      try {
+        await this._replaceSessionMessages(sessionId, kept);
+      } catch (err) {
+        console.error('[AIAgentService] Truncate persist failed:', err);
+      }
+    }
+    this._cancelRetry();
+    this._toolResults.clear();
+    this._currentMessage$.next(null);
+    this._destroyAgent();
+    this._savedAgentMessages = [];
   }
 
   stopStreaming(): void {
@@ -304,10 +449,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     const messages: IChatMessage[] = dbMessages.map((m) => ({
       id: m.id,
       role: m.role as IChatMessage['role'],
-      content: m.content,
-      thinking: m.thinking ?? undefined,
-      toolCalls: m.toolCalls as IChatToolCall[] | undefined,
-      error: m.error ?? undefined,
+      parts: (m.parts ?? []) as IMessagePart[],
       usage: m.usage as IChatUsage | undefined,
       compactMetadata: (m.compactMetadata as ICompactMetadata | null) ?? undefined,
       hiddenInUI: m.hiddenInUI ?? undefined,
@@ -323,7 +465,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     if (lastHidden) {
       this._savedAgentMessages = [{
         role: 'user',
-        content: lastHidden.content,
+        content: getTextFromParts(lastHidden.parts),
         timestamp: new Date(lastHidden.createdAt).valueOf(),
       } satisfies UserMessage];
     } else {
@@ -361,6 +503,23 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     }
 
     return sessionId;
+  }
+
+  async restoreLastSession(): Promise<boolean> {
+    this.ensureNotDisposed();
+
+    if (this._currentSessionId$.getValue()) {
+      return true;
+    }
+
+    const sessions = await this._chatRepository.listSessions();
+    const last = sessions[0];
+    if (!last) {
+      return false;
+    }
+
+    await this.loadSession(last.id);
+    return true;
   }
 
   setModel(provider: string, modelId: string): void {
@@ -444,6 +603,16 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._apiKeys.set(provider, apiKey);
   }
 
+  async invokeTool(toolName: string, args: Record<string, unknown>): Promise<unknown> {
+    this.ensureNotDisposed();
+
+    const tool = this._tools.find((t) => t.name === toolName);
+    if (!tool) {
+      throw new Error(`[AIAgentService] Tool not found: ${toolName}`);
+    }
+    return tool.execute(generateRandomId(), args);
+  }
+
   setCompactConfig(config: ICompactConfig): void {
     this._compactConfig = normalizeCompactConfig(config);
   }
@@ -484,7 +653,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
     try {
       const summary = await this._generateSummary(toSummarize, options.instructions);
-      const preTokens = getLatestPromptTokens(allMessages);
+      const preTokens = getLatestContextTokens(allMessages);
 
       const compactMetadata: ICompactMetadata = {
         trigger: options.trigger,
@@ -497,15 +666,16 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       const boundaryMessage: IChatMessage = {
         id: generateRandomId(),
         role: 'compact_boundary',
-        content: 'Conversation compacted',
+        parts: [{ type: 'text', text: 'Conversation compacted' }],
         createdAt: Date.now(),
         compactMetadata,
       };
 
+      const summaryUserContent = this._buildAgentSummaryContent(summary, toKeep, options.instructions);
       const summaryUserMessage: IChatMessage = {
         id: generateRandomId(),
         role: 'user',
-        content: this._buildAgentSummaryContent(summary, toKeep, options.instructions),
+        parts: [{ type: 'text', text: summaryUserContent }],
         createdAt: Date.now(),
         hiddenInUI: true,
       };
@@ -517,7 +687,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       // Agent state: single user message containing summary + recent transcript
       const agentUserMessage: UserMessage = {
         role: 'user',
-        content: summaryUserMessage.content,
+        content: summaryUserContent,
         timestamp: Date.now(),
       };
       this._savedAgentMessages = [agentUserMessage];
@@ -561,10 +731,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         id: message.id,
         sessionId,
         role: message.role,
-        content: message.content,
-        thinking: message.thinking ?? null,
-        toolCalls: message.toolCalls ?? null,
-        error: message.error ?? null,
+        parts: partsAsJsonValue(message.parts),
         usage: message.usage ?? null,
         compactMetadata: message.compactMetadata ?? null,
         hiddenInUI: message.hiddenInUI ?? null,
@@ -572,10 +739,10 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       });
 
       // Auto-generate session title after first assistant reply (user + assistant = 2 messages)
-      if (message.role === 'assistant' && !message.error && this._messages$.getValue().length === 2) {
+      if (message.role === 'assistant' && !messageHasError(message) && this._messages$.getValue().length === 2) {
         const messages = this._messages$.getValue();
-        const userContent = messages[0]?.content ?? '';
-        const assistantContent = message.content;
+        const userContent = getTextFromParts(messages[0]?.parts ?? []);
+        const assistantContent = getTextFromParts(message.parts);
         this._generateSessionTitle(sessionId, userContent, assistantContent).catch((err) => {
           console.error('[AIAgentService] Failed to generate session title:', err);
         });
@@ -639,10 +806,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       id: msg.id,
       sessionId,
       role: msg.role,
-      content: msg.content,
-      thinking: msg.thinking ?? null,
-      toolCalls: msg.toolCalls ?? null,
-      error: msg.error ?? null,
+      parts: partsAsJsonValue(msg.parts),
       usage: msg.usage ?? null,
       compactMetadata: msg.compactMetadata ?? null,
       hiddenInUI: msg.hiddenInUI ?? null,
@@ -663,7 +827,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     if (!this._model) {
       return;
     }
-    const tokens = getLatestPromptTokens(this._messages$.getValue());
+    const tokens = getLatestContextTokens(this._messages$.getValue());
     const contextWindow = this._model.contextWindow ?? 128000;
     if (!shouldAutoCompact(tokens, contextWindow, this._compactConfig)) {
       return;
@@ -891,7 +1055,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       const streamingMessage: IChatMessage = {
         id: generateRandomId(),
         role: 'assistant',
-        content: '',
+        parts: [],
         createdAt: Date.now(),
         isStreaming: true,
       };
@@ -904,50 +1068,31 @@ export class AIAgentService extends Disposable implements IAIAgentService {
   private _handleMessageUpdate(event: AgentEvent & { type: 'message_update' }): void {
     const assistantEvent = event.assistantMessageEvent;
     const current = this._currentMessage$.getValue();
-
     if (!current) {
       return;
     }
 
-    let updatedContent = current.content;
-    let updatedThinking = current.thinking;
-    let updatedToolCalls = current.toolCalls ? [...current.toolCalls] : undefined;
+    let nextParts = current.parts;
 
     switch (assistantEvent.type) {
       case 'text_delta': {
         this._status$.next('streaming');
-        updatedContent += assistantEvent.delta;
+        nextParts = appendTextDelta(nextParts, assistantEvent.delta);
         break;
       }
       case 'thinking_delta': {
         this._status$.next('thinking');
-        updatedThinking = (updatedThinking ?? '') + assistantEvent.delta;
+        nextParts = appendThinkingDelta(nextParts, assistantEvent.delta);
         break;
       }
       case 'toolcall_delta': {
         this._status$.next('tool_calling');
-        if (!updatedToolCalls) {
-          updatedToolCalls = [];
-        }
         const partialContent = assistantEvent.partial.content[assistantEvent.contentIndex];
-        const toolCallId = partialContent?.type === 'toolCall' ? partialContent.id : undefined;
-        const toolName = partialContent?.type === 'toolCall' ? partialContent.name : 'unknown';
-
-        if (toolCallId) {
-          const existingIndex = updatedToolCalls.findIndex((tc) => tc.id === toolCallId);
-          if (existingIndex >= 0) {
-            const existing = updatedToolCalls[existingIndex];
-            updatedToolCalls[existingIndex] = {
-              ...existing,
-              args: { ...existing.args, _raw: ((existing.args._raw as string) ?? '') + assistantEvent.delta },
-            };
-          } else {
-            updatedToolCalls.push({
-              id: toolCallId,
-              name: toolName,
-              args: { _raw: assistantEvent.delta },
-              status: 'running',
-            });
+        if (partialContent?.type === 'toolCall') {
+          const toolCallId = partialContent.id;
+          const toolName = partialContent.name ?? 'unknown';
+          if (toolCallId) {
+            nextParts = upsertToolPartInputDelta(nextParts, toolCallId, toolName, assistantEvent.delta);
           }
         }
         break;
@@ -956,27 +1101,23 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         this._status$.next('error');
         this._isStreaming$.next(false);
         const errorMessage = assistantEvent.error?.errorMessage ?? 'Unknown error';
+        const errorParts = appendErrorPart(current.parts, errorMessage);
         const errorMsg: IChatMessage = {
           ...current,
-          content: current.content || errorMessage,
+          parts: errorParts,
           isStreaming: false,
-          error: errorMessage,
         };
         this._currentMessage$.next(null);
         this._appendMessage(errorMsg);
         this._persistMessage(errorMsg);
         this._messageCompleted$.next(errorMsg);
-        return; // Skip the update below
+        return;
       }
     }
 
-    const updated: IChatMessage = {
-      ...current,
-      content: updatedContent,
-      thinking: updatedThinking,
-      toolCalls: updatedToolCalls,
-    };
-    this._currentMessage$.next(updated);
+    if (nextParts !== current.parts) {
+      this._currentMessage$.next({ ...current, parts: nextParts });
+    }
   }
 
   private _handleMessageEnd(event: AgentEvent & { type: 'message_end' }): void {
@@ -1005,70 +1146,111 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       }
       : undefined;
 
-    let finalContent = '';
-    let finalThinking = '';
-    const toolCalls: IChatToolCall[] = [];
-
+    // Rebuild parts from final assistant.content blocks (canonical source).
+    // For tool calls we prefer the result we just tracked, but fall back to
+    // any output already attached to the live streaming part — that path
+    // catches results that flowed through finalizeToolPart but never made it
+    // into _toolResults (or were lost across rebuild boundaries).
+    const finalParts: IMessagePart[] = [];
+    const existingToolParts = new Map<string, IToolPart>();
+    for (const p of current.parts) {
+      if (p.type === 'tool') {
+        existingToolParts.set(p.toolCallId, p);
+      }
+    }
     for (const block of assistantMsg.content) {
       if (block.type === 'text') {
-        finalContent += block.text;
+        finalParts.push({ type: 'text', text: block.text });
       } else if (block.type === 'thinking') {
-        finalThinking += block.thinking;
+        finalParts.push({ type: 'thinking', thinking: block.thinking });
       } else if (block.type === 'toolCall') {
-        // Use tracked tool execution results for accurate status
         const tracked = this._toolResults.get(block.id);
-        toolCalls.push({
-          id: block.id,
-          name: block.name,
-          args: block.arguments ?? {},
-          status: tracked?.status ?? 'success',
-          error: tracked?.error,
-        });
+        const existing = existingToolParts.get(block.id);
+        const output = tracked?.output ?? existing?.output;
+        const isError = tracked?.isError
+          ?? (existing?.state === 'output-error' || existing?.output?.isError === true);
+        const toolPart: IToolPart = {
+          type: 'tool',
+          toolCallId: block.id,
+          toolName: block.name,
+          state: output
+            ? (isError ? 'output-error' : 'output-available')
+            : 'input-available',
+          input: block.arguments ?? {},
+          output,
+        };
+        finalParts.push(toolPart);
       }
+    }
+
+    // If final content is empty (e.g. abort), keep streaming parts but finalize tool states
+    let parts = finalParts.length > 0 ? finalParts : current.parts;
+    if (finalParts.length === 0) {
+      for (const tool of getToolPartsFromParts(parts)) {
+        const tracked = this._toolResults.get(tool.toolCallId);
+        if (tracked) {
+          parts = finalizeToolPart(parts, tool.toolCallId, {
+            state: tracked.isError ? 'output-error' : 'output-available',
+            output: tracked.output,
+            finalInput: tool.input,
+          });
+        }
+      }
+    }
+
+    // Propagate API errors to the message as an error part
+    if (assistantMsg.stopReason === 'error' && assistantMsg.errorMessage) {
+      parts = appendErrorPart(parts, assistantMsg.errorMessage);
     }
 
     const completedMessage: IChatMessage = {
       id: current.id,
       role: 'assistant',
-      content: finalContent || current.content,
+      parts,
       createdAt: current.createdAt,
-      thinking: finalThinking || current.thinking,
-      toolCalls: toolCalls.length > 0
-        ? toolCalls
-        : current.toolCalls?.map((tc) => {
-          const tracked = this._toolResults.get(tc.id);
-          return { ...tc, status: tracked?.status ?? tc.status, error: tracked?.error };
-        }),
       usage,
       isStreaming: false,
     };
-
-    // Propagate API errors to the message
-    if (assistantMsg.stopReason === 'error' && assistantMsg.errorMessage) {
-      completedMessage.error = assistantMsg.errorMessage;
-    }
 
     this._currentMessage$.next(null);
     this._appendMessage(completedMessage);
     this._persistMessage(completedMessage);
     this._messageCompleted$.next(completedMessage);
     this._isStreaming$.next(false);
-    this._status$.next(completedMessage.error ? 'error' : 'idle');
+    this._status$.next(messageHasError(completedMessage) ? 'error' : 'idle');
 
     // Clear tool results for this turn
     this._toolResults.clear();
 
     // Evaluate auto-compaction after assistant message finalizes
-    if (!completedMessage.error) {
+    if (!messageHasError(completedMessage)) {
       this._maybeAutoCompact();
     }
   }
 
   private _handleToolExecutionEnd(event: AgentEvent & { type: 'tool_execution_end' }): void {
-    this._toolResults.set(event.toolCallId, {
-      status: event.isError ? 'error' : 'success',
-      error: event.isError ? String(event.result?.content?.[0]?.text ?? 'Tool execution failed') : undefined,
-    });
+    const isError = !!event.isError;
+    const resultText = extractToolResultText(event.result, isError);
+    const output: IToolOutput = {
+      text: resultText || undefined,
+      isError: isError || undefined,
+    };
+
+    this._toolResults.set(event.toolCallId, { isError, output });
+
+    // Live-update the streaming message so UI reflects the tool result immediately.
+    // If no matching IToolPart exists yet (e.g. tool fired before any toolcall_delta),
+    // skip — message_end will rebuild parts from the canonical assistantMsg.content.
+    const current = this._currentMessage$.getValue();
+    if (current) {
+      const nextParts = finalizeToolPart(current.parts, event.toolCallId, {
+        state: isError ? 'output-error' : 'output-available',
+        output,
+      });
+      if (nextParts !== current.parts) {
+        this._currentMessage$.next({ ...current, parts: nextParts });
+      }
+    }
   }
 
   private _handleAgentEnd(_event: AgentEvent & { type: 'agent_end' }): void {
@@ -1078,10 +1260,11 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     // Safety: if streaming is still active when agent ends, force cleanup
     const current = this._currentMessage$.getValue();
     if (current) {
+      const parts = apiError ? appendErrorPart(current.parts, apiError) : current.parts;
       const completed: IChatMessage = {
         ...current,
+        parts,
         isStreaming: false,
-        ...(apiError ? { error: apiError } : {}),
       };
       this._currentMessage$.next(null);
       this._appendMessage(completed);
@@ -1144,7 +1327,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     const currentMessages = this._messages$.getValue();
     if (currentMessages.length > 0) {
       const lastMsg = currentMessages.at(-1);
-      if (lastMsg && lastMsg.role === 'assistant' && lastMsg.error) {
+      if (lastMsg && lastMsg.role === 'assistant' && messageHasError(lastMsg)) {
         this._messages$.next(currentMessages.slice(0, -1));
       }
     }
@@ -1161,7 +1344,9 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
     this._sleep(delayMs, signal).then(() => {
       this._retryAbortController = null;
-      if (signal.aborted || !this._agent) return;
+      if (signal.aborted || !this._agent) {
+        return;
+      }
 
       this._agent.continue().catch((err: any) => {
         console.error('[AIAgentService] Retry continue() failed:', err);
@@ -1227,11 +1412,11 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
   private _finalizeWithError(errorText: string): void {
     const current = this._currentMessage$.getValue();
+    const parts = appendErrorPart(current?.parts ?? [], errorText);
     const errorMessage: IChatMessage = {
       id: current?.id ?? generateRandomId(),
       role: 'assistant',
-      content: current?.content ?? '',
-      error: errorText,
+      parts,
       createdAt: current?.createdAt ?? Date.now(),
       isStreaming: false,
     };

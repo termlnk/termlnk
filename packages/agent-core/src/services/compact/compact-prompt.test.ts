@@ -13,12 +13,16 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IChatMessage } from '@termlnk/agent';
+import type { IChatMessage, IMessagePart } from '@termlnk/agent';
 import { describe, expect, it } from 'vitest';
 import { buildCompactUserPrompt, buildSummaryUserMessage, formatMessagesForCompaction, getCompactPrompt } from './compact-prompt';
 
-function msg(role: IChatMessage['role'], content: string, extras?: Partial<IChatMessage>): IChatMessage {
-  return { id: 'id', role, content, createdAt: 0, ...extras };
+function msg(role: IChatMessage['role'], parts: IMessagePart[], extras?: Partial<IChatMessage>): IChatMessage {
+  return { id: 'id', role, parts, createdAt: 0, ...extras };
+}
+
+function textMsg(role: IChatMessage['role'], text: string, extras?: Partial<IChatMessage>): IChatMessage {
+  return msg(role, [{ type: 'text', text }], extras);
 }
 
 describe('getCompactPrompt', () => {
@@ -50,9 +54,9 @@ describe('getCompactPrompt', () => {
 describe('formatMessagesForCompaction', () => {
   it('skips compact_boundary messages', () => {
     const output = formatMessagesForCompaction([
-      msg('user', 'hi'),
-      msg('compact_boundary', 'boundary'),
-      msg('assistant', 'hey'),
+      textMsg('user', 'hi'),
+      textMsg('compact_boundary', 'boundary'),
+      textMsg('assistant', 'hey'),
     ]);
     expect(output).toContain('USER');
     expect(output).toContain('ASSISTANT');
@@ -61,10 +65,17 @@ describe('formatMessagesForCompaction', () => {
 
   it('embeds thinking blocks and tool call metadata', () => {
     const output = formatMessagesForCompaction([
-      msg('assistant', 'body', {
-        thinking: 'internal',
-        toolCalls: [{ id: 't1', name: 'foo', args: { a: 1 }, status: 'success' }],
-      }),
+      msg('assistant', [
+        { type: 'text', text: 'body' },
+        { type: 'thinking', thinking: 'internal' },
+        {
+          type: 'tool',
+          toolCallId: 't1',
+          toolName: 'foo',
+          state: 'output-available',
+          input: { a: 1 },
+        },
+      ]),
     ]);
     expect(output).toContain('<thinking>');
     expect(output).toContain('tool_call foo');
@@ -74,7 +85,7 @@ describe('formatMessagesForCompaction', () => {
 
 describe('buildCompactUserPrompt', () => {
   it('wraps the transcript in <conversation>', () => {
-    const prompt = buildCompactUserPrompt([msg('user', 'hello')]);
+    const prompt = buildCompactUserPrompt([textMsg('user', 'hello')]);
     expect(prompt).toContain('<conversation>');
     expect(prompt).toContain('</conversation>');
     expect(prompt).toContain('hello');

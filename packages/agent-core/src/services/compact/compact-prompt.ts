@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IChatMessage } from '@termlnk/agent';
+import type { IChatMessage, IToolPart } from '@termlnk/agent';
 
 const NO_TOOLS_PREAMBLE = 'You are producing a conversation summary. DO NOT invoke any tools. DO NOT attempt to continue any pending work. Your output must be plain text only.\n\n';
 
@@ -63,21 +63,23 @@ export function getCompactPrompt(customInstructions?: string): string {
   return prompt;
 }
 
-function formatToolCalls(calls: NonNullable<IChatMessage['toolCalls']>): string {
+function formatToolCalls(calls: IToolPart[]): string {
   if (calls.length === 0) {
     return '';
   }
   const lines = calls.map((c) => {
-    const status = c.status ? ` [${c.status}]` : '';
-    const err = c.error ? ` error=${JSON.stringify(c.error)}` : '';
+    const status = c.state ? ` [${c.state}]` : '';
+    const errorBlock = c.output?.isError && c.output?.text
+      ? ` error=${JSON.stringify(c.output.text)}`
+      : '';
     const args = (() => {
       try {
-        return JSON.stringify(c.args);
+        return JSON.stringify(c.input ?? {});
       } catch {
         return '"<unserializable>"';
       }
     })();
-    return `  tool_call ${c.name}${status} args=${args}${err}`;
+    return `  tool_call ${c.toolName}${status} args=${args}${errorBlock}`;
   });
   return `\n${lines.join('\n')}`;
 }
@@ -89,10 +91,41 @@ export function formatMessagesForCompaction(messages: IChatMessage[]): string {
       continue;
     }
     const header = `### ${msg.role.toUpperCase()}`;
-    const body = msg.content?.trim() ?? '';
-    const thinking = msg.thinking ? `\n<thinking>\n${msg.thinking.trim()}\n</thinking>` : '';
-    const tools = msg.toolCalls ? formatToolCalls(msg.toolCalls) : '';
-    const error = msg.error ? `\n[error]: ${msg.error}` : '';
+    const textChunks: string[] = [];
+    const thinkingChunks: string[] = [];
+    const toolCalls: IToolPart[] = [];
+    const errors: string[] = [];
+
+    for (const part of msg.parts) {
+      switch (part.type) {
+        case 'text': {
+          textChunks.push(part.text);
+          break;
+        }
+        case 'thinking': {
+          thinkingChunks.push(part.thinking);
+          break;
+        }
+        case 'tool': {
+          toolCalls.push(part);
+          break;
+        }
+        case 'error': {
+          errors.push(part.message);
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    }
+
+    const body = textChunks.join('').trim();
+    const thinking = thinkingChunks.length > 0
+      ? `\n<thinking>\n${thinkingChunks.join('').trim()}\n</thinking>`
+      : '';
+    const tools = formatToolCalls(toolCalls);
+    const error = errors.length > 0 ? `\n[error]: ${errors.join('; ')}` : '';
     segments.push(`${header}\n${body}${thinking}${tools}${error}`.trim());
   }
   return segments.join('\n\n');

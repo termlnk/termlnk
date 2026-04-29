@@ -15,7 +15,7 @@
 
 import { IAIAgentService, ILLMProviderService } from '@termlnk/agent';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
-import { addCustomModelSchema, addProviderSchema, cancelPendingSchema, compactConversationSchema, getProviderConfigSchema, refreshProviderModelsSchema, removeCustomModelSchema, removeProviderSchema, resetModelOverridesSchema, sendMessageSchema, setActiveModelSchema, setApiKeySchema, setModelSchema, setSystemPromptSchema, setThinkingLevelSchema, toggleModelSchema, updateModelOverridesSchema, updateProviderConfigSchema } from '../schema/ai.schema';
+import { addCustomModelSchema, addProviderSchema, cancelPendingSchema, compactConversationSchema, editUserMessageSchema, getProviderConfigSchema, invokeToolSchema, refreshProviderModelsSchema, removeCustomModelSchema, removeProviderSchema, resetModelOverridesSchema, retryMessageSchema, sendMessageSchema, setActiveModelSchema, setApiKeySchema, setModelSchema, setSystemPromptSchema, setThinkingLevelSchema, toggleModelSchema, updateModelOverridesSchema, updateProviderConfigSchema } from '../schema/ai.schema';
 import { publicProcedure, router } from '../trpc';
 
 export type AIRouter = typeof aiRouter;
@@ -38,6 +38,27 @@ export const aiRouter = router({
     .mutation(async ({ ctx, input }) => {
       const service = ctx.injector.get(IAIAgentService);
       await service.cancelPending(input.messageId);
+    }),
+
+  retryMessage: publicProcedure
+    .input(retryMessageSchema)
+    .mutation(async ({ ctx, input }) => {
+      const service = ctx.injector.get(IAIAgentService);
+      await service.retryMessage(input.messageId);
+    }),
+
+  editUserMessage: publicProcedure
+    .input(editUserMessageSchema)
+    .mutation(async ({ ctx, input }) => {
+      const service = ctx.injector.get(IAIAgentService);
+      await service.editUserMessage(input.messageId, input.content);
+    }),
+
+  invokeTool: publicProcedure
+    .input(invokeToolSchema)
+    .mutation(async ({ ctx, input }) => {
+      const service = ctx.injector.get(IAIAgentService);
+      return service.invokeTool(input.toolName, input.args);
     }),
 
   clearPendingQueue: publicProcedure

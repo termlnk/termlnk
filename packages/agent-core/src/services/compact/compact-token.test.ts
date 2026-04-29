@@ -13,17 +13,18 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IChatMessage, ICompactConfig } from '@termlnk/agent';
+import type { IChatMessage, ICompactConfig, IMessagePart } from '@termlnk/agent';
 import { describe, expect, it } from 'vitest';
-import { estimateTokensFromMessage, estimateTokensFromText, getLatestPromptTokens, shouldAutoCompact } from './compact-token';
+import { estimateTokensFromMessage, estimateTokensFromText, getLatestContextTokens, shouldAutoCompact } from './compact-token';
 
-function msg(overrides: Partial<IChatMessage>): IChatMessage {
+function msg(overrides: Partial<IChatMessage> & { parts?: IMessagePart[] } = {}): IChatMessage {
+  const { parts, ...rest } = overrides;
   return {
     id: 'id',
     role: 'user',
-    content: '',
+    parts: parts ?? [],
     createdAt: 0,
-    ...overrides,
+    ...rest,
   };
 }
 
@@ -38,30 +39,39 @@ describe('estimateTokensFromText', () => {
 });
 
 describe('estimateTokensFromMessage', () => {
-  it('sums content + thinking + tool call args', () => {
+  it('sums text + thinking + tool input + output text', () => {
     const tokens = estimateTokensFromMessage(msg({
-      content: 'hello',
-      thinking: 'deep',
-      toolCalls: [{ id: 't1', name: 'foo', args: { a: 1 }, status: 'success' }],
+      parts: [
+        { type: 'text', text: 'hello' },
+        { type: 'thinking', thinking: 'deep' },
+        {
+          type: 'tool',
+          toolCallId: 't1',
+          toolName: 'foo',
+          state: 'output-available',
+          input: { a: 1 },
+          output: { text: 'result' },
+        },
+      ],
     }));
     expect(tokens).toBeGreaterThan(0);
   });
 });
 
-describe('getLatestPromptTokens', () => {
-  it('returns the latest non-zero promptTokens from usage', () => {
+describe('getLatestContextTokens', () => {
+  it('returns the latest non-zero totalTokens from usage', () => {
     const messages: IChatMessage[] = [
-      msg({ role: 'assistant', usage: { promptTokens: 100, completionTokens: 0, totalTokens: 100 } }),
-      msg({ role: 'user', content: 'ignored' }),
-      msg({ role: 'assistant', usage: { promptTokens: 500, completionTokens: 0, totalTokens: 500 } }),
-      msg({ role: 'user', content: 'tail' }),
+      msg({ role: 'assistant', usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 } }),
+      msg({ role: 'user', parts: [{ type: 'text', text: 'ignored' }] }),
+      msg({ role: 'assistant', usage: { promptTokens: 500, completionTokens: 200, totalTokens: 700 } }),
+      msg({ role: 'user', parts: [{ type: 'text', text: 'tail' }] }),
     ];
-    expect(getLatestPromptTokens(messages)).toBe(500);
+    expect(getLatestContextTokens(messages)).toBe(700);
   });
 
   it('falls back to text-based estimation when no usage present', () => {
-    const messages: IChatMessage[] = [msg({ content: 'a'.repeat(38) })];
-    expect(getLatestPromptTokens(messages)).toBe(10);
+    const messages: IChatMessage[] = [msg({ parts: [{ type: 'text', text: 'a'.repeat(38) }] })];
+    expect(getLatestContextTokens(messages)).toBe(10);
   });
 });
 
