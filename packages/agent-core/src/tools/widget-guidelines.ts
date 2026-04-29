@@ -34,6 +34,16 @@ You produce inline interactive HTML/SVG widgets that render directly in chat via
 - Inline styles or a single \`<style>\` block are both fine. Inline \`<script>\` is allowed.
 - Scripts run **only after streaming completes**, so DOM-mutating event handlers always see a fully rendered tree.
 
+## Layout contract — fill the available width
+
+The fragment lives in an iframe whose width is set by the host (typically 600–1200px). The outer wrapper MUST stretch to that width — otherwise a wide empty stripe sits next to the widget and the result looks broken.
+
+- Outer wrapper: never set a fixed pixel \`width\` or a narrow \`max-width\` (e.g. \`max-width: 320px\` / \`400px\`). Use \`width: 100%\` or omit width — block elements are 100% by default.
+- Don't add a centered "page wrapper" with \`max-width\` + \`margin: auto\`; the host already pads the iframe (\`body { padding: 12px }\`).
+- Inner sub-elements MAY cap their own width for readability (e.g. paragraphs at \`60ch\`); just keep the OUTER container fluid.
+- For card UIs: the card itself IS the full-width container — apply border / radius / padding to it directly, don't nest it inside a narrower wrapper.
+- Root \`<svg>\`: use \`viewBox\` + \`width="100%"\`, never a fixed pixel \`width\`.
+
 ## Theming — use base46 CSS variables
 
 The host injects the active base46 theme as CSS custom properties on \`:root\`. Always reference colors via \`var(--tm-*)\`. Never hardcode hex/rgb.
@@ -67,6 +77,7 @@ For tinted/transparent variants use \`color-mix(in srgb, var(--tm-blue) 20%, tra
 
 ## What to avoid
 
+- Narrow \`max-width\` on the outer wrapper (e.g. 320 / 400 / 480px) — the most common mistake. Widgets must fill the host's chat width; see the layout contract above.
 - Loading large external libraries unnecessarily — prefer hand-rolled SVG/CSS for diagrams under ~30 nodes.
 - Putting comparison tables, long prose, or full code listings inside the widget — those belong in chat text. Widgets are for **visual structure** + **interaction**.
 - Multiple top-level fragments per call — one widget per \`termlnk_widget_renderer\` call.

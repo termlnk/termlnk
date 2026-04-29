@@ -25,7 +25,7 @@ export const TERMLNK_BAR_CHART_TOOL = 'termlnk_bar_chart';
 /**
  * Tools that participate in the Generative UI Block protocol.
  * The host (`mcp.controller`) bypasses session-level tool selection for these names so
- * the LLM always has them available, mirroring alma's unconditional injection.
+ * the LLM always has them available.
  */
 export const WIDGET_TOOL_NAMES = [
   TERMLNK_WIDGET_README_TOOL,
@@ -63,6 +63,10 @@ function createWidgetReadmeTool(): IAgentTool {
         modules: {
           type: 'array',
           description: 'Guideline modules to load. Pick all that fit the use case.',
+          items: {
+            type: 'string',
+            enum: [...WIDGET_GUIDELINE_MODULES],
+          },
         },
       },
       required: [],
@@ -137,6 +141,15 @@ function createPieChartTool(): IAgentTool {
         data: {
           type: 'array',
           description: 'Array of { label: string, value: number, color?: string } items. Colors are auto-assigned if omitted.',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string', description: 'Slice label.' },
+              value: { type: 'number', description: 'Slice value (non-negative).' },
+              color: { type: 'string', description: 'Optional CSS color.' },
+            },
+            required: ['label', 'value'],
+          },
         },
       },
       required: ['title', 'data'],
@@ -165,6 +178,15 @@ function createBarChartTool(): IAgentTool {
         data: {
           type: 'array',
           description: 'Array of { label: string, value: number, color?: string } items.',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string', description: 'Bar label.' },
+              value: { type: 'number', description: 'Bar value.' },
+              color: { type: 'string', description: 'Optional CSS color.' },
+            },
+            required: ['label', 'value'],
+          },
         },
       },
       required: ['title', 'data'],

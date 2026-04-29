@@ -101,8 +101,8 @@ export class McpController extends Disposable {
     const agentTools: AgentTool<any>[] = [];
 
     // 1. Convert built-in tools (from IAgentToolRegistryService) to AgentTool[]
-    // Widget tools are always included regardless of session selection (mirrors alma's
-    // unconditional injection of widgetReadme/widgetRenderer/pieChart/barChart).
+    // Widget tools (widgetReadme/widgetRenderer/pieChart/barChart) are always included
+    // regardless of session selection.
     const builtinTools = this._mcpToolRegistryService.getTools();
     for (const tool of builtinTools) {
       const builtinId = `builtin_${tool.name}`;

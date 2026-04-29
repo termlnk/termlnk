@@ -15,14 +15,22 @@
 
 export type AgentToolCategory = 'network' | 'terminal' | 'file' | 'mcp' | 'other';
 
+export interface IAgentToolPropertySchema {
+  type: string;
+  description?: string;
+  enum?: string[];
+  default?: unknown;
+  /** Required when type === 'array' — providers reject untyped arrays. */
+  items?: IAgentToolPropertySchema;
+  /** Nested fields when type === 'object'. */
+  properties?: Record<string, IAgentToolPropertySchema>;
+  /** Required nested field names when type === 'object'. */
+  required?: string[];
+}
+
 export interface IAgentToolInputSchema {
   type: 'object';
-  properties?: Record<string, {
-    type: string;
-    description?: string;
-    enum?: string[];
-    default?: unknown;
-  }>;
+  properties?: Record<string, IAgentToolPropertySchema>;
   required?: string[];
 }
 
