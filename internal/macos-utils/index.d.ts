@@ -1,3 +1,5 @@
+import type { Buffer } from 'node:buffer';
+
 /**
  * Set NSWindowCollectionBehaviorStationary on the window identified by
  * the native handle from `BrowserWindow.getNativeWindowHandle()`.
