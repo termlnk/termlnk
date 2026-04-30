@@ -17,7 +17,6 @@ import type { IAddSkillRepositoryInput, ISkillRepository, IUpdateSkillRepository
 import { createIdentifier } from '@termlnk/core';
 
 export interface ISkillInstallerService {
-  syncBundledSkills(srcDir: string): Promise<void>;
   installFromPath(sourcePath: string): Promise<string>;
   getRepositories(): Promise<ISkillRepository[]>;
   addRepository(input: IAddSkillRepositoryInput): Promise<ISkillRepository>;

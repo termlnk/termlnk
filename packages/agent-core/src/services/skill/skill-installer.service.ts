@@ -16,7 +16,7 @@
 import type { IAddSkillRepositoryInput, ISkillInstallerService, ISkillRepository, IUpdateSkillRepositoryInput } from '@termlnk/agent';
 import type { IAgentCorePluginConfig } from '../../controllers/config.schema';
 import type { IProxyConfig } from './skill-repository.utils';
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { AGENT_PLUGIN_CONFIG_KEY, SKILL_CONFIG_KEY, SKILL_USER_DIR } from '@termlnk/agent';
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
@@ -172,47 +172,6 @@ export class SkillInstallerService extends Disposable implements ISkillInstaller
   private _getInstallDir(): string {
     const config = this._configService.getConfig<IAgentCorePluginConfig>(SKILL_CONFIG_KEY);
     return config?.bundledSkillsDir ?? join(resolveConfigPath(this._configService), SKILL_USER_DIR);
-  }
-
-  async syncBundledSkills(srcDir: string): Promise<void> {
-    if (!srcDir || !existsSync(srcDir)) {
-      return;
-    }
-
-    const installDir = this._getInstallDir();
-    mkdirSync(installDir, { recursive: true });
-
-    try {
-      const entries = readdirSync(srcDir);
-      for (const entry of entries) {
-        const srcSkillDir = join(srcDir, entry);
-        if (!statSync(srcSkillDir).isDirectory()) {
-          continue;
-        }
-
-        const destDir = join(installDir, entry);
-        const srcFile = join(srcSkillDir, 'SKILL.md');
-        const destFile = join(destDir, 'SKILL.md');
-
-        if (!existsSync(srcFile)) {
-          continue;
-        }
-
-        // Only copy if content differs or doesn't exist
-        if (existsSync(destFile)) {
-          const srcContent = readFileSync(srcFile, 'utf-8');
-          const destContent = readFileSync(destFile, 'utf-8');
-          if (srcContent === destContent) {
-            continue;
-          }
-        }
-
-        cpSync(srcSkillDir, destDir, { recursive: true });
-        this._logService.log(`[SkillInstaller] Synced bundled skill: ${entry}`);
-      }
-    } catch (err) {
-      this._logService.error(`[SkillInstaller] Failed to sync bundled skills: ${err}`);
-    }
   }
 
   async installFromPath(sourcePath: string): Promise<string> {
