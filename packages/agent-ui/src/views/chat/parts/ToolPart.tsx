@@ -153,13 +153,13 @@ export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = fals
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className={`
-          tm:flex tm:w-full tm:cursor-pointer tm:items-center tm:gap-1.5 tm:px-2 tm:py-1.5 tm:text-left tm:text-xs
-          tm:transition-colors
+          tm:flex tm:w-full tm:min-w-0 tm:cursor-pointer tm:items-center tm:gap-1.5 tm:px-2 tm:py-1.5 tm:text-left
+          tm:text-xs tm:transition-colors
           tm:hover:bg-one-bg2
         `}
       >
         <Wrench size={11} className="tm:shrink-0 tm:text-light-grey" />
-        <span className="tm:shrink-0 tm:font-medium tm:text-white">{part.toolName}</span>
+        <span className="tm:min-w-0 tm:truncate tm:font-medium tm:text-white">{part.toolName}</span>
         {summary && (
           <span className="tm:min-w-0 tm:flex-1 tm:truncate tm:text-light-grey">{summary}</span>
         )}
@@ -179,7 +179,11 @@ export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = fals
           {inputJson && (
             <div className="tm:border-b tm:border-line/60 tm:px-2 tm:py-1.5">
               <div className="tm:mb-1 tm:text-[0.6rem] tm:tracking-wide tm:text-grey">INPUT</div>
-              <pre className="tm:max-h-40 tm:overflow-auto tm:text-[0.7rem] tm:whitespace-pre-wrap tm:break-all tm:text-light-grey">
+              <pre
+                className="
+                  tm:max-h-40 tm:overflow-auto tm:text-[0.7rem] tm:break-all tm:whitespace-pre-wrap tm:text-light-grey
+                "
+              >
                 {inputJson}
               </pre>
             </div>
@@ -197,7 +201,7 @@ export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = fals
               </div>
               <pre
                 className={cn(
-                  'tm:max-h-60 tm:overflow-auto tm:text-[0.7rem] tm:whitespace-pre-wrap tm:break-all',
+                  'tm:max-h-60 tm:overflow-auto tm:text-[0.7rem] tm:break-all tm:whitespace-pre-wrap',
                   {
                     'tm:text-light-grey': !errored,
                     'tm:text-red': errored,
