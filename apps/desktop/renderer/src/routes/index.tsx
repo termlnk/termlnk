@@ -37,6 +37,6 @@ function Index() {
   }, []);
 
   return (
-    <div ref={containerRef} className="tm:flex-1" />
+    <div ref={containerRef} className="tm:min-w-0 tm:flex-1" />
   );
 }
