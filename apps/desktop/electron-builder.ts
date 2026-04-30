@@ -49,6 +49,9 @@ const config: Configuration = {
     { from: 'resources/icon-tray.png', to: '.' },
     { from: 'resources/icon-tray.ico', to: '.' },
     { from: 'resources/app-update.yml', to: '.' },
+    // Outside app.asar so Node's fs APIs read real files instead of asar
+    // virtual entries (which throw ENOENT for some directory entries).
+    { from: '../../packages/agent-core/src/bundled-skills', to: 'bundled-skills' },
   ],
   electronFuses: {
     runAsNode: false,

@@ -171,7 +171,7 @@ export class SkillInstallerService extends Disposable implements ISkillInstaller
 
   private _getInstallDir(): string {
     const config = this._configService.getConfig<IAgentCorePluginConfig>(SKILL_CONFIG_KEY);
-    return config?.bundledSkillsDir ?? join(resolveConfigPath(this._configService), SKILL_USER_DIR);
+    return config?.userSkillsDir ?? join(resolveConfigPath(this._configService), SKILL_USER_DIR);
   }
 
   async installFromPath(sourcePath: string): Promise<string> {

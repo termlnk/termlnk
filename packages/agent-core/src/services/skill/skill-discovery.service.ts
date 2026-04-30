@@ -42,10 +42,12 @@ export class SkillDiscoveryService extends Disposable implements ISkillDiscovery
     const all: IDiscoveredSkill[] = [];
     const config = this._configService.getConfig<IAgentCorePluginConfig>(SKILL_CONFIG_KEY);
 
-    // Scan the single skills directory (bundled + user-installed)
-    const skillsDir = config?.bundledSkillsDir ?? join(resolveConfigPath(this._configService), SKILL_USER_DIR);
-    const skills = await this.discoverAt(skillsDir, 'user');
-    all.push(...skills);
+    if (config?.bundledSkillsDir) {
+      all.push(...await this.discoverAt(config.bundledSkillsDir, 'builtin'));
+    }
+
+    const userSkillsDir = config?.userSkillsDir ?? join(resolveConfigPath(this._configService), SKILL_USER_DIR);
+    all.push(...await this.discoverAt(userSkillsDir, 'user'));
 
     // De-duplicate by discovery key so same-name skills can coexist across paths
     const deduped = new Map<string, IDiscoveredSkill>();

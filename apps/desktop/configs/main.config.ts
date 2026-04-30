@@ -23,7 +23,6 @@ import { baseConfig, DESKTOP_ROOT } from './base.config';
 
 const MAIN_DIR = resolve(DESKTOP_ROOT, './main/src');
 const MIGRATIONS_SRC = resolve(DESKTOP_ROOT, '../../packages/database/src/migrations');
-const BUNDLED_SKILLS_SRC = resolve(DESKTOP_ROOT, '../../packages/agent-core/src/bundled-skills');
 const AGENT_HOOK_CLI_SRC = resolve(DESKTOP_ROOT, '../../packages/agent-hook-cli/src');
 
 const copyMigrationAssets = (): Plugin => ({
@@ -31,14 +30,6 @@ const copyMigrationAssets = (): Plugin => ({
   async closeBundle() {
     const dest = resolve(DESKTOP_ROOT, './dist/main/migrations');
     await cp(MIGRATIONS_SRC, dest, { recursive: true });
-  },
-});
-
-const copyBundledSkillAssets = (): Plugin => ({
-  name: 'copy-bundled-skill-assets',
-  async closeBundle() {
-    const dest = resolve(DESKTOP_ROOT, './dist/main/bundled-skills');
-    await cp(BUNDLED_SKILLS_SRC, dest, { recursive: true });
   },
 });
 
@@ -60,7 +51,6 @@ const copyAgentHookCliAssets = (): Plugin => ({
 export default mergeConfig(baseConfig, {
   plugins: [
     copyMigrationAssets(),
-    copyBundledSkillAssets(),
     copyAgentHookCliAssets(),
   ],
   build: {

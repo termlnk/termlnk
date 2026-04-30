@@ -13,10 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { extname, isAbsolute, relative, resolve } from 'node:path';
+import { extname, isAbsolute, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
@@ -32,7 +31,7 @@ import { RPCPlugin } from '@termlnk/rpc';
 import { IFileDialogService, RPCServerPlugin } from '@termlnk/rpc-server';
 import { chadracula } from '@termlnk/themes';
 import { app, protocol } from 'electron';
-import { dirname, join } from 'pathe';
+import { dirname, join, relative } from 'pathe';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
 import { fixProcessPath } from './shell-path';
 
@@ -135,40 +134,6 @@ function withAsarEnabled<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
-function syncBundledSkills(srcDir: string, destDir: string): void {
-  if (!existsSync(srcDir)) {
-    return;
-  }
-
-  mkdirSync(destDir, { recursive: true });
-
-  for (const entry of readdirSync(srcDir)) {
-    const srcSkillDir = join(srcDir, entry);
-    if (!statSync(srcSkillDir).isDirectory()) {
-      continue;
-    }
-
-    const srcFile = join(srcSkillDir, 'SKILL.md');
-    if (!existsSync(srcFile)) {
-      continue;
-    }
-
-    const destSkillDir = join(destDir, entry);
-    const destFile = join(destSkillDir, 'SKILL.md');
-
-    // Only copy if content differs or doesn't exist
-    if (existsSync(destFile)) {
-      const srcContent = readFileSync(srcFile, 'utf-8');
-      const destContent = readFileSync(destFile, 'utf-8');
-      if (srcContent === destContent) {
-        continue;
-      }
-    }
-
-    cpSync(srcSkillDir, destSkillDir, { recursive: true });
-  }
-}
-
 function resolveRendererAssetPath(requestURL: string): string | null {
   const { hostname, pathname } = new URL(requestURL);
   if (hostname !== 'termlnk') {
@@ -232,12 +197,13 @@ app.whenReady().then(async () => {
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
 
-  // Sync bundled skills to config directory before plugin init
-  const bundledSkillsSrcDir = is.dev
+  // Bundled skills must live outside app.asar — Node's fs APIs throw ENOENT
+  // on asar virtual directory entries; extraResources drops them into
+  // Contents/Resources/bundled-skills/ on the real filesystem.
+  const bundledSkillsDir = is.dev
     ? join(appRoot, '../../../../packages/agent-core/src/bundled-skills')
-    : join(appRoot, 'bundled-skills');
-  const skillsDir = join(configDir, 'skills');
-  syncBundledSkills(bundledSkillsSrcDir, skillsDir);
+    : join(process.resourcesPath, 'bundled-skills');
+  const userSkillsDir = join(configDir, 'skills');
 
   // Resolve the agent-hook-cli source bundle so HookLauncherService can
   // copy the POSIX/Windows launchers + Node helper into ~/.config/termlnk/bin/.
@@ -249,7 +215,8 @@ app.whenReady().then(async () => {
     : join(appRoot, 'agent-hook-cli');
 
   core.registerPlugin(AgentCorePlugin, {
-    bundledSkillsDir: skillsDir,
+    bundledSkillsDir,
+    userSkillsDir,
     configPath: configDir,
     hookCliSrcDir,
   });

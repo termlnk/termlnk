@@ -75,6 +75,7 @@ export class AgentCorePlugin extends Plugin {
     // Set Skill config using the skill contract layer's key
     this._configService.setConfig(SKILL_CONFIG_KEY, {
       bundledSkillsDir: config.bundledSkillsDir,
+      userSkillsDir: config.userSkillsDir,
     });
   }
 

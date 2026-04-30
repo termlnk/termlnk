@@ -20,7 +20,10 @@ export const AGENT_CORE_PLUGIN_CONFIG_KEY = 'agent-core.config';
 
 export interface IAgentCorePluginConfig {
   override?: DependencyOverride;
+  /** Read-only directory containing built-in skills shipped with the app. */
   bundledSkillsDir?: string;
+  /** Read-write directory for user-installed skills. */
+  userSkillsDir?: string;
   /**
    * Shared Termlnk config root (e.g. `~/.config/termlnk` on POSIX).
    * Resolved by desktop main and passed in via plugin config; reused by:
