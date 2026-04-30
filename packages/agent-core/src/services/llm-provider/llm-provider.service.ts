@@ -367,11 +367,14 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     const mergedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 
     const startedAt = Date.now();
-    await completeSimple(
+    const result = await completeSimple(
       model,
       { messages: [{ role: 'user', content: MODEL_TEST_PROMPT, timestamp: startedAt }] },
       { apiKey, maxTokens: 1, signal: mergedSignal, timeoutMs: MODEL_TEST_TIMEOUT_MS }
     );
+    if (result.stopReason === 'error' || result.stopReason === 'aborted') {
+      throw new Error(result.errorMessage ?? `Model test failed (${result.stopReason}).`);
+    }
     return { latencyMs: Date.now() - startedAt };
   }
 
