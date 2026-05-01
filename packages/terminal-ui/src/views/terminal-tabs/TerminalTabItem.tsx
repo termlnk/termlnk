@@ -16,7 +16,9 @@
 import type { MouseEvent, PointerEventHandler } from 'react';
 import type { TerminalSessionStatus } from '../../services/terminal/terminal-ui.service';
 import { Button, cn } from '@termlnk/design';
+import { TooltipWrapper } from '@termlnk/ui';
 import { Loader2, Terminal, X } from 'lucide-react';
+import { CloseActiveTabCommand } from '../../commands/close-active-tab.command';
 
 export interface ITerminalTabItemProps {
   className?: string;
@@ -123,24 +125,30 @@ export function TerminalTabItem(props: ITerminalTabItemProps) {
           {label}
         </span>
 
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          className={cn(
-            `
-              tm:flex tm:size-4.5 tm:shrink-0 tm:bg-transparent
-              tm:hover:bg-transparent
-            `,
-            {
-              'tm:text-light-grey tm:opacity-100': isActive,
-              'tm:scale-90 tm:text-grey-fg tm:opacity-0 tm:group-hover:scale-100 tm:group-hover:opacity-100': !isActive,
-            }
-          )}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={handleClose}
+        <TooltipWrapper
+          side="bottom"
+          labelKey="terminal-ui.tab-bar.close-session"
+          commandId={CloseActiveTabCommand.id}
         >
-          <X size={12} strokeWidth={1.5} />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className={cn(
+              `
+                tm:flex tm:size-4.5 tm:shrink-0 tm:bg-transparent
+                tm:hover:bg-transparent
+              `,
+              {
+                'tm:text-light-grey tm:opacity-100': isActive,
+                'tm:scale-90 tm:text-grey-fg tm:opacity-0 tm:group-hover:scale-100 tm:group-hover:opacity-100': !isActive,
+              }
+            )}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={handleClose}
+          >
+            <X size={12} strokeWidth={1.5} />
+          </Button>
+        </TooltipWrapper>
       </div>
     </div>
   );

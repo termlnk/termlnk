@@ -171,6 +171,7 @@ const locale: typeof enUS = {
     },
     'tab-bar': {
       'new-session': '新建终端',
+      'close-session': '关闭终端',
       'tab-list': '显示标签列表',
     },
   },

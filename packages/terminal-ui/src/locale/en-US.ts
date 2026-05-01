@@ -169,6 +169,7 @@ const locale = {
     },
     'tab-bar': {
       'new-session': 'New terminal',
+      'close-session': 'Close terminal',
       'tab-list': 'Show tab list',
     },
   },

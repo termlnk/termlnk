@@ -171,6 +171,7 @@ const locale: typeof enUS = {
     },
     'tab-bar': {
       'new-session': '새 터미널',
+      'close-session': '터미널 닫기',
       'tab-list': '탭 목록 표시',
     },
   },

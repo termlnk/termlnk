@@ -171,6 +171,7 @@ const locale: typeof enUS = {
     },
     'tab-bar': {
       'new-session': '新建終端機',
+      'close-session': '關閉終端機',
       'tab-list': '顯示分頁清單',
     },
   },

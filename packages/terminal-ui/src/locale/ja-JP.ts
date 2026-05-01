@@ -171,6 +171,7 @@ const locale: typeof enUS = {
     },
     'tab-bar': {
       'new-session': '新しいターミナル',
+      'close-session': 'ターミナルを閉じる',
       'tab-list': 'タブ一覧を表示',
     },
   },
