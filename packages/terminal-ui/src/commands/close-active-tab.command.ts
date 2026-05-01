@@ -22,10 +22,17 @@ export const CloseActiveTabCommand: ICommand = {
     const workspaceService = accessor.get(IWorkspaceService);
     const activeId = workspaceService.getActiveTabItemId();
 
-    if (activeId) {
+    if (!activeId) {
+      return false;
+    }
+
+    const workspace = workspaceService.getWorkspace(activeId);
+    if (workspace && workspace.activeSessionId) {
+      workspaceService.removeSessionFromWorkspace(workspace.id, workspace.activeSessionId);
+    } else {
       workspaceService.removeTabItem(activeId);
     }
 
-    return Boolean(activeId);
+    return true;
   },
 };
