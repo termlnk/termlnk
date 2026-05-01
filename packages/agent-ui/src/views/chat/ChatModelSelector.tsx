@@ -14,13 +14,13 @@
  */
 
 import type { IModelOption, IProviderGroup } from '@termlnk/agent';
+import { compareProviders } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { cn, SearchSelect, SearchSelectContent, SearchSelectEmpty, SearchSelectGroup, SearchSelectInput, SearchSelectItem, SearchSelectList, SearchSelectTrigger, useDependency, useObservable } from '@termlnk/design';
 import { IProviderConfigClientService } from '@termlnk/rpc-client';
 import { Brain, ChevronDown, Eye, Sparkles } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { ProviderLogo } from '../settings/provider-logo';
-import { compareProviders } from '../settings/provider-metadata';
 
 interface IChatModelSelectorProps {
   className?: string;

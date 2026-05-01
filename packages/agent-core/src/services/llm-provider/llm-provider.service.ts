@@ -18,7 +18,7 @@ import type { ICustomModelDefinition, ILLMProvider, ILLMProviderService, IModelO
 import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity } from '@termlnk/database';
 import type { Observable } from 'rxjs';
 import { completeSimple, getModels, getProviders } from '@mariozechner/pi-ai';
-import { AGENT_PLUGIN_CONFIG_KEY, AI_STORAGE_PROVIDERS_KEY } from '@termlnk/agent';
+import { AGENT_PLUGIN_CONFIG_KEY, AI_STORAGE_PROVIDERS_KEY, formatProviderDisplayName, getDefaultProviderBaseUrl, getDefaultProviderSort, UNSUPPORTED_MODEL_SYNC_PROVIDERS } from '@termlnk/agent';
 import { Disposable, Inject } from '@termlnk/core';
 import { ConfigRepository, ProviderRepository } from '@termlnk/database';
 import { BehaviorSubject, combineLatest, map } from 'rxjs';
@@ -27,66 +27,6 @@ import { applyModelOverride, buildModelFromCustomDef, toModelOption } from './ut
 const MODEL_SYNC_TIMEOUT_MS = 12000;
 const MODEL_TEST_TIMEOUT_MS = 10000;
 const MODEL_TEST_PROMPT = 'hi';
-
-const DEFAULT_PROVIDER_BASE_URL: Record<string, string> = {
-  anthropic: 'https://api.anthropic.com/v1',
-  google: 'https://generativelanguage.googleapis.com/v1beta',
-  openai: 'https://api.openai.com/v1',
-  deepseek: 'https://api.deepseek.com/v1',
-  openrouter: 'https://openrouter.ai/api/v1',
-  groq: 'https://api.groq.com/openai/v1',
-  cerebras: 'https://api.cerebras.ai/v1',
-  xai: 'https://api.x.ai/v1',
-  mistral: 'https://api.mistral.ai/v1',
-  huggingface: 'https://router.huggingface.co/v1',
-  'vercel-ai-gateway': 'https://ai-gateway.vercel.sh',
-};
-
-const PROVIDER_DISPLAY_NAME: Record<string, string> = {
-  aihubmix: 'AiHubMix',
-  'amazon-bedrock': 'Amazon Bedrock',
-  'azure-openai-responses': 'Azure OpenAI',
-  deepseek: 'DeepSeek',
-  'github-copilot': 'GitHub Copilot',
-  google: 'Google Gemini',
-  'google-antigravity': 'Google Antigravity',
-  'google-gemini-cli': 'Google Gemini CLI',
-  'google-vertex': 'Google Vertex AI',
-  'kimi-coding': 'Moonshot',
-  minimax: 'MiniMax',
-  'minimax-cn': 'MiniMax CN',
-  openai: 'OpenAI',
-  'openai-codex': 'OpenAI Codex',
-  openrouter: 'OpenRouter',
-  xai: 'xAI',
-  zai: 'Z.AI Coding Plan',
-};
-
-const DEFAULT_PROVIDER_SORT: Record<string, number> = {
-  anthropic: 1,
-  openai: 2,
-  google: 3,
-  deepseek: 4,
-  xai: 5,
-  groq: 6,
-  openrouter: 7,
-  mistral: 8,
-};
-
-const UNSUPPORTED_MODEL_SYNC_PROVIDERS = new Set([
-  'amazon-bedrock',
-  'azure-openai-responses',
-  'github-copilot',
-  'google-antigravity',
-  'google-gemini-cli',
-  'google-vertex',
-  'openai-codex',
-  'opencode',
-  'kimi-coding',
-  'zai',
-  'minimax',
-  'minimax-cn',
-]);
 
 interface IModelListResponse {
   data?: Array<{ id?: string }>;
@@ -269,14 +209,14 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
     await this._providerRepository.upsertProvider({
       id: providerId,
-      name: updated.name ?? this._formatProviderName(providerId),
+      name: updated.name ?? formatProviderDisplayName(providerId),
       enabled: updated.enabled,
       builtin: isBuiltin,
       api: updated.api as string,
       apiKey: updated.apiKey,
       baseUrl: updated.baseUrl,
       headers: updated.headers as any,
-      sort: updated.sort ?? (isBuiltin ? this._getDefaultSort(providerId) : 999),
+      sort: updated.sort ?? (isBuiltin ? getDefaultProviderSort(providerId) : 999),
     });
 
     this._providerConfigs.set(providerId, updated);
@@ -554,14 +494,14 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
         providers.push({
           id: providerName,
-          name: this._formatProviderName(providerName),
+          name: formatProviderDisplayName(providerName),
           enabled: userConfig?.enabled ?? false,
           builtin: true,
           api: builtinModels[0]?.api ?? 'openai-completions',
           apiKey: userConfig?.apiKey,
           baseUrl: userConfig?.baseUrl,
           headers: userConfig?.headers,
-          sort: userConfig?.sort ?? this._getDefaultSort(providerName),
+          sort: userConfig?.sort ?? getDefaultProviderSort(providerName),
           models,
         });
       }
@@ -579,7 +519,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
       providers.push({
         id: providerId,
-        name: config.name ?? this._formatProviderName(providerId),
+        name: config.name ?? formatProviderDisplayName(providerId),
         enabled: config.enabled,
         builtin: false,
         api: (config.api ?? 'openai-completions') as Api,
@@ -706,14 +646,14 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
         await this._providerRepository.upsertProvider({
           id: legacy.provider,
-          name: this._formatProviderName(legacy.provider),
+          name: formatProviderDisplayName(legacy.provider),
           enabled: legacy.enabled ?? false,
           builtin: isBuiltin,
           api: null,
           apiKey: legacy.apiKey,
           baseUrl: legacy.baseUrl,
           headers: null,
-          sort: isBuiltin ? this._getDefaultSort(legacy.provider) : 999,
+          sort: isBuiltin ? getDefaultProviderSort(legacy.provider) : 999,
         });
 
         // If legacy had model IDs and it's not a built-in provider, create custom models
@@ -848,7 +788,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
   }
 
   private _getDefaultBaseUrl(providerId: string): string | undefined {
-    const mapped = DEFAULT_PROVIDER_BASE_URL[providerId];
+    const mapped = getDefaultProviderBaseUrl(providerId);
     if (mapped) return mapped;
 
     try {
@@ -858,10 +798,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     } catch {
       return undefined;
     }
-  }
-
-  private _getDefaultSort(providerId: string): number {
-    return DEFAULT_PROVIDER_SORT[providerId] ?? 50;
   }
 
   private _normalizeBaseUrl(url: string): string {
@@ -899,18 +835,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
       if (normalized) deduped.add(normalized);
     }
     return [...deduped].sort((a, b) => a.localeCompare(b));
-  }
-
-  private _formatProviderName(name: string): string {
-    const normalized = name.trim().toLowerCase();
-    const mapped = PROVIDER_DISPLAY_NAME[normalized];
-    if (mapped) return mapped;
-
-    return name
-      .split(/[-_]+/)
-      .filter(Boolean)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
   }
 
   private _persistActiveModel(modelId: string | null): void {

@@ -14,6 +14,7 @@
  */
 
 import type { IModelOption } from '@termlnk/agent';
+import { compareProviders, getDefaultProviderBaseUrl } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, cn, Input, Popover, PopoverContent, PopoverTrigger, Switch, useDependency, useObservable } from '@termlnk/design';
 import { IProviderConfigClientService } from '@termlnk/rpc-client';
@@ -24,7 +25,6 @@ import { AddProviderDialog } from './AddProviderDialog';
 import { ModelConfigPanel } from './ModelConfigPanel';
 import { ModelListItem } from './ModelListItem';
 import { ProviderLogo } from './provider-logo';
-import { compareProviders, getDefaultProviderBaseUrl } from './provider-metadata';
 
 const panelCls = 'tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/70';
 const sectionCls = 'tm:rounded-xl tm:border tm:border-line tm:bg-black/20 tm:p-4';
