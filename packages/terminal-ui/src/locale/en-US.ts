@@ -157,6 +157,7 @@ const locale = {
     shortcuts: {
       'close-active-tab': 'Close Active Tab',
       'create-new-host': 'Create New Host',
+      'delete-host': 'Delete Host',
       'maximize-session': 'Maximize/Restore Session',
       'open-local-terminal': 'New Local Terminal',
     },

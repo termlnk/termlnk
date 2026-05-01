@@ -14,7 +14,7 @@
  */
 
 import { Disposable, ICommandService, Inject } from '@termlnk/core';
-import { ComponentManagerService, IMenuManagerService, IShortcutService, KeyCode, MetaKeys } from '@termlnk/ui';
+import { ComponentManagerService, IMenuManagerService, IShortcutService } from '@termlnk/ui';
 import { ConnectHostCommand } from '../../commands/connect-host.command';
 import { DeleteHostCommand } from '../../commands/delete-host.command';
 import { NewGroupCommand } from '../../commands/new-group.command';
@@ -22,9 +22,9 @@ import { NewHostCommand } from '../../commands/new-host.command';
 import { RenameHostCommand } from '../../commands/rename-host.command';
 import { ToggleHostsPanelCommand } from '../../commands/toggle-hosts-panel.command';
 import { hostsExplorerMenuSchema } from '../../menus/hosts-explorer.menu';
-import { HOSTS_EXPLORER_FOCUSED_CONTEXT } from '../../services/hosts-explorer/contextmenu-positions';
 import { HOSTS_EXPLORER_NAME } from '../../views/hosts-explorer/component-name';
 import { HostExplorer } from '../../views/hosts-explorer/HostExplorer';
+import { DeleteHostShortcut } from './shortcut';
 
 export class HostsExplorerController extends Disposable {
   constructor(
@@ -54,21 +54,6 @@ export class HostsExplorerController extends Disposable {
 
     this.disposeWithMe(this._menuManagerService.appendRootMenu(hostsExplorerMenuSchema));
 
-    // macOS uses Cmd+Backspace (no physical Delete key); Windows/Linux use
-    // bare Delete. Skip when an editable element is focused so rename inputs
-    // keep their native backspace behaviour.
-    this.disposeWithMe(this._shortcutService.registerShortcut({
-      id: DeleteHostCommand.id,
-      binding: KeyCode.DELETE,
-      mac: KeyCode.BACKSPACE | MetaKeys.CTRL_COMMAND,
-      preconditions: (ctx) => {
-        if (!ctx.getContextValue(HOSTS_EXPLORER_FOCUSED_CONTEXT)) {
-          return false;
-        }
-        const active = document.activeElement as HTMLElement | null;
-        const tag = active?.tagName;
-        return tag !== 'INPUT' && tag !== 'TEXTAREA' && !active?.isContentEditable;
-      },
-    }));
+    this.disposeWithMe(this._shortcutService.registerShortcut(DeleteHostShortcut));
   }
 }

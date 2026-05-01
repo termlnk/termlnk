@@ -159,6 +159,7 @@ const locale: typeof enUS = {
     shortcuts: {
       'close-active-tab': '关闭当前标签',
       'create-new-host': '新建主机',
+      'delete-host': '删除主机',
       'maximize-session': '最大化/还原会话',
       'open-local-terminal': '新建本地终端',
     },

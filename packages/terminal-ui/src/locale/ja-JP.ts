@@ -159,6 +159,7 @@ const locale: typeof enUS = {
     shortcuts: {
       'close-active-tab': 'アクティブタブを閉じる',
       'create-new-host': '新しいホストを作成',
+      'delete-host': 'ホストを削除',
       'maximize-session': 'セッションの最大化/復元',
       'open-local-terminal': '新しいローカルターミナル',
     },

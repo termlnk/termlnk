@@ -159,6 +159,7 @@ const locale: typeof enUS = {
     shortcuts: {
       'close-active-tab': '현재 탭 닫기',
       'create-new-host': '새 호스트 생성',
+      'delete-host': '호스트 삭제',
       'maximize-session': '세션 최대화/복원',
       'open-local-terminal': '새 로컬 터미널',
     },
