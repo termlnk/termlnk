@@ -13,13 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IToolPart } from '@termlnk/agent';
+import type { IAgentToolPermissionRequest, IToolPart } from '@termlnk/agent';
 import type { ReactElement } from 'react';
-import { cn } from '@termlnk/design';
-import { AlertCircle, Check, ChevronDown, Loader2, Wrench } from 'lucide-react';
+import { LocaleService } from '@termlnk/core';
+import { cn, useDependency } from '@termlnk/design';
+import { AlertCircle, Check, ChevronDown, Hourglass, Loader2, Wrench } from 'lucide-react';
 import { memo, useState } from 'react';
+import { pickPermissionHighlight } from './permission/highlight';
 import { PermissionDeniedNote } from './permission/PermissionDeniedNote';
-import { ToolApprovalCard } from './permission/ToolApprovalCard';
 
 interface IToolPartProps {
   part: IToolPart;
@@ -130,13 +131,41 @@ function formatInputSummary(input: Record<string, unknown> | undefined, raw: str
   return '';
 }
 
+function ApprovalWaitingPlaceholder({ request }: { request: IAgentToolPermissionRequest }): ReactElement {
+  const localeService = useDependency(LocaleService);
+  const t = (key: string): string => localeService.t(`agent-ui.permission.${key}`);
+  const highlight = pickPermissionHighlight(request);
+
+  return (
+    <div
+      className={`
+        tm:flex tm:flex-col tm:gap-1 tm:rounded-md tm:border-l-2 tm:border-l-yellow tm:bg-one-bg/40 tm:px-2 tm:py-1.5
+        tm:text-[0.7rem]
+      `}
+    >
+      <div className="tm:flex tm:min-w-0 tm:items-center tm:gap-1.5">
+        <Hourglass size={11} className="tm:shrink-0 tm:animate-pulse tm:text-yellow" />
+        <span className="tm:shrink-0 tm:text-yellow">{t('awaiting-inline')}</span>
+        <span className="tm:shrink-0 tm:text-grey">·</span>
+        <span className="tm:min-w-0 tm:truncate tm:text-light-grey">
+          {request.toolDisplayName ?? request.toolName}
+        </span>
+      </div>
+      {highlight && (
+        <span className="tm:truncate tm:font-mono tm:text-grey-fg">{highlight.value}</span>
+      )}
+    </div>
+  );
+}
+
 export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = false }: IToolPartProps) {
   const [expanded, setExpanded] = useState(false);
 
-  // Awaiting approval — render the inline approval card instead of the
-  // collapsed tool summary so the user can act without leaving the chat.
+  // Awaiting approval — show a read-only placeholder. The actual Allow/Deny
+  // controls live in the global PendingApprovalBar above ChatInput so there is
+  // a single, predictable place to act on permission requests.
   if (part.state === 'awaiting-approval' && part.permissionRequest) {
-    return <ToolApprovalCard request={part.permissionRequest} />;
+    return <ApprovalWaitingPlaceholder request={part.permissionRequest} />;
   }
 
   const display = resolveDisplayState(part, messageIsStreaming);
