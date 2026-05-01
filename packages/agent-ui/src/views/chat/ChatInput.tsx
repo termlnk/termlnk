@@ -19,11 +19,12 @@ import type { IChatSlashCommandPanelHandle } from './ChatSlashCommandPanel';
 import { generateRandomId, LocaleService } from '@termlnk/core';
 import { Button, cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { IAIAgentClientService, IProviderConfigClientService } from '@termlnk/rpc-client';
-import { Gauge, Paperclip, Send, Square } from 'lucide-react';
+import { Gauge, Paperclip, Send } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { map } from 'rxjs';
 import { ChatFilePreview } from './ChatFilePreview';
 import { ChatModelSelector } from './ChatModelSelector';
+import { ChatPermissionModeSelector } from './ChatPermissionModeSelector';
 import { ChatSkillSelector } from './ChatSkillSelector';
 import { ChatSlashCommandPanel } from './ChatSlashCommandPanel';
 import { ChatThinkingLevelSelector } from './ChatThinkingLevelSelector';
@@ -474,7 +475,7 @@ export function ChatInput() {
           className="tm:hidden"
           onChange={handleFileInputChange}
         />
-        <div className="tm:mt-1 tm:flex tm:items-center tm:justify-between tm:@container/chat-toolbar">
+        <div className="tm:@container/chat-toolbar tm:mt-1 tm:flex tm:items-center tm:justify-between">
           <div className="tm:flex tm:min-w-0 tm:flex-1 tm:items-center tm:gap-1">
             <Button
               variant="ghost"
@@ -491,8 +492,9 @@ export function ChatInput() {
             <ChatToolSelector />
             <ChatSkillSelector />
             <ChatThinkingLevelSelector />
+            <ChatPermissionModeSelector />
             <ChatModelSelector
-              className="tm:inline-flex tm:min-w-0 tm:max-w-full"
+              className="tm:inline-flex tm:max-w-full tm:min-w-0"
               triggerClassName={`
                 tm:h-7 tm:w-full tm:gap-1 tm:rounded-md tm:border-0 tm:bg-transparent tm:px-1.5 tm:pr-1
                 tm:text-[0.72rem] tm:text-light-grey
@@ -531,21 +533,29 @@ export function ChatInput() {
               </Tooltip>
             </TooltipProvider>
           </div>
-          <div className="tm:flex tm:items-center tm:gap-1">
+          <div className="tm:flex tm:items-center">
             {isStreaming && (
               <Button
                 variant="ghost"
                 size="icon-xs"
                 className={`
-                  tm:flex tm:size-7 tm:shrink-0 tm:cursor-pointer tm:items-center tm:justify-center tm:rounded-full
-                  tm:bg-red tm:text-[#fff] tm:transition-colors
-                  tm:hover:bg-red/90
+                  tm:group tm:flex tm:size-7 tm:shrink-0 tm:cursor-pointer tm:items-center tm:justify-center
+                  tm:transition-colors
+                  tm:hover:bg-transparent
                 `}
                 onClick={handleStop}
                 title={localeService.t('agent-ui.chat.stop')}
                 aria-label={localeService.t('agent-ui.chat.stop')}
               >
-                <Square size={8} fill="currentColor" />
+                <span
+                  className={`
+                    tm:flex tm:size-4 tm:items-center tm:justify-center tm:rounded-full tm:bg-red
+                    tm:transition-colors
+                    tm:group-hover:bg-red/90
+                  `}
+                >
+                  <span className="tm:size-2 tm:rounded-[2px] tm:bg-white" />
+                </span>
               </Button>
             )}
             <Button
@@ -553,7 +563,7 @@ export function ChatInput() {
               size="icon-xs"
               className={cn(
                 `
-                  tm:flex tm:size-8 tm:shrink-0 tm:rounded-full tm:text-light-grey tm:transition-colors
+                  tm:flex tm:size-7 tm:shrink-0 tm:text-light-grey tm:transition-colors
                   tm:hover:text-white
                   tm:disabled:cursor-default
                   tm:disabled:hover:bg-transparent tm:disabled:hover:text-light-grey
