@@ -47,7 +47,7 @@ const locale: typeof enUS = {
       skill: 'AIスキルと機能を管理',
       island: 'ダイナミックアイランドの通知とサウンドを設定',
       shortcuts: '登録済みキーボードショートカットを確認',
-      about: 'アプリとランタイム情報を表示',
+      about: 'アプリ情報とバージョン更新',
     },
     appearance: {
       'language-settings-title': '言語設定',

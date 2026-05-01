@@ -47,7 +47,7 @@ const locale: typeof enUS = {
       skill: '管理 AI 技能和能力',
       island: '設定動態島通知和提示音',
       shortcuts: '檢視已註冊的鍵盤快速鍵',
-      about: '檢視應用程式與執行環境資訊',
+      about: '應用程式資訊與版本更新',
     },
     appearance: {
       'language-settings-title': '語言設定',

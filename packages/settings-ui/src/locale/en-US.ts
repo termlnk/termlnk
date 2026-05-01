@@ -45,7 +45,7 @@ const locale = {
       skill: 'Manage AI skills and capabilities',
       island: 'Configure Dynamic Island notifications and sounds',
       shortcuts: 'Review registered keyboard shortcuts',
-      about: 'View app and runtime information',
+      about: 'App information and version updates',
     },
     appearance: {
       'language-settings-title': 'Language Settings',

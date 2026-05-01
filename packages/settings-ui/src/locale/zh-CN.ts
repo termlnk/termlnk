@@ -47,7 +47,7 @@ const locale: typeof enUS = {
       skill: '管理 AI 技能和能力',
       island: '配置灵动岛通知和提示音',
       shortcuts: '查看已注册的快捷键映射',
-      about: '查看应用与运行环境信息',
+      about: '应用信息与版本更新',
     },
     appearance: {
       'language-settings-title': '语言设置',
