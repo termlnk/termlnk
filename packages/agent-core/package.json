@@ -57,8 +57,8 @@
     "socks": "^2.8.7"
   },
   "dependencies": {
-    "@mariozechner/pi-agent-core": "^0.70.6",
-    "@mariozechner/pi-ai": "^0.70.6",
+    "@mariozechner/pi-agent-core": "^0.71.1",
+    "@mariozechner/pi-ai": "^0.71.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sinclair/typebox": "^0.34.49",
     "@termlnk/agent": "workspace:*",
@@ -66,7 +66,7 @@
     "@termlnk/database": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "partial-json": "^0.1.7",
-    "socks": "^2.8.7",
+    "socks": "^2.8.8",
     "undici": "^8.1.0",
     "zod": "^4.3.6"
   },
