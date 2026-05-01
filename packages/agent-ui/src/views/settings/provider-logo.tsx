@@ -14,7 +14,7 @@
  */
 
 import type { ComponentType, ReactElement } from 'react';
-import { AiHubMix, Anthropic, Antigravity, AzureAI, Bedrock, Cerebras, Claude, DeepSeek, Gemini, GithubCopilot, Groq, HuggingFace, Minimax, Mistral, Moonshot, OpenAI, OpenCode, OpenRouter, Vercel, VertexAI, XAI, ZAI } from '@termlnk/design';
+import { AiHubMix, Anthropic, AzureAI, Bedrock, Cerebras, Claude, Cloudflare, DeepSeek, Fireworks, Gemini, GithubCopilot, Groq, HuggingFace, Kimi, Minimax, Mistral, Moonshot, OpenAI, OpenCode, OpenRouter, Vercel, VertexAI, XAI, ZAI } from '@termlnk/design';
 import { Sparkles } from 'lucide-react';
 
 export interface IProviderLogoProps {
@@ -32,30 +32,34 @@ const DEFAULT_PROVIDER_LOGO: ProviderLogoComponent = ({ className }) => (
 );
 
 const PROVIDER_LOGOS: Record<string, ProviderLogoComponent> = {
-  'amazon-bedrock': Bedrock,
+  openai: OpenAI,
   anthropic: Anthropic,
-  aihubmix: AiHubMix,
-  cerebras: Cerebras,
   claude: Claude,
-  deepseek: DeepSeek,
-  'github-copilot': GithubCopilot,
   google: Gemini,
+  'google-vertex': VertexAI,
+  deepseek: DeepSeek,
+  'kimi-coding': Kimi,
+  moonshotai: Moonshot,
+  'moonshotai-cn': Moonshot,
+  zai: ZAI,
+  xai: XAI,
   groq: Groq,
+  cerebras: Cerebras,
+  mistral: Mistral,
+  openrouter: OpenRouter,
+  'vercel-ai-gateway': Vercel,
+  'cloudflare-ai-gateway': Cloudflare,
+  'cloudflare-workers-ai': Cloudflare,
+  fireworks: Fireworks,
   huggingface: HuggingFace,
   minimax: Minimax,
   'minimax-cn': Minimax,
-  moonshot: Moonshot,
-  openai: OpenAI,
+  'azure-openai-responses': AzureAI,
+  'amazon-bedrock': Bedrock,
+  'github-copilot': GithubCopilot,
   opencode: OpenCode,
   'opencode-go': OpenCode,
-  openrouter: OpenRouter,
-  xai: XAI,
-  zai: ZAI,
-  'azure-openai': AzureAI,
-  'vercel-ai-gateway': Vercel,
-  mistral: Mistral,
-  'google-vertex': VertexAI,
-  'google-antigravity': Antigravity,
+  aihubmix: AiHubMix,
 };
 
 function resolveProviderLogoKey(providerId: string): string {
@@ -70,27 +74,35 @@ function resolveProviderLogoKey(providerId: string): string {
   }
 
   if (normalizedId.includes('moonshot') || normalizedId.includes('kimi')) {
-    return 'moonshot';
+    return 'moonshotai';
   }
 
   if (normalizedId.includes('claude')) {
     return 'anthropic';
   }
 
-  if (normalizedId === 'zai' || normalizedId.startsWith('zai-')) {
+  if (normalizedId.includes('cloudflare')) {
+    return 'cloudflare-ai-gateway';
+  }
+
+  if (normalizedId.includes('fireworks')) {
+    return 'fireworks';
+  }
+
+  if (normalizedId.startsWith('zai-')) {
     return 'zai';
   }
 
-  if (normalizedId === 'openai' || normalizedId.startsWith('openai-')) {
+  if (normalizedId.startsWith('openai-')) {
     return 'openai';
   }
 
-  if (normalizedId === 'google' || normalizedId.startsWith('google-')) {
+  if (normalizedId.startsWith('google-')) {
     return 'google';
   }
 
   if (normalizedId.startsWith('azure-openai')) {
-    return 'azure-openai';
+    return 'azure-openai-responses';
   }
 
   return normalizedId;
