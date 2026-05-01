@@ -17,11 +17,10 @@ import type { ReactNode } from 'react';
 import { LocaleService } from '@termlnk/core';
 import { Badge, Button, cn, useDependency } from '@termlnk/design';
 import { IRPCClientService } from '@termlnk/rpc-client';
-import { ArrowUpRight, Copy, Download, RefreshCw, ScrollText, Star } from 'lucide-react';
+import { ArrowUpRight, Download, RefreshCw, ScrollText, Star } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type UpdateState = 'idle' | 'checking' | 'available' | 'latest' | 'error';
-type CopyState = 'idle' | 'success' | 'error';
 
 /** Status dot color classes keyed by UpdateState */
 const STATUS_DOT_CLASS: Record<UpdateState, string> = {
@@ -54,13 +53,9 @@ interface IUpdaterClient {
   };
 }
 
-interface IRuntimeInfo {
-  electron: string;
-  node: string;
-  chrome: string;
-  platform: string;
-}
-
+const AUTHOR_NAME = 'telan';
+const AUTHOR_URL = 'https://x.com/telanflow';
+const LICENSE_NAME = 'PolyForm Noncommercial 1.0.0';
 const GITHUB_URL = 'https://github.com/termlnk/termlnk';
 const RELEASES_URL = `${GITHUB_URL}/releases`;
 const APP_LOGO_URL = new URL('../../../../../../apps/desktop/resources/logo.svg', import.meta.url).href;
@@ -73,35 +68,6 @@ export function AboutTab() {
   const [latestVersion, setLatestVersion] = useState('-');
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
-  const [copyState, setCopyState] = useState<CopyState>('idle');
-
-  const runtimeInfo = useMemo<IRuntimeInfo>(() => {
-    const win = window as Window & {
-      electron?: {
-        process?: {
-          versions?: Record<string, string>;
-        };
-      };
-      electronVersion?: string;
-      nodeVersion?: string;
-      chromeVersion?: string;
-    };
-
-    const versions = win.electron?.process?.versions ?? {};
-
-    const navigatorWithUAData = navigator as Navigator & {
-      userAgentData?: {
-        platform?: string;
-      };
-    };
-
-    return {
-      electron: versions.electron ?? win.electronVersion ?? '-',
-      node: versions.node ?? win.nodeVersion ?? '-',
-      chrome: versions.chrome ?? win.chromeVersion ?? '-',
-      platform: navigatorWithUAData.userAgentData?.platform ?? navigator.platform ?? '-',
-    };
-  }, []);
 
   const getUpdaterClient = useCallback((): IUpdaterClient | null => {
     const client = rpcClientService.getClient() as { updater?: IUpdaterClient };
@@ -206,56 +172,6 @@ export function AboutTab() {
     return lastCheckedAt.toLocaleString();
   }, [lastCheckedAt, localeService]);
 
-  const environmentText = useMemo(() => {
-    return [
-      `App: ${currentVersion}`,
-      `Electron: ${runtimeInfo.electron}`,
-      `Node.js: ${runtimeInfo.node}`,
-      `Chrome: ${runtimeInfo.chrome}`,
-      `Platform: ${runtimeInfo.platform}`,
-      `Update Status: ${statusText}`,
-      `Latest Version: ${latestVersion}`,
-      `Last Check: ${lastCheckedText}`,
-    ].join('\n');
-  }, [currentVersion, latestVersion, runtimeInfo, statusText, lastCheckedText]);
-
-  const handleCopyEnvironment = useCallback(async () => {
-    try {
-      if (!navigator.clipboard?.writeText) {
-        throw new Error('clipboard unavailable');
-      }
-      await navigator.clipboard.writeText(environmentText);
-      setCopyState('success');
-    } catch {
-      setCopyState('error');
-    }
-  }, [environmentText]);
-
-  useEffect(() => {
-    if (copyState === 'idle') {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setCopyState('idle');
-    }, 1600);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [copyState]);
-
-  const copyLabel = useMemo(() => {
-    switch (copyState) {
-      case 'success':
-        return localeService.t('settings-ui.about.copy-success');
-      case 'error':
-        return localeService.t('settings-ui.about.copy-failed');
-      default:
-        return localeService.t('settings-ui.about.copy-environment');
-    }
-  }, [copyState, localeService]);
-
   return (
     <div className="tm:flex tm:flex-col tm:gap-4 tm:pb-1">
       <section
@@ -280,14 +196,24 @@ export function AboutTab() {
             />
             <div className="tm:text-2xl tm:font-bold tm:tracking-tight tm:text-white">Termlnk</div>
           </div>
-          <p className="tm:max-w-xl tm:text-sm tm:text-grey-fg">
+          <p className="tm:max-w-xl tm:text-sm tm:text-light-grey">
             {localeService.t('settings-ui.about.description')}
           </p>
-          <p className="tm:text-xs tm:text-grey-fg">
+          <p className="tm:text-xs tm:text-light-grey">
             {localeService.t('settings-ui.about.copyright')}
             {' '}
             {new Date().getFullYear()}
-            .
+            {' · '}
+            <a
+              href={AUTHOR_URL}
+              onClick={(event) => {
+                event.preventDefault();
+                openExternal(AUTHOR_URL);
+              }}
+              className="tm:cursor-pointer tm:text-light-grey tm:hover:text-blue tm:hover:underline"
+            >
+              {AUTHOR_NAME}
+            </a>
           </p>
 
           <div className="tm:flex tm:flex-wrap tm:items-center tm:justify-center tm:gap-2">
@@ -296,20 +222,11 @@ export function AboutTab() {
               {' '}
               {currentVersion}
             </Badge>
-            <Badge variant="secondary">
-              {localeService.t('settings-ui.about.version-electron')}
-              {' '}
-              {runtimeInfo.electron}
-            </Badge>
             <Badge variant="outline">
-              {localeService.t('settings-ui.about.version-node')}
+              License
               {' '}
-              {runtimeInfo.node}
+              {LICENSE_NAME}
             </Badge>
-            <Button variant="ghost" size="xs" onClick={handleCopyEnvironment}>
-              <Copy className="tm:size-3.5" />
-              {copyLabel}
-            </Button>
           </div>
         </div>
       </section>
