@@ -15,18 +15,19 @@
 
 import type { AgentEvent, AgentTool } from '@mariozechner/pi-agent-core';
 import type { Api, AssistantMessage, Model, UserMessage } from '@mariozechner/pi-ai';
-import type { AgentStatus, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
+import type { AgentStatus, IAgentToolPermissionRequest, IAgentToolPermissionService, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import type { IPendingDeliveryMode } from '../../common/pending-message-queue';
 import { Agent } from '@mariozechner/pi-agent-core';
 import { getModel, streamSimple } from '@mariozechner/pi-ai';
-import { DEFAULT_COMPACT_CONFIG, DEFAULT_THINKING_LEVEL, ILLMProviderService, normalizeCompactConfig } from '@termlnk/agent';
+import { DEFAULT_COMPACT_CONFIG, DEFAULT_THINKING_LEVEL, IAgentToolPermissionService as IAgentToolPermissionServiceId, ILLMProviderService, normalizeCompactConfig } from '@termlnk/agent';
 import { Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
 import { BehaviorSubject, combineLatest, map, Subject } from 'rxjs';
 import { PendingMessageQueue } from '../../common/pending-message-queue';
 import { buildCompactUserPrompt, buildSummaryUserMessage, formatMessagesForCompaction } from '../compact/compact-prompt';
 import { getLatestContextTokens, shouldAutoCompact } from '../compact/compact-token';
+import { invokeWithUserIntent } from '../permission/permission-guarded-tool';
 import {
   appendErrorPart,
   appendTextDelta,
@@ -155,6 +156,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
   constructor(
     @Inject(ILLMProviderService) private readonly _llmProviderService: ILLMProviderService,
     @Inject(ChatRepository) private readonly _chatRepository: ChatRepository,
+    @Inject(IAgentToolPermissionServiceId) private readonly _permissionService: IAgentToolPermissionService,
     @Inject(ILogService) private readonly _logService: ILogService
   ) {
     super();
@@ -166,6 +168,14 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         if (event.type === 'delete' && event.sessionId === this._currentSessionId$.getValue()) {
           this._resetCurrentSessionState();
         }
+      })
+    );
+
+    // Bridge IAgentToolPermissionRequest → IToolPart.state='awaiting-approval'
+    // so the chat UI can render an inline approval card on the matching tool.
+    this.disposeWithMe(
+      this._permissionService.pendingRequests$.subscribe((requests) => {
+        this._reflectPendingRequestsToCurrentMessage(requests);
       })
     );
   }
@@ -623,7 +633,9 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     if (!tool) {
       throw new Error(`[AIAgentService] Tool not found: ${toolName}`);
     }
-    return tool.execute(generateRandomId(), args);
+    // D1 — User-initiated invocations bypass the permission guard via the
+    // raw-tool back-channel registered by wrapToolWithPermission.
+    return invokeWithUserIntent(tool, generateRandomId(), args);
   }
 
   setCompactConfig(config: ICompactConfig): void {
@@ -1268,6 +1280,49 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     // Evaluate auto-compaction after assistant message finalizes
     if (!messageHasError(completedMessage)) {
       this._maybeAutoCompact();
+    }
+  }
+
+  /**
+   * Reflects the pending-permission queue onto the streaming message so each
+   * IToolPart whose toolCallId matches a pending request flips to
+   * 'awaiting-approval'. When the request resolves (no longer in the queue) the
+   * part returns to 'input-available' so the existing tool_execution_end path
+   * can take over and produce the final state.
+   */
+  private _reflectPendingRequestsToCurrentMessage(requests: IAgentToolPermissionRequest[]): void {
+    const current = this._currentMessage$.getValue();
+    if (!current) {
+      return;
+    }
+    const reqByCallId = new Map<string, IAgentToolPermissionRequest>();
+    for (const r of requests) {
+      reqByCallId.set(r.toolCallId, r);
+    }
+
+    let changed = false;
+    const nextParts = current.parts.map((p) => {
+      if (p.type !== 'tool') {
+        return p;
+      }
+      const req = reqByCallId.get(p.toolCallId);
+      if (req) {
+        if (p.state === 'awaiting-approval' && p.permissionRequest?.id === req.id) {
+          return p;
+        }
+        changed = true;
+        return { ...p, state: 'awaiting-approval' as const, permissionRequest: req };
+      }
+      if (p.state === 'awaiting-approval') {
+        changed = true;
+        const { permissionRequest: _drop, ...rest } = p;
+        return { ...rest, state: 'input-available' as const };
+      }
+      return p;
+    });
+
+    if (changed) {
+      this._currentMessage$.next({ ...current, parts: nextParts });
     }
   }
 

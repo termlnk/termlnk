@@ -69,6 +69,8 @@ export interface IMcpRemoteTool {
   label?: string;
   /** Tool category for UI grouping. */
   category?: AgentToolCategory;
+  /** Mirrored from MCP tool annotations.readOnlyHint. */
+  readOnlyHint?: boolean;
 }
 
 export interface IMcpServerChangeEvent {

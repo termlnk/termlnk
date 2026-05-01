@@ -16,7 +16,7 @@
 import type { IAgentPluginConfig } from '@termlnk/agent';
 import type { Dependency } from '@termlnk/core';
 import type { IAgentCorePluginConfig } from './controllers/config.schema';
-import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_MCP_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IAgentToolRegistryService, IAIAgentService, ICommandPermissionService, IHookLauncherService, ILLMProviderService, IMcpRegistryService, IMcpService, IMyMcpService, IPlatformContextService, ISkillDiscoveryService, ISkillInstallerService, ISkillPromptService, ISkillStateService, ISystemPromptService, SKILL_CONFIG_KEY } from '@termlnk/agent';
+import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_MCP_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IAgentToolPermissionService, IAgentToolRegistryService, IAIAgentService, IHookLauncherService, ILLMProviderService, IMcpRegistryService, IMcpService, IMyMcpService, IPermissionRuleService, IPlatformContextService, IRiskAssessmentService, ISkillDiscoveryService, ISkillInstallerService, ISkillPromptService, ISkillStateService, ISystemPromptService, SKILL_CONFIG_KEY } from '@termlnk/agent';
 import { DependentOn, IConfigService, ILogService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { AgentHookController } from './controllers/agent-hook.controller';
@@ -37,7 +37,9 @@ import { AgentToolRegistryService } from './services/mcp/agent-tool-registry.ser
 import { McpRegistryService } from './services/mcp/mcp-registry.service';
 import { McpService } from './services/mcp/mcp.service';
 import { MyMcpService } from './services/mcp/my-mcp.service';
-import { CommandPermissionService } from './services/permission/command-permission.service';
+import { AgentToolPermissionService } from './services/permission/agent-tool-permission.service';
+import { PermissionRuleService } from './services/permission/permission-rule.service';
+import { RiskAssessmentService } from './services/permission/risk-assessment.service';
 import { PlatformContextService } from './services/platform/platform-context.service';
 import { SystemPromptService } from './services/prompt/system-prompt.service';
 import { SkillDiscoveryService } from './services/skill/skill-discovery.service';
@@ -86,7 +88,11 @@ export class AgentCorePlugin extends Plugin {
       [ILLMProviderService, { useClass: LLMProviderService }],
       [ISystemPromptService, { useClass: SystemPromptService }],
       [IPlatformContextService, { useClass: PlatformContextService }],
-      [ICommandPermissionService, { useClass: CommandPermissionService }],
+
+      // Permission system
+      [IPermissionRuleService, { useClass: PermissionRuleService }],
+      [IRiskAssessmentService, { useClass: RiskAssessmentService }],
+      [IAgentToolPermissionService, { useClass: AgentToolPermissionService }],
 
       // Agent hook services
       [IAgentMonitorService, { useClass: AgentMonitorService }],

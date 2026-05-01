@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAgentTool, IAgentToolRegistryService, IAgentToolResult, ICommandPermissionService } from '@termlnk/agent';
+import type { IAgentTool, IAgentToolRegistryService, IAgentToolResult } from '@termlnk/agent';
 import type { IDisposable, ILogService } from '@termlnk/core';
 import type { ISSHToolService } from '@termlnk/rpc';
 import type { IPTYSessionService, ITerminalCommand } from '@termlnk/terminal';
@@ -29,14 +29,13 @@ export interface ITerminalToolDeps {
   sshToolService: ISSHToolService;
   logService: ILogService;
   ptySessionService?: IPTYSessionService;
-  permissionService?: ICommandPermissionService;
   commandBlockService?: ICommandBlockService;
   /** Optional shared output buffer. If omitted a fresh instance is created and disposed with the tools. */
   outputBuffers?: OutputBufferManager;
 }
 
 export function registerTerminalTools(deps: ITerminalToolDeps, toolRegistry: IAgentToolRegistryService): IDisposable[] {
-  const { sshToolService, logService, ptySessionService, permissionService, commandBlockService } = deps;
+  const { sshToolService, logService, ptySessionService, commandBlockService } = deps;
   const outputBuffers = deps.outputBuffers ?? new OutputBufferManager();
   const ownsBuffers = !deps.outputBuffers;
 
@@ -52,7 +51,7 @@ export function registerTerminalTools(deps: ITerminalToolDeps, toolRegistry: IAg
 
   if (commandBlockService) {
     disposables.push(
-      toolRegistry.registerTool(createRunTool(commandBlockService, sshToolService, logService, outputBuffers, ptySessionService, permissionService))
+      toolRegistry.registerTool(createRunTool(commandBlockService, sshToolService, logService, outputBuffers, ptySessionService))
     );
     disposables.push(
       toolRegistry.registerTool(createListBlocksTool(commandBlockService, logService))
@@ -242,8 +241,7 @@ function createRunTool(
   sshToolService: ISSHToolService,
   logService: ILogService,
   outputBuffers: OutputBufferManager,
-  ptySessionService?: IPTYSessionService,
-  permissionService?: ICommandPermissionService
+  ptySessionService?: IPTYSessionService
 ): IAgentTool {
   return {
     name: 'termlnk_terminal_run',
@@ -262,6 +260,18 @@ function createRunTool(
       },
       required: ['sessionId', 'command'],
     },
+    /**
+     * Provides per-call SSH/local hint to the permission system. Approval
+     * itself is handled by the universal wrap layer in agent-core, not here.
+     */
+    resolveMetadata: (args) => {
+      const sessionId = String(args.sessionId ?? '');
+      if (!sessionId) {
+        return undefined;
+      }
+      const isSSH = sshToolService.getSessionStatus(sessionId) !== null;
+      return { terminalSessionType: isSSH ? 'ssh' : 'local' };
+    },
     handler: async (args) => {
       try {
         const sessionId = String(args.sessionId ?? '');
@@ -272,11 +282,6 @@ function createRunTool(
 
         if (!sessionId || !command) {
           return jsonError('Both sessionId and command are required.');
-        }
-
-        const denial = await checkCommandPermission(permissionService, sshToolService, sessionId, command);
-        if (denial) {
-          return denial;
         }
 
         if (!commandBlockService.isAttached(sessionId)) {
@@ -624,35 +629,6 @@ function createPollBlockTool(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-async function checkCommandPermission(
-  permissionService: ICommandPermissionService | undefined,
-  sshToolService: ISSHToolService,
-  sessionId: string,
-  command: string
-): Promise<IAgentToolResult | null> {
-  if (!permissionService) {
-    return null;
-  }
-  const sessionType = sshToolService.getSessionStatus(sessionId) !== null ? 'ssh' as const : 'local' as const;
-  const evaluation = permissionService.evaluateCommand(sessionId, command, sessionType);
-  if (evaluation.requiresApproval) {
-    const decision = await permissionService.requestApproval({
-      sessionId,
-      command,
-      riskLevel: evaluation.riskLevel,
-      reason: evaluation.reason ?? '',
-      suggestedAlternative: evaluation.suggestedAlternative,
-    });
-    if (decision === 'deny') {
-      return jsonError(`Command denied by user: ${evaluation.reason}`);
-    }
-  }
-  if (!evaluation.allowed && !evaluation.requiresApproval) {
-    return jsonError(`Command blocked: ${evaluation.reason}`);
-  }
-  return null;
-}
 
 function resolveHeuristicDataStream(
   sessionId: string,

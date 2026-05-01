@@ -30,6 +30,7 @@ import { HostManagerService, IHostManagerService } from './services/host/host-ma
 import { McpRegistryService } from './services/mcp/mcp-registry.service';
 import { McpService } from './services/mcp/mcp.service';
 import { NotifyService } from './services/notify/notify.service';
+import { IPermissionClientService, PermissionClientService } from './services/permission/permission-client.service';
 import { IProxyClientService, ProxyClientService } from './services/proxy/proxy.service';
 import { PTYService } from './services/pty/pty.service';
 import { ISFTPClientService, SFTPClientService } from './services/sftp/sftp.service';
@@ -80,6 +81,7 @@ export class RPCClientPlugin extends Plugin {
       [IMcpService, { useClass: McpService }],
       [IMcpRegistryService, { useClass: McpRegistryService }],
       [INotifyService, { useClass: NotifyService }],
+      [IPermissionClientService, { useClass: PermissionClientService }],
       [IProxyClientService, { useClass: ProxyClientService }],
       [IPTYService, { useClass: PTYService }],
       [ISFTPClientService, { useClass: SFTPClientService }],

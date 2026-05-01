@@ -14,12 +14,13 @@
  */
 
 import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
-import type { IAgentTool, IMcpRemoteTool } from '@termlnk/agent';
+import type { AgentToolCategory, IAgentTool, IGuardMetadata, IMcpRemoteTool } from '@termlnk/agent';
 import { Type } from '@sinclair/typebox';
-import { IAgentToolRegistryService, IAIAgentService, IMcpService } from '@termlnk/agent';
+import { IAgentToolPermissionService, IAgentToolRegistryService, IAIAgentService, IMcpService } from '@termlnk/agent';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
 import { sanitizeName } from '../common/sanitize-name';
+import { wrapToolWithPermission } from '../services/permission/permission-guarded-tool';
 import { WIDGET_TOOL_NAMES } from '../tools/widget-tools';
 
 export class McpController extends Disposable {
@@ -31,6 +32,7 @@ export class McpController extends Disposable {
     @IMcpService private readonly _mcpService: IMcpService,
     @IAgentToolRegistryService private readonly _mcpToolRegistryService: IAgentToolRegistryService,
     @IAIAgentService private readonly _aiAgentService: IAIAgentService,
+    @IAgentToolPermissionService private readonly _permissionService: IAgentToolPermissionService,
     @Inject(ChatRepository) private readonly _chatRepository: ChatRepository,
     @ILogService private readonly _logService: ILogService
   ) {
@@ -131,7 +133,7 @@ export class McpController extends Disposable {
   }
 
   private _convertBuiltinToolToAgentTool(tool: IAgentTool): AgentTool<any> {
-    return {
+    const raw: AgentTool<any> = {
       name: tool.name,
       label: tool.label ?? tool.name,
       description: tool.description,
@@ -148,7 +150,8 @@ export class McpController extends Disposable {
             }),
             details: result,
           };
-        } catch (err) {
+        }
+        catch (err) {
           this._logService.error(`[McpController] Builtin tool ${tool.name} failed: ${err}`);
           return {
             content: [{ type: 'text', text: `Error: ${err}` }],
@@ -157,11 +160,25 @@ export class McpController extends Disposable {
         }
       },
     };
+
+    return wrapToolWithPermission(raw, {
+      getSessionId: () => this._aiAgentService.getCurrentSessionId(),
+      permissionService: this._permissionService,
+      category: this._resolveBuiltinCategory(tool),
+      metadata: {
+        toolDisplayName: tool.label,
+        isReadOnly: tool.isReadOnly,
+        isDestructive: tool.isDestructive,
+      },
+      resolveMetadata: tool.resolveMetadata
+        ? (input) => tool.resolveMetadata!((input ?? {}) as Record<string, unknown>) as IGuardMetadata | undefined
+        : undefined,
+    });
   }
 
   private _convertRemoteToolToAgentTool(remoteTool: IMcpRemoteTool): AgentTool<any> {
     const toolName = `mcp_${sanitizeName(remoteTool.serverName)}_${sanitizeName(remoteTool.name)}`;
-    return {
+    const raw: AgentTool<any> = {
       name: toolName,
       label: `[${remoteTool.serverName}] ${remoteTool.name}`,
       description: remoteTool.description || remoteTool.name,
@@ -174,7 +191,8 @@ export class McpController extends Disposable {
             content: [{ type: 'text', text }],
             details: result,
           };
-        } catch (err) {
+        }
+        catch (err) {
           this._logService.error(`[McpController] Tool ${toolName} failed: ${err}`);
           return {
             content: [{ type: 'text', text: `Error: ${err}` }],
@@ -183,6 +201,43 @@ export class McpController extends Disposable {
         }
       },
     };
+
+    return wrapToolWithPermission(raw, {
+      getSessionId: () => this._aiAgentService.getCurrentSessionId(),
+      permissionService: this._permissionService,
+      category: 'mcp',
+      metadata: {
+        toolDisplayName: `[${remoteTool.serverName}] ${remoteTool.name}`,
+        readOnlyHint: remoteTool.readOnlyHint,
+      },
+    });
+  }
+
+  /**
+   * Resolves a category for a built-in tool. Falls back to inspecting the tool
+   * name prefix when category is not declared on the tool.
+   */
+  private _resolveBuiltinCategory(tool: IAgentTool): AgentToolCategory {
+    if (tool.category) {
+      return tool.category;
+    }
+    const name = tool.name;
+    if (name.startsWith('termlnk_terminal_')) {
+      return 'terminal';
+    }
+    if (name.startsWith('termlnk_file_')) {
+      return 'file';
+    }
+    if (name.startsWith('termlnk_host_')) {
+      return 'host';
+    }
+    if (name.startsWith('termlnk_web_')) {
+      return 'network';
+    }
+    if (name.startsWith('skill_')) {
+      return 'skill';
+    }
+    return 'other';
   }
 
   private async _getSelectedToolIds(): Promise<string[] | null> {

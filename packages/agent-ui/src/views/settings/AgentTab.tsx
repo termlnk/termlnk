@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, Checkbox, cn, Input, Slider, useDependen
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { PermissionSection } from './permission/PermissionSection';
 
 export function AgentTab() {
   const localeService = useDependency(LocaleService);
@@ -188,6 +189,8 @@ export function AgentTab() {
           </div>
         </CardContent>
       </Card>
+
+      <PermissionSection />
     </div>
   );
 }

@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IAgentToolPermissionRequest } from './agent-tool-permission';
 import type { ICompactMetadata } from './compact';
 
 export type ChatRole = 'user' | 'assistant' | 'system' | 'compact_boundary';
@@ -21,7 +22,12 @@ export type AgentStatus = 'idle' | 'thinking' | 'tool_calling' | 'streaming' | '
 
 export type ThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
 
-export type ToolPartState = 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
+export type ToolPartState =
+  | 'input-streaming'
+  | 'input-available'
+  | 'awaiting-approval'
+  | 'output-available'
+  | 'output-error';
 
 export interface ITextPart {
   type: 'text';
@@ -42,6 +48,8 @@ export interface IToolPart {
   input?: Record<string, unknown>;
   inputRaw?: string;
   output?: IToolOutput;
+  /** Populated when state === 'awaiting-approval'. */
+  permissionRequest?: IAgentToolPermissionRequest;
 }
 
 export interface IToolOutput {

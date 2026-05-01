@@ -18,6 +18,8 @@ import type { ReactElement } from 'react';
 import { cn } from '@termlnk/design';
 import { AlertCircle, Check, ChevronDown, Loader2, Wrench } from 'lucide-react';
 import { memo, useState } from 'react';
+import { PermissionDeniedNote } from './permission/PermissionDeniedNote';
+import { ToolApprovalCard } from './permission/ToolApprovalCard';
 
 interface IToolPartProps {
   part: IToolPart;
@@ -130,6 +132,13 @@ function formatInputSummary(input: Record<string, unknown> | undefined, raw: str
 
 export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = false }: IToolPartProps) {
   const [expanded, setExpanded] = useState(false);
+
+  // Awaiting approval — render the inline approval card instead of the
+  // collapsed tool summary so the user can act without leaving the chat.
+  if (part.state === 'awaiting-approval' && part.permissionRequest) {
+    return <ToolApprovalCard request={part.permissionRequest} />;
+  }
+
   const display = resolveDisplayState(part, messageIsStreaming);
   const pending = display === 'pending';
   const errored = display === 'errored';
@@ -137,6 +146,7 @@ export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = fals
   const inputJson = formatJson(part.input ?? part.inputRaw);
   const output = truncateOutput(part.output?.text);
   const summary = formatInputSummary(part.input, part.inputRaw);
+  const isPermissionDenial = errored && (part.output?.text?.startsWith('[Permission denied]') ?? false);
 
   return (
     <div
@@ -189,7 +199,11 @@ export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = fals
             </div>
           )}
 
-          {output.text && (
+          {isPermissionDenial && (
+            <PermissionDeniedNote outputText={part.output?.text ?? ''} />
+          )}
+
+          {!isPermissionDenial && output.text && (
             <div className="tm:px-2 tm:py-1.5">
               <div
                 className={cn('tm:mb-1 tm:text-[0.6rem] tm:tracking-wide', {
@@ -222,7 +236,7 @@ export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = fals
             </div>
           )}
 
-          {!output.text && (pending
+          {!isPermissionDenial && !output.text && (pending
             ? (
               <div className="tm:px-2 tm:py-1.5 tm:text-[0.7rem] tm:text-grey">
                 (waiting for output…)

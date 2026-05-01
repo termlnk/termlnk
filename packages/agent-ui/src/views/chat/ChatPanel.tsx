@@ -20,6 +20,7 @@ import { ChatHeader } from './ChatHeader';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSessionList } from './ChatSessionList';
+import { PendingApprovalsPill } from './PendingApprovalsPill';
 
 function useSessionTitle(): string | undefined {
   const chatSessionService = useDependency(IChatSessionClientService);
@@ -80,7 +81,14 @@ export function ChatPanel() {
         : (
           <>
             <ChatMessages />
-            <ChatInput />
+            <div className="tm:relative">
+              <div className="tm:pointer-events-none tm:absolute tm:right-3 tm:-top-9 tm:flex tm:justify-end">
+                <div className="tm:pointer-events-auto">
+                  <PendingApprovalsPill />
+                </div>
+              </div>
+              <ChatInput />
+            </div>
           </>
         )}
     </div>

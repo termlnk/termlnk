@@ -14,6 +14,7 @@
  */
 
 import type { DependencyOverride } from '@termlnk/core';
+import type { IPermissionRule, ToolPermissionMode } from '../models/agent-tool-permission';
 import type { IMcpConfig } from '../models/mcp';
 import type { ISkillRepository } from '../models/skill-repository';
 
@@ -26,6 +27,10 @@ export interface IAgentPluginConfig {
   mcp?: IMcpConfig;
   activeModel?: string;
   skillRepositories?: ISkillRepository[];
+  /** Persistent (user-scope) permission rules. Session rules live in memory only. */
+  permissionRules?: IPermissionRule[];
+  /** Last selected permission mode. Falls back to 'default' if absent. */
+  permissionMode?: ToolPermissionMode;
 }
 
 export const defaultPluginConfig: IAgentPluginConfig = {};

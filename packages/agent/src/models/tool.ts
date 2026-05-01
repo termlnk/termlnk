@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-export type AgentToolCategory = 'network' | 'terminal' | 'file' | 'host' | 'mcp' | 'other';
+export type AgentToolCategory = 'network' | 'terminal' | 'file' | 'host' | 'mcp' | 'skill' | 'other';
 
 export interface IAgentToolPropertySchema {
   type: string;
@@ -68,4 +68,13 @@ export interface IAgentTool {
    * (e.g. widget renderer) that the user should not toggle.
    */
   hidden?: boolean;
+  /**
+   * Optional hook to compute per-call metadata (e.g. SSH session type) for the
+   * permission system. Called at execute time with the tool args. Returns a
+   * partial IGuardMetadata which the wrap layer merges into its base metadata.
+   *
+   * Defined as a loose record return rather than IGuardMetadata to avoid a
+   * circular type dependency between models/tool and services/agent-tool-permission.
+   */
+  resolveMetadata?: (args: Record<string, unknown>) => Record<string, unknown> | undefined;
 }

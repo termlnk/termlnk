@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { CommandRiskLevel } from '@termlnk/agent';
+import type { ToolRiskLevel } from '@termlnk/agent';
 
 export interface IDangerPattern {
   pattern: RegExp;
-  level: CommandRiskLevel;
+  level: ToolRiskLevel;
   reason: string;
   suggestedAlternative?: string;
 }
@@ -129,11 +129,11 @@ export const DANGER_PATTERNS: IDangerPattern[] = [
 ];
 
 export function evaluateCommandRisk(command: string): {
-  level: CommandRiskLevel;
+  level: ToolRiskLevel;
   reasons: string[];
   suggestedAlternative?: string;
 } {
-  let maxLevel: CommandRiskLevel = 'safe';
+  let maxLevel: ToolRiskLevel = 'safe';
   const reasons: string[] = [];
   let suggestedAlternative: string | undefined;
 

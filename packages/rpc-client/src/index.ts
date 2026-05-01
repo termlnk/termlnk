@@ -26,6 +26,7 @@ export { HostManagerService, IHostManagerService } from './services/host/host-ma
 export { McpRegistryService } from './services/mcp/mcp-registry.service';
 export { McpService } from './services/mcp/mcp.service';
 export { NotifyService } from './services/notify/notify.service';
+export { IPermissionClientService, PermissionClientService } from './services/permission/permission-client.service';
 export { IProxyClientService, ProxyClientService } from './services/proxy/proxy.service';
 export type { IProxyTestInput, IProxyTestResult } from './services/proxy/proxy.service';
 export { PTYService } from './services/pty/pty.service';

@@ -13,8 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ICommandPermissionService } from '@termlnk/agent';
-import { IAgentToolRegistryService, ICommandPermissionService as ICommandPermissionServiceId } from '@termlnk/agent';
+import { IAgentToolRegistryService } from '@termlnk/agent';
 import { Disposable, ILogService, Inject, Injector } from '@termlnk/core';
 import { ISSHToolService } from '@termlnk/rpc';
 import { IPTYSessionService } from '@termlnk/terminal';
@@ -45,19 +44,11 @@ export class McpToolsController extends Disposable {
         this._logService.log('[McpToolsController]', 'PTY session service not available');
       }
 
-      let permissionService: ICommandPermissionService | undefined;
-      try {
-        permissionService = this._injector.get(ICommandPermissionServiceId);
-      } catch {
-        this._logService.log('[McpToolsController]', 'Permission service not available');
-      }
-
       const terminalDisposables = registerTerminalTools(
         {
           sshToolService: this._sshToolService,
           logService: this._logService,
           ptySessionService,
-          permissionService,
           commandBlockService: this._commandBlockService,
         },
         this._toolRegistryService
