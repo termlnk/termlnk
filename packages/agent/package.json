@@ -52,7 +52,7 @@
     "@termlnk/core": "workspace:*"
   },
   "dependencies": {
-    "@mariozechner/pi-ai": "^0.71.1",
+    "@mariozechner/pi-ai": "^0.72.0",
     "@termlnk/core": "workspace:*"
   },
   "devDependencies": {

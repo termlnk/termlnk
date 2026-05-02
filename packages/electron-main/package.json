@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
-    "@mariozechner/pi-agent-core": "^0.71.1",
+    "@mariozechner/pi-agent-core": "^0.72.0",
     "@sinclair/typebox": "^0.34.49",
     "@termlnk/agent": "workspace:*",
     "@termlnk/core": "workspace:*",
@@ -81,7 +81,7 @@
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "@types/semver": "^7.7.1",
-    "electron": "40.9.2",
+    "electron": "41.5.0",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",

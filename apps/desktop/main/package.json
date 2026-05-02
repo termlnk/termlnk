@@ -30,6 +30,6 @@
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
-    "electron": "40.9.2"
+    "electron": "41.5.0"
   }
 }
