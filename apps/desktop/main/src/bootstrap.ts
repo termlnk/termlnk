@@ -214,10 +214,6 @@ app.whenReady().then(async () => {
     ? join(appRoot, '../../../../packages/agent-hook-cli/src')
     : join(appRoot, 'agent-hook-cli');
 
-  // ElectronPlugin must be registered before AgentCorePlugin since
-  // AgentCorePlugin @DependentOn(ElectronPlugin) — registering it later would
-  // trigger PluginService to auto-register ElectronPlugin and then duplicate
-  // when this explicit registration runs.
   core.registerPlugin(ElectronPlugin);
   core.registerPlugin(AgentCorePlugin, {
     bundledSkillsDir,
