@@ -214,6 +214,11 @@ app.whenReady().then(async () => {
     ? join(appRoot, '../../../../packages/agent-hook-cli/src')
     : join(appRoot, 'agent-hook-cli');
 
+  // ElectronPlugin must be registered before AgentCorePlugin since
+  // AgentCorePlugin @DependentOn(ElectronPlugin) — registering it later would
+  // trigger PluginService to auto-register ElectronPlugin and then duplicate
+  // when this explicit registration runs.
+  core.registerPlugin(ElectronPlugin);
   core.registerPlugin(AgentCorePlugin, {
     bundledSkillsDir,
     userSkillsDir,
@@ -227,7 +232,6 @@ app.whenReady().then(async () => {
       [IFileDialogService, { useClass: FileDialogService }],
     ],
   });
-  core.registerPlugin(ElectronPlugin);
 
   // Dev-only: swap the real UpdaterService for a scripted mock when
   // TERMLNK_MOCK_UPDATER is set, so the updater UI (button + dialog +
