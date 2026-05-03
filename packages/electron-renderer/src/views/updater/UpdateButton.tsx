@@ -17,7 +17,7 @@ import { LocaleService } from '@termlnk/core';
 import { Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
 import { IUpdaterService, UpdateStatus } from '@termlnk/electron';
 import { IDialogService } from '@termlnk/ui';
-import { ArrowDownToLine } from 'lucide-react';
+import { CircleFadingArrowUp } from 'lucide-react';
 import { UPDATE_DIALOG_ID } from '../../controllers/updater.controller';
 import { UPDATE_DIALOG_COMPONENT_NAME } from './UpdateDialog';
 
@@ -71,7 +71,7 @@ export function UpdateButton() {
               ${isDownloading ? 'tm:animate-bounce' : ''}
             `}
           >
-            <ArrowDownToLine size="1.2rem" />
+            <CircleFadingArrowUp size="1.2rem" />
           </span>
           <span aria-hidden />
         </div>

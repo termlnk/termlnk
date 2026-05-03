@@ -63,46 +63,14 @@ export function UpdateDialog() {
     <div className="tm:flex tm:flex-col tm:gap-4 tm:p-4">
       {/* Version comparison */}
       {updateInfo && (
-        <div className="tm:flex tm:items-stretch tm:justify-center tm:gap-3">
-          <div
-            className={`
-              tm:flex tm:flex-1 tm:flex-col tm:items-center tm:justify-center tm:gap-1 tm:rounded-md tm:border
-              tm:border-line tm:bg-one-bg tm:px-3 tm:py-2.5
-            `}
-          >
-            <span className="tm:text-[11px] tm:text-grey">
-              {localeService.t('electron-renderer.updater.current-version')}
-            </span>
-            <span className="tm:font-mono tm:text-base tm:font-semibold tm:text-grey-fg2">
-              v
-              {currentVersion}
-            </span>
-          </div>
-
-          <div className="tm:flex tm:items-center">
-            <div
-              className={`
-                tm:flex tm:size-7 tm:items-center tm:justify-center tm:rounded-full tm:bg-green/15 tm:text-green
-              `}
-            >
-              <ArrowRight className="tm:size-4" />
-            </div>
-          </div>
-
-          <div
-            className={`
-              tm:flex tm:flex-1 tm:flex-col tm:items-center tm:justify-center tm:gap-1 tm:rounded-md tm:border
-              tm:border-green/40 tm:bg-green/10 tm:px-3 tm:py-2.5
-            `}
-          >
-            <span className="tm:text-[11px] tm:text-green/80">
-              {localeService.t('electron-renderer.updater.new-version')}
-            </span>
-            <span className="tm:font-mono tm:text-base tm:font-semibold tm:text-green">
-              v
-              {updateInfo.version}
-            </span>
-          </div>
+        <div className="tm:flex tm:items-center tm:gap-3 tm:py-1">
+          <span className="tm:font-mono tm:text-base tm:tracking-wider tm:text-grey">
+            {currentVersion}
+          </span>
+          <ArrowRight className="tm:size-4 tm:text-grey" />
+          <span className="tm:font-mono tm:text-base tm:tracking-wider tm:font-semibold tm:text-light-grey">
+            {updateInfo.version}
+          </span>
         </div>
       )}
 
