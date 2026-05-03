@@ -42,6 +42,7 @@ Termlnk
 - [🌐 국제화](#-국제화)
 - [🤝 기여하기](#-기여하기)
 - [💬 커뮤니티](#-커뮤니티)
+- [🙏 감사의 말](#-감사의-말)
 - [📄 라이선스](#-라이선스)
 
 </details>
@@ -218,6 +219,13 @@ Termlnk는 기본으로 5개 언어를 지원합니다.
 
 - [GitHub Discussions][github-community-link] — 질문하고 아이디어를 공유하세요.
 - [GitHub Issues][github-issues-link] — 버그 제보와 기능 요청.
+
+## 🙏 감사의 말
+
+Termlnk는 훌륭한 오픈소스 프로젝트와 제품들의 어깨 위에 서 있습니다. 다음에 감사드립니다:
+
+- **[Univer](https://github.com/dream-num/univer)** — Termlnk의 아키텍처는 이 훌륭한 오픈소스 프로젝트에서 큰 영감을 받았습니다. 그 깔끔한 플러그인 기반 설계가 우리의 DI, 기여 포인트, 명령 시스템 구조를 형성했습니다.
+- **[Alma](https://alma.now)** — Termlnk의 전반적인 미학과 테마 디자인은 이 훌륭한 제품에서 영감을 받았습니다.
 
 ## 📄 라이선스
 

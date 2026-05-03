@@ -42,6 +42,7 @@ A modern, extensible smart terminal for developers.<br />
 - [🌐 Internationalization](#-internationalization)
 - [🤝 Contributing](#-contributing)
 - [💬 Community](#-community)
+- [🙏 Acknowledgements](#-acknowledgements)
 - [📄 License](#-license)
 
 </details>
@@ -218,6 +219,13 @@ Contributions are welcome. Before submitting a pull request, please:
 
 - [GitHub Discussions][github-community-link] — ask questions, share ideas.
 - [GitHub Issues][github-issues-link] — report bugs and request features.
+
+## 🙏 Acknowledgements
+
+Termlnk stands on the shoulders of outstanding open-source projects and products. We are grateful to:
+
+- **[Univer](https://github.com/dream-num/univer)** — Termlnk's overall architecture was deeply inspired by this excellent open-source project. Its clean, plugin-driven design shaped how we structured our DI, contribution-point, and command systems.
+- **[Alma](https://alma.now)** — The overall aesthetic and theme design of Termlnk draws inspiration from this beautiful product.
 
 ## 📄 License
 

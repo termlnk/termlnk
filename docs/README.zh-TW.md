@@ -42,6 +42,7 @@ Termlnk
 - [🌐 國際化](#-國際化)
 - [🤝 貢獻](#-貢獻)
 - [💬 社群](#-社群)
+- [🙏 致謝](#-致謝)
 - [📄 授權條款](#-授權條款)
 
 </details>
@@ -218,6 +219,13 @@ Termlnk 開箱支援 5 種語言：
 
 - [GitHub Discussions][github-community-link] — 提問、交流想法。
 - [GitHub Issues][github-issues-link] — 回報 bug、提出功能需求。
+
+## 🙏 致謝
+
+Termlnk 站在優秀開源專案與產品的肩膀上。感謝：
+
+- **[Univer](https://github.com/dream-num/univer)** — Termlnk 的整體架構深受這一優秀開源專案的啟發，其清晰的外掛化設計塑造了我們的 DI、貢獻點與命令系統。
+- **[Alma](https://alma.now)** — Termlnk 的整體美學與主題設計從這款優秀產品中汲取靈感。
 
 ## 📄 授權條款
 
