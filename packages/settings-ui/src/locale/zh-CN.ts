@@ -60,6 +60,8 @@ const locale: typeof enUS = {
       'startup-title': '启动',
       'auto-launch': '开机自动启动',
       'auto-launch-description': '系统登录时自动启动 Termlnk',
+      'keep-awake-title': '保持屏幕常亮',
+      'keep-awake-description': 'Agent 会话运行时防止屏幕关闭',
     },
     interface: {
       'settings-title': '字体设置',

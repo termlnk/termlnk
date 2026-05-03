@@ -60,6 +60,8 @@ const locale: typeof enUS = {
       'startup-title': 'スタートアップ',
       'auto-launch': 'ログイン時に起動',
       'auto-launch-description': 'システムログイン時にTermlnkを自動起動',
+      'keep-awake-title': 'ディスプレイをスリープさせない',
+      'keep-awake-description': 'Agent セッション実行中はディスプレイのスリープを防止',
     },
     interface: {
       'settings-title': 'フォント設定',

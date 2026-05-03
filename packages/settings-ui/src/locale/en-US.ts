@@ -58,6 +58,8 @@ const locale = {
       'startup-title': 'Startup',
       'auto-launch': 'Launch at Login',
       'auto-launch-description': 'Automatically start termlnk when you log into the system',
+      'keep-awake-title': 'Keep Screen Awake',
+      'keep-awake-description': 'Prevent the display from sleeping while an Agent session is running',
     },
     interface: {
       'settings-title': 'Font Settings',

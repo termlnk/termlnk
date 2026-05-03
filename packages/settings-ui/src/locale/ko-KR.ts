@@ -60,6 +60,8 @@ const locale: typeof enUS = {
       'startup-title': '시작',
       'auto-launch': '로그인 시 실행',
       'auto-launch-description': '시스템 로그인 시 Termlnk 자동 시작',
+      'keep-awake-title': '화면 깨우기 유지',
+      'keep-awake-description': 'Agent 세션이 실행 중일 때 화면이 꺼지지 않도록 유지',
     },
     interface: {
       'settings-title': '글꼴 설정',

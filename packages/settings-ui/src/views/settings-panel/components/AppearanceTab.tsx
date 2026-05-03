@@ -181,6 +181,27 @@ export function AppearanceTab() {
           </FieldGroup>
         </CardContent>
       </Card>
+
+      {/* Keep Screen Awake */}
+      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+        <CardHeader className="tm:bg-black/10 tm:py-3">
+          <div className="tm:flex tm:min-w-0 tm:flex-col tm:gap-1.5">
+            <div className="tm:flex tm:items-start tm:justify-between tm:gap-4">
+              <FieldLabel htmlFor="settings-keep-awake" className="tm:text-sm tm:font-semibold tm:text-white">
+                {localeService.t('settings-ui.appearance.keep-awake-title')}
+              </FieldLabel>
+              <Switch
+                id="settings-keep-awake"
+                checked={appSettings.keepAwakeWhileAgentActive}
+                onCheckedChange={(checked) => updateAppSettings({ keepAwakeWhileAgentActive: checked })}
+              />
+            </div>
+            <CardDescription className="tm:text-xs">
+              {localeService.t('settings-ui.appearance.keep-awake-description')}
+            </CardDescription>
+          </div>
+        </CardHeader>
+      </Card>
     </FieldGroup>
   );
 }
