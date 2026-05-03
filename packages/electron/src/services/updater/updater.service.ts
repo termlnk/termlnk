@@ -32,7 +32,7 @@ export interface IUpdaterService {
   getStatus(): Promise<UpdateStatus>;
   checkForUpdates(): Promise<IUpdateInfo | null>;
   downloadUpdate(): Promise<void>;
-  quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void;
+  quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): Promise<void>;
 }
 
 export const IUpdaterService = createIdentifier<IUpdaterService>('electron.updater-service');

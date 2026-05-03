@@ -15,17 +15,23 @@
 
 import type { IUpdateError, IUpdateInfo, IUpdateProgress, IUpdaterService } from '@termlnk/electron';
 import type { Observable } from 'rxjs';
+import fs from 'node:fs/promises';
+import { homedir } from 'node:os';
+import path from 'node:path';
+import process from 'node:process';
 import { Disposable, ILogService } from '@termlnk/core';
 import { UpdateStatus } from '@termlnk/electron';
 import { app } from 'electron';
 import { autoUpdater } from 'electron-updater';
-import { BehaviorSubject, interval, Subject, switchMap } from 'rxjs';
+import { BehaviorSubject, Subject, switchMap, timer } from 'rxjs';
 import { gt as semverGt, prerelease as semverPrerelease } from 'semver';
 
 /** Default stable channel name used by electron-builder (maps to `latest-<os>.yml`) */
 const STABLE_CHANNEL = 'latest';
 
-/** Candidate returned by a single-channel check */
+/** Lock file under pending/. If present at startup, the previous session was killed mid-download — clear stale artifacts. */
+const DOWNLOAD_LOCK_FILENAME = '.termlnk-download.lock';
+
 interface IUpdateCandidate {
   info: IUpdateInfo;
   version: string;
@@ -33,8 +39,8 @@ interface IUpdateCandidate {
 }
 
 export class UpdaterService extends Disposable implements IUpdaterService {
-  /** Auto-check interval: 15 minutes */
-  private static readonly _AUTO_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+  private static readonly _INITIAL_CHECK_DELAY_MS = 5 * 1000;
+  private static readonly _AUTO_CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000;
 
   private readonly _status$ = new BehaviorSubject<UpdateStatus>(UpdateStatus.IDLE);
   readonly status$: Observable<UpdateStatus> = this._status$.asObservable();
@@ -54,6 +60,9 @@ export class UpdaterService extends Disposable implements IUpdaterService {
   /** Suppresses event handlers during multi-channel check to avoid intermediate status flicker */
   private _isMultiChannelChecking = false;
 
+  /** Shared by concurrent callers (controller + scheduler) so they make only one network round-trip */
+  private _inFlightCheck: Promise<IUpdateInfo | null> | null = null;
+
   constructor(
     @ILogService private readonly _logService: ILogService
   ) {
@@ -68,6 +77,7 @@ export class UpdaterService extends Disposable implements IUpdaterService {
     }
 
     this._bindEvents();
+    void this._cleanupOrphanedDownload();
     this._startAutoCheck();
   }
 
@@ -94,6 +104,39 @@ export class UpdaterService extends Disposable implements IUpdaterService {
       return null;
     }
 
+    if (this._inFlightCheck) {
+      return this._inFlightCheck;
+    }
+
+    this._inFlightCheck = this._doCheckForUpdates();
+    try {
+      return await this._inFlightCheck;
+    } finally {
+      this._inFlightCheck = null;
+    }
+  }
+
+  async downloadUpdate(): Promise<void> {
+    if (!app.isPackaged) {
+      this._logService.warn('[UpdaterService] Skipping download in development mode');
+      return;
+    }
+
+    await this._writeDownloadLock();
+    try {
+      await autoUpdater.downloadUpdate();
+    } catch (err) {
+      // Synchronous throws skip the 'error' event handler, so clear the lock here.
+      await this._removeDownloadLock();
+      throw err;
+    }
+  }
+
+  async quitAndInstall(isSilent = false, isForceRunAfter = true): Promise<void> {
+    autoUpdater.quitAndInstall(isSilent, isForceRunAfter);
+  }
+
+  private async _doCheckForUpdates(): Promise<IUpdateInfo | null> {
     this._status$.next(UpdateStatus.CHECKING);
 
     const currentVersion = app.getVersion();
@@ -113,19 +156,6 @@ export class UpdaterService extends Disposable implements IUpdaterService {
     this._status$.next(UpdateStatus.AVAILABLE);
     this._updateInfo$.next(best.info);
     return best.info;
-  }
-
-  async downloadUpdate(): Promise<void> {
-    if (!app.isPackaged) {
-      this._logService.warn('[UpdaterService] Skipping download in development mode');
-      return;
-    }
-
-    await autoUpdater.downloadUpdate();
-  }
-
-  quitAndInstall(isSilent = false, isForceRunAfter = true): void {
-    autoUpdater.quitAndInstall(isSilent, isForceRunAfter);
   }
 
   // ---------------------------------------------------------------------------
@@ -211,10 +241,80 @@ export class UpdaterService extends Disposable implements IUpdaterService {
     }
 
     this.disposeWithMe(
-      interval(UpdaterService._AUTO_CHECK_INTERVAL_MS).pipe(
+      timer(
+        UpdaterService._INITIAL_CHECK_DELAY_MS,
+        UpdaterService._AUTO_CHECK_INTERVAL_MS
+      ).pipe(
         switchMap(() => this.checkForUpdates().catch(() => null))
       ).subscribe()
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Download cache hygiene
+  // ---------------------------------------------------------------------------
+
+  /** Mirrors electron-updater's `getAppCacheDir()`; Electron typings dropped `'cache'` from PathName so we resolve manually. */
+  private _getPendingCacheDir(): string {
+    let baseCachePath: string;
+    if (process.platform === 'win32') {
+      baseCachePath = process.env.LOCALAPPDATA || path.join(homedir(), 'AppData', 'Local');
+    } else if (process.platform === 'darwin') {
+      baseCachePath = path.join(homedir(), 'Library', 'Caches');
+    } else {
+      baseCachePath = process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache');
+    }
+    return path.join(baseCachePath, `${app.name}-updater`, 'pending');
+  }
+
+  private _getDownloadLockPath(): string {
+    return path.join(this._getPendingCacheDir(), DOWNLOAD_LOCK_FILENAME);
+  }
+
+  private async _writeDownloadLock(): Promise<void> {
+    const lockPath = this._getDownloadLockPath();
+    try {
+      await fs.mkdir(path.dirname(lockPath), { recursive: true });
+      await fs.writeFile(lockPath, String(Date.now()), 'utf-8');
+    } catch (err) {
+      this._logService.warn('[UpdaterService] Failed to write download lock', err);
+    }
+  }
+
+  private async _removeDownloadLock(): Promise<void> {
+    try {
+      await fs.unlink(this._getDownloadLockPath());
+    } catch (err: unknown) {
+      const code = (err as NodeJS.ErrnoException | null)?.code;
+      if (code && code !== 'ENOENT') {
+        this._logService.warn('[UpdaterService] Failed to remove download lock', err);
+      }
+    }
+  }
+
+  /** Wipe the entire pending/ dir: electron-updater's partial-file naming varies by version and a stale `.blockmap` can corrupt the next differential download. */
+  private async _cleanupOrphanedDownload(): Promise<void> {
+    if (!app.isPackaged) {
+      return;
+    }
+
+    const lockPath = this._getDownloadLockPath();
+    try {
+      await fs.access(lockPath);
+    } catch {
+      return;
+    }
+
+    const pendingDir = this._getPendingCacheDir();
+    this._logService.warn(
+      `[UpdaterService] Detected orphaned download from previous session, clearing ${pendingDir}`
+    );
+
+    try {
+      await fs.rm(pendingDir, { recursive: true, force: true });
+    } catch (err) {
+      this._logService.warn('[UpdaterService] Failed to clear pending cache', err);
+    }
   }
 
   private _bindEvents(): void {
@@ -250,9 +350,11 @@ export class UpdaterService extends Disposable implements IUpdaterService {
     autoUpdater.on('update-downloaded', (info) => {
       this._status$.next(UpdateStatus.DOWNLOADED);
       this._updateInfo$.next(mapUpdateInfo(info));
+      void this._removeDownloadLock();
     });
 
     autoUpdater.on('error', (err) => {
+      void this._removeDownloadLock();
       if (!this._isMultiChannelChecking) {
         this._status$.next(UpdateStatus.ERROR);
         this._error$.next({

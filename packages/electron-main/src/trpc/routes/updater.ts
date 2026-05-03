@@ -41,8 +41,8 @@ export const updaterRouter = router({
       isSilent: z.boolean().optional().default(false),
       isForceRunAfter: z.boolean().optional().default(true),
     }))
-    .mutation(({ ctx, input }) => {
-      ctx.injector.get(IUpdaterService).quitAndInstall(input.isSilent, input.isForceRunAfter);
+    .mutation(async ({ ctx, input }) => {
+      await ctx.injector.get(IUpdaterService).quitAndInstall(input.isSilent, input.isForceRunAfter);
     }),
 
   status$: publicProcedure.subscription(async function* ({ ctx }) {

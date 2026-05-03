@@ -122,7 +122,7 @@ export class MockUpdaterService extends Disposable implements IUpdaterService {
     this._simulateDownload();
   }
 
-  quitAndInstall(_isSilent = false, _isForceRunAfter = true): void {
+  async quitAndInstall(_isSilent = false, _isForceRunAfter = true): Promise<void> {
     this._logService.log('[MockUpdaterService] quitAndInstall invoked (no-op in dev mock)');
   }
 
