@@ -13,15 +13,21 @@
  * governing permissions and limitations under the License.
  */
 
-import { DEFAULT_AUTO_LAUNCH_ENABLED, DEFAULT_CLOSE_TO_TRAY, DEFAULT_TRAY_ENABLED } from '../../config/config';
+import { DEFAULT_AUTO_LAUNCH_ENABLED, DEFAULT_CLOSE_TO_TRAY, DEFAULT_KEEP_AWAKE_WHILE_AGENT_ACTIVE, DEFAULT_TRAY_ENABLED } from '../../config/config';
 
 export interface IAppSettings {
   trayEnabled: boolean;
   closeToTray: boolean;
   autoLaunchEnabled: boolean;
+  keepAwakeWhileAgentActive: boolean;
 }
 
-const DEFAULT_APP_SETTINGS: IAppSettings = { trayEnabled: DEFAULT_TRAY_ENABLED, closeToTray: DEFAULT_CLOSE_TO_TRAY, autoLaunchEnabled: DEFAULT_AUTO_LAUNCH_ENABLED };
+const DEFAULT_APP_SETTINGS: IAppSettings = {
+  trayEnabled: DEFAULT_TRAY_ENABLED,
+  closeToTray: DEFAULT_CLOSE_TO_TRAY,
+  autoLaunchEnabled: DEFAULT_AUTO_LAUNCH_ENABLED,
+  keepAwakeWhileAgentActive: DEFAULT_KEEP_AWAKE_WHILE_AGENT_ACTIVE,
+};
 
 export function normalizeAppSettings(value: Partial<IAppSettings> | null): IAppSettings {
   if (!value) {
@@ -31,5 +37,6 @@ export function normalizeAppSettings(value: Partial<IAppSettings> | null): IAppS
     trayEnabled: typeof value.trayEnabled === 'boolean' ? value.trayEnabled : DEFAULT_TRAY_ENABLED,
     closeToTray: typeof value.closeToTray === 'boolean' ? value.closeToTray : DEFAULT_CLOSE_TO_TRAY,
     autoLaunchEnabled: typeof value.autoLaunchEnabled === 'boolean' ? value.autoLaunchEnabled : DEFAULT_AUTO_LAUNCH_ENABLED,
+    keepAwakeWhileAgentActive: typeof value.keepAwakeWhileAgentActive === 'boolean' ? value.keepAwakeWhileAgentActive : DEFAULT_KEEP_AWAKE_WHILE_AGENT_ACTIVE,
   };
 }

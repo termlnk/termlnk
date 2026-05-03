@@ -16,7 +16,7 @@
 import type { Dependency } from '@termlnk/core';
 import type { IElectronMainConfig } from './controllers/config.schema';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
-import { ElectronPlugin, IUpdaterService, IWindowManagerService } from '@termlnk/electron';
+import { ElectronPlugin, IKeepAwakeService, IUpdaterService, IWindowManagerService } from '@termlnk/electron';
 import { RPCServerPlugin } from '@termlnk/rpc-server';
 import { AppSettingsController } from './controllers/app-settings.controller';
 import { defaultPluginConfig, ELECTRON_MAIN_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
@@ -26,6 +26,7 @@ import { MenuController } from './controllers/menu.controller';
 import { RPCController } from './controllers/rpc.controller';
 import { WindowStateController } from './controllers/window-state.controller';
 import { DiskFileService } from './services/file/disk-file.service';
+import { KeepAwakeService } from './services/keep-awake/keep-awake.service';
 import { IPlatformService, PlatformService } from './services/platform';
 import { ITrayService, TrayService } from './services/tray/tray.service';
 import { UpdaterService } from './services/updater/updater.service';
@@ -84,6 +85,7 @@ export class ElectronMainPlugin extends Plugin {
       [IPlatformService, { useClass: PlatformService }],
       [IUpdaterService, { useClass: UpdaterService }],
       [ITrayService, { useClass: TrayService }],
+      [IKeepAwakeService, { useClass: KeepAwakeService }],
 
       [WindowStateController],
       [MainController],

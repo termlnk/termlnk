@@ -16,3 +16,4 @@
 export const DEFAULT_TRAY_ENABLED = true;
 export const DEFAULT_CLOSE_TO_TRAY = true;
 export const DEFAULT_AUTO_LAUNCH_ENABLED = false;
+export const DEFAULT_KEEP_AWAKE_WHILE_AGENT_ACTIVE = false;

@@ -493,6 +493,9 @@ importers:
       '@termlnk/database':
         specifier: workspace:*
         version: link:../database
+      '@termlnk/electron':
+        specifier: workspace:*
+        version: link:../electron
       '@termlnk/rpc':
         specifier: workspace:*
         version: link:../rpc

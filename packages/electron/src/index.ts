@@ -14,13 +14,14 @@
  */
 
 export { WindowCloseCommand } from './commands/window-close.command';
-export { DEFAULT_AUTO_LAUNCH_ENABLED, DEFAULT_CLOSE_TO_TRAY, DEFAULT_TRAY_ENABLED } from './config/config';
+export { DEFAULT_AUTO_LAUNCH_ENABLED, DEFAULT_CLOSE_TO_TRAY, DEFAULT_KEEP_AWAKE_WHILE_AGENT_ACTIVE, DEFAULT_TRAY_ENABLED } from './config/config';
 export { ELECTRON_PLUGIN_CONFIG_KEY } from './controller/config.schema';
 export type { IElectronConfig } from './controller/config.schema';
 export { ElectronController } from './controller/electron.controller';
 export { ELECTRON_PLUGIN_NAME, ElectronPlugin } from './plugin';
 export type { IAppSettings } from './services/app-settings/type';
 export { normalizeAppSettings } from './services/app-settings/type';
+export { IKeepAwakeService } from './services/keep-awake/keep-awake.service';
 export { CORE_RPC_CHANNEL } from './services/rpc/rpc';
 export type { IUpdateError, IUpdateInfo, IUpdateProgress } from './services/updater/type';
 export { UpdateStatus } from './services/updater/type';
