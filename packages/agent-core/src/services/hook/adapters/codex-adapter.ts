@@ -35,13 +35,14 @@ export class CodexHookAdapter extends BaseConfigFileAdapter {
       { agentEvent: 'UserPromptSubmit', termlnkEvent: 'prompt-submit' },
       { agentEvent: 'Stop', termlnkEvent: 'stop' },
       // AskUserQuestion — monitor only. The hook server releases `{}`
-      // immediately so Codex's TUI handles the pick natively.
+      // immediately so Codex's TUI handles the pick natively. No `async`
+      // flag — Codex's hook schema rejects unknown fields and skips the
+      // entry entirely.
       {
         agentEvent: 'PreToolUse',
         termlnkEvent: 'ask-user-question',
         matcher: 'request_user_input',
         timeoutSec: 5,
-        async: true,
       },
     ],
   };

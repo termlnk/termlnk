@@ -81,7 +81,6 @@ export class KimiCodeHookAdapter extends Disposable implements IAgentHookAdapter
         termlnkEvent: 'ask-user-question',
         matcher: 'AskUserQuestion',
         timeoutSec: 5,
-        async: true,
       },
     ],
   };
