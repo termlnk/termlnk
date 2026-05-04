@@ -29,10 +29,14 @@ const config: Configuration = {
   },
   npmRebuild: false,
   nodeGypRebuild: false,
+  // Explicit allow-list (relative to `directories.app` = build/app). Native
+  // modules are pre-staged into build/app/node_modules by scripts/stage-app.ts,
+  // so electron-builder only needs to copy what the staging step produced.
   files: [
-    '!_modules',
+    'package.json',
+    'dist/**/*',
     {
-      from: '_modules',
+      from: 'node_modules',
       to: 'node_modules',
       filter: ['**/*'],
     },
