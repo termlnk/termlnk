@@ -54,7 +54,7 @@ export class OpenCodeHookAdapter extends Disposable implements IAgentHookAdapter
       { agentEvent: 'session.error', termlnkEvent: 'notification' },
       { agentEvent: 'session.compacted', termlnkEvent: 'pre-compact' },
       { agentEvent: 'message.updated', termlnkEvent: 'prompt-submit' },
-      { agentEvent: 'permission.asked', termlnkEvent: 'notification' },
+      { agentEvent: 'permission.asked', termlnkEvent: 'permission-request' },
       { agentEvent: 'todo.updated', termlnkEvent: 'notification' },
       { agentEvent: 'tool.execute.before', termlnkEvent: 'pre-tool-use' },
       { agentEvent: 'tool.execute.after', termlnkEvent: 'post-tool-use' },
@@ -180,15 +180,16 @@ function safeExtract(event, ctx) {
   return result;
 }
 
-// Skip events handled via named hooks to avoid duplicates.
+// Events handled by named hook handlers below; skipped on the generic
+// 'event' bus to avoid duplicate firing.
 const SKIP_IN_GENERIC = new Set([
   'tool.execute.before',
   'tool.execute.after',
   'permission.asked',
-  'permission.replied',
 ]);
 
-// Generic Bus events → termlnk unified event types.
+// Generic Bus events → termlnk unified event types. Names also listed in
+// SKIP_IN_GENERIC are intentionally absent — they go through named handlers.
 const EVENT_MAP = {
   'session.created': 'session-start',
   'session.idle': 'stop',
@@ -196,7 +197,6 @@ const EVENT_MAP = {
   'session.error': 'notification',
   'session.compacted': 'pre-compact',
   'message.updated': 'prompt-submit',
-  'permission.asked': 'notification',
   'todo.updated': 'notification',
 };
 
@@ -234,7 +234,7 @@ export const TermlnkHooksPlugin = async (ctx) => {
       });
     },
 
-    'permission.ask': async (input) => {
+    'permission.asked': async (input) => {
       forward('permission-request', {
         type: 'permission.asked',
         tool_name: (input && input.tool) || 'unknown',
@@ -246,14 +246,6 @@ export const TermlnkHooksPlugin = async (ctx) => {
     'experimental.session.compacting': async (input) => {
       forward('pre-compact', {
         type: 'session.compacted',
-        session_id: input.sessionID,
-        cwd: ctx.directory,
-      });
-    },
-
-    'chat.message': async (input) => {
-      forward('prompt-submit', {
-        type: 'message.updated',
         session_id: input.sessionID,
         cwd: ctx.directory,
       });
