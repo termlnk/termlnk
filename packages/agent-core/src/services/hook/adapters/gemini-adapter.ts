@@ -31,6 +31,11 @@ export class GeminiHookAdapter extends BaseConfigFileAdapter {
       { agentEvent: 'BeforeAgent', termlnkEvent: 'prompt-submit' },
       { agentEvent: 'AfterAgent', termlnkEvent: 'stop' },
       { agentEvent: 'SessionEnd', termlnkEvent: 'session-end' },
+      { agentEvent: 'BeforeTool', termlnkEvent: 'pre-tool-use' },
+      { agentEvent: 'AfterTool', termlnkEvent: 'post-tool-use' },
+      { agentEvent: 'Notification', termlnkEvent: 'notification' },
+      // Gemini's compaction event is named `PreCompress` (not PreCompact).
+      { agentEvent: 'PreCompress', termlnkEvent: 'pre-compact' },
     ],
   };
 }
