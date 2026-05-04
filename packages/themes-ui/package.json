@@ -47,7 +47,7 @@
   ],
   "scripts": {
     "build": "termlnk-cli build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
