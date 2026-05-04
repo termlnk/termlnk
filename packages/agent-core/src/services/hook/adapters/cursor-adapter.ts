@@ -28,8 +28,9 @@ export class CursorHookAdapter extends BaseConfigFileAdapter {
     format: { type: 'flat' },
     events: [
       { agentEvent: 'beforeSubmitPrompt', termlnkEvent: 'prompt-submit' },
+      // Use `stop` (agent loop end) as the turn-end signal; `afterAgentResponse`
+      // fires per assistant message and would produce duplicate stop events.
       { agentEvent: 'stop', termlnkEvent: 'stop' },
-      { agentEvent: 'afterAgentResponse', termlnkEvent: 'stop' },
       { agentEvent: 'beforeShellExecution', termlnkEvent: 'pre-tool-use' },
       { agentEvent: 'afterShellExecution', termlnkEvent: 'post-tool-use' },
     ],

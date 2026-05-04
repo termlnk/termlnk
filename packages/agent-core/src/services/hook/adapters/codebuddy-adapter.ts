@@ -29,8 +29,6 @@ export class CodeBuddyHookAdapter extends BaseConfigFileAdapter {
     events: [
       { agentEvent: 'SessionStart', termlnkEvent: 'session-start' },
       { agentEvent: 'Stop', termlnkEvent: 'stop' },
-      // CodeBuddy fires Notification as its turn-completion signal
-      { agentEvent: 'Notification', termlnkEvent: 'stop' },
       { agentEvent: 'SessionEnd', termlnkEvent: 'session-end' },
     ],
   };
