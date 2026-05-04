@@ -123,18 +123,18 @@ export function TreeItem(props: ITreeItemProps) {
       <TreeItemIcon item={item} />
       <div
         key="hosts-explorer-title"
-        className="tm:flex tm:min-w-0 tm:flex-1 tm:items-center tm:truncate tm:text-[13px]"
+        className="tm:min-w-0 tm:flex-1 tm:truncate tm:text-[13px]"
       >
         {item.getItemName()}
       </div>
 
-      {/* Edit button - visible on hover */}
+      {/* Edit button - only rendered (and takes layout space) on hover */}
       <button
         type="button"
         onClick={handleEdit}
         className="
-          tm:mr-2 tm:opacity-0 tm:transition-opacity
-          tm:group-hover:opacity-100
+          tm:mr-2 tm:hidden tm:items-center
+          tm:group-hover:flex
         "
       >
         <Pencil strokeWidth={1.5} size={12} />
