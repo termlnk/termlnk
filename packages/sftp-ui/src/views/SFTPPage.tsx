@@ -82,7 +82,7 @@ export function SFTPPage() {
       {/* Header */}
       <div
         className={`
-          tm:flex tm:h-10 tm:shrink-0 tm:items-center tm:gap-2 tm:border-b tm:border-line tm:bg-statusline-bg tm:px-3
+          tm:flex tm:h-9 tm:shrink-0 tm:items-center tm:gap-2 tm:border-b tm:border-line tm:bg-statusline-bg tm:px-3
         `}
       >
         <FolderSync size={16} strokeWidth={1.6} className="tm:text-white" />
