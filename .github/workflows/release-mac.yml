@@ -45,7 +45,7 @@ jobs:
 
       - name: Restore Electron cache
         id: electron-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ~/Library/Caches/electron
           key: macOS-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}
@@ -91,7 +91,7 @@ jobs:
             --include "*.dmg" --include "*.zip" --include "*.blockmap"
 
       - name: Upload update manifest as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: latest-mac-${{ matrix.arch }}
           path: apps/desktop/release/latest-mac.yml
