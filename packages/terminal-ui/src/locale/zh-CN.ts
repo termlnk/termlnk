@@ -157,6 +157,7 @@ const locale: typeof enUS = {
       'default-name': '新建分组',
     },
     shortcuts: {
+      'apply-error-fix': '应用 AI 错误修复建议',
       'close-active-tab': '关闭当前标签',
       'create-new-host': '新建主机',
       'delete-host': '删除主机',

@@ -15,6 +15,7 @@
 
 import type { Dependency, LocaleType } from '@termlnk/core';
 import type { IRPCServerConfig } from './controllers/config.schema';
+import { ITerminalSuggestService } from '@termlnk/agent';
 import { DependentOn, IConfigService, Inject, Injector, LocaleService, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ConfigRepository, DatabasePlugin } from '@termlnk/database';
 import { IFileTransferService, INotifyService, ISSHSessionService, ISSHToolService, ITerminalSessionNotifyService } from '@termlnk/rpc';
@@ -33,6 +34,7 @@ import { SSHSessionService } from './services/ssh-session/ssh-session.service';
 import { SSHToolService } from './services/ssh-tool.service';
 import { ISSHSocketService, SSHSocketService } from './services/ssh/ssh-socket.service';
 import { TerminalSessionNotifyService } from './services/terminal-session-notify.service';
+import { TerminalSuggestService } from './services/terminal-suggest/terminal-suggest.service';
 
 export const RPC_SERVER_PLUGIN_NAME = 'RPC_SERVER_PLUGIN';
 
@@ -72,6 +74,7 @@ export class RPCServerPlugin extends Plugin {
       [ISSHToolService, { useClass: SSHToolService }],
       [ICommandBlockService, { useClass: CommandBlockService }],
       [IPTYSessionService, { useClass: PTYSessionService }],
+      [ITerminalSuggestService, { useClass: TerminalSuggestService }],
       [McpToolsController],
       [TerminalSessionPromptController],
     ];
@@ -82,6 +85,9 @@ export class RPCServerPlugin extends Plugin {
     touchDependencies(this._injector, [
       [McpToolsController],
       [TerminalSessionPromptController],
+      // Touched eagerly so its constructor wires up the OSC 633;Q and
+      // blockFinished$ subscriptions before any session is created.
+      [ITerminalSuggestService],
     ]);
 
     this._loadPersistedLocale();

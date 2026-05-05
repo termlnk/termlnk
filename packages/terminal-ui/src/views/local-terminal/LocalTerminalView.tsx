@@ -29,8 +29,10 @@ import { TerminalProgressOverlay } from '../terminal/TerminalProgressOverlay';
 import { TerminalSearch } from '../terminal/TerminalSearch';
 import { useTerminalDrop } from '../terminal/use-terminal-drop';
 import { useTerminalSearch } from '../terminal/use-terminal-search';
+import { useErrorFixNotice } from '../use-error-fix-notice';
 import { useOscNotification } from '../use-osc-notification';
 import { useShellIntegration } from '../use-shell-integration';
+import { useSuggestionSpinner } from '../use-suggestion-spinner';
 
 export function LocalTerminalView(props: ITerminalViewProps) {
   const { sessionId, theme, allowTransparency } = props;
@@ -47,13 +49,19 @@ export function LocalTerminalView(props: ITerminalViewProps) {
   const terminalScopeRef = useRef<HTMLDivElement>(null);
   const [shellPath, setShellPath] = useState<string | null>(null);
 
+  // notifyUserInput from useSuggestionSpinner is captured by ref so the
+  // onData callback (built before the spinner hook runs because it needs
+  // xtermRef from useXterm) can reach the latest version.
+  const notifyUserInputRef = useRef<() => void>(() => {});
+
   const { terminalRef, xtermRef, write, fit, focus, getSize, serialize, findNext, findPrevious, clearSearchDecorations, searchResult, progressState } = useXterm({
     enabled: globalAppearance.isReady,
     onData: useCallback((data: string) => {
       if (connectedRef.current) {
+        notifyUserInputRef.current();
         ptyService.write(sessionId, data).catch(console.error);
       }
-    }, [ptyService]),
+    }, [ptyService, sessionId]),
     onResize: useCallback((rows: number, cols: number) => {
       if (connectedRef.current) {
         ptyService.resize(sessionId, rows, cols).catch(console.error);
@@ -98,6 +106,12 @@ export function LocalTerminalView(props: ITerminalViewProps) {
     xtermRef,
     enabled: globalAppearance.isReady,
   });
+
+  const { notifyUserInput } = useSuggestionSpinner({ sessionId, xtermRef });
+  useEffect(() => {
+    notifyUserInputRef.current = notifyUserInput;
+  }, [notifyUserInput]);
+  useErrorFixNotice({ sessionId, xtermRef });
 
   const writeInput = useCallback((data: string) => {
     ptyService.write(sessionId, data).catch(console.error);

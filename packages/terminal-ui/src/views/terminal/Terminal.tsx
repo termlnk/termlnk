@@ -24,8 +24,10 @@ import { ITerminalInputService } from '../../services/terminal-input/terminal-in
 import { ITerminalPersistenceService } from '../../services/terminal/terminal-persistence.service';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
 import { useGlobalTerminalAppearance, useSubscriptionManager, useXterm, XTERM_PROGRESS_STATE } from '../hooks';
+import { useErrorFixNotice } from '../use-error-fix-notice';
 import { useOscNotification } from '../use-osc-notification';
 import { useShellIntegration } from '../use-shell-integration';
+import { useSuggestionSpinner } from '../use-suggestion-spinner';
 import { FileTransferOverlay } from './FileTransferOverlay';
 import { SSHConnectionOverlay } from './SSHConnectionOverlay';
 import { TerminalDropOverlay } from './TerminalDropOverlay';
@@ -60,10 +62,16 @@ export function TerminalView(props: ITerminalViewProps) {
 
   const persistenceService = useDependency(ITerminalPersistenceService);
 
+  // notifyUserInput from useSuggestionSpinner is captured by ref so the
+  // onData callback (which is built before useSuggestionSpinner runs because
+  // the hook needs xtermRef from useXterm) can reach the latest version.
+  const notifyUserInputRef = useRef<() => void>(() => {});
+
   const { terminalRef, xtermRef, write, fit, focus, getSize, serialize, findNext, findPrevious, clearSearchDecorations, searchResult, progressState } = useXterm({
     enabled: globalAppearance.isReady,
     onData: useCallback((data: string) => {
       if (connectedRef.current) {
+        notifyUserInputRef.current();
         sshService.write(sessionId, data).catch(console.error);
       }
     }, [sshService, sessionId]),
@@ -90,6 +98,12 @@ export function TerminalView(props: ITerminalViewProps) {
     xtermRef,
     enabled: globalAppearance.isReady,
   });
+
+  const { notifyUserInput } = useSuggestionSpinner({ sessionId, xtermRef });
+  useEffect(() => {
+    notifyUserInputRef.current = notifyUserInput;
+  }, [notifyUserInput]);
+  useErrorFixNotice({ sessionId, xtermRef });
 
   const shellIntegrationService = useDependency(IShellIntegrationService);
   const { onOsc633 } = useShellIntegration({

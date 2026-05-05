@@ -16,6 +16,7 @@
 import { ICommandService, Inject, Injector, RxDisposable } from '@termlnk/core';
 import { connectInjector, FilesIcon, FilesIconKey } from '@termlnk/design';
 import { BuiltInUIPart, ComponentManagerService, IMenuManagerService, IShortcutService, IUIPartsService, KeyCode, MetaKeys } from '@termlnk/ui';
+import { ApplyErrorFixCommand } from '../commands/apply-error-fix.command';
 import { OpenLocalTerminalCommand } from '../commands/open-local-terminal.command';
 import { ToggleTabListCommand } from '../commands/toggle-tab-list.command';
 import { ITerminalViewRegistry } from '../services/terminal/terminal-view-registry.service';
@@ -61,6 +62,7 @@ export class TerminalUIController extends RxDisposable {
   private _initCommands(): void {
     this.disposeWithMe(this._commandService.registerCommand(ToggleTabListCommand));
     this.disposeWithMe(this._commandService.registerCommand(OpenLocalTerminalCommand));
+    this.disposeWithMe(this._commandService.registerCommand(ApplyErrorFixCommand));
   }
 
   private _initShortcuts(): void {
@@ -68,6 +70,11 @@ export class TerminalUIController extends RxDisposable {
       id: OpenLocalTerminalCommand.id,
       description: 'terminal-ui.shortcuts.open-local-terminal',
       binding: KeyCode.N | MetaKeys.CTRL_COMMAND,
+    }));
+    this.disposeWithMe(this._shortcutService.registerShortcut({
+      id: ApplyErrorFixCommand.id,
+      description: 'terminal-ui.shortcuts.apply-error-fix',
+      binding: KeyCode.E | MetaKeys.CTRL_COMMAND | MetaKeys.SHIFT,
     }));
   }
 

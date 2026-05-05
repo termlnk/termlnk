@@ -155,6 +155,7 @@ const locale = {
       'default-name': 'New Group',
     },
     shortcuts: {
+      'apply-error-fix': 'Apply AI error-fix suggestion',
       'close-active-tab': 'Close Active Tab',
       'create-new-host': 'Create New Host',
       'delete-host': 'Delete Host',

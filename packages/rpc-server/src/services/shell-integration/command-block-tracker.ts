@@ -49,6 +49,15 @@ export interface IBlockStartedEvent {
   blockId: string;
 }
 
+export interface INaturalLanguageQueryEvent {
+  sessionId: string;
+  query: string;
+  /** Monotonic counter — same scheme as block seq, incremented per query. */
+  seq: number;
+  /** Wall-clock timestamp the query was observed (ms since epoch). */
+  observedAt: number;
+}
+
 export interface IPendingBlockSnapshot {
   blockId: string;
   command: string;
@@ -79,6 +88,10 @@ export class CommandBlockTracker extends Disposable {
 
   private readonly _blockStarted$ = new Subject<IBlockStartedEvent>();
   readonly blockStarted$: Observable<IBlockStartedEvent> = this._blockStarted$.asObservable();
+
+  private readonly _query$ = new Subject<INaturalLanguageQueryEvent>();
+  readonly query$: Observable<INaturalLanguageQueryEvent> = this._query$.asObservable();
+  private _querySeq = 0;
 
   private _parseState: ParseState = 'ground';
   private _flowState: FlowState = 'idle';
@@ -153,6 +166,7 @@ export class CommandBlockTracker extends Disposable {
   override dispose(): void {
     this._blockFinished$.complete();
     this._blockStarted$.complete();
+    this._query$.complete();
     this._blocks.length = 0;
     this._pending = null;
     super.dispose();
@@ -286,7 +300,25 @@ export class CommandBlockTracker extends Disposable {
           this._currentCwd = event.value;
         }
         break;
+
+      case 'Q':
+        this._handleQuery(event.query);
+        break;
     }
+  }
+
+  private _handleQuery(query: string): void {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return;
+    }
+    this._querySeq += 1;
+    this._query$.next({
+      sessionId: this._sessionId,
+      query: trimmed,
+      seq: this._querySeq,
+      observedAt: Date.now(),
+    });
   }
 
   private _handleOsc7(payload: string): void {

@@ -14,6 +14,7 @@
  */
 
 import type { ITerminalCommand } from '@termlnk/terminal';
+import { Buffer } from 'node:buffer';
 import { describe, expect, it } from 'vitest';
 import { CommandBlockTracker } from './command-block-tracker';
 
@@ -277,5 +278,56 @@ describe('CommandBlockTracker', () => {
     // Line endings must collapse to plain LF — no \r residues left.
     expect(blocks[0].output).not.toContain('\r');
     expect(blocks[0].output.split('\n').filter((l) => l.length > 0)).toHaveLength(3);
+  });
+
+  it('emits query$ events for OSC 633;Q;<base64> with monotonic seq', () => {
+    const tracker = new CommandBlockTracker({ sessionId: 'sess-q' });
+    const queries: { sessionId: string; query: string; seq: number }[] = [];
+    tracker.query$.subscribe((event) => {
+      queries.push({ sessionId: event.sessionId, query: event.query, seq: event.seq });
+    });
+
+    const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64');
+    tracker.feed(osc633(`Q;${b64('list files larger than 100MB')}`));
+    tracker.feed(osc633(`Q;${b64('查找最近 7 天修改过的文件')}`));
+
+    expect(queries).toEqual([
+      { sessionId: 'sess-q', query: 'list files larger than 100MB', seq: 1 },
+      { sessionId: 'sess-q', query: '查找最近 7 天修改过的文件', seq: 2 },
+    ]);
+  });
+
+  it('does not emit query$ for empty or whitespace-only queries', () => {
+    const tracker = new CommandBlockTracker({ sessionId: 'sess-empty' });
+    const queries: string[] = [];
+    tracker.query$.subscribe((event) => queries.push(event.query));
+
+    const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64');
+    tracker.feed(osc633(`Q;${b64('   ')}`));
+    tracker.feed(osc633(`Q;${b64('\t\n')}`));
+
+    expect(queries).toHaveLength(0);
+  });
+
+  it('Q events do not interfere with command-block flow state', () => {
+    const tracker = new CommandBlockTracker({ sessionId: 'sess-mixed' });
+    const blocks = captureBlocks(tracker);
+    const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64');
+
+    tracker.feed([
+      osc633('A'),
+      'user@host:~$ ',
+      osc633('B'),
+      osc633(`Q;${b64('show me running services')}`), // mid-prompt query
+      osc633('E;ls'),
+      'ls\r\n',
+      osc633('C'),
+      'file1.txt\n',
+      osc633('D;0'),
+    ].join(''));
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].command).toBe('ls');
+    expect(blocks[0].exitCode).toBe(0);
   });
 });

@@ -157,6 +157,7 @@ const locale: typeof enUS = {
       'default-name': '새 그룹',
     },
     shortcuts: {
+      'apply-error-fix': 'AI 오류 수정 제안 적용',
       'close-active-tab': '현재 탭 닫기',
       'create-new-host': '새 호스트 생성',
       'delete-host': '호스트 삭제',

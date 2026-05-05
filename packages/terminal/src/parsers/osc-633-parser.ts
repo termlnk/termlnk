@@ -15,14 +15,22 @@
 
 import type { ITerminalCommand } from '../models/shell-integration';
 
-/** OSC 633 event types from VS Code shell integration */
-export type Osc633EventType = 'A' | 'B' | 'C' | 'D' | 'E' | 'P';
+/**
+ * OSC 633 event types.
+ *
+ * A/B/C/D/E/P are defined by VS Code's shell integration spec.
+ * Q is a Termlnk-private extension used to carry natural-language queries
+ * intercepted by the shell before execution (e.g. zsh `accept-line` widget
+ * captures `# <query>` and emits OSC 633;Q;<base64>).
+ */
+export type Osc633EventType = 'A' | 'B' | 'C' | 'D' | 'E' | 'P' | 'Q';
 
 /** Base interface for all OSC 633 events */
 export interface IOsc633Event {
   /**
    * Event type:
-   * A=PromptStart, B=PromptEnd, C=CommandStart, D=CommandEnd, E=CommandLine, P=Property
+   * A=PromptStart, B=PromptEnd, C=CommandStart, D=CommandEnd,
+   * E=CommandLine, P=Property, Q=NaturalLanguageQuery (Termlnk private)
    */
   type: Osc633EventType;
 }
@@ -62,6 +70,16 @@ export interface IPropertyEvent extends IOsc633Event {
   value: string;
 }
 
+/**
+ * Natural-language query event (Termlnk private extension).
+ * Payload format: `Q;<base64>` where the decoded payload is a UTF-8 query string
+ * captured by the shell's accept-line interception (e.g. user typed `# list big files`).
+ */
+export interface INaturalLanguageQueryEvent extends IOsc633Event {
+  type: 'Q';
+  query: string;
+}
+
 /** Union type of all OSC 633 events */
 export type Osc633Event =
   | IPromptStartEvent
@@ -69,7 +87,8 @@ export type Osc633Event =
   | ICommandStartEvent
   | ICommandEndEvent
   | ICommandLineEvent
-  | IPropertyEvent;
+  | IPropertyEvent
+  | INaturalLanguageQueryEvent;
 
 /**
  * Parse OSC 633 data string into a structured event.
@@ -113,8 +132,37 @@ export function parseOsc633(data: string): Osc633Event | null {
       return { type: 'P', key, value };
     }
 
+    case 'Q': {
+      const encoded = args.join(';');
+      if (!encoded) {
+        return null;
+      }
+      const query = decodeBase64Utf8(encoded);
+      if (query === null) {
+        return null;
+      }
+      return { type: 'Q', query };
+    }
+
     default: {
       return null;
     }
+  }
+}
+
+/**
+ * Decode a base64-encoded UTF-8 string. Returns null on malformed input.
+ * Works in both Node and browser-like environments without a Buffer dep.
+ */
+function decodeBase64Utf8(encoded: string): string | null {
+  try {
+    const binary = atob(encoded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  } catch {
+    return null;
   }
 }

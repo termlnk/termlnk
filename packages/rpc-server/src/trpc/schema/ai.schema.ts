@@ -28,6 +28,14 @@ export const cancelPendingSchema = z.object({
   messageId: z.string().min(1),
 });
 
+export const cancelTerminalSuggestionSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
+export const applyTerminalErrorFixSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
 export const retryMessageSchema = z.object({
   messageId: z.string().min(1),
 });

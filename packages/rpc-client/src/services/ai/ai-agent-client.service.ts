@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentStatus, IAIAgentState, IChatMessage, ICompactOptions, ISendMessageOptions, ThinkingLevel } from '@termlnk/agent';
+import type { AgentStatus, IAIAgentState, IChatMessage, ICompactOptions, ISendMessageOptions, ITerminalSuggestion, ITerminalSuggestionPhaseEvent, ThinkingLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import { createIdentifier, Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
@@ -29,6 +29,10 @@ export interface IAIAgentClientService {
   readonly state$: Observable<IAIAgentState>;
   readonly isCompacting$: Observable<boolean>;
   readonly pendingMessageIds$: Observable<string[]>;
+  /** Phase events for inline terminal suggestions (pending / cleared). */
+  readonly terminalSuggestionPhase$: Observable<ITerminalSuggestionPhaseEvent>;
+  /** Suggestion completion events (NL2Cmd dispatch + errorFix notice). */
+  readonly terminalSuggestion$: Observable<ITerminalSuggestion>;
 
   sendMessage(content: string, options?: ISendMessageOptions): Promise<void>;
   cancelPending(messageId: string): Promise<void>;
@@ -45,6 +49,10 @@ export interface IAIAgentClientService {
   setThinkingLevel(level: ThinkingLevel): Promise<void>;
   setApiKey(provider: string, apiKey: string): Promise<void>;
   compactConversation(options: ICompactOptions): Promise<void>;
+  /** Cancel any in-flight inline-suggestion request for the given session. */
+  cancelTerminalSuggestion(sessionId: string): Promise<void>;
+  /** Apply the last error-fix suggestion for the session. Returns false if nothing is queued. */
+  applyTerminalErrorFix(sessionId: string): Promise<boolean>;
 }
 
 export const IAIAgentClientService = createIdentifier<IAIAgentClientService>('rpc-client.ai-agent-client-service');
@@ -60,6 +68,8 @@ export class AIAgentClientService extends Disposable implements IAIAgentClientSe
   readonly state$: Observable<IAIAgentState>;
   readonly isCompacting$: Observable<boolean>;
   readonly pendingMessageIds$: Observable<string[]>;
+  readonly terminalSuggestionPhase$: Observable<ITerminalSuggestionPhaseEvent>;
+  readonly terminalSuggestion$: Observable<ITerminalSuggestion>;
 
   constructor(
     @IRPCClientService private readonly _rpcClientService: IRPCClientService
@@ -86,6 +96,14 @@ export class AIAgentClientService extends Disposable implements IAIAgentClientSe
     this.isCompacting$ = trpcSubscriptionToObservable<boolean>((opts) =>
       this.client.isCompacting$.subscribe(undefined, opts)
     ).pipe(shareReplay(1));
+
+    this.terminalSuggestionPhase$ = trpcSubscriptionToObservable<ITerminalSuggestionPhaseEvent>((opts) =>
+      this.client.terminalSuggestionPhase$.subscribe(undefined, opts)
+    );
+
+    this.terminalSuggestion$ = trpcSubscriptionToObservable<ITerminalSuggestion>((opts) =>
+      this.client.terminalSuggestion$.subscribe(undefined, opts)
+    );
   }
 
   private get client() {
@@ -154,5 +172,13 @@ export class AIAgentClientService extends Disposable implements IAIAgentClientSe
 
   async compactConversation(options: ICompactOptions): Promise<void> {
     await this.client.compactConversation.mutate(options);
+  }
+
+  async cancelTerminalSuggestion(sessionId: string): Promise<void> {
+    await this.client.cancelTerminalSuggestion.mutate({ sessionId });
+  }
+
+  async applyTerminalErrorFix(sessionId: string): Promise<boolean> {
+    return this.client.applyTerminalErrorFix.mutate({ sessionId });
   }
 }

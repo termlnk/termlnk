@@ -17,8 +17,12 @@ import type { DependencyOverride } from '@termlnk/core';
 import type { IPermissionRule, ToolPermissionMode } from '../models/agent-tool-permission';
 import type { IMcpConfig } from '../models/mcp';
 import type { ISkillRepository } from '../models/skill-repository';
+import type { ITerminalSuggestConfig } from '../models/terminal-suggest';
 
 export const AGENT_PLUGIN_CONFIG_KEY = 'agent.config';
+
+/** Sub-key for the inline terminal suggestion feature within AGENT_PLUGIN_CONFIG_KEY. */
+export const AGENT_TERMINAL_SUGGEST_CONFIG_SUB_KEY = 'terminalSuggest';
 
 export const configSymbol = Symbol(AGENT_PLUGIN_CONFIG_KEY);
 
@@ -31,6 +35,8 @@ export interface IAgentPluginConfig {
   permissionRules?: IPermissionRule[];
   /** Last selected permission mode. Falls back to 'default' if absent. */
   permissionMode?: ToolPermissionMode;
+  /** Inline terminal AI suggestions (NL2Cmd + error auto-fix). */
+  terminalSuggest?: ITerminalSuggestConfig;
 }
 
 export const defaultPluginConfig: IAgentPluginConfig = {};

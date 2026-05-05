@@ -57,11 +57,14 @@ export interface ITerminalCommand {
   shellIntegrated?: boolean;
 }
 
-/** OSC 633 event types */
-export type OscEventType = 'A' | 'B' | 'C' | 'D' | 'E' | 'P';
+/** OSC 633 event types (includes Termlnk-private Q for natural-language queries) */
+export type OscEventType = 'A' | 'B' | 'C' | 'D' | 'E' | 'P' | 'Q';
 
 export interface IOscEvent {
-  /** Event type: A=PromptStart, B=PromptEnd, C=CommandStart, D=CommandEnd, E=CommandLine, P=Property */
+  /**
+   * Event type: A=PromptStart, B=PromptEnd, C=CommandStart, D=CommandEnd,
+   * E=CommandLine, P=Property, Q=NaturalLanguageQuery (Termlnk private).
+   */
   type: OscEventType;
   /** Event arguments */
   args: string[];

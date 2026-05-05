@@ -13,8 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ITerminalSuggestConfig } from '@termlnk/agent';
 import type { CursorStyle, ILocalTerminalConfig, ILocalTerminalShellOption, IShellIntegrationConfig, ITerminalAppearanceConfig, LocalTerminalShell, TerminalRendererEngine } from '@termlnk/terminal';
 import type { ReactElement } from 'react';
+import { AGENT_PLUGIN_CONFIG_KEY, AGENT_TERMINAL_SUGGEST_CONFIG_SUB_KEY, DEFAULT_TERMINAL_SUGGEST_CONFIG } from '@termlnk/agent';
+import { ProviderModelSelect } from '@termlnk/agent-ui';
 import { LocaleService, platform } from '@termlnk/core';
 import { Card, CardContent, CardHeader, cn, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, useDependency } from '@termlnk/design';
 import { IConfigManagerService } from '@termlnk/rpc-client';
@@ -114,6 +117,9 @@ export function TerminalTab(): ReactElement {
   const [shellIntegrationConfig, setShellIntegrationConfig] = useState<IShellIntegrationConfig>(
     () => normalizeShellIntegrationConfig(null)
   );
+  const [suggestConfig, setSuggestConfig] = useState<ITerminalSuggestConfig>(
+    () => ({ ...DEFAULT_TERMINAL_SUGGEST_CONFIG })
+  );
   const fontComboboxAnchorRef = useRef<HTMLDivElement | null>(null);
 
   const resolvedFontFamilies = useMemo(() => {
@@ -184,6 +190,19 @@ export function TerminalTab(): ReactElement {
     [configManagerService]
   );
 
+  const updateSuggestConfig = useCallback(
+    (patch: Partial<ITerminalSuggestConfig>) => {
+      setSuggestConfig((prev) => {
+        const next: ITerminalSuggestConfig = { ...prev, ...patch };
+        void configManagerService
+          .setField(AGENT_PLUGIN_CONFIG_KEY, AGENT_TERMINAL_SUGGEST_CONFIG_SUB_KEY, next)
+          .catch(() => { });
+        return next;
+      });
+    },
+    [configManagerService]
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -248,6 +267,36 @@ export function TerminalTab(): ReactElement {
     };
 
     loadShellIntegration();
+
+    return () => {
+      active = false;
+    };
+  }, [configManagerService]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSuggestConfig = async () => {
+      try {
+        const stored = await configManagerService.getField<Partial<ITerminalSuggestConfig>>(
+          AGENT_PLUGIN_CONFIG_KEY,
+          AGENT_TERMINAL_SUGGEST_CONFIG_SUB_KEY
+        );
+        if (!active) {
+          return;
+        }
+        setSuggestConfig({
+          ...DEFAULT_TERMINAL_SUGGEST_CONFIG,
+          ...(stored ?? {}),
+        });
+      } catch {
+        if (active) {
+          setSuggestConfig({ ...DEFAULT_TERMINAL_SUGGEST_CONFIG });
+        }
+      }
+    };
+
+    loadSuggestConfig();
 
     return () => {
       active = false;
@@ -637,6 +686,98 @@ export function TerminalTab(): ReactElement {
                 onCheckedChange={(checked) => updateShellIntegrationSsh({ fallbackHeuristic: checked })}
               />
             </div>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
+      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+        <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
+          <h3 className="tm:text-sm tm:font-semibold tm:text-white">
+            {localeService.t('settings-ui.terminal.inline-suggest-title')}
+          </h3>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup className="tm:my-4 tm:gap-4">
+            <div className="tm:flex tm:items-start tm:justify-between tm:gap-4">
+              <div className="tm:min-w-0">
+                <p className="tm:text-sm tm:font-normal tm:text-white">
+                  {localeService.t('settings-ui.terminal.inline-suggest-enabled')}
+                </p>
+                <p className="tm:mt-1 tm:text-xs tm:text-grey-fg">
+                  {localeService.t('settings-ui.terminal.inline-suggest-enabled-description')}
+                </p>
+              </div>
+              <Switch
+                checked={suggestConfig.enabled}
+                onCheckedChange={(checked) => updateSuggestConfig({ enabled: checked })}
+              />
+            </div>
+
+            <div className="tm:flex tm:items-start tm:justify-between tm:gap-4">
+              <div className="tm:min-w-0">
+                <p className="tm:text-sm tm:font-normal tm:text-white">
+                  {localeService.t('settings-ui.terminal.inline-suggest-nl')}
+                </p>
+                <p className="tm:mt-1 tm:text-xs tm:text-grey-fg">
+                  {localeService.t('settings-ui.terminal.inline-suggest-nl-description')}
+                </p>
+              </div>
+              <Switch
+                checked={suggestConfig.enabled && suggestConfig.naturalLanguageEnabled}
+                disabled={!suggestConfig.enabled}
+                onCheckedChange={(checked) => updateSuggestConfig({ naturalLanguageEnabled: checked })}
+              />
+            </div>
+
+            <div className="tm:flex tm:items-start tm:justify-between tm:gap-4">
+              <div className="tm:min-w-0">
+                <p className="tm:text-sm tm:font-normal tm:text-white">
+                  {localeService.t('settings-ui.terminal.inline-suggest-error')}
+                </p>
+                <p className="tm:mt-1 tm:text-xs tm:text-grey-fg">
+                  {localeService.t('settings-ui.terminal.inline-suggest-error-description')}
+                </p>
+              </div>
+              <Switch
+                checked={suggestConfig.enabled && suggestConfig.errorAutoSuggest}
+                disabled={!suggestConfig.enabled}
+                onCheckedChange={(checked) => updateSuggestConfig({ errorAutoSuggest: checked })}
+              />
+            </div>
+
+            {suggestConfig.enabled && (suggestConfig.naturalLanguageEnabled || suggestConfig.errorAutoSuggest) && (
+              <Field orientation="horizontal" className="tm:items-start">
+                <FieldLabel
+                  className={cn('tm:min-w-0 tm:flex-1 tm:flex-col tm:items-start tm:gap-1 tm:text-white')}
+                >
+                  <span className="tm:text-sm tm:font-normal">
+                    {localeService.t('settings-ui.terminal.inline-suggest-model')}
+                  </span>
+                  <span className="tm:text-xs tm:font-normal tm:text-grey-fg">
+                    {localeService.t('settings-ui.terminal.inline-suggest-model-description')}
+                  </span>
+                </FieldLabel>
+                <FieldContent className="tm:flex-none tm:items-end">
+                  <div className={cn('tm:w-60 tm:max-w-full')}>
+                    <ProviderModelSelect
+                      value={suggestConfig.suggestModelId ?? null}
+                      onChange={(modelId) => updateSuggestConfig({ suggestModelId: modelId ?? undefined })}
+                      defaultEntry={{
+                        label: localeService.t('settings-ui.terminal.inline-suggest-model-default'),
+                        description: localeService.t('settings-ui.terminal.inline-suggest-model-default-description'),
+                      }}
+                      triggerClassName={cn(`
+                        tm:h-9 tm:border-one-bg3 tm:bg-black tm:p-3 tm:text-white
+                        tm:shadow-xs tm:outline-hidden tm:transition-[color,box-shadow]
+                        tm:hover:border-blue tm:hover:bg-black
+                        tm:focus-visible:border-blue tm:focus-visible:ring-[3px] tm:focus-visible:ring-blue/50
+                        tm:disabled:opacity-50
+                      `)}
+                    />
+                  </div>
+                </FieldContent>
+              </Field>
+            )}
           </FieldGroup>
         </CardContent>
       </Card>

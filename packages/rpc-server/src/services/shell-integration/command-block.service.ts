@@ -16,7 +16,7 @@
 import type { ITerminalCommand } from '@termlnk/terminal';
 import type { Buffer } from 'node:buffer';
 import type { Observable, Subscription } from 'rxjs';
-import type { IBlockStartedEvent, IPendingBlockSnapshot } from './command-block-tracker';
+import type { IBlockStartedEvent, INaturalLanguageQueryEvent, IPendingBlockSnapshot } from './command-block-tracker';
 import { createIdentifier, Disposable, ILogService } from '@termlnk/core';
 import { Subject } from 'rxjs';
 import { CommandBlockTracker } from './command-block-tracker';
@@ -33,6 +33,11 @@ export interface ICommandBlockService {
   readonly blockFinished$: Observable<ITerminalCommand>;
   /** Emits {sessionId, blockId} as soon as a new pending block is created. */
   readonly blockStarted$: Observable<IBlockStartedEvent>;
+  /**
+   * Emits each natural-language query intercepted by the shell (OSC 633;Q).
+   * Carries the decoded UTF-8 query plus a per-session monotonic seq.
+   */
+  readonly query$: Observable<INaturalLanguageQueryEvent>;
   /**
    * Attach a command block tracker to a terminal session's raw data stream.
    * Safe to call multiple times for the same sessionId — subsequent calls are
@@ -75,6 +80,7 @@ interface ISessionEntry {
   dataSub: Subscription;
   blockSub: Subscription;
   startedSub: Subscription;
+  querySub: Subscription;
 }
 
 export class CommandBlockService extends Disposable implements ICommandBlockService {
@@ -85,6 +91,9 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
 
   private readonly _blockStarted$ = new Subject<IBlockStartedEvent>();
   readonly blockStarted$: Observable<IBlockStartedEvent> = this._blockStarted$.asObservable();
+
+  private readonly _query$ = new Subject<INaturalLanguageQueryEvent>();
+  readonly query$: Observable<INaturalLanguageQueryEvent> = this._query$.asObservable();
 
   constructor(
     @ILogService private readonly _logService: ILogService
@@ -133,7 +142,11 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
       this._blockStarted$.next(event);
     });
 
-    this._sessions.set(sessionId, { tracker, dataSub, blockSub, startedSub });
+    const querySub = tracker.query$.subscribe((event) => {
+      this._query$.next(event);
+    });
+
+    this._sessions.set(sessionId, { tracker, dataSub, blockSub, startedSub, querySub });
   }
 
   detachSession(sessionId: string): void {
@@ -144,6 +157,7 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     entry.dataSub.unsubscribe();
     entry.blockSub.unsubscribe();
     entry.startedSub.unsubscribe();
+    entry.querySub.unsubscribe();
     entry.tracker.dispose();
     this._sessions.delete(sessionId);
   }
@@ -183,6 +197,7 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     this._sessions.clear();
     this._blockFinished$.complete();
     this._blockStarted$.complete();
+    this._query$.complete();
     super.dispose();
   }
 }

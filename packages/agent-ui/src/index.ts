@@ -24,3 +24,5 @@ export { AgentUIPlugin } from './plugin';
 export { ChatPanel } from './views/chat/ChatPanel';
 export { AgentTab } from './views/settings/AgentTab';
 export { AiProviderTab } from './views/settings/AiProviderTab';
+export { ProviderModelSelect } from './views/settings/ProviderModelSelect';
+export type { IProviderModelSelectProps } from './views/settings/ProviderModelSelect';

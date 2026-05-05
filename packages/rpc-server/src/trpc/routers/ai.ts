@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import { IAIAgentService, ILLMProviderService } from '@termlnk/agent';
+import { IAIAgentService, ILLMProviderService, ITerminalSuggestService } from '@termlnk/agent';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
-import { addCustomModelSchema, addProviderSchema, cancelPendingSchema, compactConversationSchema, editUserMessageSchema, getProviderConfigSchema, invokeToolSchema, refreshProviderModelsSchema, removeCustomModelSchema, removeProviderSchema, resetModelOverridesSchema, retryMessageSchema, sendMessageSchema, setActiveModelSchema, setApiKeySchema, setModelSchema, setSystemPromptSchema, setThinkingLevelSchema, testProviderModelSchema, toggleModelSchema, updateModelOverridesSchema, updateProviderConfigSchema } from '../schema/ai.schema';
+import { addCustomModelSchema, addProviderSchema, applyTerminalErrorFixSchema, cancelPendingSchema, cancelTerminalSuggestionSchema, compactConversationSchema, editUserMessageSchema, getProviderConfigSchema, invokeToolSchema, refreshProviderModelsSchema, removeCustomModelSchema, removeProviderSchema, resetModelOverridesSchema, retryMessageSchema, sendMessageSchema, setActiveModelSchema, setApiKeySchema, setModelSchema, setSystemPromptSchema, setThinkingLevelSchema, testProviderModelSchema, toggleModelSchema, updateModelOverridesSchema, updateProviderConfigSchema } from '../schema/ai.schema';
 import { publicProcedure, router } from '../trpc';
 
 export type AIRouter = typeof aiRouter;
@@ -272,5 +272,44 @@ export const aiRouter = router({
     .subscription(async function* ({ ctx }) {
       const service = ctx.injector.get(IAIAgentService);
       yield* observableToAsyncGenerator(service.isCompacting$);
+    }),
+
+  // --- Terminal inline suggestions ---
+
+  cancelTerminalSuggestion: publicProcedure
+    .input(cancelTerminalSuggestionSchema)
+    .mutation(({ ctx, input }) => {
+      const suggest = ctx.injector.get(ITerminalSuggestService);
+      suggest.cancelInflight(input.sessionId);
+    }),
+
+  /**
+   * Apply the last error-fix suggestion for a session. Returns whether a
+   * suggestion was queued — false means "nothing to apply" so the renderer
+   * can surface a hint instead of silently doing nothing.
+   */
+  applyTerminalErrorFix: publicProcedure
+    .input(applyTerminalErrorFixSchema)
+    .mutation(({ ctx, input }) => {
+      const suggest = ctx.injector.get(ITerminalSuggestService);
+      return suggest.applyLastErrorFix(input.sessionId);
+    }),
+
+  /**
+   * Phase events for inline terminal suggestions (pending / cleared) that
+   * drive the renderer-side spinner. Carries `requestId` so consumers can
+   * match pending↔cleared even when requests are superseded mid-flight.
+   */
+  terminalSuggestionPhase$: publicProcedure
+    .subscription(async function* ({ ctx }) {
+      const suggest = ctx.injector.get(ITerminalSuggestService);
+      yield* observableToAsyncGenerator(suggest.phase$);
+    }),
+
+  /** Suggestion completion events — surfaces error-fix notices to the renderer. */
+  terminalSuggestion$: publicProcedure
+    .subscription(async function* ({ ctx }) {
+      const suggest = ctx.injector.get(ITerminalSuggestService);
+      yield* observableToAsyncGenerator(suggest.suggestion$);
     }),
 });

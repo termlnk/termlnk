@@ -157,6 +157,7 @@ const locale: typeof enUS = {
       'default-name': '新建群組',
     },
     shortcuts: {
+      'apply-error-fix': '套用 AI 錯誤修復建議',
       'close-active-tab': '關閉目前分頁',
       'create-new-host': '建立新主機',
       'delete-host': '刪除主機',
