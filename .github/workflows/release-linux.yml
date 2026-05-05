@@ -82,14 +82,8 @@ jobs:
             --endpoint-url ${{ secrets.R2_ENDPOINT }} \
             --recursive --exclude "*" \
             --include "*.AppImage" --include "*.deb" --include "*.rpm" \
-            --include "*.tar.gz" --include "*.blockmap"
-
-      - name: Upload update manifest as artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: latest-linux-${{ matrix.arch }}
-          path: apps/desktop/release/latest-linux.yml
-          if-no-files-found: warn
+            --include "*.tar.gz" --include "*.blockmap" \
+            --include "latest-linux*.yml"
 
       - name: Upload to GitHub Release
         env:

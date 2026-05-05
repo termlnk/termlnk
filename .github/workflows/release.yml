@@ -208,7 +208,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
-          for f in latest-mac.yml latest.yml latest-linux.yml; do
+          for f in latest-mac.yml latest.yml; do
             if [ -f "/tmp/$f" ]; then
               aws s3 cp "/tmp/$f" "s3://${{ secrets.R2_BUCKET_NAME }}/desktop/$f" \
                 --endpoint-url "${{ secrets.R2_ENDPOINT }}"

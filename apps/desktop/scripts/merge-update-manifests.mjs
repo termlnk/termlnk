@@ -7,10 +7,14 @@ import yaml from 'js-yaml';
 
 /**
  * Merge electron-builder per-arch update manifests into the channel files
- * electron-updater consumes. Each platform produces one merged file:
- *   - latest-mac.yml   ← mac arm64 + mac x64
- *   - latest.yml       ← win arm64 + win x64
- *   - latest-linux.yml ← linux arm64 + linux x64
+ * electron-updater consumes. Only platforms whose channel filename collides
+ * across architectures need merging:
+ *   - latest-mac.yml ← mac arm64 + mac x64 (electron-builder uses one name for both archs)
+ *   - latest.yml     ← win arm64 + win x64 (same)
+ *
+ * Linux is intentionally excluded: electron-builder writes
+ * `latest-linux.yml` for x64 and `latest-linux-arm64.yml` for arm64 already,
+ * so each linux job uploads its own file directly — no merge needed.
  *
  * The merge concatenates the `files` arrays (deduplicated by url). Top-level
  * metadata (version / releaseDate / path / sha512) is taken from the first
@@ -51,13 +55,6 @@ const TARGETS = [
     inputs: [
       'latest-win-arm64/latest.yml',
       'latest-win-x64/latest.yml',
-    ],
-  },
-  {
-    output: 'latest-linux.yml',
-    inputs: [
-      'latest-linux-arm64/latest-linux.yml',
-      'latest-linux-x64/latest-linux.yml',
     ],
   },
 ];
