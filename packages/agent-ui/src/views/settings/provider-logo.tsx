@@ -14,7 +14,7 @@
  */
 
 import type { ComponentType, ReactElement } from 'react';
-import { AiHubMix, Anthropic, AzureAI, Bedrock, Cerebras, Claude, Cloudflare, DeepSeek, Fireworks, Gemini, GithubCopilot, Groq, HuggingFace, Kimi, Minimax, Mistral, Moonshot, OpenAI, OpenCode, OpenRouter, Vercel, VertexAI, XAI, ZAI } from '@termlnk/design';
+import { AiHubMix, Anthropic, AzureAI, Bedrock, Cerebras, Claude, Cloudflare, DeepSeek, Fireworks, Gemini, GithubCopilot, Groq, HuggingFace, Kimi, Minimax, Mistral, Moonshot, OpenAI, OpenCode, OpenRouter, Vercel, VertexAI, XAI, XiaomiMiMo, ZAI } from '@termlnk/design';
 import { Sparkles } from 'lucide-react';
 
 export interface IProviderLogoProps {
@@ -60,6 +60,10 @@ const PROVIDER_LOGOS: Record<string, ProviderLogoComponent> = {
   opencode: OpenCode,
   'opencode-go': OpenCode,
   aihubmix: AiHubMix,
+  xiaomi: XiaomiMiMo,
+  'xiaomi-token-plan-cn': XiaomiMiMo,
+  'xiaomi-token-plan-ams': XiaomiMiMo,
+  'xiaomi-token-plan-sgp': XiaomiMiMo,
 };
 
 function resolveProviderLogoKey(providerId: string): string {
@@ -103,6 +107,10 @@ function resolveProviderLogoKey(providerId: string): string {
 
   if (normalizedId.startsWith('azure-openai')) {
     return 'azure-openai-responses';
+  }
+
+  if (normalizedId.startsWith('xiaomi')) {
+    return 'xiaomi';
   }
 
   return normalizedId;
