@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/extension-ui",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": false,
   "description": "Extension management UI for termlnk",
   "author": "telan <telanflow@gmail.com>",

@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/island-core",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": false,
   "description": "Dynamic Island core services for termlnk - island state computation from agent monitor data",
   "author": "telan <telanflow@gmail.com>",

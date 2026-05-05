@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/themes-ui",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": false,
   "description": "Theme UI components for termlnk",
   "author": "telan <telanflow@gmail.com>",

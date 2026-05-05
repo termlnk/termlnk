@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/island",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": false,
   "description": "Dynamic Island shared contracts for termlnk - session phase, animation state, and island service interfaces",
   "author": "telan <telanflow@gmail.com>",
