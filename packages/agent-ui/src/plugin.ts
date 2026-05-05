@@ -27,19 +27,6 @@ import { ChatPanelController } from './controllers/chat-panel.controller';
 import { AGENT_UI_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { GenerativeUIRegistryService, IGenerativeUIRegistryService } from './services/generative-ui/generative-ui-registry.service';
 import { ProviderRegistryService } from './services/provider-registry.service';
-import { BarChartWidget } from './views/chat/parts/widgets/BarChartWidget';
-import { PieChartWidget } from './views/chat/parts/widgets/PieChartWidget';
-import { WidgetRenderer } from './views/chat/parts/widgets/WidgetRenderer';
-
-const TERMLNK_WIDGET_README_TOOL = 'termlnk_widget_readme';
-const TERMLNK_WIDGET_RENDERER_TOOL = 'termlnk_widget_renderer';
-const TERMLNK_PIE_CHART_TOOL = 'termlnk_pie_chart';
-const TERMLNK_BAR_CHART_TOOL = 'termlnk_bar_chart';
-
-// widgetReadme is purely informational for the LLM; render as nothing in chat.
-function NullRender(): null {
-  return null;
-}
 
 @DependentOn(UIPlugin, RPCClientPlugin)
 export class AgentUIPlugin extends Plugin {
@@ -71,7 +58,7 @@ export class AgentUIPlugin extends Plugin {
   }
 
   override onReady(): void {
-    this._registerBuiltinGenerativeUIComponents();
+    this._injector.get(ChatPanelController).registerBuiltinGenerativeUIComponents();
   }
 
   private _initDependencies(): void {
@@ -82,14 +69,6 @@ export class AgentUIPlugin extends Plugin {
       [ChatPanelController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
-  }
-
-  private _registerBuiltinGenerativeUIComponents(): void {
-    const registry = this._injector.get(IGenerativeUIRegistryService);
-    this.disposeWithMe(registry.register({ name: TERMLNK_WIDGET_README_TOOL, render: NullRender }));
-    this.disposeWithMe(registry.register({ name: TERMLNK_WIDGET_RENDERER_TOOL, render: WidgetRenderer }));
-    this.disposeWithMe(registry.register({ name: TERMLNK_PIE_CHART_TOOL, render: PieChartWidget }));
-    this.disposeWithMe(registry.register({ name: TERMLNK_BAR_CHART_TOOL, render: BarChartWidget }));
   }
 
   private _registerContributionPoints(): void {

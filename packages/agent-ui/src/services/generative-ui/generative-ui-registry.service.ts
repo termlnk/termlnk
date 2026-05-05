@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IDisposable } from '@termlnk/core';
 import type { ComponentType } from 'react';
 import { createIdentifier, Disposable, toDisposable } from '@termlnk/core';
 
@@ -27,19 +28,17 @@ export interface IGenerativeUIComponentDef {
 }
 
 export interface IGenerativeUIRegistryService {
-  register(def: IGenerativeUIComponentDef): import('@termlnk/core').IDisposable;
+  register(def: IGenerativeUIComponentDef): IDisposable;
   get(toolName: string): IGenerativeUIComponentDef | undefined;
   has(toolName: string): boolean;
 }
 
-export const IGenerativeUIRegistryService = createIdentifier<IGenerativeUIRegistryService>(
-  'agent-ui.generative-ui-registry-service'
-);
+export const IGenerativeUIRegistryService = createIdentifier<IGenerativeUIRegistryService>('agent-ui.generative-ui-registry-service');
 
 export class GenerativeUIRegistryService extends Disposable implements IGenerativeUIRegistryService {
   private readonly _registry = new Map<string, IGenerativeUIComponentDef>();
 
-  register(def: IGenerativeUIComponentDef): import('@termlnk/core').IDisposable {
+  register(def: IGenerativeUIComponentDef): IDisposable {
     this._registry.set(def.name, def);
     return toDisposable(() => {
       const current = this._registry.get(def.name);
