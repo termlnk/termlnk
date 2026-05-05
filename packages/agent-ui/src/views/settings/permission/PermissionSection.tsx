@@ -123,8 +123,8 @@ export function PermissionSection() {
                   onClick={() => handleModeChange(opt.value)}
                   className={cn(
                     `
-                      tm:flex tm:flex-col tm:items-start tm:gap-1 tm:rounded-md tm:border tm:px-3 tm:py-2
-                      tm:text-left tm:transition-colors
+                      tm:flex tm:flex-col tm:items-start tm:gap-1 tm:rounded-md tm:border tm:px-3 tm:py-2 tm:text-left
+                      tm:transition-colors
                     `,
                     {
                       'tm:border-blue tm:bg-one-bg2': active,
@@ -164,14 +164,14 @@ export function PermissionSection() {
                       <li
                         key={rule.id}
                         className={cn(
-                          'tm:flex tm:items-center tm:gap-2 tm:rounded tm:border tm:border-line tm:px-2 tm:py-1.5',
+                          'tm:flex tm:items-center tm:gap-2 tm:rounded-sm tm:border tm:border-line tm:px-2 tm:py-1.5',
                           {
                             'tm:opacity-60': shadowed !== undefined,
                           }
                         )}
                       >
                         <span
-                          className={cn('tm:rounded tm:px-1.5 tm:py-0.5 tm:text-[0.65rem] tm:font-medium', {
+                          className={cn('tm:rounded-sm tm:px-1.5 tm:py-0.5 tm:text-[0.65rem] tm:font-medium', {
                             'tm:bg-green/10 tm:text-green': rule.decision === 'allow',
                             'tm:bg-red/10 tm:text-red': rule.decision === 'deny',
                           })}
@@ -187,7 +187,9 @@ export function PermissionSection() {
                             className="tm:text-[0.65rem] tm:text-yellow"
                             title={t('rules-shadowed')}
                           >
-                            ⚠ {t('rules-shadowed')}
+                            ⚠
+                            {' '}
+                            {t('rules-shadowed')}
                           </span>
                         )}
                         <span className="tm:text-[0.65rem] tm:text-grey">{rule.scope}</span>

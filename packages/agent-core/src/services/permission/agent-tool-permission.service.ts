@@ -137,8 +137,7 @@ export class AgentToolPermissionService extends Disposable implements IAgentTool
     if (response.rule && response.scope !== 'once') {
       if (response.scope === 'user') {
         void this._ruleService.addUserRule(response.rule);
-      }
-      else if (response.scope === 'session' && request) {
+      } else if (response.scope === 'session' && request) {
         this._ruleService.addSessionRule(request.sessionId, response.rule);
       }
     }
@@ -149,8 +148,7 @@ export class AgentToolPermissionService extends Disposable implements IAgentTool
         via: 'user',
         updatedInput: response.updatedInput,
       });
-    }
-    else {
+    } else {
       resolver.resolve({
         decision: 'deny',
         via: 'user',
@@ -233,8 +231,7 @@ export class AgentToolPermissionService extends Disposable implements IAgentTool
       if (stored && isValidMode(stored)) {
         this._mode$.next(stored);
       }
-    }
-    catch (err) {
+    } catch (err) {
       this._logService.error('[AgentToolPermissionService]', `Failed to load mode: ${err}`);
     }
   }

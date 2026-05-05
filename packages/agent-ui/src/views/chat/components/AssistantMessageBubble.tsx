@@ -124,8 +124,8 @@ export const AssistantMessageBubble = memo(function AssistantMessageBubble({ mes
   const totalTokens = message.usage?.totalTokens ?? 0;
   const metaText = elapsedMs !== null
     ? (totalTokens > 0
-        ? localeService.t('agent-ui.chat.elapsed-with-tokens', formatElapsed(elapsedMs), formatTokens(totalTokens))
-        : localeService.t('agent-ui.chat.elapsed', formatElapsed(elapsedMs)))
+      ? localeService.t('agent-ui.chat.elapsed-with-tokens', formatElapsed(elapsedMs), formatTokens(totalTokens))
+      : localeService.t('agent-ui.chat.elapsed', formatElapsed(elapsedMs)))
     : null;
 
   return (

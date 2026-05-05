@@ -56,10 +56,7 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({ startedAt, on
       )}
     >
       <span
-        className="
-          tm:inline-block tm:size-1.5 tm:shrink-0 tm:rounded-full tm:bg-nord-blue
-          tm-thinking-pulse
-        "
+        className="tm-thinking-pulse tm:inline-block tm:size-1.5 tm:shrink-0 tm:rounded-full tm:bg-nord-blue"
         aria-hidden
       />
       <span className="tm-shimmer-text tm:font-medium">

@@ -539,8 +539,8 @@ export function ChatInput() {
                 variant="ghost"
                 size="icon-xs"
                 className={`
-                  tm:group tm:flex tm:size-7 tm:shrink-0 tm:cursor-pointer tm:items-center tm:justify-center
-                  tm:transition-colors
+                  tm:group
+                  tm:flex tm:size-7 tm:shrink-0 tm:cursor-pointer tm:items-center tm:justify-center tm:transition-colors
                   tm:hover:bg-transparent
                 `}
                 onClick={handleStop}
@@ -549,8 +549,7 @@ export function ChatInput() {
               >
                 <span
                   className={`
-                    tm:flex tm:size-4 tm:items-center tm:justify-center tm:rounded-full tm:bg-red
-                    tm:transition-colors
+                    tm:flex tm:size-4 tm:items-center tm:justify-center tm:rounded-full tm:bg-red tm:transition-colors
                     tm:group-hover:bg-red/90
                   `}
                 >

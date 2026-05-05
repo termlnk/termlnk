@@ -68,7 +68,7 @@ export function UpdateDialog() {
             {currentVersion}
           </span>
           <ArrowRight className="tm:size-4 tm:text-grey" />
-          <span className="tm:font-mono tm:text-base tm:tracking-wider tm:font-semibold tm:text-light-grey">
+          <span className="tm:font-mono tm:text-base tm:font-semibold tm:tracking-wider tm:text-light-grey">
             {updateInfo.version}
           </span>
         </div>

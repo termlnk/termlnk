@@ -150,8 +150,7 @@ export class McpController extends Disposable {
             }),
             details: result,
           };
-        }
-        catch (err) {
+        } catch (err) {
           this._logService.error(`[McpController] Builtin tool ${tool.name} failed: ${err}`);
           return {
             content: [{ type: 'text', text: `Error: ${err}` }],
@@ -191,8 +190,7 @@ export class McpController extends Disposable {
             content: [{ type: 'text', text }],
             details: result,
           };
-        }
-        catch (err) {
+        } catch (err) {
           this._logService.error(`[McpController] Tool ${toolName} failed: ${err}`);
           return {
             content: [{ type: 'text', text: `Error: ${err}` }],

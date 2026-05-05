@@ -210,7 +210,10 @@ export function AboutTab() {
                 event.preventDefault();
                 openExternal(AUTHOR_URL);
               }}
-              className="tm:cursor-pointer tm:text-light-grey tm:hover:text-blue tm:hover:underline"
+              className="
+                tm:cursor-pointer tm:text-light-grey
+                tm:hover:text-blue tm:hover:underline
+              "
             >
               {AUTHOR_NAME}
             </a>

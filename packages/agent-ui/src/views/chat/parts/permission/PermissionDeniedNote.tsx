@@ -19,8 +19,10 @@ import { Ban, ShieldOff } from 'lucide-react';
 import { memo } from 'react';
 
 interface IPermissionDeniedNoteProps {
-  /** Raw output text from the wrapped tool — the wrap layer prefixes
-   *  '[Permission denied] <reason>'. We classify the reason string. */
+  /**
+   * Raw output text from the wrapped tool — the wrap layer prefixes
+   *  '[Permission denied] <reason>'. We classify the reason string.
+   */
   outputText: string;
 }
 
@@ -52,10 +54,10 @@ export const PermissionDeniedNote = memo(function PermissionDeniedNote({ outputT
 
   const labelKey: Record<DenialKind, string> = {
     'plan-mode': 'denied-by-plan-mode',
-    'rule': 'denied-by-rule',
-    'mode': 'denied-by-mode',
-    'user': 'denied-by-user',
-    'unknown': 'denied',
+    rule: 'denied-by-rule',
+    mode: 'denied-by-mode',
+    user: 'denied-by-user',
+    unknown: 'denied',
   };
 
   const Icon = kind === 'plan-mode' ? ShieldOff : Ban;
@@ -74,7 +76,7 @@ export const PermissionDeniedNote = memo(function PermissionDeniedNote({ outputT
       <div className="tm:flex tm:min-w-0 tm:flex-col tm:gap-0.5">
         <span>{t(labelKey[kind])}</span>
         {reason && reason !== 'plan-mode' && (
-          <span className="tm:text-grey-fg tm:text-[0.65rem]">{reason}</span>
+          <span className="tm:text-[0.65rem] tm:text-grey-fg">{reason}</span>
         )}
       </div>
     </div>

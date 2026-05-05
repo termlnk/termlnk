@@ -40,7 +40,7 @@ export class PermissionRuleService extends Disposable implements IPermissionRule
     this._sessionRulesChanged$,
   ]).pipe(
     map(([user]) => [...user, ...this._allSessionRules()]),
-    shareReplay(1),
+    shareReplay(1)
   );
 
   constructor(
@@ -173,8 +173,7 @@ export class PermissionRuleService extends Disposable implements IPermissionRule
       if (Array.isArray(stored)) {
         this._userRules$.next(stored);
       }
-    }
-    catch (err) {
+    } catch (err) {
       this._logService.error('[PermissionRuleService]', `Failed to load user rules: ${err}`);
     }
   }
@@ -182,8 +181,7 @@ export class PermissionRuleService extends Disposable implements IPermissionRule
   private async _persistUserRules(rules: IPermissionRule[]): Promise<void> {
     try {
       await this._configRepo.setField(AGENT_PLUGIN_CONFIG_KEY, PERMISSION_RULES_FIELD, rules);
-    }
-    catch (err) {
+    } catch (err) {
       this._logService.error('[PermissionRuleService]', `Failed to persist user rules: ${err}`);
     }
   }

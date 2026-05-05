@@ -31,9 +31,18 @@ const SSH_CRITICAL_PATTERN = /\b(shutdown|reboot|halt|poweroff|init\s+[06])\b/i;
  * suggestion (e.g. "git push", "docker rm", "sudo rm").
  */
 const COMPOUND_LEADERS = new Set([
-  'git', 'docker', 'kubectl', 'sudo',
-  'npm', 'yarn', 'pnpm', 'systemctl',
-  'apt', 'brew', 'pip', 'cargo',
+  'git',
+  'docker',
+  'kubectl',
+  'sudo',
+  'npm',
+  'yarn',
+  'pnpm',
+  'systemctl',
+  'apt',
+  'brew',
+  'pip',
+  'cargo',
 ]);
 
 export class RiskAssessmentService extends Disposable implements IRiskAssessmentService {
@@ -227,8 +236,7 @@ export class RiskAssessmentService extends Disposable implements IRiskAssessment
             matchField: 'url',
             decision: 'allow',
           });
-        }
-        catch {
+        } catch {
           // Ignore malformed URLs
         }
       }
