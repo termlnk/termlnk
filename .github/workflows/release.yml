@@ -161,11 +161,18 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout (sparse — only changelog)
+      - name: Checkout (sparse — changelog + merge script)
         uses: actions/checkout@v6
         with:
-          sparse-checkout: docs/CHANGELOG.md
+          sparse-checkout: |
+            docs/CHANGELOG.md
+            apps/desktop/scripts/merge-update-manifests.mjs
           sparse-checkout-cone-mode: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
 
       - name: Extract changelog for current version
         env:
@@ -191,39 +198,10 @@ jobs:
 
       - name: Merge update manifests
         run: |
-          pip install yq --quiet
-
-          merge_manifests() {
-            local output="$1"
-            shift
-            local inputs=()
-            for f in "$@"; do [ -f "$f" ] && inputs+=("$f"); done
-
-            if [ ${#inputs[@]} -eq 0 ]; then
-              echo "No manifests found for $output, skipping"
-              return
-            elif [ ${#inputs[@]} -eq 1 ]; then
-              cp "${inputs[0]}" "/tmp/$output"
-            else
-              yq eval-all '
-                select(fileIndex == 0) *
-                {"files": [.[].files[] | select(. != null)]}
-              ' "${inputs[@]}" > "/tmp/$output"
-            fi
-            echo "Merged ${#inputs[@]} manifest(s) into $output"
-          }
-
-          merge_manifests "latest-mac.yml" \
-            manifests/latest-mac-arm64/latest-mac.yml \
-            manifests/latest-mac-x64/latest-mac.yml
-
-          merge_manifests "latest.yml" \
-            manifests/latest-win-arm64/latest.yml \
-            manifests/latest-win-x64/latest.yml
-
-          merge_manifests "latest-linux.yml" \
-            manifests/latest-linux-arm64/latest-linux.yml \
-            manifests/latest-linux-x64/latest-linux.yml
+          npm install --no-save --no-package-lock --silent js-yaml@4.1.1
+          node apps/desktop/scripts/merge-update-manifests.mjs \
+            --input-dir manifests \
+            --output-dir /tmp
 
       - name: Upload merged manifests to R2
         env:
