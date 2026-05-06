@@ -38,6 +38,14 @@ import { fixProcessPath } from './shell-path';
 // Must run before any child-process spawning (PTY, MCP stdio, etc.)
 fixProcessPath();
 
+// Single-instance lock — Windows/Linux fork a new process on each launch
+// while macOS LaunchServices already deduplicates GUI launches; the lock
+// covers CLI launches uniformly. Must run before app.whenReady().
+// SingleInstanceController handles the 'second-instance' event.
+if (!app.requestSingleInstanceLock()) {
+  app.exit(0);
+}
+
 // GPU acceleration & rendering optimizations.
 // These must be set before app.whenReady() per Chromium requirements.
 app.commandLine.appendSwitch('enable-gpu-rasterization');

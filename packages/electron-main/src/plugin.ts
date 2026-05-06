@@ -24,6 +24,7 @@ import { DynamicIslandController } from './controllers/dynamic-island.controller
 import { MainController } from './controllers/main.controller';
 import { MenuController } from './controllers/menu.controller';
 import { RPCController } from './controllers/rpc.controller';
+import { SingleInstanceController } from './controllers/single-instance.controller';
 import { WindowStateController } from './controllers/window-state.controller';
 import { DiskFileService } from './services/file/disk-file.service';
 import { KeepAwakeService } from './services/keep-awake/keep-awake.service';
@@ -57,6 +58,7 @@ export class ElectronMainPlugin extends Plugin {
     this._initDependencies();
 
     touchDependencies(this._injector, [
+      [SingleInstanceController],
       [MainController],
       [MenuController],
       [RPCController],
@@ -88,6 +90,7 @@ export class ElectronMainPlugin extends Plugin {
       [IKeepAwakeService, { useClass: KeepAwakeService }],
 
       [WindowStateController],
+      [SingleInstanceController],
       [MainController],
       [MenuController],
       [RPCController],
