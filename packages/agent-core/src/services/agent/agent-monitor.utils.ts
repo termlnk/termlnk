@@ -19,11 +19,11 @@ import type { AgentSessionSource } from '@termlnk/agent';
 export const ZOMBIE_CHECK_INTERVAL_MS = 30_000;
 
 /**
- * Idle window after which an external session is evicted when no hook has
- * been observed. External agents don't always emit a `session-end` hook, so
- * we garbage-collect them by lack of activity.
+ * Idle window after which a session lacking `agentPid` is evicted.
+ * Fallback when PID-based zombie detection cannot apply — e.g. Codex emits
+ * no `session-end` and no pid, and the helper's ppid-chain walk failed.
  */
-export const EXTERNAL_SESSION_IDLE_MS = 10 * 60 * 1000;
+export const SESSION_IDLE_GC_MS = 10 * 60 * 1000;
 
 /** Config key shared with settings-ui for the Dynamic Island settings. */
 export const ISLAND_SETTINGS_CONFIG_KEY = 'island.settings';

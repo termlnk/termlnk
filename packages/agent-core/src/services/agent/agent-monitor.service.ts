@@ -21,7 +21,7 @@ import { AGENT_DISPLAY_NAMES } from '@termlnk/agent';
 import { Disposable, ILogService, Inject, INotificationService, isMacintosh, toDisposable } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { BehaviorSubject, filter, Subject } from 'rxjs';
-import { EXTERNAL_SESSION_IDLE_MS, ISLAND_SETTINGS_CONFIG_KEY, isNeedsInputNotification, resolveSource, truncate, ZOMBIE_CHECK_INTERVAL_MS } from './agent-monitor.utils';
+import { ISLAND_SETTINGS_CONFIG_KEY, isNeedsInputNotification, resolveSource, SESSION_IDLE_GC_MS, truncate, ZOMBIE_CHECK_INTERVAL_MS } from './agent-monitor.utils';
 import { applyTodoTool, TODO_TOOL_NAMES } from './todos';
 import { TOOL_FORMATTERS } from './tool-descriptions';
 
@@ -258,7 +258,7 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
       lastEventAt: Date.now(),
       agentSessionId: event.agentSessionId,
       cwd,
-      agentPid: payload.pid as number | undefined,
+      agentPid: (payload.pid as number | undefined) ?? event.meta?.agentPid,
       project,
       // `title` stays unset until the first user prompt arrives — avoids
       // showing the cwd basename twice (we render it as a prefix).
@@ -433,16 +433,16 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
           changed = true;
           continue;
         }
-        // External agents rarely emit `session-end`; fall back to an
-        // idle-window GC so the island doesn't collect ghosts forever.
+        // No pid available — fall back to idle-window GC. Applies to both
+        // `internal` and `external` sessions because Codex `internal`
+        // sessions hit this path (no `session-end`, no pid).
         if (
-          session.source === 'external'
-          && session.agentPid === undefined
-          && now - session.lastEventAt > EXTERNAL_SESSION_IDLE_MS
+          session.agentPid === undefined
+          && now - session.lastEventAt > SESSION_IDLE_GC_MS
         ) {
           this._logService.log(
             '[AgentMonitor]',
-            `External session ${sessionId} idle > ${EXTERNAL_SESSION_IDLE_MS}ms, removing`
+            `Session ${sessionId} idle > ${SESSION_IDLE_GC_MS}ms with no agentPid, removing`
           );
           this._deleteSession(sessionId);
           changed = true;

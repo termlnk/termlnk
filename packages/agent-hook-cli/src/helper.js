@@ -173,9 +173,91 @@ function detectTty() {
   return '';
 }
 
-function collectMeta() {
+/**
+ * Command-line substring identifying each agent's CLI process. `process.ppid`
+ * may point at a short-lived `sh -c` wrapper, so we walk the ancestor chain
+ * until we find a process whose command line contains the agent's needle.
+ */
+const AGENT_PID_NEEDLES = {
+  codex: 'codex',
+  'claude-code': 'claude',
+  gemini: 'gemini',
+  'kimi-code': 'kimi',
+  opencode: 'opencode',
+  cursor: 'cursor-agent',
+  copilot: 'copilot',
+  codebuddy: 'codebuddy',
+  qoder: 'qoder',
+  kiro: 'kiro',
+  droid: 'droid',
+};
+
+const AGENT_PID_WALK_DEPTH = 6;
+
+function readProcessInfo(pid) {
+  try {
+    if (process.platform === 'win32') {
+      const out = execSync(
+        `wmic process where ProcessId=${pid} get CommandLine,ParentProcessId /format:list`,
+        { stdio: ['ignore', 'pipe', 'ignore'], timeout: 1000 }
+      ).toString('utf8');
+      const ppidStr = out.match(/ParentProcessId=(\d+)/)?.[1];
+      if (!ppidStr) {
+        return null;
+      }
+      return {
+        ppid: Number.parseInt(ppidStr, 10),
+        cmd: out.match(/CommandLine=(.*)/)?.[1]?.trim() || '',
+      };
+    }
+    const out = execSync(
+      `ps -o ppid=,command= -p ${pid}`,
+      { stdio: ['ignore', 'pipe', 'ignore'], timeout: 500 }
+    ).toString('utf8').trim();
+    const m = out.match(/^\s*(\d+)\s+(.*)$/);
+    if (!m) {
+      return null;
+    }
+    return { ppid: Number.parseInt(m[1], 10), cmd: m[2] };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Walk the ppid chain and return the first ancestor whose command line
+ * matches the agent. Undefined leaves the receiver to fall back on idle
+ * GC instead of trusting a misleading shell-wrapper pid.
+ */
+function findAgentPid(agent) {
+  const needle = (AGENT_PID_NEEDLES[agent] || agent || '').toLowerCase();
+  if (!needle) {
+    return undefined;
+  }
+  let pid = process.ppid;
+  for (let i = 0; i < AGENT_PID_WALK_DEPTH; i++) {
+    if (!Number.isFinite(pid) || pid <= 1) {
+      return undefined;
+    }
+    const info = readProcessInfo(pid);
+    if (!info) {
+      return undefined;
+    }
+    if (info.cmd && info.cmd.toLowerCase().includes(needle)) {
+      return pid;
+    }
+    if (info.ppid === pid || info.ppid <= 1) {
+      return undefined;
+    }
+    pid = info.ppid;
+  }
+  return undefined;
+}
+
+function collectMeta(agent) {
   return {
     ppid: process.ppid,
+    agentPid: findAgentPid(agent),
     tty: detectTty(),
     cwd: safeCwd(),
     termProgram: process.env.TERM_PROGRAM || '',
@@ -270,7 +352,7 @@ async function main() {
     return;
   }
 
-  const meta = collectMeta();
+  const meta = collectMeta(agent);
   const sessionId = resolveSessionId(meta);
   const agentSessionId = extractAgentSessionId(payload);
 

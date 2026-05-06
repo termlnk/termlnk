@@ -105,6 +105,9 @@ export interface IAgentHookEventMeta {
   /** PID of the process that invoked the helper (usually the agent CLI) */
   readonly ppid: number;
 
+  /** Best-effort agent CLI pid; helper walks the ppid chain to skip shell wrappers. Undefined when not identifiable. */
+  readonly agentPid?: number;
+
   /** Controlling TTY path (e.g., `/dev/ttys001`); empty when unavailable */
   readonly tty: string;
 
