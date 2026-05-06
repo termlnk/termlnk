@@ -57,6 +57,10 @@ export class WindowManagerService extends Disposable implements IWindowManagerSe
     return this._client.hideWindow.mutate(id);
   }
 
+  async focusWindow(id: number): Promise<void> {
+    return this._client.focusWindow.mutate(id);
+  }
+
   async maximizeWindow(id: number): Promise<void> {
     return this._client.maximizeWindow.mutate(id);
   }

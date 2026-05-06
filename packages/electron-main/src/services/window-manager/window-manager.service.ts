@@ -112,6 +112,20 @@ export class WindowManagerService extends RxDisposable implements IWindowManager
     window.hide();
   }
 
+  async focusWindow(id: number): Promise<void> {
+    const window = this._windowMap.get(id);
+    if (!window) {
+      return;
+    }
+    if (window.isMinimized()) {
+      window.restore();
+    }
+    if (!window.isVisible()) {
+      window.show();
+    }
+    window.focus();
+  }
+
   async maximizeWindow(id: number): Promise<void> {
     const window = this._windowMap.get(id);
     if (!window) {

@@ -47,6 +47,9 @@ export const windowRouter = router({
   hideWindow: publicProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
     return getWindowManagerService(ctx).hideWindow(input);
   }),
+  focusWindow: publicProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
+    return getWindowManagerService(ctx).focusWindow(input);
+  }),
   minimizeWindow: publicProcedure.input(z.number()).mutation(async ({ ctx, input }) => {
     return getWindowManagerService(ctx).minimizeWindow(input);
   }),

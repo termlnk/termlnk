@@ -28,6 +28,7 @@ export interface IWindowManagerService {
   hasWindow(id: number): Promise<boolean>;
   showWindow(id: number): Promise<void>;
   hideWindow(id: number): Promise<void>;
+  focusWindow(id: number): Promise<void>;
   maximizeWindow(id: number): Promise<void>;
   toggleMaximizeWindow(id: number): Promise<void>;
   toggleFullScreen(id: number): Promise<void>;
