@@ -76,7 +76,7 @@
     "trzsz": "^1.1.6",
     "uuid": "^14.0.0",
     "zmodem2": "^1.2.1",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",

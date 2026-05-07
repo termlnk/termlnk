@@ -73,7 +73,7 @@
     "electron-updater": "^6.8.3",
     "semver": "^7.7.4",
     "uuid": "^14.0.0",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "optionalDependencies": {
     "@termlnk/macos-utils": "workspace:*"

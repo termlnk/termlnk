@@ -26,7 +26,7 @@ overrides:
   react-dom: ^19.2.5
   electron: 41.5.0
   tar: ^7.5.13
-  undici: ^8.1.0
+  undici: ^8.2.0
   file-type: ^22.0.0
   '@tootallnate/once': ^3.0.1
   tmp: ^0.2.5

@@ -62,11 +62,11 @@
     "@termlnk/terminal": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "lucide-react": "^1.11.0",
+    "lucide-react": "^1.14.0",
     "nanoid": "^5.1.9",
     "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
     "react-dom": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
-    "react-resizable-panels": "^4.10.0",
+    "react-resizable-panels": "^4.11.0",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
@@ -96,10 +96,10 @@
     "@xterm/addon-webgl": "^0.20.0-beta.203",
     "@xterm/xterm": "^6.1.0-beta.204",
     "filesize": "^11.0.16",
-    "lucide-react": "^1.11.0",
+    "lucide-react": "^1.14.0",
     "nanoid": "^5.1.9",
-    "react-resizable-panels": "^4.10.0",
-    "zod": "^4.3.6"
+    "react-resizable-panels": "^4.11.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",

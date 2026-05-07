@@ -54,22 +54,22 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "better-sqlite3": "^12.9.0",
-    "nanoid": "^5.1.9",
+    "nanoid": "^5.1.11",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
     "@termlnk/core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "better-sqlite3": "^12.9.0",
-    "drizzle-orm": "1.0.0-rc.1",
-    "nanoid": "^5.1.9"
+    "drizzle-orm": "1.0.0-rc.2",
+    "nanoid": "^5.1.11"
   },
   "devDependencies": {
     "@termlnk/agent": "workspace:*",
     "@termlnk/shared": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.5.0",
-    "drizzle-kit": "1.0.0-rc.1",
+    "drizzle-kit": "1.0.0-rc.2",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
