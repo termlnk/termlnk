@@ -1,0 +1,1 @@
+ALTER TABLE `host` ADD `host_chain_ids` text;

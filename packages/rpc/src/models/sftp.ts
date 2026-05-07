@@ -13,6 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ISSHHopContext, SSHHopProgressStatus } from './ssh';
+
 export enum SFTPSessionStatus {
   IDLE = 'idle',
   CONNECTING = 'connecting',
@@ -68,7 +70,8 @@ export interface ISFTPTransferTask {
 }
 
 export type SFTPSessionEvent =
-  | { type: 'auth_failed'; message: string }
-  | { type: 'keyboard_interactive'; name: string; instructions: string; prompts: Array<{ prompt: string; echo: boolean }> }
-  | { type: 'change_password'; message: string }
-  | { type: 'error'; message: string };
+  | ({ type: 'auth_failed'; message: string } & ISSHHopContext)
+  | ({ type: 'keyboard_interactive'; name: string; instructions: string; prompts: Array<{ prompt: string; echo: boolean }> } & ISSHHopContext)
+  | ({ type: 'change_password'; message: string } & ISSHHopContext)
+  | { type: 'error'; message: string }
+  | { type: 'hop_progress'; hopId: string; hopLabel: string; hopIndex: number; hopCount: number; status: SSHHopProgressStatus; message?: string };

@@ -18,6 +18,7 @@ import type { SFTPSessionEvent } from '@termlnk/rpc';
 import type { Buffer } from 'node:buffer';
 import type { Observable } from 'rxjs';
 import type { ChangePasswordCallback, FileEntry, KeyboardInteractiveCallback, SFTPWrapper, Stats } from 'ssh2';
+import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
 import type { ISSHSocket } from '../ssh/ssh-socket';
 import process from 'node:process';
 import { Disposable, DisposableCollection, ILogService, takeAfter, toDisposable } from '@termlnk/core';
@@ -54,8 +55,10 @@ export class SFTPSession extends Disposable implements IDisposable {
 
   private _sftp: Nullable<SFTPWrapper>;
   private _socketDisposables = new DisposableCollection();
+  private _chainDisposables = new DisposableCollection();
   private _pendingKeyboardInteractiveFinish: Nullable<KeyboardInteractiveCallback> = null;
   private _pendingChangePasswordDone: Nullable<ChangePasswordCallback> = null;
+  private _hostChain: Nullable<IHostChainHandle> = null;
 
   constructor(
     public readonly sessionId: string,
@@ -105,16 +108,56 @@ export class SFTPSession extends Disposable implements IDisposable {
     this._init();
   }
 
+  /**
+   * Attach a host chain handle. Mirrors SSHSession.attachHostChain: the
+   * session takes ownership and immediately advances status to CONNECTING
+   * so the renderer can see SFTP progress while the chain is building.
+   */
+  attachHostChain(chain: IHostChainHandle): void {
+    if (this._hostChain) {
+      this._chainDisposables.dispose();
+      this._hostChain.dispose();
+    }
+    this._hostChain = chain;
+    this._chainDisposables = new DisposableCollection();
+    this._chainDisposables.add(toDisposable(chain.hopEvent$.subscribe((hopEvent) => {
+      const event = hopEvent.event;
+      if (event.type === 'keyboard_interactive' || event.type === 'change_password' || event.type === 'auth_failed') {
+        this._event$.next(event as SFTPSessionEvent);
+      }
+    })));
+    this._chainDisposables.add(toDisposable(chain.progress$.subscribe(({ hopId, hopLabel, hopIndex, hopCount, status, message }) => {
+      this._event$.next({ type: 'hop_progress', hopId, hopLabel, hopIndex, hopCount, status, message });
+    })));
+    this._status$.next(SFTPSessionStatus.CONNECTING);
+  }
+
+  /** Surface a failed chain build as a session-level error. */
+  markChainFailed(err: Error): void {
+    const message = formatSocketError(err as Error & { code?: string; level?: string });
+    this._status$.next(SFTPSessionStatus.ERROR);
+    this._event$.next({ type: 'error', message });
+    this._logService.error('[SFTPSession] Host chain failed', err);
+  }
+
   setPassword(password?: string): void {
     this._password = password ?? null;
   }
 
-  respondKeyboardInteractive(responses: string[]): void {
+  respondKeyboardInteractive(responses: string[], viaHopId?: string): void {
+    if (viaHopId) {
+      this._hostChain?.respondKeyboardInteractive(viaHopId, responses);
+      return;
+    }
     this._pendingKeyboardInteractiveFinish?.(responses);
     this._pendingKeyboardInteractiveFinish = null;
   }
 
-  respondChangePassword(newPassword: string): void {
+  respondChangePassword(newPassword: string, viaHopId?: string): void {
+    if (viaHopId) {
+      this._hostChain?.respondChangePassword(viaHopId, newPassword);
+      return;
+    }
     this._pendingChangePasswordDone?.(newPassword);
     this._pendingChangePasswordDone = null;
   }
@@ -401,6 +444,11 @@ export class SFTPSession extends Disposable implements IDisposable {
     this._sftp?.end();
     this._sftp = null;
     this._socketDisposables.dispose();
+    this._chainDisposables.dispose();
+    if (this._hostChain) {
+      this._hostChain.dispose();
+      this._hostChain = null;
+    }
     super.dispose();
     this._status$.complete();
     this._event$.complete();

@@ -34,6 +34,7 @@ export const hostEntity = sqliteTable('host', {
   credential: text('credential', { mode: 'json' }).$type<ICredential>(),
   proxy: text('proxy', { mode: 'json' }).$type<IProxy>(),
   settings: text('settings', { mode: 'json' }).$type<IHostSettings>(),
+  hostChainIds: text('host_chain_ids', { mode: 'json' }).$type<string[]>(),
   sort: integer('sort').notNull().default(0),
 
   // only group type

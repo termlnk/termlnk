@@ -24,7 +24,7 @@ export { ProxySocketStatus } from './models/proxy';
 export { SFTPSessionStatus, TransferDirection, TransferStatus } from './models/sftp';
 export type { ISFTPFileAttrs, ISFTPFileEntry, ISFTPTransferTask, SFTPSessionEvent } from './models/sftp';
 export { SSHSessionStatus, SSHSocketStatus } from './models/ssh';
-export type { SSHSessionEvent } from './models/ssh';
+export type { ISSHHopContext, SSHHopProgressStatus, SSHSessionEvent } from './models/ssh';
 export type { ITerminalSessionClosedEvent, ITerminalSessionCreatedEvent, ITerminalSessionStatusChangedEvent } from './models/terminal-session';
 export { RPC_PLUGIN_NAME, RPCPlugin } from './plugin';
 export { IFileTransferService } from './services/file-transfer/file-transfer.service';

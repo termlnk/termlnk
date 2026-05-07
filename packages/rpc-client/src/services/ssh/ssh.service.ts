@@ -25,6 +25,7 @@ export interface ISSHTestConnectionInput {
   credential: { type: 'password'; username: string; password: string } | { type: 'rsa'; username: string; privateKey: string };
   proxy?: { enabled: boolean; type: 'socks5' | 'http'; host: string; port: number; username?: string; password?: string };
   settings?: { connectTimeout?: number };
+  hostChainIds?: string[];
 }
 
 export interface ISSHTestConnectionResult {
@@ -46,8 +47,8 @@ export interface ISSHService {
   status$(sessionId: string): Observable<SSHSessionStatus>;
   event$(sessionId: string): Observable<SSHSessionEvent>;
   error$(sessionId: string): Observable<string>;
-  respondKeyboardInteractive(sessionId: string, responses: string[]): Promise<void>;
-  respondChangePassword(sessionId: string, newPassword: string): Promise<void>;
+  respondKeyboardInteractive(sessionId: string, responses: string[], viaHopId?: string): Promise<void>;
+  respondChangePassword(sessionId: string, newPassword: string, viaHopId?: string): Promise<void>;
   testConnection(input: ISSHTestConnectionInput): Promise<ISSHTestConnectionResult>;
   setFocusedSession(sessionId: string | null): Promise<void>;
 }
@@ -110,12 +111,12 @@ export class SSHService extends Disposable implements ISSHService {
     );
   }
 
-  async respondKeyboardInteractive(sessionId: string, responses: string[]): Promise<void> {
-    await this._client.respondKeyboardInteractive.mutate({ sessionId, responses });
+  async respondKeyboardInteractive(sessionId: string, responses: string[], viaHopId?: string): Promise<void> {
+    await this._client.respondKeyboardInteractive.mutate({ sessionId, responses, viaHopId });
   }
 
-  async respondChangePassword(sessionId: string, newPassword: string): Promise<void> {
-    await this._client.respondChangePassword.mutate({ sessionId, newPassword });
+  async respondChangePassword(sessionId: string, newPassword: string, viaHopId?: string): Promise<void> {
+    await this._client.respondChangePassword.mutate({ sessionId, newPassword, viaHopId });
   }
 
   async testConnection(input: ISSHTestConnectionInput): Promise<ISSHTestConnectionResult> {

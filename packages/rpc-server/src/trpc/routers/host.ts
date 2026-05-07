@@ -66,6 +66,11 @@ export const hostRouter = router({
     const repo = ctx.injector.get(HostRepository);
     return repo.copy(input);
   }),
+  getReferrers: publicProcedure.input(z.string()).query(async ({ input, ctx }) => {
+    const repo = ctx.injector.get(HostRepository);
+    const referrers = await repo.getReferrers(input);
+    return referrers.map((r) => ({ id: r.id, label: r.label, pid: r.pid }));
+  }),
   onChanged$: publicProcedure.subscription(async function* ({ ctx }) {
     const repo = ctx.injector.get(HostRepository);
     yield* observableToAsyncGenerator(repo.changed$);

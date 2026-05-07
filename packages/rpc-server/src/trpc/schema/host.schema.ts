@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { HostType } from '@termlnk/terminal';
+import { HOST_CHAIN_MAX_DEPTH, HostType } from '@termlnk/terminal';
 import { z } from 'zod';
 
 export const credentialSchema = z.object({
@@ -43,6 +43,8 @@ export const settingsSchema = z.object({
   fontSize: z.number().min(8).max(72).nullish(),
 });
 
+export const hostChainIdsSchema = z.array(z.string().min(1)).max(HOST_CHAIN_MAX_DEPTH);
+
 export const hostSchema = z.object({
   label: z.string(),
   type: z.enum(Object.values(HostType) as HostType[]),
@@ -54,6 +56,7 @@ export const hostSchema = z.object({
   credential: credentialSchema.nullish(),
   proxy: proxySchema.nullish(),
   settings: settingsSchema.nullish(),
+  hostChainIds: hostChainIdsSchema.nullish(),
 });
 
 export const createHostSchema = hostSchema.extend({

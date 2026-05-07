@@ -13,13 +13,22 @@
  * governing permissions and limitations under the License.
  */
 
-import type { SSHSessionEvent } from '@termlnk/rpc';
+import type { SSHHopProgressStatus, SSHSessionEvent } from '@termlnk/rpc';
 import type { ISSHService } from '@termlnk/rpc-client';
 import type { RefObject } from 'react';
 import type { ITerminalUIService, TerminalSessionStatus } from '../../services/terminal/terminal-ui.service';
 import type { useSubscriptionManager } from '../hooks';
 import { SSHSessionStatus } from '@termlnk/rpc';
 import { useCallback, useRef, useState } from 'react';
+
+export interface IHopState {
+  hopId: string;
+  hopLabel: string;
+  hopIndex: number;
+  hopCount: number;
+  status: SSHHopProgressStatus;
+  message?: string;
+}
 
 const sshStatusToTerminalStatus = (status: SSHSessionStatus): TerminalSessionStatus => status as TerminalSessionStatus;
 
@@ -53,6 +62,7 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
   const [error, setError] = useState('');
   const [status, setStatus] = useState<TerminalSessionStatus>('connecting');
   const [pendingEvent, setPendingEvent] = useState<SSHSessionEvent | null>(null);
+  const [hopStates, setHopStates] = useState<IHopState[]>([]);
 
   const subscribeToSession = useCallback((backendId: string) => {
     subscriptions.setSub('status', sshService.status$(backendId).subscribe((s) => {
@@ -73,6 +83,20 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
       }
       if (event.type === 'banner') {
         onData(`\r\n${event.message}\r\n`);
+      }
+      if (event.type === 'hop_progress') {
+        setHopStates((prev) => {
+          const next = prev.filter((h) => h.hopId !== event.hopId);
+          next.push({
+            hopId: event.hopId,
+            hopLabel: event.hopLabel,
+            hopIndex: event.hopIndex,
+            hopCount: event.hopCount,
+            status: event.status,
+            message: event.message,
+          });
+          return next.sort((a, b) => a.hopIndex - b.hopIndex);
+        });
       }
     }));
 
@@ -101,6 +125,7 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
     dataReadyRef.current = false;
     setError('');
     setPendingEvent(null);
+    setHopStates([]);
     setStatus('connecting');
     try {
       await sshService.retrySession(sessionId, password);
@@ -111,9 +136,9 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
     }
   }, [sshService, sessionId]);
 
-  const respondKeyboardInteractive = useCallback(async (responses: string[]) => {
+  const respondKeyboardInteractive = useCallback(async (responses: string[], viaHopId?: string) => {
     try {
-      await sshService.respondKeyboardInteractive(sessionId, responses);
+      await sshService.respondKeyboardInteractive(sessionId, responses, viaHopId);
       setPendingEvent(null);
     } catch (err) {
       console.error('[Terminal] Keyboard-interactive response failed:', err);
@@ -136,6 +161,7 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
     dataReadyRef.current = false;
     setError('');
     setPendingEvent(null);
+    setHopStates([]);
     setStatus('connecting');
 
     connectedRef.current = true;
@@ -152,6 +178,7 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
     status,
     error,
     pendingEvent,
+    hopStates,
     connectRequestedRef,
     retry,
     respondKeyboardInteractive,

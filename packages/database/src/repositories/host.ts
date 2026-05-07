@@ -13,17 +13,38 @@
  * governing permissions and limitations under the License.
  */
 
-import type { HostItem, HostTree, IHostChangeEvent } from '@termlnk/terminal';
+import type { HostItem, HostTree, IHost, IHostChangeEvent } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { IHostEntity, IHostEntityInsert } from '../entities';
 import { Disposable } from '@termlnk/core';
-import { DEFAULT_HOST_ROOT, HostType } from '@termlnk/terminal';
-import { and, asc, desc, eq, gt, gte, inArray, like, lt, lte, not, sql } from 'drizzle-orm';
+import { DEFAULT_HOST_ROOT, HOST_CHAIN_MAX_DEPTH, HostType } from '@termlnk/terminal';
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, like, lt, lte, not, sql } from 'drizzle-orm';
 import { Subject } from 'rxjs';
 import { generateId } from '../entities/base';
 import { hostEntity } from '../entities/host';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
+
+export class HostChainCycleError extends Error {
+  constructor(public readonly path: string[]) {
+    super(`Host chain cycle detected: ${path.join(' -> ')}`);
+    this.name = 'HostChainCycleError';
+  }
+}
+
+export class HostChainDepthError extends Error {
+  constructor(public readonly depth: number) {
+    super(`Host chain exceeds maximum depth ${HOST_CHAIN_MAX_DEPTH} (got ${depth})`);
+    this.name = 'HostChainDepthError';
+  }
+}
+
+export class HostChainInvalidRefError extends Error {
+  constructor(public readonly missingId: string) {
+    super(`Host chain id ${missingId} does not reference an existing host`);
+    this.name = 'HostChainInvalidRefError';
+  }
+}
 
 export class HostRepository extends Disposable {
   private readonly _changed$ = new Subject<IHostChangeEvent>();
@@ -140,12 +161,20 @@ export class HostRepository extends Disposable {
 
     const maxSort = await this.getMaxSortByParentId(pid);
 
+    const hostChainIds = this._normalizeHostChainIds(
+      (record as Partial<IHost>).hostChainIds
+    );
+    if (hostChainIds) {
+      await this._validateHostChain(id, hostChainIds);
+    }
+
     const insertData: IHostEntityInsert = {
       ...record,
       id,
       pid,
       tree,
       sort: maxSort + 1,
+      hostChainIds,
     };
     await this._db.insert(hostEntity).values(insertData);
 
@@ -159,9 +188,22 @@ export class HostRepository extends Disposable {
       return;
     }
 
+    const updatePayload: Partial<IHostEntityInsert> & { updatedAt: string } = {
+      ...record,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (Object.hasOwn(record, 'hostChainIds')) {
+      const normalized = this._normalizeHostChainIds((record as Partial<IHost>).hostChainIds);
+      if (normalized) {
+        await this._validateHostChain(entity.id, normalized);
+      }
+      updatePayload.hostChainIds = normalized;
+    }
+
     await this._db
       .update(hostEntity)
-      .set({ ...record, updatedAt: new Date().toISOString() })
+      .set(updatePayload)
       .where(eq(hostEntity.id, entity.id));
 
     this._emitChange('update', entity.id, entity.pid);
@@ -208,9 +250,11 @@ export class HostRepository extends Disposable {
       )
     );
 
+    const removedIdSet = new Set<string>([id, ...descendants.map((d) => d.id)]);
+    const referrers = await this._findReferrersForIds(removedIdSet);
+
     await this._db.transaction((tx) => {
-      const childrenIds = [id, ...descendants.map((d) => d.id)];
-      tx.delete(hostEntity).where(inArray(hostEntity.id, childrenIds)).run();
+      tx.delete(hostEntity).where(inArray(hostEntity.id, [...removedIdSet])).run();
 
       tx.update(hostEntity).set({ sort: sql`${hostEntity.sort} - 1` }).where(
         and(
@@ -218,10 +262,43 @@ export class HostRepository extends Disposable {
           gt(hostEntity.sort, host.sort)
         )
       ).run();
+
+      const now = new Date().toISOString();
+      for (const referrer of referrers) {
+        const cleaned = (referrer.hostChainIds ?? []).filter((cid) => !removedIdSet.has(cid));
+        const nextValue = cleaned.length === 0 ? null : cleaned;
+        tx.update(hostEntity)
+          .set({ hostChainIds: nextValue, updatedAt: now })
+          .where(eq(hostEntity.id, referrer.id))
+          .run();
+      }
     });
 
     this._emitChange('delete', host.id, host.pid);
     descendants.forEach((d) => this._emitChange('delete', d.id, d.pid));
+    referrers.forEach((r) => this._emitChange('update', r.id, r.pid));
+  }
+
+  /** Hosts that reference `hostId` directly in their host chain. */
+  async getReferrers(hostId: string): Promise<IHostEntity[]> {
+    return this._findReferrersForIds(new Set([hostId]));
+  }
+
+  /**
+   * Resolve `owner.hostChainIds` to its ordered hop list, validating
+   * cycles, depth, and reference integrity. `owner` need not be persisted:
+   * only `owner.id` is used for self-reference checks, so callers can pass
+   * a transient owner (e.g. test-connection).
+   */
+  async resolveHostChain(owner: Pick<IHost, 'id' | 'hostChainIds'>): Promise<IHost[]> {
+    const ids = this._normalizeHostChainIds(owner.hostChainIds);
+    if (!ids) {
+      return [];
+    }
+    await this._validateHostChain(owner.id, ids);
+    const rows = await this._db.select().from(hostEntity).where(inArray(hostEntity.id, ids));
+    const byId = new Map(rows.map((row) => [row.id, row as IHost]));
+    return ids.map((id) => byId.get(id)!);
   }
 
   async getExpandedIds(): Promise<string[]> {
@@ -263,6 +340,60 @@ export class HostRepository extends Disposable {
       label: `${host.label} Copy`,
     };
     return this.create(insertData);
+  }
+
+  private _normalizeHostChainIds(ids: string[] | null | undefined): string[] | null {
+    if (!ids) {
+      return null;
+    }
+    const cleaned = ids.map((v) => (typeof v === 'string' ? v.trim() : '')).filter((v) => v.length > 0);
+    return cleaned.length === 0 ? null : cleaned;
+  }
+
+  private async _validateHostChain(ownerId: string, ids: string[]): Promise<void> {
+    if (ids.length > HOST_CHAIN_MAX_DEPTH) {
+      throw new HostChainDepthError(ids.length);
+    }
+    const seen = new Set<string>();
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      if (id === ownerId) {
+        throw new HostChainCycleError([ownerId, id]);
+      }
+      if (seen.has(id)) {
+        throw new HostChainCycleError([ownerId, ...ids.slice(0, i + 1)]);
+      }
+      seen.add(id);
+    }
+    const rows = await this._db
+      .select({ id: hostEntity.id, type: hostEntity.type })
+      .from(hostEntity)
+      .where(inArray(hostEntity.id, ids));
+    const present = new Map(rows.map((r) => [r.id, r.type]));
+    for (const id of ids) {
+      if (present.get(id) !== HostType.HOST) {
+        throw new HostChainInvalidRefError(id);
+      }
+    }
+  }
+
+  private async _findReferrersForIds(ids: Set<string>): Promise<IHostEntity[]> {
+    if (ids.size === 0) {
+      return [];
+    }
+    const candidates = await this._db
+      .select()
+      .from(hostEntity)
+      .where(
+        and(
+          eq(hostEntity.type, HostType.HOST),
+          isNotNull(hostEntity.hostChainIds)
+        )
+      );
+    return candidates.filter((row) => {
+      const list = row.hostChainIds ?? [];
+      return list.some((cid) => ids.has(cid));
+    });
   }
 
   private async _getTreeById(id: string): Promise<string> {

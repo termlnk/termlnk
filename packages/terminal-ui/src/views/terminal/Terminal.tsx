@@ -229,7 +229,7 @@ export function TerminalView(props: ITerminalViewProps) {
 
     if (keyboardPromptEvent) {
       const responses = keyboardPromptEvent.prompts.map(() => password);
-      await connection.respondKeyboardInteractive(responses);
+      await connection.respondKeyboardInteractive(responses, keyboardPromptEvent.viaHopId);
       return;
     }
 
@@ -275,13 +275,22 @@ export function TerminalView(props: ITerminalViewProps) {
 
   const showConnectionPanel = requiresPassword || connection.status !== 'ready';
 
+  const hopFailed = connection.hopStates.some((hop) => hop.status === 'failed');
   const overlayMode = useMemo(() => {
-    if (hasKeyboardPrompt) return 'password';
-    if (requiresPassword && !connection.connectRequestedRef.current) return 'password';
-    if (connection.status === 'auth_failed') return 'password';
-    if (connection.status === 'error' || connection.status === 'closed') return 'error';
+    if (hasKeyboardPrompt) {
+      return 'password';
+    }
+    if (requiresPassword && !connection.connectRequestedRef.current) {
+      return 'password';
+    }
+    if (connection.status === 'auth_failed') {
+      return 'password';
+    }
+    if (connection.status === 'error' || connection.status === 'closed' || hopFailed) {
+      return 'error';
+    }
     return 'progress';
-  }, [hasKeyboardPrompt, requiresPassword, connection.status]);
+  }, [hasKeyboardPrompt, requiresPassword, connection.status, hopFailed]);
 
   const statusText = useMemo(() => {
     if (hasKeyboardPrompt) {
@@ -327,7 +336,10 @@ export function TerminalView(props: ITerminalViewProps) {
               mode={overlayMode}
               sessionStatus={connection.status}
               statusText={statusText}
+              viaHopLabel={keyboardPromptEvent?.viaHopLabel}
+              hopStates={connection.hopStates}
               onClose={handleClose}
+              onRetry={() => connection.retry('')}
               onPasswordSubmit={handlePasswordSubmit}
             />
           </div>

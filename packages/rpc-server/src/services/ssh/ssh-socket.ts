@@ -14,6 +14,7 @@
  */
 
 import type { IDisposable } from '@termlnk/core';
+import type { Duplex } from 'node:stream';
 import type { AcceptConnection, ChangePasswordCallback, ClientCallback, ClientChannel, ClientErrorExtensions, ConnectConfig, ExecOptions, KeyboardInteractiveCallback, NegotiatedAlgorithms, ParsedKey, Prompt, PseudoTtyOptions, RejectConnection, SFTPWrapper, ShellOptions, TcpConnectionDetails, UNIXConnectionDetails, X11Details } from 'ssh2';
 import type { ISSHChannel } from './ssh-channel';
 import { DisposableCollection, toDisposable } from '@termlnk/core';
@@ -42,7 +43,7 @@ export interface ISSHSocket extends IDisposable {
 
   forwardIn(remoteAddr: string, remotePort: number): Promise<number>;
   unforwardIn(remoteAddr: string, remotePort: number): Promise<void>;
-  forwardOut(srcIP: string, srcPort: number, dstIP: string, dstPort: number): Promise<ISSHChannel>;
+  forwardOut(srcIP: string, srcPort: number, dstIP: string, dstPort: number): Promise<Duplex>;
   sftp(): Promise<SFTPWrapper>;
   subsys(subsystem: string): Promise<ISSHChannel>;
   setNoDelay(noDelay?: boolean): Promise<void>;
@@ -142,14 +143,20 @@ export function createSSHSocket(id: string): ISSHSocket {
       });
     },
 
-    forwardOut: (srcIP: string, srcPort: number, dstIP: string, dstPort: number): Promise<ISSHChannel> => {
+    /**
+     * Open a transparent TCP tunnel to (dstIP:dstPort) over this SSH connection.
+     * Returns a Duplex stream, not an ISSHChannel: forwarded channels are raw
+     * byte pipes with no PTY/signal/exit semantics, fed directly into the next
+     * hop's ssh2 ConnectConfig.sock.
+     */
+    forwardOut: (srcIP: string, srcPort: number, dstIP: string, dstPort: number): Promise<Duplex> => {
       return new Promise((resolve, reject) => {
         client.forwardOut(srcIP, srcPort, dstIP, dstPort, (err, channel) => {
           if (err) {
             reject(err);
             return;
           }
-          resolve(createSSHChannel(sshSocket, channel));
+          resolve(channel);
         });
       });
     },

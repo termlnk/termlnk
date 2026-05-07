@@ -23,7 +23,7 @@ export type { ITerminalConfig } from './controllers/config.schema';
 export { TERMINAL_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export { CharProtection, CursorShape, DeviceAttributeType, EraseDisplayMode, EraseLineMode, TabClearMode } from './models/csi';
 export type { DcsCommand, DecrqssSetting, IDcsDecrqssCommand, IDcsUnknownCommand, IDcsXtGetTcapCommand, IDcsXtVersionCommand, IDecrqssData, IXtGetTcapData, IXtVersionData } from './models/dcs';
-export { HostType } from './models/host';
+export { HOST_CHAIN_MAX_DEPTH, HostType } from './models/host';
 export type { HostItem, HostTree, IAlwaysCredential, ICredential, IHost, IHostChangeEvent, IHostGroup, IHostItemBase, IHostSchema, IHostSettings, IPasswordCredential, IProxy, IRSACredential } from './models/host';
 export { PTYSessionStatus } from './models/pty';
 export type { IOscEvent, ITerminalCommand, OscEventType } from './models/shell-integration';

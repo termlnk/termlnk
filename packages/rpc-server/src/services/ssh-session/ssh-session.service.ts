@@ -16,6 +16,8 @@
 import type { Injector } from '@termlnk/core';
 import type { ISSHSessionService } from '@termlnk/rpc';
 import type { IHost, IShellIntegrationConfig } from '@termlnk/terminal';
+import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
+import type { ISSHSocket } from '../ssh/ssh-socket';
 import { Disposable, ILogService, Inject, InjectSelf } from '@termlnk/core';
 import { ConfigRepository, HostRepository } from '@termlnk/database';
 import { IFileTransferService, ITerminalSessionNotifyService, SSHSessionStatus, SSHSocketStatus } from '@termlnk/rpc';
@@ -25,6 +27,7 @@ import { v4 } from 'uuid';
 import { resolveHostWithProxy } from '../proxy/resolve-effective-proxy';
 import { ICommandBlockService } from '../shell-integration/command-block.service';
 import { buildSshBootstrapCommand } from '../shell-integration/scripts';
+import { ISSHHostChainService } from '../ssh/ssh-host-chain.service';
 import { ISSHSocketService } from '../ssh/ssh-socket.service';
 import { SSHSession } from './ssh-session';
 
@@ -36,6 +39,7 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     @Inject(HostRepository) private readonly _hostRepository: HostRepository,
     @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository,
     @ISSHSocketService private readonly _sshSocketService: ISSHSocketService,
+    @ISSHHostChainService private readonly _sshHostChainService: ISSHHostChainService,
     @ITerminalSessionNotifyService private readonly _notifyService: ITerminalSessionNotifyService,
     @ICommandBlockService private readonly _commandBlockService: ICommandBlockService,
     @ILogService private readonly _logService: ILogService
@@ -65,7 +69,11 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
 
     const resolvedHost = await resolveHostWithProxy(host as IHost, this._configRepository);
 
-    // SSH multiplexing key
+    // Chain handle is synchronously subscribable; the build runs asynchronously
+    // so sessionId returns immediately. Hop events fired before the renderer
+    // subscribes are buffered by session._event$ (ReplaySubject).
+    const chainHandle = await this._sshHostChainService.startTunnel(resolvedHost);
+
     const multiplexerKey = this._sshSocketService.getMultiplexerKey(resolvedHost);
 
     // Create an ssh socket (increments refCount)
@@ -90,8 +98,12 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
         initialPassword,
         bootstrapCommand
       );
+      if (chainHandle) {
+        session.attachHostChain(chainHandle);
+      }
     } catch (error) {
       this._sshSocketService.releaseSocket(multiplexerKey);
+      chainHandle?.dispose();
       this._logService.error('[SSHSessionService] Failed to create session', error);
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -146,14 +158,20 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
       })
     );
 
-    if (socket.status === SSHSocketStatus.IDLE) {
-      const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, { password });
+    const fileTransferService = this._injector.get(IFileTransferService);
+    fileTransferService?.initSession(sessionId);
+
+    if (chainHandle) {
+      // Fire-and-forget: build the chain asynchronously, then connect the
+      // target socket using the final hop tunnel as ConnectConfig.sock.
+      this._connectViaChain(session, socket, resolvedHost, password, multiplexerKey, chainHandle, true);
+    } else if (socket.status === SSHSocketStatus.IDLE) {
+      const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
+        password,
+      });
       session.log(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
       socket.connect(connectConfig);
     }
-
-    const fileTransferService = this._injector.get(IFileTransferService);
-    fileTransferService?.initSession(sessionId);
 
     return sessionId;
   }
@@ -172,16 +190,29 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
 
     const resolvedHost = await resolveHostWithProxy(host as IHost, this._configRepository);
 
+    // Drop the previous socket and chain (refcounts release as the old handle
+    // disposes), then build a fresh chain. Retry stays non-blocking; the
+    // renderer observes progress through a new round of hop_progress events.
     this._sshSocketService.releaseSocket(session.socketId);
 
-    session.setPassword(password);
+    if (password.length > 0) {
+      session.setPassword(password);
+    }
+
+    const chainHandle = await this._sshHostChainService.startTunnel(resolvedHost);
 
     const multiplexerKey = this._sshSocketService.getMultiplexerKey(resolvedHost);
     const newSocket = this._sshSocketService.createSocket(multiplexerKey);
     session.rebindSocket(newSocket);
-
-    const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, { password });
-    newSocket.connect(connectConfig);
+    if (chainHandle) {
+      session.attachHostChain(chainHandle);
+      this._connectViaChain(session, newSocket, resolvedHost, password, multiplexerKey, chainHandle, false);
+    } else {
+      const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
+        password,
+      });
+      newSocket.connect(connectConfig);
+    }
   }
 
   async closeSession(sessionId: string): Promise<void> {
@@ -243,6 +274,41 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
         `shell integration attach only (autoInject disabled) for ${sessionId}`
       );
     }
+  }
+
+  /**
+   * Wire `chainHandle.ready` to `socket.connect` once the chain tunnel is up.
+   * Fire-and-forget; failures surface via `session.markChainFailed` and the
+   * acquired socket refcount is released.
+   */
+  private _connectViaChain(
+    session: SSHSession,
+    socket: ISSHSocket,
+    host: IHost,
+    password: string | undefined,
+    multiplexerKey: string,
+    chainHandle: IHostChainHandle,
+    log: boolean
+  ): void {
+    chainHandle.ready
+      .then(async (finalSock) => {
+        if (socket.status !== SSHSocketStatus.IDLE) {
+          return;
+        }
+        const connectConfig = await this._sshSocketService.createConnectConfig(host, {
+          password,
+          chainTunnel: finalSock,
+        });
+        if (log) {
+          session.log(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
+        }
+        socket.connect(connectConfig);
+      })
+      .catch((err) => {
+        const error = err instanceof Error ? err : new Error(String(err));
+        session.markChainFailed(error);
+        this._sshSocketService.releaseSocket(multiplexerKey);
+      });
   }
 
   /**

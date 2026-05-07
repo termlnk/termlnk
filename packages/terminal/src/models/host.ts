@@ -45,7 +45,10 @@ export interface IHost extends IHostItemBase {
   credential: ICredential;
   proxy: IProxy;
   settings: IHostSettings;
+  hostChainIds?: string[];
 }
+
+export const HOST_CHAIN_MAX_DEPTH = 5;
 
 export interface IHostGroup extends IHostItemBase {
   type: HostType.GROUP;

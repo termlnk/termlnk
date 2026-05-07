@@ -22,11 +22,11 @@ import { Loader2Icon } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { getFieldError, hostSchema } from '../../models/host-dialog.schema';
 import { HostDialogService } from '../../services/host-dialog/host-dialog.service';
-import { AdvancedTab, BasicInfoTab, ProxyTab } from './components';
+import { AdvancedTab, BasicInfoTab, HostChainTab, ProxyTab } from './components';
 
 export const HOST_DIALOG_COMPONENT_NAME = 'terminal-ui.component.host-dialog';
 
-type TabKey = 'basic' | 'proxy' | 'advanced';
+type TabKey = 'basic' | 'proxy' | 'hostChain' | 'advanced';
 
 function useHostValidation(data: HostFormItem | null) {
   const errors = useMemo<z.ZodError | null>(() => {
@@ -75,6 +75,7 @@ export function HostDialog() {
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'basic', label: 'terminal-ui.host-dialog.tab.basic' },
     { key: 'proxy', label: 'terminal-ui.host-dialog.tab.proxy' },
+    { key: 'hostChain', label: 'terminal-ui.host-dialog.tab.hostChain' },
     { key: 'advanced', label: 'terminal-ui.host-dialog.tab.advanced' },
   ];
 
@@ -150,6 +151,9 @@ export function HostDialog() {
         settings: {
           connectTimeout: formData.settings?.connectTimeout,
         },
+        hostChainIds: formData.hostChainIds && formData.hostChainIds.length > 0
+          ? formData.hostChainIds
+          : undefined,
       });
 
       if (result.ok) {
@@ -168,6 +172,7 @@ export function HostDialog() {
     const tabErrorMap: Record<TabKey, boolean> = {
       basic: false,
       proxy: false,
+      hostChain: false,
       advanced: false,
     };
 
@@ -179,6 +184,8 @@ export function HostDialog() {
         tabErrorMap.basic = true;
       } else if (path === 'proxy') {
         tabErrorMap.proxy = true;
+      } else if (path === 'hostChainIds') {
+        tabErrorMap.hostChain = true;
       } else if (path === 'settings') {
         tabErrorMap.advanced = true;
       }
@@ -243,6 +250,9 @@ export function HostDialog() {
             </TabsContent>
             <TabsContent value="proxy" className="tm:m-0">
               <ProxyTab data={formData} onChange={handleChange} getError={translateError} />
+            </TabsContent>
+            <TabsContent value="hostChain" className="tm:m-0">
+              <HostChainTab data={formData} onChange={handleChange} getError={translateError} />
             </TabsContent>
             <TabsContent value="advanced" className="tm:m-0">
               <AdvancedTab data={formData} onChange={handleChange} getError={translateError} />

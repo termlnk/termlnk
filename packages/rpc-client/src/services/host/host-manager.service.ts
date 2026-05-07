@@ -19,6 +19,12 @@ import { createIdentifier, Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { IRPCClientService } from '../rpc-client.service';
 
+export interface IHostReferrer {
+  id: string;
+  label: string;
+  pid: string;
+}
+
 export interface IHostManagerService {
   tree(pid?: string): Promise<HostTree[]>;
   getChildrenList(pid?: string): Promise<HostItem[]>;
@@ -30,6 +36,8 @@ export interface IHostManagerService {
   getExpandedIds(): Promise<string[]>;
   setExpandedIds(ids: string[]): Promise<void>;
   copy(id: string): Promise<string>;
+  /** Hosts that reference `id` directly in their host chain. */
+  getReferrers(id: string): Promise<IHostReferrer[]>;
   onChanged$(): Observable<IHostChangeEvent>;
 }
 export const IHostManagerService = createIdentifier<IHostManagerService>('rpc-client.host-manager-service');
@@ -79,6 +87,10 @@ export class HostManagerService extends Disposable implements IHostManagerServic
 
   async copy(id: string): Promise<string> {
     return this._getHostClient().copy.mutate(id);
+  }
+
+  async getReferrers(id: string): Promise<IHostReferrer[]> {
+    return this._getHostClient().getReferrers.query(id);
   }
 
   onChanged$(): Observable<IHostChangeEvent> {

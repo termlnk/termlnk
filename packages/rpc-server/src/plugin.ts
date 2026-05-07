@@ -32,6 +32,7 @@ import { ISFTPSessionService, SFTPSessionService } from './services/sftp/sftp-se
 import { CommandBlockService, ICommandBlockService } from './services/shell-integration/command-block.service';
 import { SSHSessionService } from './services/ssh-session/ssh-session.service';
 import { SSHToolService } from './services/ssh-tool.service';
+import { ISSHHostChainService, SSHHostChainService } from './services/ssh/ssh-host-chain.service';
 import { ISSHSocketService, SSHSocketService } from './services/ssh/ssh-socket.service';
 import { TerminalSessionNotifyService } from './services/terminal-session-notify.service';
 import { TerminalSuggestService } from './services/terminal-suggest/terminal-suggest.service';
@@ -68,6 +69,7 @@ export class RPCServerPlugin extends Plugin {
       [INotifyService, { useClass: NotifyService }],
       [IProxySocketService, { useClass: ProxySocketService }],
       [ISSHSocketService, { useClass: SSHSocketService }],
+      [ISSHHostChainService, { useClass: SSHHostChainService }],
       [ISSHSessionService, { useClass: SSHSessionService }],
       [ISFTPSessionService, { useClass: SFTPSessionService }],
       [ITerminalSessionNotifyService, { useClass: TerminalSessionNotifyService }],

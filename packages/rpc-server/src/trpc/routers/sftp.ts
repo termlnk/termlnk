@@ -48,14 +48,14 @@ export const sftpRouter = router({
     .input(sftpRespondKeyboardInteractiveSchema)
     .mutation(async ({ ctx, input }) => {
       const session = ctx.injector.get(ISFTPSessionService).getSession(input.sessionId);
-      session?.respondKeyboardInteractive(input.responses);
+      session?.respondKeyboardInteractive(input.responses, input.viaHopId);
     }),
 
   respondChangePassword: publicProcedure
     .input(sftpRespondChangePasswordSchema)
     .mutation(async ({ ctx, input }) => {
       const session = ctx.injector.get(ISFTPSessionService).getSession(input.sessionId);
-      session?.respondChangePassword(input.newPassword);
+      session?.respondChangePassword(input.newPassword, input.viaHopId);
     }),
 
   list: publicProcedure

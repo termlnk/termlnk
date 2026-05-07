@@ -32,10 +32,20 @@ export enum SSHSessionStatus {
   ERROR = 'error',
 }
 
+export interface ISSHHopContext {
+  /** Hop host id. Absent when the event originates from the target host. */
+  viaHopId?: string;
+  /** Hop host display name, used as a prompt prefix. */
+  viaHopLabel?: string;
+}
+
+export type SSHHopProgressStatus = 'connecting' | 'authenticating' | 'ready' | 'failed';
+
 export type SSHSessionEvent =
-  | { type: 'auth_failed'; message: string }
-  | { type: 'keyboard_interactive'; name: string; instructions: string; prompts: Array<{ prompt: string; echo: boolean }> }
-  | { type: 'change_password'; message: string }
+  | ({ type: 'auth_failed'; message: string } & ISSHHopContext)
+  | ({ type: 'keyboard_interactive'; name: string; instructions: string; prompts: Array<{ prompt: string; echo: boolean }> } & ISSHHopContext)
+  | ({ type: 'change_password'; message: string } & ISSHHopContext)
   | { type: 'host_key_verify'; algorithm: string; fingerprint: string }
-  | { type: 'banner'; message: string }
-  | { type: 'log'; message: string };
+  | ({ type: 'banner'; message: string } & ISSHHopContext)
+  | { type: 'log'; message: string }
+  | { type: 'hop_progress'; hopId: string; hopLabel: string; hopIndex: number; hopCount: number; status: SSHHopProgressStatus; message?: string };

@@ -20,6 +20,7 @@ import type { Observable } from 'rxjs';
 import type { ChangePasswordCallback, KeyboardInteractiveCallback } from 'ssh2';
 import type { ITerminalMiddlewareStack } from '../middleware/terminal-middleware-stack';
 import type { ISSHChannel } from '../ssh/ssh-channel';
+import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
 import type { ISSHSocket } from '../ssh/ssh-socket';
 import * as process from 'node:process';
 import { Disposable, DisposableCollection, ILogService, takeAfter, toDisposable } from '@termlnk/core';
@@ -57,8 +58,10 @@ export class SSHSession extends Disposable implements IDisposable {
   private readonly _middlewareStack = createTerminalMiddlewareStack();
   private _socketDisposables = new DisposableCollection();
   private _x11Disposables = new DisposableCollection();
+  private _chainDisposables = new DisposableCollection();
   private _pendingKeyboardInteractiveFinish: Nullable<KeyboardInteractiveCallback> = null;
   private _pendingChangePasswordDone: Nullable<ChangePasswordCallback> = null;
+  private _hostChain: Nullable<IHostChainHandle> = null;
 
   constructor(
     private readonly _sessionId: string,
@@ -84,6 +87,36 @@ export class SSHSession extends Disposable implements IDisposable {
     this._ensureInteractiveEvents();
     this._init();
     this.log('Session initialized.');
+  }
+
+  /**
+   * Attach a host chain handle. The session takes ownership and disposes it
+   * on close. Must be called before `socket.connect` so hop events flow from
+   * `chain.hopEvent$` into `session.event$`. Status advances to CONNECTING
+   * immediately so subscribers see progress before the target socket connects.
+   */
+  attachHostChain(chain: IHostChainHandle): void {
+    if (this._hostChain) {
+      this._chainDisposables.dispose();
+      this._hostChain.dispose();
+    }
+    this._hostChain = chain;
+    this._chainDisposables = new DisposableCollection();
+    this._chainDisposables.add(toDisposable(chain.hopEvent$.subscribe((hopEvent) => {
+      this._event$.next(hopEvent.event);
+    })));
+    this._chainDisposables.add(toDisposable(chain.progress$.subscribe(({ hopId, hopLabel, hopIndex, hopCount, status, message }) => {
+      this._event$.next({ type: 'hop_progress', hopId, hopLabel, hopIndex, hopCount, status, message });
+    })));
+    this._setStatus(SSHSessionStatus.CONNECTING);
+  }
+
+  /** Surface a failed chain build as a session-level error. */
+  markChainFailed(err: Error): void {
+    const message = formatSocketError(err as Error & { code?: string; level?: string });
+    this._error$.next(message);
+    this._setStatus(SSHSessionStatus.ERROR);
+    this.log(`Host chain failed: ${message}`);
   }
 
   private _init() {
@@ -167,12 +200,20 @@ export class SSHSession extends Disposable implements IDisposable {
     this._logService.log(`[SSHSession] ${this._sessionId}`, message);
   }
 
-  respondKeyboardInteractive(responses: string[]): void {
+  respondKeyboardInteractive(responses: string[], viaHopId?: string): void {
+    if (viaHopId) {
+      this._hostChain?.respondKeyboardInteractive(viaHopId, responses);
+      return;
+    }
     this._pendingKeyboardInteractiveFinish?.(responses);
     this._pendingKeyboardInteractiveFinish = null;
   }
 
-  respondChangePassword(newPassword: string): void {
+  respondChangePassword(newPassword: string, viaHopId?: string): void {
+    if (viaHopId) {
+      this._hostChain?.respondChangePassword(viaHopId, newPassword);
+      return;
+    }
     this._pendingChangePasswordDone?.(newPassword);
     this._pendingChangePasswordDone = null;
   }
@@ -409,6 +450,11 @@ export class SSHSession extends Disposable implements IDisposable {
     this._middlewareStack.dispose();
     this._x11Disposables.dispose();
     this._socketDisposables.dispose();
+    this._chainDisposables.dispose();
+    if (this._hostChain) {
+      this._hostChain.dispose();
+      this._hostChain = null;
+    }
     super.dispose();
     this._status$.complete();
     this._connected$.complete();

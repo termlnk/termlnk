@@ -65,11 +65,13 @@ export const sftpUploadSchema = z.object({
 export const sftpRespondKeyboardInteractiveSchema = z.object({
   sessionId: sftpSessionIdSchema,
   responses: z.array(z.string()),
+  viaHopId: z.string().optional(),
 });
 
 export const sftpRespondChangePasswordSchema = z.object({
   sessionId: sftpSessionIdSchema,
   newPassword: z.string(),
+  viaHopId: z.string().optional(),
 });
 
 export const sftpUploadDirectorySchema = z.object({

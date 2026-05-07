@@ -24,8 +24,8 @@ export interface ISFTPClientService {
   createSession(hostId: string, password?: string): Promise<string>;
   closeSession(sessionId: string): Promise<void>;
   retrySession(sessionId: string, password: string): Promise<void>;
-  respondKeyboardInteractive(sessionId: string, responses: string[]): Promise<void>;
-  respondChangePassword(sessionId: string, newPassword: string): Promise<void>;
+  respondKeyboardInteractive(sessionId: string, responses: string[], viaHopId?: string): Promise<void>;
+  respondChangePassword(sessionId: string, newPassword: string, viaHopId?: string): Promise<void>;
 
   // File operations
   list(sessionId: string, path: string): Promise<ISFTPFileEntry[]>;
@@ -71,12 +71,12 @@ export class SFTPClientService extends Disposable implements ISFTPClientService 
     await this._getSftpClient().retrySession.mutate({ sessionId, password });
   }
 
-  async respondKeyboardInteractive(sessionId: string, responses: string[]): Promise<void> {
-    await this._getSftpClient().respondKeyboardInteractive.mutate({ sessionId, responses });
+  async respondKeyboardInteractive(sessionId: string, responses: string[], viaHopId?: string): Promise<void> {
+    await this._getSftpClient().respondKeyboardInteractive.mutate({ sessionId, responses, viaHopId });
   }
 
-  async respondChangePassword(sessionId: string, newPassword: string): Promise<void> {
-    await this._getSftpClient().respondChangePassword.mutate({ sessionId, newPassword });
+  async respondChangePassword(sessionId: string, newPassword: string, viaHopId?: string): Promise<void> {
+    await this._getSftpClient().respondChangePassword.mutate({ sessionId, newPassword, viaHopId });
   }
 
   // --- File operations ---

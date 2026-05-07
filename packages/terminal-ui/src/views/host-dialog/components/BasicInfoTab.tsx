@@ -65,16 +65,12 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
   }, [hostManagerService]);
 
   const handleTypeChange = (type: string) => {
-    const baseCredential = { username: data.credential?.username ?? '' };
-    if (type === 'password') {
-      onChange({
-        credential: { ...baseCredential, type: 'password', password: '' } as ICredential,
-      });
-    } else if (type === 'rsa') {
-      onChange({
-        credential: { ...baseCredential, type: 'rsa', privateKey: '' } as ICredential,
-      });
+    if (type !== 'password' && type !== 'rsa') {
+      return;
     }
+    onChange({
+      credential: { ...data.credential, type } as ICredential,
+    });
   };
 
   return (

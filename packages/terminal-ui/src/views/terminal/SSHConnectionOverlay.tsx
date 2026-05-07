@@ -14,10 +14,11 @@
  */
 
 import type { TerminalSessionStatus } from '../../services/terminal/terminal-ui.service';
+import type { IHopState } from './use-ssh-connection';
 import { LocaleService } from '@termlnk/core';
 import { Button, Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle, cn, InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, Switch, useDependency } from '@termlnk/design';
-import { Check, Eye, EyeOff, FingerprintPattern, KeyRound, Loader2, PlugZap, ShieldAlert, Terminal } from 'lucide-react';
-import { Fragment, useCallback, useState } from 'react';
+import { Check, Eye, EyeOff, FingerprintPattern, KeyRound, Loader2, Network, PlugZap, ShieldAlert, Terminal } from 'lucide-react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 
 type OverlayMode = 'progress' | 'password' | 'fingerprint' | 'error';
 
@@ -27,6 +28,14 @@ export interface ISSHConnectionOverlayProps {
   mode: OverlayMode;
   sessionStatus: TerminalSessionStatus;
   statusText?: string;
+  /** Hop label to surface in the password prompt when authenticating against a chain hop. */
+  viaHopLabel?: string;
+  /**
+   * Per-hop progress accumulated by use-ssh-connection. When non-empty, a
+   * "chain" step is inserted into the progress bar and the derived hop
+   * status text supersedes `statusText`.
+   */
+  hopStates: IHopState[];
   onClose: () => void;
   onRetry?: () => void;
   onPasswordSubmit?: (password: string, savePassword: boolean) => void;
@@ -41,31 +50,85 @@ export interface ISSHConnectionOverlayProps {
   onFingerprintCancel?: () => void;
 }
 
-const steps = [
+interface IStepDef {
+  id: 'connect' | 'chain' | 'verify' | 'shell';
+  icon: typeof PlugZap;
+}
+
+const baseSteps: ReadonlyArray<IStepDef> = [
   { id: 'connect', icon: PlugZap },
   { id: 'verify', icon: FingerprintPattern },
   { id: 'shell', icon: Terminal },
 ];
+
+const chainStep: IStepDef = { id: 'chain', icon: Network };
 
 const outlineBtnClass = `
   tm:border-one-bg tm:text-light-grey tm:shadow-none
   tm:hover:border-blue tm:hover:text-blue
 `;
 
-function getActiveStep(sessionStatus?: TerminalSessionStatus): number {
-  switch (sessionStatus) {
-    case 'opening_shell':
-    case 'ready':
-      return 2;
-    case 'authenticating':
-      return 1;
-    default:
-      return 0;
-  }
+interface IStepProgress {
+  steps: ReadonlyArray<IStepDef>;
+  /** Index of the active step. -1 = not started; steps.length = all done. */
+  activeStep: number;
+  hasError: boolean;
+  errorStep: number;
 }
 
-function getStepStateClass(hasError: boolean, isActive: boolean, isDone: boolean): string {
-  if (hasError && isActive) {
+/**
+ * Derive the visible step sequence and active index. The "chain" step is
+ * inserted only when hopStates is non-empty.
+ *
+ * Error attribution:
+ * - any failed hop  → chain
+ * - auth_failed     → verify
+ * - otherwise       → active step
+ */
+function deriveStepProgress(
+  sessionStatus: TerminalSessionStatus,
+  hopStates: IHopState[]
+): IStepProgress {
+  const hasChain = hopStates.length > 0;
+  const steps: ReadonlyArray<IStepDef> = hasChain
+    ? [baseSteps[0], chainStep, baseSteps[1], baseSteps[2]]
+    : baseSteps;
+
+  const failedHop = hopStates.find((h) => h.status === 'failed');
+  const allHopsReady = hasChain && hopStates.length === (hopStates[0]?.hopCount ?? 0)
+    && hopStates.every((h) => h.status === 'ready');
+  const firstHop = hopStates[0];
+
+  // Steps: hasChain ? [connect, chain, verify, shell] : [connect, verify, shell]
+  let activeStep = 0;
+  if (hasChain) {
+    if (allHopsReady) {
+      activeStep = sessionStatus === 'opening_shell' || sessionStatus === 'ready' ? 3 : 2;
+    } else if (firstHop && firstHop.status !== 'connecting') {
+      activeStep = 1;
+    }
+  } else if (sessionStatus === 'authenticating') {
+    activeStep = 1;
+  } else if (sessionStatus === 'opening_shell' || sessionStatus === 'ready') {
+    activeStep = 2;
+  }
+
+  const hasError = sessionStatus === 'error'
+    || sessionStatus === 'auth_failed'
+    || sessionStatus === 'closed'
+    || !!failedHop;
+  let errorStep = activeStep;
+  if (failedHop) {
+    errorStep = 1;
+  } else if (sessionStatus === 'auth_failed') {
+    errorStep = hasChain ? 2 : 1;
+  }
+
+  return { steps, activeStep, hasError, errorStep };
+}
+
+function getStepStateClass(hasError: boolean, isErrorStep: boolean, isActive: boolean, isDone: boolean): string {
+  if (hasError && isErrorStep) {
     return 'tm:border-red tm:bg-red/15 tm:text-red';
   }
   if (isDone || isActive) {
@@ -74,10 +137,16 @@ function getStepStateClass(hasError: boolean, isActive: boolean, isDone: boolean
   return 'tm:border-one-bg3 tm:bg-one-bg2 tm:text-grey-fg';
 }
 
-function getStepIcon(Icon: typeof PlugZap, hasError: boolean, isActive: boolean, isDone: boolean) {
-  if (hasError && isActive) return <ShieldAlert size={14} strokeWidth={1.7} />;
-  if (isActive) return <Loader2 size={14} strokeWidth={1.7} className="tm:animate-spin" />;
-  if (isDone) return <Check size={14} strokeWidth={1.7} />;
+function getStepIcon(Icon: typeof PlugZap, hasError: boolean, isErrorStep: boolean, isActive: boolean, isDone: boolean) {
+  if (hasError && isErrorStep) {
+    return <ShieldAlert size={14} strokeWidth={1.7} />;
+  }
+  if (isActive && !hasError) {
+    return <Loader2 size={14} strokeWidth={1.7} className="tm:animate-spin" />;
+  }
+  if (isDone) {
+    return <Check size={14} strokeWidth={1.7} />;
+  }
   return <Icon size={14} strokeWidth={1.7} />;
 }
 
@@ -88,6 +157,8 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
     mode,
     sessionStatus,
     statusText,
+    viaHopLabel,
+    hopStates,
     onClose,
     onRetry,
     onPasswordSubmit,
@@ -98,16 +169,58 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
   } = props;
 
   const localeService = useDependency(LocaleService);
-  const activeStep = getActiveStep(sessionStatus);
-  const hasError = mode === 'error' || sessionStatus === 'error';
+  const { steps, activeStep, hasError, errorStep } = useMemo(
+    () => deriveStepProgress(sessionStatus, hopStates),
+    [sessionStatus, hopStates]
+  );
   const segmentCount = steps.length - 1;
+
+  // Hop-derived status text supersedes props.statusText so the message
+  // always reflects the in-flight or failed hop.
+  const hopStatusText = useMemo(() => {
+    if (hopStates.length === 0) {
+      return null;
+    }
+    const failedHop = hopStates.find((h) => h.status === 'failed');
+    if (failedHop) {
+      return localeService.t(
+        'terminal-ui.connection.hop.failed',
+        failedHop.hopLabel,
+        failedHop.message ?? ''
+      );
+    }
+    const inFlight = hopStates.find((h) => h.status !== 'ready');
+    if (!inFlight) {
+      return null;
+    }
+    const hopNum = String(inFlight.hopIndex + 1);
+    const hopTotal = String(inFlight.hopCount);
+    if (inFlight.status === 'authenticating') {
+      return localeService.t(
+        'terminal-ui.connection.hop.authenticating',
+        inFlight.hopLabel,
+        hopNum,
+        hopTotal
+      );
+    }
+    return localeService.t(
+      'terminal-ui.connection.hop.connecting',
+      inFlight.hopLabel,
+      hopNum,
+      hopTotal
+    );
+  }, [hopStates, localeService]);
+
+  const effectiveStatusText = hopStatusText ?? statusText;
 
   const [passwordValue, setPasswordValue] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [savePassword, setSavePassword] = useState(true);
 
   const handlePasswordSubmit = useCallback(() => {
-    if (!passwordValue) return;
+    if (!passwordValue) {
+      return;
+    }
     onPasswordSubmit?.(passwordValue, savePassword);
     setPasswordValue('');
   }, [passwordValue, savePassword, onPasswordSubmit]);
@@ -134,11 +247,17 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
       </CardHeader>
 
       <CardContent className="tm:mt-4">
-        <div className="tm:grid tm:grid-cols-[2rem_1fr_2rem_1fr_2rem] tm:items-center tm:gap-2">
+        <div
+          className={cn('tm:grid tm:items-center tm:gap-2', {
+            'tm:grid-cols-[2rem_1fr_2rem_1fr_2rem]': steps.length === 3,
+            'tm:grid-cols-[2rem_1fr_2rem_1fr_2rem_1fr_2rem]': steps.length === 4,
+          })}
+        >
           {steps.map((step, index) => {
             const Icon = step.icon;
             const isActive = index === activeStep;
             const isDone = index < activeStep;
+            const isErrorStep = hasError && index === errorStep;
 
             return (
               <Fragment key={step.id}>
@@ -146,20 +265,23 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
                   <div
                     className={cn(
                       'tm:flex tm:size-8 tm:items-center tm:justify-center tm:rounded-full tm:border',
-                      getStepStateClass(hasError, isActive, isDone)
+                      getStepStateClass(hasError, isErrorStep, isActive, isDone)
                     )}
                   >
-                    {getStepIcon(Icon, hasError, isActive, isDone)}
+                    {getStepIcon(Icon, hasError, isErrorStep, isActive, isDone)}
                   </div>
                 </div>
 
                 {index < segmentCount && (
                   <div className="tm:relative tm:h-0.5 tm:overflow-hidden tm:rounded-full tm:bg-black2">
-                    {(isDone || (hasError && isActive)) && (
+                    {(isDone || (hasError && isErrorStep)) && (
                       <div
                         className={cn(
                           'tm:absolute tm:top-0 tm:left-0 tm:h-0.5 tm:w-full tm:rounded-full',
-                          hasError && isActive ? 'tm:bg-red' : 'tm:bg-blue'
+                          {
+                            'tm:bg-red': hasError && isErrorStep,
+                            'tm:bg-blue': !(hasError && isErrorStep),
+                          }
                         )}
                       />
                     )}
@@ -178,7 +300,12 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
           })}
         </div>
 
-        <div className="tm:mt-1 tm:grid tm:grid-cols-[2rem_1fr_2rem_1fr_2rem] tm:items-center tm:text-center">
+        <div
+          className={cn('tm:mt-1 tm:grid tm:items-center tm:text-center', {
+            'tm:grid-cols-[2rem_1fr_2rem_1fr_2rem]': steps.length === 3,
+            'tm:grid-cols-[2rem_1fr_2rem_1fr_2rem_1fr_2rem]': steps.length === 4,
+          })}
+        >
           {steps.map((step, index) => (
             <Fragment key={`${step.id}-label`}>
               <span className="tm:text-[12px] tm:text-light-grey">
@@ -189,14 +316,17 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
           ))}
         </div>
 
-        {statusText && mode !== 'progress' && mode !== 'error' && (
+        {effectiveStatusText && mode !== 'progress' && mode !== 'error' && (
           <div
             className={cn(
               'tm:mt-3 tm:text-[12px] tm:leading-[1.4]',
-              hasError ? 'tm:text-red' : 'tm:text-white'
+              {
+                'tm:text-red': hasError,
+                'tm:text-white': !hasError,
+              }
             )}
           >
-            {statusText}
+            {effectiveStatusText}
           </div>
         )}
 
@@ -204,6 +334,11 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
           <div className="tm:mt-4 tm:space-y-3">
             <div className="tm:text-[14px] tm:font-medium tm:text-light-grey">
               {localeService.t('terminal-ui.connection.password.title')}
+              {viaHopLabel && (
+                <span className="tm:ml-2 tm:text-[12px] tm:font-normal tm:text-blue">
+                  {localeService.t('terminal-ui.connection.password.viaHop', viaHopLabel)}
+                </span>
+              )}
             </div>
             <InputGroup className="tm:h-10 tm:rounded-lg tm:border-line tm:bg-one-bg3">
               <InputGroupAddon>
@@ -293,16 +428,22 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
             <div
               className={cn(
                 'tm:flex tm:items-center tm:gap-2 tm:text-[12px]',
-                hasError ? 'tm:text-red' : 'tm:text-light-grey'
+                {
+                  'tm:text-red': hasError,
+                  'tm:text-light-grey': !hasError,
+                }
               )}
             >
               <span
                 className={cn(
                   'tm:inline-flex tm:size-2 tm:rounded-full',
-                  hasError ? 'tm:bg-red' : 'tm:animate-pulse tm:bg-blue'
+                  {
+                    'tm:bg-red': hasError,
+                    'tm:animate-pulse tm:bg-blue': !hasError,
+                  }
                 )}
               />
-              {statusText || (
+              {effectiveStatusText || (
                 hasError
                   ? localeService.t('terminal-ui.connection.status.error')
                   : localeService.t('terminal-ui.connection.status.connecting')

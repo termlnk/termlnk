@@ -13,14 +13,16 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IHostChainHandle } from '../../services/ssh/ssh-host-chain.service';
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { ISSHSessionService, ITerminalSessionNotifyService, observableToAsyncGenerator } from '@termlnk/rpc';
-import { HostType } from '@termlnk/terminal';
+import { HOST_CHAIN_MAX_DEPTH, HostType } from '@termlnk/terminal';
 import { bufferTime, filter, map } from 'rxjs';
 import { Client } from 'ssh2';
 import { z } from 'zod';
 import { DEFAULT_SSH_CONNECTION_TIMEOUT } from '../../config/config';
+import { ISSHHostChainService } from '../../services/ssh/ssh-host-chain.service';
 import { ISSHSocketService } from '../../services/ssh/ssh-socket.service';
 import { sessionIdSchema } from '../schema/ssh.schema';
 import { publicProcedure, router } from '../trpc';
@@ -77,17 +79,25 @@ export const sshRouter = router({
     }),
 
   respondKeyboardInteractive: publicProcedure
-    .input(z.object({ sessionId: sessionIdSchema, responses: z.array(z.string()) }))
+    .input(z.object({
+      sessionId: sessionIdSchema,
+      responses: z.array(z.string()),
+      viaHopId: z.string().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const session = ctx.injector.get(ISSHSessionService).getSession(input.sessionId);
-      session?.respondKeyboardInteractive(input.responses);
+      session?.respondKeyboardInteractive(input.responses, input.viaHopId);
     }),
 
   respondChangePassword: publicProcedure
-    .input(z.object({ sessionId: sessionIdSchema, newPassword: z.string() }))
+    .input(z.object({
+      sessionId: sessionIdSchema,
+      newPassword: z.string(),
+      viaHopId: z.string().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const session = ctx.injector.get(ISSHSessionService).getSession(input.sessionId);
-      session?.respondChangePassword(input.newPassword);
+      session?.respondChangePassword(input.newPassword, input.viaHopId);
     }),
 
   data$: publicProcedure
@@ -185,9 +195,11 @@ export const sshRouter = router({
       settings: z.object({
         connectTimeout: z.number().optional(),
       }).optional(),
+      hostChainIds: z.array(z.string().min(1)).max(HOST_CHAIN_MAX_DEPTH).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const sshSocketService = ctx.injector.get(ISSHSocketService);
+      const sshHostChainService = ctx.injector.get(ISSHHostChainService);
       const startedAt = Date.now();
 
       const tempHost = {
@@ -217,10 +229,16 @@ export const sshRouter = router({
           fontFamily: '',
           fontSize: 12,
         },
+        hostChainIds: input.hostChainIds && input.hostChainIds.length > 0 ? input.hostChainIds : undefined,
       };
 
+      let chainHandle: IHostChainHandle | null = null;
       try {
-        const config = await sshSocketService.createConnectConfig(tempHost);
+        chainHandle = await sshHostChainService.startTunnel(tempHost);
+        const finalSock = chainHandle ? await chainHandle.ready : undefined;
+        const config = await sshSocketService.createConnectConfig(tempHost, {
+          chainTunnel: finalSock,
+        });
         await new Promise<void>((resolve, reject) => {
           const client = new Client();
           const timer = setTimeout(() => {
@@ -253,6 +271,8 @@ export const sshRouter = router({
           latency: Date.now() - startedAt,
           message: err instanceof Error ? err.message : 'Unknown error',
         };
+      } finally {
+        chainHandle?.dispose();
       }
     }),
 });

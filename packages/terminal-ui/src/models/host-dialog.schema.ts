@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import { HOST_CHAIN_MAX_DEPTH } from '@termlnk/terminal';
 import { z } from 'zod';
 
 const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
@@ -124,6 +125,9 @@ export const settingsSchema = z.object({
   fontSize: z.number().min(8, 'validation.fontSizeMin').max(24, 'validation.fontSizeMax'),
 });
 
+export const hostChainIdsSchema = z.array(z.string().min(1))
+  .max(HOST_CHAIN_MAX_DEPTH, 'validation.hostChainMaxDepth');
+
 export const hostSchema = z.object({
   id: z.string(),
   label: z.string().min(1, 'validation.labelRequired'),
@@ -135,6 +139,32 @@ export const hostSchema = z.object({
   credential: credentialSchema,
   proxy: proxySchema.nullish(),
   settings: settingsSchema,
+  hostChainIds: hostChainIdsSchema.nullish(),
+}).superRefine((value, ctx) => {
+  const ids = value.hostChainIds ?? [];
+  if (!ids.length) {
+    return;
+  }
+  if (ids.includes(value.id)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['hostChainIds'],
+      message: 'validation.hostChainSelfRef',
+    });
+    return;
+  }
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['hostChainIds'],
+        message: 'validation.hostChainDuplicate',
+      });
+      return;
+    }
+    seen.add(id);
+  }
 });
 
 export type HostFormData = z.infer<typeof hostSchema>;

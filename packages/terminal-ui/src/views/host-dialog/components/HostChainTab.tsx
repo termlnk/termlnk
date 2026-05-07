@@ -13,7 +13,23 @@
  * governing permissions and limitations under the License.
  */
 
-export * from './AdvancedTab';
-export * from './BasicInfoTab';
-export * from './HostChainTab';
-export * from './ProxyTab';
+import type { HostFormItem } from '../../../models/host-dialog.state';
+import { HostChainTimeline } from './host-chain/HostChainTimeline';
+
+export interface IHostChainTabProps {
+  data: HostFormItem;
+  onChange: (data: Partial<HostFormItem>) => void;
+  getError: (path: string) => string | undefined;
+}
+
+export function HostChainTab(props: IHostChainTabProps) {
+  const { data, onChange, getError } = props;
+
+  return (
+    <HostChainTimeline
+      data={data}
+      onChange={onChange}
+      chainError={getError('hostChainIds')}
+    />
+  );
+}

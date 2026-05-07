@@ -14,6 +14,7 @@
  */
 
 import type { IHost } from '@termlnk/terminal';
+import type { Duplex } from 'node:stream';
 import type { ConnectConfig } from 'ssh2';
 import type { ISSHSocket } from './ssh-socket';
 import * as process from 'node:process';
@@ -22,10 +23,21 @@ import { DEFAULT_SSH_CONNECTION_HEARTBEAT, DEFAULT_SSH_CONNECTION_TIMEOUT } from
 import { IProxySocketService } from '../proxy/proxy-socket.service';
 import { createSSHSocket } from './ssh-socket';
 
+export interface ISSHConnectConfigOverrides {
+  password?: string;
+  /**
+   * Pre-established host-chain TCP tunnel. When provided, the target host's
+   * ssh2 handshake runs over this stream (injected into ConnectConfig.sock)
+   * instead of opening a direct TCP socket. The chain entry already handled
+   * any proxy, so the target host's `proxy` field is ignored in this case.
+   */
+  chainTunnel?: Duplex;
+}
+
 export interface ISSHSocketService {
   createSocket(key: string): ISSHSocket;
   releaseSocket(key: string): void;
-  createConnectConfig(host: IHost, overrides?: { password?: string }): Promise<ConnectConfig>;
+  createConnectConfig(host: IHost, overrides?: ISSHConnectConfigOverrides): Promise<ConnectConfig>;
   getMultiplexerKey(profile: IHost): string;
 }
 export const ISSHSocketService = createIdentifier<ISSHSocketService>('rpc-server.ssh-socket-service');
@@ -89,7 +101,7 @@ export class SSHSocketService extends Disposable implements ISSHSocketService {
     return entry;
   }
 
-  async createConnectConfig(host: IHost, overrides: { password?: string } = {}): Promise<ConnectConfig> {
+  async createConnectConfig(host: IHost, overrides: ISSHConnectConfigOverrides = {}): Promise<ConnectConfig> {
     const { credential, addr, port, proxy } = host;
     const address = normalizeHostAddress(addr);
     const sshPort = port || 22;
@@ -114,7 +126,13 @@ export class SSHSocketService extends Disposable implements ISSHSocketService {
       }
     }
 
-    if (proxy?.enabled) {
+    // Chain tunnel takes precedence over proxy: the chain entry already
+    // handled any proxy traversal, so the target host's proxy is irrelevant.
+    if (overrides.chainTunnel) {
+      config.sock = overrides.chainTunnel;
+      delete config.host;
+      delete config.port;
+    } else if (proxy?.enabled) {
       const proxySocket = this._proxySocketService.createSocket(host.id);
       const tunnelSocket = await proxySocket.connect({
         proxy,
@@ -132,6 +150,7 @@ export class SSHSocketService extends Disposable implements ISSHSocketService {
 
   getMultiplexerKey(profile: IHost): string {
     const p = profile.proxy;
+    const chain = profile.hostChainIds?.length ? `|C:${profile.hostChainIds.join('>')}` : '';
     return [
       profile.addr,
       profile.port,
@@ -139,7 +158,7 @@ export class SSHSocketService extends Disposable implements ISSHSocketService {
       p?.enabled ? '1' : '0',
       p?.host ?? '',
       p?.port ?? '',
-    ].join(':');
+    ].join(':') + chain;
   }
 }
 

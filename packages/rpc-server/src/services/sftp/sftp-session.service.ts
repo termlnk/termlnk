@@ -18,6 +18,8 @@ import type { ISFTPTransferTask } from '@termlnk/rpc';
 import type { IHost } from '@termlnk/terminal';
 import type { Buffer } from 'node:buffer';
 import type { Observable } from 'rxjs';
+import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
+import type { ISSHSocket } from '../ssh/ssh-socket';
 import type { ISFTPFileAttrs, ISFTPFileEntry } from './sftp-session';
 import { createIdentifier, Disposable, ILogService, Inject, InjectSelf } from '@termlnk/core';
 import { ConfigRepository, HostRepository } from '@termlnk/database';
@@ -25,6 +27,7 @@ import { SFTPSessionStatus, SSHSocketStatus, TransferDirection, TransferStatus }
 import { filter, Subject, take } from 'rxjs';
 import { v4 } from 'uuid';
 import { resolveHostWithProxy } from '../proxy/resolve-effective-proxy';
+import { ISSHHostChainService } from '../ssh/ssh-host-chain.service';
 import { ISSHSocketService } from '../ssh/ssh-socket.service';
 import { SFTPSession } from './sftp-session';
 
@@ -69,6 +72,7 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
     @Inject(HostRepository) private readonly _hostRepository: HostRepository,
     @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository,
     @ISSHSocketService private readonly _sshSocketService: ISSHSocketService,
+    @ISSHHostChainService private readonly _sshHostChainService: ISSHHostChainService,
     @ILogService private readonly _logService: ILogService
   ) {
     super();
@@ -99,6 +103,10 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
 
     const resolvedHost = await resolveHostWithProxy(host as IHost, this._configRepository);
 
+    // Same semantics as SSHSessionService: chain build runs asynchronously
+    // so that sessionId returns immediately.
+    const chainHandle = await this._sshHostChainService.startTunnel(resolvedHost);
+
     const multiplexerKey = this._sshSocketService.getMultiplexerKey(resolvedHost);
     const socket = this._sshSocketService.createSocket(multiplexerKey);
 
@@ -107,8 +115,12 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
     let session: SFTPSession;
     try {
       session = this._injector.createInstance(SFTPSession, sessionId, socket, hostId, initialPassword);
+      if (chainHandle) {
+        session.attachHostChain(chainHandle);
+      }
     } catch (error) {
       this._sshSocketService.releaseSocket(multiplexerKey);
+      chainHandle?.dispose();
       this._logService.error('[SFTPSessionService] Failed to create session', error);
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -130,8 +142,12 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
         })
     );
 
-    if (socket.status === SSHSocketStatus.IDLE) {
-      const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, { password });
+    if (chainHandle) {
+      this._connectViaChain(session, socket, resolvedHost, password, multiplexerKey, chainHandle);
+    } else if (socket.status === SSHSocketStatus.IDLE) {
+      const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
+        password,
+      });
       this._logService.debug(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
       socket.connect(connectConfig);
     }
@@ -153,14 +169,55 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
     const resolvedHost = await resolveHostWithProxy(host as IHost, this._configRepository);
 
     this._sshSocketService.releaseSocket(session.socketId);
-    session.setPassword(password);
+    if (password.length > 0) {
+      session.setPassword(password);
+    }
+
+    const chainHandle = await this._sshHostChainService.startTunnel(resolvedHost);
 
     const multiplexerKey = this._sshSocketService.getMultiplexerKey(resolvedHost);
     const newSocket = this._sshSocketService.createSocket(multiplexerKey);
     session.rebindSocket(newSocket);
+    if (chainHandle) {
+      session.attachHostChain(chainHandle);
+      this._connectViaChain(session, newSocket, resolvedHost, password, multiplexerKey, chainHandle);
+    } else {
+      const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
+        password,
+      });
+      newSocket.connect(connectConfig);
+    }
+  }
 
-    const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, { password });
-    newSocket.connect(connectConfig);
+  /**
+   * Wire `chainHandle.ready` to `socket.connect`. Fire-and-forget; failures
+   * surface via `session.markChainFailed` and the socket refcount is released.
+   */
+  private _connectViaChain(
+    session: SFTPSession,
+    socket: ISSHSocket,
+    host: IHost,
+    password: string | undefined,
+    multiplexerKey: string,
+    chainHandle: IHostChainHandle
+  ): void {
+    chainHandle.ready
+      .then(async (finalSock) => {
+        if (socket.status !== SSHSocketStatus.IDLE) {
+          return;
+        }
+        const connectConfig = await this._sshSocketService.createConnectConfig(host, {
+          password,
+          chainTunnel: finalSock,
+        });
+        this._logService.debug(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
+        socket.connect(connectConfig);
+      })
+      .catch((err) => {
+        const error = err instanceof Error ? err : new Error(String(err));
+        session.markChainFailed(error);
+        this._sshSocketService.releaseSocket(multiplexerKey);
+      });
   }
 
   async closeSession(sessionId: string): Promise<void> {
