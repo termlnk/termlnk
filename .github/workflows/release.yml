@@ -183,7 +183,7 @@ jobs:
         shell: bash
         run: |
           VERSION="${RELEASE_TAG#v}"
-          awk '/^## \['"$VERSION"'\]/{found=1; next} /^## \[/{if(found) exit} found{print}' docs/CHANGELOG.md > /tmp/release-notes.md
+          awk '/^## \['"$VERSION"'\]/ || /^## '"$VERSION"' /{found=1; next} /^## /{if(found) exit} found{print}' docs/CHANGELOG.md > /tmp/release-notes.md
           echo "--- Release notes for $VERSION ---"
           cat /tmp/release-notes.md
 
