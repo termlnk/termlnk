@@ -47,7 +47,9 @@ jobs:
         id: electron-cache
         uses: actions/cache/restore@v5
         with:
-          path: ~/Library/Caches/electron
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
           key: macOS-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}
 
       - name: Install Python setuptools
@@ -112,5 +114,7 @@ jobs:
         if: steps.electron-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: ~/Library/Caches/electron
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
           key: macOS-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}

@@ -47,7 +47,9 @@ jobs:
         id: electron-cache
         uses: actions/cache/restore@v5
         with:
-          path: ~/.cache/electron
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
           key: Linux-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}
 
       - name: Install RPM tools
@@ -100,5 +102,7 @@ jobs:
         if: steps.electron-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: ~/.cache/electron
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
           key: Linux-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}

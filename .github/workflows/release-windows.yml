@@ -47,7 +47,9 @@ jobs:
         id: electron-cache
         uses: actions/cache/restore@v5
         with:
-          path: ~\AppData\Local\electron\Cache
+          path: |
+            ~\AppData\Local\electron\Cache
+            ~\AppData\Local\electron-builder\Cache
           key: Windows-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}
 
       - name: Set release version
@@ -108,5 +110,7 @@ jobs:
         if: steps.electron-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: ~\AppData\Local\electron\Cache
+          path: |
+            ~\AppData\Local\electron\Cache
+            ~\AppData\Local\electron-builder\Cache
           key: Windows-${{ matrix.arch }}-electron-${{ hashFiles('pnpm-workspace.yaml') }}
