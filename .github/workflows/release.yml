@@ -97,6 +97,9 @@ jobs:
           TERMLNK_SKIP_ELECTRON_POSTINSTALL: '1'
         run: pnpm install --frozen-lockfile
 
+      - name: Prune pnpm store
+        run: pnpm store prune
+
       - name: Build packages
         run: pnpm run build
 
