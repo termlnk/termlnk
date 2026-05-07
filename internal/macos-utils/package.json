@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/macos-utils",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Native macOS window utilities for Electron",
   "license": "SEE LICENSE IN LICENSE",

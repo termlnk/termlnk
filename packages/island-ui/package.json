@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/island-ui",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "description": "Dynamic Island UI components for termlnk - macOS notch overlay with session status and permission approval",
   "author": "telan <telanflow@gmail.com>",

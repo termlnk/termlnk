@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/electron-renderer",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "author": "telan <telanflow@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",
