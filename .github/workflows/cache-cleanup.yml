@@ -1,0 +1,61 @@
+name: Cache Cleanup
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+
+    steps:
+      - name: Delete stale caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          latest_tag=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || true)
+
+          # GitHub records tag-triggered cache refs as `refs/heads/refs/tags/<tag>` (double-prefixed).
+          keep_refs=('refs/heads/main')
+          if [ -n "$latest_tag" ]; then
+            keep_refs+=("refs/heads/refs/tags/$latest_tag")
+          fi
+
+          echo "Keeping caches on refs:"
+          printf '  - %s\n' "${keep_refs[@]}"
+
+          keep_json=$(printf '%s\n' "${keep_refs[@]}" | jq -R . | jq -s .)
+
+          stale=$(gh cache list --limit 200 --json id,ref,key,sizeInBytes \
+            | jq -r --argjson keep "$keep_json" \
+                '.[] | select(.ref as $r | $keep | index($r) | not)
+                     | "\(.id)\t\(.sizeInBytes)\t\(.ref)\t\(.key)"')
+
+          if [ -z "$stale" ]; then
+            echo "No stale caches to delete."
+            exit 0
+          fi
+
+          freed=0
+          count=0
+          while IFS=$'\t' read -r id size ref key; do
+            [ -z "$id" ] && continue
+            echo "Deleting cache id=$id size=$size ref=$ref key=$key"
+            if gh cache delete "$id"; then
+              freed=$((freed + size))
+              count=$((count + 1))
+            fi
+          done <<< "$stale"
+
+          freed_mib=$((freed / 1024 / 1024))
+          echo "Deleted $count cache(s), freed ~${freed_mib} MiB"
