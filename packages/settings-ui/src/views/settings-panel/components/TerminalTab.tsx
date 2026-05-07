@@ -767,8 +767,8 @@ export function TerminalTab(): ReactElement {
                         description: localeService.t('settings-ui.terminal.inline-suggest-model-default-description'),
                       }}
                       triggerClassName={cn(`
-                        tm:h-9 tm:border-one-bg3 tm:bg-black tm:p-3 tm:text-white
-                        tm:shadow-xs tm:outline-hidden tm:transition-[color,box-shadow]
+                        tm:h-9 tm:border-one-bg3 tm:bg-black tm:p-3 tm:text-white tm:shadow-xs tm:outline-hidden
+                        tm:transition-[color,box-shadow]
                         tm:hover:border-blue tm:hover:bg-black
                         tm:focus-visible:border-blue tm:focus-visible:ring-[3px] tm:focus-visible:ring-blue/50
                         tm:disabled:opacity-50

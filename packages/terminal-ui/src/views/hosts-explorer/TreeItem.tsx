@@ -133,7 +133,7 @@ export function TreeItem(props: ITreeItemProps) {
         type="button"
         onClick={handleEdit}
         className="
-          tm:mr-2 tm:hidden tm:items-center
+          tm:mr-2 tm:hidden tm:cursor-pointer tm:items-center
           tm:group-hover:flex
         "
       >
