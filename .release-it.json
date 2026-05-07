@@ -10,6 +10,12 @@
     "draft": true
   },
   "npm": false,
+  "hooks": {
+    "after:bump": [
+      "extract-changelog-release docs/CHANGELOG.md > apps/desktop/build/release-notes.md",
+      "git add apps/desktop/build/release-notes.md"
+    ]
+  },
   "plugins": {
     "@release-it/conventional-changelog": {
       "preset": "angular",

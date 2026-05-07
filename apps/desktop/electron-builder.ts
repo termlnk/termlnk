@@ -69,6 +69,9 @@ const config: Configuration = {
     provider: 'generic',
     url: 'https://update.termlnk.com/desktop',
   },
+  releaseInfo: {
+    releaseNotesFile: 'build/release-notes.md',
+  },
 
   mac: {
     category: 'public.app-category.developer-tools',

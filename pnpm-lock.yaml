@@ -90,6 +90,9 @@ importers:
       eslint-plugin-react-refresh:
         specifier: ^0.5.2
         version: 0.5.2(eslint@10.3.0(jiti@2.6.1))
+      extract-changelog-release:
+        specifier: ^1.0.2
+        version: 1.0.2
       fs-extra:
         specifier: ^11.3.4
         version: 11.3.4
@@ -8577,6 +8580,10 @@ packages:
 
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
+
+  extract-changelog-release@1.0.2:
+    resolution: {integrity: sha512-y7z3GsG3zlp9Y0Toqxo4vQdn8x5T0LmVpycap3OcOP+HhgSuSqfHP0gnqYWf2zsquohE/20IpJKpvbVStQG2jg==}
+    hasBin: true
 
   extract-zip@2.0.1:
     resolution: {integrity: sha512-GDhU9ntwuKyGXdZBUgTIe+vXnWj0fppUEtMDL0+idd5Sta8TGpHssn/eusA9mrPr9qNDym6SxAYZjNvCn/9RBg==}
@@ -20946,6 +20953,10 @@ snapshots:
       is-extendable: 1.0.1
 
   extend@3.0.2: {}
+
+  extract-changelog-release@1.0.2:
+    dependencies:
+      minimist: 1.2.8
 
   extract-zip@2.0.1:
     dependencies:

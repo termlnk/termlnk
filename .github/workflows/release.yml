@@ -164,11 +164,12 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout (sparse — changelog + merge script)
+      - name: Checkout (sparse — release notes + merge script)
         uses: actions/checkout@v6
         with:
+          ref: refs/tags/${{ needs.prepare.outputs.release-tag }}
           sparse-checkout: |
-            docs/CHANGELOG.md
+            apps/desktop/build/release-notes.md
             apps/desktop/scripts/merge-update-manifests.mjs
           sparse-checkout-cone-mode: false
 
@@ -177,21 +178,11 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Extract changelog for current version
-        env:
-          RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
-        shell: bash
-        run: |
-          VERSION="${RELEASE_TAG#v}"
-          awk '/^## \['"$VERSION"'\]/ || /^## '"$VERSION"' /{found=1; next} /^## /{if(found) exit} found{print}' docs/CHANGELOG.md > /tmp/release-notes.md
-          echo "--- Release notes for $VERSION ---"
-          cat /tmp/release-notes.md
-
       - name: Update release notes
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.release-tag }}
-        run: gh release edit "$RELEASE_TAG" --notes-file /tmp/release-notes.md
+        run: gh release edit "$RELEASE_TAG" --notes-file apps/desktop/build/release-notes.md
 
       - name: Download update manifests
         uses: actions/download-artifact@v4
