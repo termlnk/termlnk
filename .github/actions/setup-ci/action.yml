@@ -28,4 +28,3 @@ runs:
         cache-dependency-path: pnpm-lock.yaml
         registry-url: ${{ inputs.registry-url }}
         scope: ${{ inputs.scope }}
-        always-auth: true
