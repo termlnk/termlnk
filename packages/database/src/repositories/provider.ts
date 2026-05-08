@@ -15,12 +15,14 @@
 
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
-import type { IAICustomModelEntityInsert, IAIProviderEntityInsert, IAIProviderModelEntityInsert } from '../entities/provider';
+import type { IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntityInsert } from '../entities/provider';
 import { Disposable } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
 import { Subject } from 'rxjs';
 import { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity } from '../entities/provider';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
+import { ISecretCipherService } from '../services/secret-cipher.service';
+import { decryptIfNeeded, encryptIfNeeded } from '../services/secret-cipher/credential-masker';
 
 export interface IProviderChangeEvent {
   type: 'provider' | 'model-config' | 'custom-model';
@@ -33,7 +35,8 @@ export class ProviderRepository extends Disposable {
   readonly changed$ = this._changed$.asObservable();
 
   constructor(
-    @IDBAdaptorService private readonly _dbService: IDBAdaptorService
+    @IDBAdaptorService private readonly _dbService: IDBAdaptorService,
+    @ISecretCipherService private readonly _cipher: ISecretCipherService
   ) {
     super();
   }
@@ -42,12 +45,21 @@ export class ProviderRepository extends Disposable {
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
+  /** 解密 provider 实体的 apiKey 字段；返回新对象 */
+  private _decryptProvider(row: IAIProviderEntity): IAIProviderEntity {
+    return {
+      ...row,
+      apiKey: decryptIfNeeded(row.apiKey, this._cipher),
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // Provider CRUD
   // ---------------------------------------------------------------------------
 
   async getProviders() {
-    return this._db.select().from(aiProviderEntity);
+    const rows = await this._db.select().from(aiProviderEntity);
+    return rows.map((row) => this._decryptProvider(row));
   }
 
   async getProviderById(id: string) {
@@ -56,13 +68,19 @@ export class ProviderRepository extends Disposable {
       .from(aiProviderEntity)
       .where(eq(aiProviderEntity.id, id))
       .limit(1);
-    return rows[0] ?? null;
+    return rows[0] ? this._decryptProvider(rows[0]) : null;
   }
 
   async upsertProvider(data: IAIProviderEntityInsert) {
+    // 入库前透明加密 apiKey；明文永不入库
+    const encryptedApiKey = encryptIfNeeded(data.apiKey, this._cipher);
+    const payload: IAIProviderEntityInsert = {
+      ...data,
+      apiKey: encryptedApiKey,
+    };
     await this._db
       .insert(aiProviderEntity)
-      .values(data)
+      .values(payload)
       .onConflictDoUpdate({
         target: aiProviderEntity.id,
         set: {
@@ -70,7 +88,7 @@ export class ProviderRepository extends Disposable {
           enabled: data.enabled,
           builtin: data.builtin,
           api: data.api,
-          apiKey: data.apiKey,
+          apiKey: encryptedApiKey,
           baseUrl: data.baseUrl,
           headers: data.headers,
           sort: data.sort,

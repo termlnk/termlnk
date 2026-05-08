@@ -24,6 +24,13 @@ import { Subject } from 'rxjs';
 import { generateId } from '../entities/base';
 import { hostEntity } from '../entities/host';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
+import { ISecretCipherService } from '../services/secret-cipher.service';
+import {
+  decryptCredential,
+  decryptProxy,
+  encryptCredential,
+  encryptProxy,
+} from '../services/secret-cipher/credential-masker';
 
 export class HostChainCycleError extends Error {
   constructor(public readonly path: string[]) {
@@ -51,7 +58,8 @@ export class HostRepository extends Disposable {
   readonly changed$ = this._changed$.asObservable();
 
   constructor(
-    @IDBAdaptorService private readonly _dbService: IDBAdaptorService
+    @IDBAdaptorService private readonly _dbService: IDBAdaptorService,
+    @ISecretCipherService private readonly _cipher: ISecretCipherService
   ) {
     super();
   }
@@ -60,9 +68,26 @@ export class HostRepository extends Disposable {
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
+  /** 解密单条 host 实体的敏感字段；返回新对象 */
+  private _decryptEntity<T extends IHostEntity>(entity: T): T {
+    if (!entity) {
+      return entity;
+    }
+    return {
+      ...entity,
+      credential: decryptCredential(entity.credential, this._cipher),
+      proxy: decryptProxy(entity.proxy, this._cipher),
+    };
+  }
+
+  /** 批量解密 */
+  private _decryptEntities<T extends IHostEntity>(entities: T[]): T[] {
+    return entities.map((entity) => this._decryptEntity(entity));
+  }
+
   async getInfoById(id: string): Promise<IHostEntity> {
     const result = await this._db.select().from(hostEntity).where(eq(hostEntity.id, id)).limit(1);
-    return result[0];
+    return result[0] ? this._decryptEntity(result[0]) : result[0];
   }
 
   async countById(id: string): Promise<number> {
@@ -70,7 +95,8 @@ export class HostRepository extends Disposable {
   }
 
   async getListByPid(pid: string = DEFAULT_HOST_ROOT): Promise<HostItem[]> {
-    return this._db.select().from(hostEntity).where(eq(hostEntity.pid, pid)).orderBy(asc(hostEntity.sort));
+    const rows = await this._db.select().from(hostEntity).where(eq(hostEntity.pid, pid)).orderBy(asc(hostEntity.sort));
+    return this._decryptEntities(rows);
   }
 
   async getTree(id: string = DEFAULT_HOST_ROOT): Promise<HostTree[]> {
@@ -79,7 +105,7 @@ export class HostRepository extends Disposable {
     }
     const list = await this._db.select().from(hostEntity).where(like(hostEntity.tree, `${id}%`));
 
-    return this._buildTree(list, id);
+    return this._buildTree(this._decryptEntities(list), id);
   }
 
   private _buildTree(hosts: IHostEntity[], root: string): HostTree[] {
@@ -122,7 +148,7 @@ export class HostRepository extends Disposable {
 
     const treePrefix = await this._getTreeById(id);
 
-    return this._db
+    const rows = await this._db
       .select()
       .from(hostEntity)
       .where(
@@ -131,6 +157,7 @@ export class HostRepository extends Disposable {
           like(hostEntity.tree, `${treePrefix}%`)
         )
       );
+    return this._decryptEntities(rows);
   }
 
   async getMaxSortByParentId(parentId: string = DEFAULT_HOST_ROOT): Promise<number> {
@@ -168,6 +195,7 @@ export class HostRepository extends Disposable {
       await this._validateHostChain(id, hostChainIds);
     }
 
+    const partial = record as Partial<IHost>;
     const insertData: IHostEntityInsert = {
       ...record,
       id,
@@ -175,6 +203,9 @@ export class HostRepository extends Disposable {
       tree,
       sort: maxSort + 1,
       hostChainIds,
+      // 透明加密敏感字段；明文永不入库
+      credential: encryptCredential(partial.credential, this._cipher),
+      proxy: encryptProxy(partial.proxy, this._cipher),
     };
     await this._db.insert(hostEntity).values(insertData);
 
@@ -188,13 +219,22 @@ export class HostRepository extends Disposable {
       return;
     }
 
+    const partial = record as Partial<IHost>;
     const updatePayload: Partial<IHostEntityInsert> & { updatedAt: string } = {
       ...record,
       updatedAt: new Date().toISOString(),
     };
 
+    // 仅当调用方传入 credential / proxy 时才加密覆盖；否则保留原密文
+    if (Object.hasOwn(record, 'credential')) {
+      updatePayload.credential = encryptCredential(partial.credential, this._cipher);
+    }
+    if (Object.hasOwn(record, 'proxy')) {
+      updatePayload.proxy = encryptProxy(partial.proxy, this._cipher);
+    }
+
     if (Object.hasOwn(record, 'hostChainIds')) {
-      const normalized = this._normalizeHostChainIds((record as Partial<IHost>).hostChainIds);
+      const normalized = this._normalizeHostChainIds(partial.hostChainIds);
       if (normalized) {
         await this._validateHostChain(entity.id, normalized);
       }
@@ -281,7 +321,8 @@ export class HostRepository extends Disposable {
 
   /** Hosts that reference `hostId` directly in their host chain. */
   async getReferrers(hostId: string): Promise<IHostEntity[]> {
-    return this._findReferrersForIds(new Set([hostId]));
+    const rows = await this._findReferrersForIds(new Set([hostId]));
+    return this._decryptEntities(rows);
   }
 
   /**
@@ -289,6 +330,8 @@ export class HostRepository extends Disposable {
    * cycles, depth, and reference integrity. `owner` need not be persisted:
    * only `owner.id` is used for self-reference checks, so callers can pass
    * a transient owner (e.g. test-connection).
+   *
+   * 跳板链的下游会用 credential 建 SSH 连接，必须返回明文。
    */
   async resolveHostChain(owner: Pick<IHost, 'id' | 'hostChainIds'>): Promise<IHost[]> {
     const ids = this._normalizeHostChainIds(owner.hostChainIds);
@@ -297,7 +340,8 @@ export class HostRepository extends Disposable {
     }
     await this._validateHostChain(owner.id, ids);
     const rows = await this._db.select().from(hostEntity).where(inArray(hostEntity.id, ids));
-    const byId = new Map(rows.map((row) => [row.id, row as IHost]));
+    const decrypted = this._decryptEntities(rows);
+    const byId = new Map(decrypted.map((row) => [row.id, row as IHost]));
     return ids.map((id) => byId.get(id)!);
   }
 

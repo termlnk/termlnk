@@ -14,10 +14,13 @@
  */
 
 import type { Dependency, Injector } from '@termlnk/core';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { IDatabaseConfig } from './controllers/config.schema';
-import { IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
+import type * as entities from './entities';
+import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
 import { DEFAULT_DB_ADAPTOR } from './config/config';
 import { DATABASE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
+import { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
 import { ChatRepository } from './repositories/chat';
 import { ConfigRepository } from './repositories/config';
 import { HostRepository } from './repositories/host';
@@ -26,6 +29,8 @@ import { ProviderRepository } from './repositories/provider';
 import { SkillRepository } from './repositories/skill';
 import { TerminalSessionBackupRepository } from './repositories/terminal-session-backup';
 import { IDBAdaptorService } from './services/db-adaptor.service';
+import { ISecretCipherService } from './services/secret-cipher.service';
+import { LocalDerivedSecretCipher } from './services/secret-cipher/local-derived.cipher';
 
 export const DATABASE_PLUGIN_NAME = 'DATABASE_PLUGIN';
 
@@ -35,7 +40,8 @@ export class DatabasePlugin extends Plugin {
   constructor(
     private readonly _config: Partial<IDatabaseConfig> = defaultPluginConfig,
     @InjectSelf() protected readonly _injector: Injector,
-    @IConfigService private readonly _configService: IConfigService
+    @IConfigService private readonly _configService: IConfigService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
 
@@ -55,11 +61,18 @@ export class DatabasePlugin extends Plugin {
     this._initDependencies();
   }
 
+  override onReady(): void {
+    // fire-and-forget：迁移失败不阻塞应用启动；Repository 解密路径已兼容明文回退
+    void this._runEncryptSecretsMigration();
+  }
+
   private _initDependencies(): void {
     const dbAdaptor = this._config.dbAdaptor || DEFAULT_DB_ADAPTOR;
 
     const dependencies: Dependency[] = [
       [IDBAdaptorService, { useClass: dbAdaptor }],
+      // 默认注册跨平台兜底加密器；apps/desktop/main 通过 config.override 替换为 SafeStorageCipher
+      [ISecretCipherService, { useClass: LocalDerivedSecretCipher }],
       [ConfigRepository, { useClass: ConfigRepository }],
       [ChatRepository, { useClass: ChatRepository }],
       [HostRepository, { useClass: HostRepository }],
@@ -69,5 +82,27 @@ export class DatabasePlugin extends Plugin {
       [TerminalSessionBackupRepository, { useClass: TerminalSessionBackupRepository }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
+  }
+
+  /**
+   * 启动时一次性把存量明文敏感字段加密回去。幂等：已加密字段不会重复加密。
+   *
+   * 容错：迁移失败不阻塞应用启动——仅记录错误。Repository 的解密路径已兼容明文回退，
+   * 所以即使迁移卡住，应用仍可继续工作；下次启动会重新尝试。
+   */
+  private async _runEncryptSecretsMigration(): Promise<void> {
+    try {
+      const dbService = this._injector.get(IDBAdaptorService);
+      const cipher = this._injector.get(ISecretCipherService);
+      const db = dbService.db as BetterSQLite3Database<typeof entities>;
+      const result = await runEncryptSecretsRuntimeMigration(db, cipher);
+      if (result.hostsEncrypted > 0 || result.providersEncrypted > 0) {
+        this._logService.log(
+          `[DatabasePlugin] Encrypted ${result.hostsEncrypted}/${result.hostsScanned} hosts and ${result.providersEncrypted}/${result.providersScanned} providers (cipher scheme: ${cipher.scheme})`
+        );
+      }
+    } catch (error) {
+      this._logService.error('[DatabasePlugin] Secret encryption migration failed:', error);
+    }
   }
 }

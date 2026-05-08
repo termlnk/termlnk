@@ -18,6 +18,8 @@ export { DATABASE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IDatabaseConfig } from './controllers/config.schema';
 export { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity, chatMessageEntity, chatSessionEntity, configEntity, hostEntity, mcpOAuthTokenEntity, mcpServerEntity, skillEntity, terminalSessionBackupEntity } from './entities';
 export type { IAICustomModelEntity, IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntity, IAIProviderModelEntityInsert, IChatMessageEntity, IChatMessageEntityInsert, IChatSessionEntity, IChatSessionEntityInsert, IConfigEntity, IConfigEntityInsert, IHostEntity, IHostEntityInsert, IMcpOAuthTokenEntity, IMcpOAuthTokenEntityInsert, IMcpServerEntity, IMcpServerEntityInsert, ISkillEntity, ISkillEntityInsert, ITerminalSessionBackupEntity, ITerminalSessionBackupEntityInsert } from './entities';
+export { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
+export type { IEncryptSecretsResult } from './migrations/runtime/encrypt-secrets.runtime';
 export type { IConfigChangeEvent, IConfigEntry } from './models/config';
 export { DATABASE_PLUGIN_NAME, DatabasePlugin } from './plugin';
 export { ChatRepository } from './repositories/chat';
@@ -32,3 +34,14 @@ export { TerminalSessionBackupRepository } from './repositories/terminal-session
 export { IDBAdaptorService } from './services/db-adaptor.service';
 export { SQLiteAdaptor } from './services/db-adaptor/sqlite.adaptor';
 export type { ISQLiteDatabaseOptions } from './services/db-adaptor/sqlite.adaptor';
+export { ISecretCipherService, isEncrypted, SECRET_CIPHER_PREFIX } from './services/secret-cipher.service';
+export type { SecretCipherScheme } from './services/secret-cipher.service';
+export {
+  decryptCredential,
+  decryptIfNeeded,
+  decryptProxy,
+  encryptCredential,
+  encryptIfNeeded,
+  encryptProxy,
+} from './services/secret-cipher/credential-masker';
+export { LocalDerivedSecretCipher } from './services/secret-cipher/local-derived.cipher';

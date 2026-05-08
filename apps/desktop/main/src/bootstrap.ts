@@ -21,9 +21,9 @@ import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
 import { AgentCorePlugin } from '@termlnk/agent-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
-import { DatabasePlugin, IDBAdaptorService, SQLiteAdaptor } from '@termlnk/database';
+import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
 import { ElectronPlugin, IUpdaterService } from '@termlnk/electron';
-import { ElectronMainPlugin, FileDialogService, MockUpdaterService } from '@termlnk/electron-main';
+import { ElectronMainPlugin, FileDialogService, MockUpdaterService, SafeStorageCipher } from '@termlnk/electron-main';
 import { IExtensionStateService, IExtensionStorageService } from '@termlnk/extension';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IslandCorePlugin } from '@termlnk/island-core';
@@ -201,6 +201,8 @@ app.whenReady().then(async () => {
     migrationsFolder,
     override: [
       [IDBAdaptorService, { useValue: dbAdaptor }],
+      // 主进程用 OS keystore 加密敏感凭据；不可用时类内部自动降级到 LocalDerivedSecretCipher
+      [ISecretCipherService, { useClass: SafeStorageCipher }],
     ],
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });

@@ -25,6 +25,7 @@ export { DiskFileService } from './services/file/disk-file.service';
 export { FilePermission, FileType } from './services/file/types';
 export type { IFileAtomicDeleteOptions, IFileAtomicOptions, IFileAtomicReadOptions, IFileAtomicWriteOptions, IFileDeleteOptions, IFileOpenForReadOptions, IFileOpenForWriteOptions, IFileOpenOptions, IFileOverwriteOptions, IFileUnlockOptions, IFileWriteOptions, IStat } from './services/file/types';
 export { IPlatformService, PlatformService } from './services/platform/platform.service';
+export { SafeStorageCipher } from './services/secret-cipher/safe-storage.cipher';
 export { MockUpdaterService } from './services/updater/mock-updater.service';
 export type { MockUpdaterScenario } from './services/updater/mock-updater.service';
 export { WindowManagerService } from './services/window-manager/window-manager.service';
