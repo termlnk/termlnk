@@ -257,6 +257,31 @@ export class HostRepository extends Disposable {
     this._emitChange('update', entity.id, entity.pid);
   }
 
+  /**
+   * 同步层专用：按完整 row 上行写入（保留远端 tree/sort/pid，不重新计算）。
+   *
+   * 与 create/update 的差异：
+   * - 不调用 _validateHostChain（远端写入前已自验证；本地拒绝会让两端永久分歧）
+   * - 不做 credential 智能 merge（远端总是携带完整字段；merge 只在 UI 编辑路径需要）
+   * - 仍透明加密 credential / proxy（本地 SecretCipher 是设备绑定，必须重新加密）
+   * - 仍发出 changed$ 事件（订阅 UI 能正常刷新；同步层用 _applyingPatch 标志屏蔽自反）
+   */
+  async syncUpsertRow(entity: IHostEntity): Promise<void> {
+    const encrypted: IHostEntity = {
+      ...entity,
+      credential: encryptCredential(entity.credential, this._cipher),
+      proxy: encryptProxy(entity.proxy, this._cipher),
+    };
+    const exists = await this.countById(entity.id);
+    if (exists > 0) {
+      await this._db.update(hostEntity).set(encrypted).where(eq(hostEntity.id, entity.id));
+      this._emitChange('update', entity.id, entity.pid);
+    } else {
+      await this._db.insert(hostEntity).values(encrypted);
+      this._emitChange('add', entity.id, entity.pid);
+    }
+  }
+
   async move(id: string, targetPid: string, targetSort: number): Promise<void> {
     const host = await this.getInfoById(id);
     if (!host) return undefined;
