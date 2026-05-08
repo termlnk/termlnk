@@ -1512,6 +1512,43 @@ importers:
         specifier: ^4.1.5
         version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
 
+  packages/sync-core:
+    dependencies:
+      '@noble/ciphers':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@noble/hashes':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../core
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../sync
+    devDependencies:
+      '@termlnk/auth-core':
+        specifier: workspace:*
+        version: link:../auth-core
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+
   packages/terminal:
     dependencies:
       '@termlnk/core':
@@ -3716,6 +3753,10 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
+
+  '@noble/ciphers@2.2.0':
+    resolution: {integrity: sha512-Z6pjIZ/8IJcCGzb2S/0Px5J81yij85xASuk1teLNeg75bfT07MV3a/O2Mtn1I2se43k3lkVEcFaR10N4cgQcZA==}
+    engines: {node: '>= 20.19.0'}
 
   '@noble/hashes@2.2.0':
     resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
@@ -15343,6 +15384,8 @@ snapshots:
       '@emnapi/runtime': 1.10.0
       '@tybys/wasm-util': 0.10.1
     optional: true
+
+  '@noble/ciphers@2.2.0': {}
 
   '@noble/hashes@2.2.0': {}
 
