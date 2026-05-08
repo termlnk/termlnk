@@ -16,6 +16,7 @@
 export { BackupService } from './services/backup.service';
 export { SyncCryptoService } from './services/crypto.service';
 export { SyncOutboxService } from './services/outbox.service';
+export { ConfigSynchroniser } from './synchronisers/config-synchroniser';
 export { HostSynchroniser } from './synchronisers/host-synchroniser';
 export { McpSynchroniser } from './synchronisers/mcp-synchroniser';
 export { ProviderSynchroniser } from './synchronisers/provider-synchroniser';
