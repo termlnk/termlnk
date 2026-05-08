@@ -746,6 +746,9 @@ importers:
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../sync
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
