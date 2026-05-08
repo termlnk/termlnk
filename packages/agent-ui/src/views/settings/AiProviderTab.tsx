@@ -49,7 +49,10 @@ export function AiProviderTab() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [providerQuery, setProviderQuery] = useState('');
   const [modelQuery, setModelQuery] = useState('');
+  // apiKeyInputs 仅保存"用户在 UI 当前输入的明文"——server 端的 apiKey 永不下发到渲染端。
+  // 留空提交时主进程 smart-merge 会保留原值；输入新值则覆盖。
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<string, string>>({});
+  const [apiKeyConfigured, setApiKeyConfigured] = useState<Record<string, boolean>>({});
   const [baseUrlInputs, setBaseUrlInputs] = useState<Record<string, string>>({});
   const [syncingProviderId, setSyncingProviderId] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<{ providerId: string; type: 'success' | 'error'; message: string } | null>(null);
@@ -73,16 +76,17 @@ export function AiProviderTab() {
 
       if (cancelled) return;
 
-      const apiKeys: Record<string, string> = {};
+      const configuredFlags: Record<string, boolean> = {};
       const baseUrls: Record<string, string> = {};
 
       for (const [providerId, config] of entries) {
         if (!config) continue;
-        if (config.apiKey) apiKeys[providerId] = config.apiKey;
+        // server 端不再下发明文 apiKey；仅告诉我们是否已配置（apiKeyConfigured 占位符）
+        configuredFlags[providerId] = !!(config as { apiKeyConfigured?: boolean }).apiKeyConfigured;
         if (config.baseUrl) baseUrls[providerId] = config.baseUrl;
       }
 
-      setApiKeyInputs((prev) => ({ ...apiKeys, ...prev }));
+      setApiKeyConfigured(configuredFlags);
       setBaseUrlInputs((prev) => ({ ...baseUrls, ...prev }));
     };
 
@@ -112,7 +116,7 @@ export function AiProviderTab() {
         modelCount: provider.models.length,
         enabledModelCount: provider.models.filter((m) => m.enabled).length,
         isEnabled: provider.enabled,
-        hasApiKey: !!apiKeyInputs[provider.id],
+        hasApiKey: !!apiKeyConfigured[provider.id] || !!apiKeyInputs[provider.id],
         isBuiltin: provider.builtin,
       }))
       .filter((provider) => {
@@ -124,7 +128,7 @@ export function AiProviderTab() {
         if (a.isEnabled !== b.isEnabled) return a.isEnabled ? -1 : 1;
         return compareProviders(a, b);
       });
-  }, [providers, providerQuery, apiKeyInputs]);
+  }, [providers, providerQuery, apiKeyInputs, apiKeyConfigured]);
 
   const selectedProvider = useMemo(() => {
     return providers.find((p) => p.id === selectedProviderId) ?? null;
@@ -523,13 +527,15 @@ export function AiProviderTab() {
                     <Input
                       type="password"
                       className={cn(inputCls, 'tm:mt-2')}
-                      placeholder="sk-..."
+                      placeholder={apiKeyConfigured[selectedProvider.id] ? '••••••••' : 'sk-...'}
                       value={apiKeyInputs[selectedProvider.id] ?? ''}
                       onChange={(e) => handleApiKeyChange(selectedProvider.id, e.target.value)}
                       onBlur={() => void handleSaveProvider(selectedProvider.id)}
                     />
                     <p className="tm:mt-2 tm:text-[11px] tm:text-white/80">
-                      {localeService.t('agent-ui.provider.api-key-hint')}
+                      {apiKeyConfigured[selectedProvider.id]
+                        ? localeService.t('agent-ui.provider.api-key-hint-configured')
+                        : localeService.t('agent-ui.provider.api-key-hint')}
                     </p>
                   </div>
 

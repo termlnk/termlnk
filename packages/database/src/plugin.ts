@@ -24,6 +24,7 @@ import { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-
 import { ChatRepository } from './repositories/chat';
 import { ConfigRepository } from './repositories/config';
 import { HostRepository } from './repositories/host';
+import { McpOAuthTokenRepository } from './repositories/mcp-oauth-token';
 import { McpServerRepository } from './repositories/mcp-server';
 import { ProviderRepository } from './repositories/provider';
 import { SkillRepository } from './repositories/skill';
@@ -77,6 +78,7 @@ export class DatabasePlugin extends Plugin {
       [ChatRepository, { useClass: ChatRepository }],
       [HostRepository, { useClass: HostRepository }],
       [McpServerRepository, { useClass: McpServerRepository }],
+      [McpOAuthTokenRepository, { useClass: McpOAuthTokenRepository }],
       [ProviderRepository, { useClass: ProviderRepository }],
       [SkillRepository, { useClass: SkillRepository }],
       [TerminalSessionBackupRepository, { useClass: TerminalSessionBackupRepository }],
@@ -96,9 +98,14 @@ export class DatabasePlugin extends Plugin {
       const cipher = this._injector.get(ISecretCipherService);
       const db = dbService.db as BetterSQLite3Database<typeof entities>;
       const result = await runEncryptSecretsRuntimeMigration(db, cipher);
-      if (result.hostsEncrypted > 0 || result.providersEncrypted > 0) {
+      const totalEncrypted = result.hostsEncrypted + result.providersEncrypted + result.mcpServersEncrypted + result.mcpOAuthTokensEncrypted;
+      if (totalEncrypted > 0) {
         this._logService.log(
-          `[DatabasePlugin] Encrypted ${result.hostsEncrypted}/${result.hostsScanned} hosts and ${result.providersEncrypted}/${result.providersScanned} providers (cipher scheme: ${cipher.scheme})`
+          `[DatabasePlugin] Encrypted plaintext secrets (cipher: ${cipher.scheme}) — `
+          + `hosts ${result.hostsEncrypted}/${result.hostsScanned}, `
+          + `providers ${result.providersEncrypted}/${result.providersScanned}, `
+          + `mcp-servers ${result.mcpServersEncrypted}/${result.mcpServersScanned}, `
+          + `mcp-oauth-tokens ${result.mcpOAuthTokensEncrypted}/${result.mcpOAuthTokensScanned}`
         );
       }
     } catch (error) {

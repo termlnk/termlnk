@@ -16,6 +16,7 @@
 import { HostRepository } from '@termlnk/database';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { z } from 'zod';
+import { sanitizeHostEntities, sanitizeHostEntity, sanitizeHostTree } from '../../common/sanitize-secrets';
 import { createHostSchema, updateHostSchema } from '../schema/host.schema';
 import { publicProcedure, router } from '../trpc';
 
@@ -24,15 +25,18 @@ export type HostRouter = typeof hostRouter;
 export const hostRouter = router({
   getChildrenList: publicProcedure.input(z.string().optional()).query(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);
-    return repo.getListByPid(input);
+    const list = await repo.getListByPid(input);
+    return sanitizeHostEntities(list as any[]);
   }),
   tree: publicProcedure.input(z.string().optional()).query(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);
-    return repo.getTree(input);
+    const tree = await repo.getTree(input);
+    return sanitizeHostTree(tree as any);
   }),
   getInfo: publicProcedure.input(z.string()).query(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);
-    return repo.getInfoById(input);
+    const entity = await repo.getInfoById(input);
+    return entity ? sanitizeHostEntity(entity) : entity;
   }),
   create: publicProcedure.input(createHostSchema).mutation(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);

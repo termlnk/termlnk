@@ -18,9 +18,11 @@ import { isEncrypted } from '../secret-cipher.service';
 import {
   decryptCredential,
   decryptIfNeeded,
+  decryptMcpConfig,
   decryptProxy,
   encryptCredential,
   encryptIfNeeded,
+  encryptMcpConfig,
   encryptProxy,
 } from './credential-masker';
 import { LocalDerivedSecretCipher } from './local-derived.cipher';
@@ -111,6 +113,76 @@ describe('credentialMasker', () => {
       const proxy = { enabled: true, type: 'http' as const, host: 'x', port: 80 };
       expect(encryptProxy(proxy, cipher)).toEqual(proxy);
       expect(decryptProxy(proxy, cipher)).toEqual(proxy);
+    });
+  });
+
+  describe('encryptMcpConfig / decryptMcpConfig', () => {
+    it('encrypts stdio env values keeping keys plain', () => {
+      const config = {
+        type: 'stdio' as const,
+        command: 'node',
+        args: ['mcp.js'],
+        env: { DEBUG: 'true', API_KEY: 'sk-secret' },
+      };
+      const encrypted = encryptMcpConfig(config, cipher)!;
+      expect(encrypted.type).toBe('stdio');
+      // 类型守卫
+      if (encrypted.type !== 'stdio') {
+        throw new Error('expected stdio');
+      }
+      expect(encrypted.command).toBe('node');
+      expect(encrypted.args).toEqual(['mcp.js']);
+      expect(Object.keys(encrypted.env!)).toEqual(['DEBUG', 'API_KEY']);
+      expect(isEncrypted(encrypted.env!.DEBUG)).toBe(true);
+      expect(isEncrypted(encrypted.env!.API_KEY)).toBe(true);
+      expect(encrypted.env!.API_KEY).not.toContain('sk-secret');
+
+      expect(decryptMcpConfig(encrypted, cipher)).toEqual(config);
+    });
+
+    it('encrypts http headers values', () => {
+      const config = {
+        type: 'http' as const,
+        url: 'https://example.com',
+        protocol: 'streamable-http' as const,
+        headers: { Authorization: 'Bearer xxx', 'X-Custom': 'plain-meta' },
+      };
+      const encrypted = encryptMcpConfig(config, cipher)!;
+      if (encrypted.type !== 'http') {
+        throw new Error('expected http');
+      }
+      expect(encrypted.url).toBe('https://example.com');
+      expect(isEncrypted(encrypted.headers!.Authorization)).toBe(true);
+      expect(isEncrypted(encrypted.headers!['X-Custom'])).toBe(true);
+
+      expect(decryptMcpConfig(encrypted, cipher)).toEqual(config);
+    });
+
+    it('returns config unchanged when env / headers absent', () => {
+      const stdioNoEnv = { type: 'stdio' as const, command: 'node' };
+      expect(encryptMcpConfig(stdioNoEnv, cipher)).toEqual(stdioNoEnv);
+
+      const httpNoHeaders = { type: 'http' as const, url: 'x', protocol: 'sse' as const };
+      expect(encryptMcpConfig(httpNoHeaders, cipher)).toEqual(httpNoHeaders);
+    });
+
+    it('handles null', () => {
+      expect(encryptMcpConfig(null, cipher)).toBeNull();
+      expect(decryptMcpConfig(null, cipher)).toBeNull();
+    });
+
+    it('idempotent on re-encryption', () => {
+      const config = {
+        type: 'stdio' as const,
+        command: 'node',
+        env: { TOKEN: 'abc123' },
+      };
+      const once = encryptMcpConfig(config, cipher)!;
+      const twice = encryptMcpConfig(once, cipher)!;
+      if (once.type !== 'stdio' || twice.type !== 'stdio') {
+        throw new Error('type narrowing failed');
+      }
+      expect(twice.env!.TOKEN).toBe(once.env!.TOKEN);
     });
   });
 

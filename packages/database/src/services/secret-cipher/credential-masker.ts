@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { McpServerConfig } from '@termlnk/agent';
 import type { ICredential, IProxy } from '@termlnk/terminal';
 import type { ISecretCipherService } from '../secret-cipher.service';
 import { isEncrypted } from '../secret-cipher.service';
@@ -142,4 +143,77 @@ export function decryptIfNeeded(
     return value;
   }
   return cipher.decrypt(value);
+}
+
+/**
+ * 加密 MCP server config 中的敏感字段：
+ * - stdio.env 的所有 value（环境变量常含 API_KEY/TOKEN）
+ * - http.headers 的所有 value（常含 Authorization/x-api-key）
+ *
+ * 仅加密 value，key 保持明文（便于排查和列表展示）。
+ */
+export function encryptMcpConfig(
+  config: McpServerConfig | null | undefined,
+  cipher: ISecretCipherService
+): McpServerConfig | null {
+  if (!config) {
+    return null;
+  }
+
+  if (config.type === 'stdio') {
+    return {
+      ...config,
+      env: config.env ? mapValues(config.env, (v) => encryptIfNeeded(v, cipher)) : config.env,
+    };
+  }
+
+  if (config.type === 'http') {
+    return {
+      ...config,
+      headers: config.headers
+        ? mapValues(config.headers, (v) => encryptIfNeeded(v, cipher))
+        : config.headers,
+    };
+  }
+
+  return config;
+}
+
+/** 解密 MCP server config 中的敏感字段 */
+export function decryptMcpConfig(
+  config: McpServerConfig | null | undefined,
+  cipher: ISecretCipherService
+): McpServerConfig | null {
+  if (!config) {
+    return null;
+  }
+
+  if (config.type === 'stdio') {
+    return {
+      ...config,
+      env: config.env ? mapValues(config.env, (v) => decryptIfNeeded(v, cipher)) : config.env,
+    };
+  }
+
+  if (config.type === 'http') {
+    return {
+      ...config,
+      headers: config.headers
+        ? mapValues(config.headers, (v) => decryptIfNeeded(v, cipher))
+        : config.headers,
+    };
+  }
+
+  return config;
+}
+
+function mapValues<T extends string | undefined>(
+  record: Record<string, T>,
+  fn: (value: T) => T
+): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const [k, v] of Object.entries(record)) {
+    out[k] = fn(v as T);
+  }
+  return out;
 }

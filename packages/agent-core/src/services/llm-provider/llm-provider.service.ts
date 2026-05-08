@@ -197,7 +197,8 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
       name: patch.name ?? existing?.name,
       enabled: patch.enabled ?? existing?.enabled ?? false,
       api: patch.api ?? existing?.api,
-      apiKey: patch.apiKey ?? existing?.apiKey,
+      // Smart-merge：空字符串视为"未变更"——这是 tRPC 路由脱敏后 UI 可能回传的常见值（编辑表单 apiKey 字段留空 = 保留原 apiKey）
+      apiKey: (typeof patch.apiKey === 'string' && patch.apiKey !== '') ? patch.apiKey : existing?.apiKey,
       baseUrl: patch.baseUrl ?? existing?.baseUrl,
       headers: patch.headers ?? existing?.headers,
       sort: patch.sort ?? existing?.sort,

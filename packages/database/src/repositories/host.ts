@@ -225,12 +225,20 @@ export class HostRepository extends Disposable {
       updatedAt: new Date().toISOString(),
     };
 
-    // 仅当调用方传入 credential / proxy 时才加密覆盖；否则保留原密文
+    // Smart merge：调用方传入空的敏感字段时保留旧值，仅覆盖类型/用户名等非敏感字段。
+    // 这让"渲染端拿不到明文凭据但仍能编辑名称/认证类型"成为稳定 API 语义——
+    // tRPC 路由层把 password/privateKey 脱敏成 hasXxx 占位，UI 表单提交时空值即"未变更"。
     if (Object.hasOwn(record, 'credential')) {
-      updatePayload.credential = encryptCredential(partial.credential, this._cipher);
+      updatePayload.credential = encryptCredential(
+        this._mergeCredentialKeepingOldSecrets(entity.credential, partial.credential),
+        this._cipher
+      );
     }
     if (Object.hasOwn(record, 'proxy')) {
-      updatePayload.proxy = encryptProxy(partial.proxy, this._cipher);
+      updatePayload.proxy = encryptProxy(
+        this._mergeProxyKeepingOldSecret(entity.proxy, partial.proxy),
+        this._cipher
+      );
     }
 
     if (Object.hasOwn(record, 'hostChainIds')) {
@@ -455,6 +463,71 @@ export class HostRepository extends Disposable {
 
   private _emitChange(type: IHostChangeEvent['type'], id: string, pid: string): void {
     this._changed$.next({ type, id, pid });
+  }
+
+  /**
+   * 当 incoming credential 的敏感字段为空时（password === '' / privateKey === ''），
+   * 使用 existing 中的对应敏感字段；其他字段（type / username）按 incoming 覆盖。
+   *
+   * 类型变化（password ↔ rsa）且新值非空：完全使用 incoming。
+   * 类型变化但新敏感字段为空：抛错（UI 应当保证类型切换时强制要求新值）。
+   */
+  private _mergeCredentialKeepingOldSecrets(
+    existing: IHostEntity['credential'],
+    incoming: IHost['credential'] | null | undefined
+  ): IHost['credential'] | null {
+    if (incoming == null) {
+      return null;
+    }
+
+    if (incoming.type === 'always') {
+      return incoming;
+    }
+
+    const existingSameType = existing && existing.type === incoming.type ? existing : null;
+
+    if (incoming.type === 'password') {
+      const newPwd = incoming.password ?? '';
+      if (newPwd !== '') {
+        return incoming;
+      }
+      // 空 → 沿用旧密码
+      if (existingSameType && existingSameType.type === 'password') {
+        return { ...incoming, password: existingSameType.password };
+      }
+      throw new Error('[HostRepository] Password credential changed type but no password provided');
+    }
+
+    if (incoming.type === 'rsa') {
+      const newKey = incoming.privateKey ?? '';
+      if (newKey !== '') {
+        return incoming;
+      }
+      if (existingSameType && existingSameType.type === 'rsa') {
+        return { ...incoming, privateKey: existingSameType.privateKey };
+      }
+      throw new Error('[HostRepository] RSA credential changed type but no privateKey provided');
+    }
+
+    return incoming;
+  }
+
+  /** Proxy 密码同语义：空字符串 → 保留旧；非空 → 覆盖 */
+  private _mergeProxyKeepingOldSecret(
+    existing: IHostEntity['proxy'],
+    incoming: IHost['proxy'] | null | undefined
+  ): IHost['proxy'] | null {
+    if (incoming == null) {
+      return null;
+    }
+    if (incoming.password && incoming.password !== '') {
+      return incoming;
+    }
+    // 没有新密码或为空：沿用旧密码（如果旧值结构同 host/port）
+    if (existing && existing.password) {
+      return { ...incoming, password: existing.password };
+    }
+    return incoming;
   }
 
   private async _moveToDifferentParent(

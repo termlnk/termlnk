@@ -24,6 +24,7 @@ const locale: typeof enUS = {
       title: '提供商',
       'api-key': 'API 密钥',
       'api-key-hint': '用于该提供商的模型同步和请求鉴权。',
+      'api-key-hint-configured': 'API Key 已配置。留空保留，输入新值替换。',
       'base-url': '基础 URL（可选）',
       'base-url-hint': '仅在使用自定义端点或代理时填写。',
       'base-url-default': '默认基础 URL',

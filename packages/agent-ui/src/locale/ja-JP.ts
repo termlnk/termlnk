@@ -24,6 +24,7 @@ const locale: typeof enUS = {
       title: 'プロバイダー',
       'api-key': 'APIキー',
       'api-key-hint': 'このプロバイダーのモデル同期とリクエストに使用。',
+      'api-key-hint-configured': 'API キーが設定されています。空のまま保持、または新しい値で置き換え。',
       'base-url': 'ベースURL（任意）',
       'base-url-hint': 'カスタムエンドポイントまたはプロキシ使用時のみ設定。',
       'base-url-default': 'デフォルトベースURL',

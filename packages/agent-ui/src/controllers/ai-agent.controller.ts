@@ -15,8 +15,15 @@
 
 import { RxDisposable } from '@termlnk/core';
 import { IAIAgentClientService, IProviderConfigClientService } from '@termlnk/rpc-client';
-import { combineLatest, distinctUntilChanged, filter } from 'rxjs';
+import { distinctUntilChanged, filter } from 'rxjs';
 
+/**
+ * 渲染端 AI 控制器：当用户切换模型时，把 (providerId, modelId) 推给主进程。
+ *
+ * apiKey 同步**不再由渲染端负责**——主进程的 AIKeySyncController 直接订阅
+ * activeProvider$ 内部完成；本 controller 仅传递模型选择。这让 apiKey 永不
+ * 跨过 IPC 边界，配合 ai 路由的 sanitize 实现"渲染端零明文凭据"。
+ */
 export class AIAgentController extends RxDisposable {
   constructor(
     @IAIAgentClientService private readonly _aiAgentService: IAIAgentClientService,
@@ -28,34 +35,20 @@ export class AIAgentController extends RxDisposable {
   }
 
   private _setupModelSync(): void {
-    const sub = combineLatest([
-      this._providerConfigService.activeModel$,
-      this._providerConfigService.activeProvider$,
-    ]).pipe(
-      filter(([model]) => model !== null),
-      distinctUntilChanged(
-        ([prevModel, prevProvider], [nextModel, nextProvider]) =>
-          prevModel?.id === nextModel?.id
-          && prevProvider?.apiKey === nextProvider?.apiKey
-          && prevProvider?.baseUrl === nextProvider?.baseUrl
-      )
-    ).subscribe(([model, providerConfig]) => {
-      if (!model) return;
-
-      // Set model on agent — extract provider and model ID from composite "provider/modelId"
+    const sub = this._providerConfigService.activeModel$.pipe(
+      filter((model) => model !== null),
+      distinctUntilChanged((prev, next) => prev?.id === next?.id)
+    ).subscribe((model) => {
+      if (!model) {
+        return;
+      }
+      // 模型 ID 形如 "provider/modelId"
       const parts = model.id.split('/');
       const providerId = parts[0];
       const modelId = parts.slice(1).join('/');
       this._aiAgentService.setModel(providerId, modelId).catch((err) => {
         console.error('[AIAgentController] setModel failed:', err);
       });
-
-      // Set API key if available
-      if (providerConfig?.apiKey) {
-        this._aiAgentService.setApiKey(providerId, providerConfig.apiKey).catch((err) => {
-          console.error('[AIAgentController] setApiKey failed:', err);
-        });
-      }
     });
 
     this.disposeWithMe({ dispose: () => sub.unsubscribe() });

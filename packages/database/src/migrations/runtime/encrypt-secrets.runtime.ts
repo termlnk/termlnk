@@ -19,11 +19,14 @@ import type * as schema from '../../entities';
 import type { ISecretCipherService } from '../../services/secret-cipher.service';
 import { eq } from 'drizzle-orm';
 import { hostEntity } from '../../entities/host';
+import { mcpOAuthTokenEntity } from '../../entities/mcp-oauth-token';
+import { mcpServerEntity } from '../../entities/mcp-server';
 import { aiProviderEntity } from '../../entities/provider';
 import { isEncrypted } from '../../services/secret-cipher.service';
 import {
   encryptCredential,
   encryptIfNeeded,
+  encryptMcpConfig,
   encryptProxy,
 } from '../../services/secret-cipher/credential-masker';
 
@@ -40,9 +43,13 @@ import {
  */
 export interface IEncryptSecretsResult {
   hostsEncrypted: number;
-  providersEncrypted: number;
   hostsScanned: number;
+  providersEncrypted: number;
   providersScanned: number;
+  mcpServersEncrypted: number;
+  mcpServersScanned: number;
+  mcpOAuthTokensEncrypted: number;
+  mcpOAuthTokensScanned: number;
 }
 
 export async function runEncryptSecretsRuntimeMigration(
@@ -51,9 +58,13 @@ export async function runEncryptSecretsRuntimeMigration(
 ): Promise<IEncryptSecretsResult> {
   const result: IEncryptSecretsResult = {
     hostsEncrypted: 0,
-    providersEncrypted: 0,
     hostsScanned: 0,
+    providersEncrypted: 0,
     providersScanned: 0,
+    mcpServersEncrypted: 0,
+    mcpServersScanned: 0,
+    mcpOAuthTokensEncrypted: 0,
+    mcpOAuthTokensScanned: 0,
   };
 
   // -- 1) 扫描 host：credential / proxy --
@@ -93,7 +104,68 @@ export async function runEncryptSecretsRuntimeMigration(
     }
   }
 
+  // -- 3) 扫描 mcp_server：config.env / headers 中的密钥 --
+  const mcpServers = await db.select().from(mcpServerEntity);
+  for (const server of mcpServers) {
+    result.mcpServersScanned += 1;
+    if (server.config && _mcpConfigNeedsEncryption(server.config)) {
+      const encrypted = encryptMcpConfig(server.config, cipher);
+      if (encrypted) {
+        await db
+          .update(mcpServerEntity)
+          .set({ config: encrypted, updatedAt: new Date().toISOString() })
+          .where(eq(mcpServerEntity.id, server.id));
+        result.mcpServersEncrypted += 1;
+      }
+    }
+  }
+
+  // -- 4) 扫描 mcp_oauth_token：accessToken / refreshToken / clientSecret / codeVerifier --
+  const tokens = await db.select().from(mcpOAuthTokenEntity);
+  for (const token of tokens) {
+    result.mcpOAuthTokensScanned += 1;
+    const updates: {
+      accessToken?: string | null;
+      refreshToken?: string | null;
+      clientSecret?: string | null;
+      codeVerifier?: string | null;
+      updatedAt?: string;
+    } = {};
+    if (token.accessToken && !isEncrypted(token.accessToken)) {
+      updates.accessToken = encryptIfNeeded(token.accessToken, cipher);
+    }
+    if (token.refreshToken && !isEncrypted(token.refreshToken)) {
+      updates.refreshToken = encryptIfNeeded(token.refreshToken, cipher);
+    }
+    if (token.clientSecret && !isEncrypted(token.clientSecret)) {
+      updates.clientSecret = encryptIfNeeded(token.clientSecret, cipher);
+    }
+    if (token.codeVerifier && !isEncrypted(token.codeVerifier)) {
+      updates.codeVerifier = encryptIfNeeded(token.codeVerifier, cipher);
+    }
+    if (Object.keys(updates).length > 0) {
+      updates.updatedAt = new Date().toISOString();
+      await db.update(mcpOAuthTokenEntity).set(updates).where(eq(mcpOAuthTokenEntity.id, token.id));
+      result.mcpOAuthTokensEncrypted += 1;
+    }
+  }
+
   return result;
+}
+
+/** 判断 mcp_server.config 是否还有未加密的敏感字段（env/headers 任一 value 是明文即视为需迁移）*/
+function _mcpConfigNeedsEncryption(config: { type: string; [k: string]: unknown }): boolean {
+  if (config.type === 'stdio' && config.env && typeof config.env === 'object') {
+    return Object.values(config.env as Record<string, string>).some(
+      (v) => typeof v === 'string' && v !== '' && !isEncrypted(v)
+    );
+  }
+  if (config.type === 'http' && config.headers && typeof config.headers === 'object') {
+    return Object.values(config.headers as Record<string, string>).some(
+      (v) => typeof v === 'string' && v !== '' && !isEncrypted(v)
+    );
+  }
+  return false;
 }
 
 /** 判断 host.credential 是否还有未加密的敏感字段 */

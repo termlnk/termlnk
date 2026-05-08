@@ -26,6 +26,7 @@ export { ChatRepository } from './repositories/chat';
 export type { IChatSessionChangeEvent } from './repositories/chat';
 export { ConfigRepository } from './repositories/config';
 export { HostRepository } from './repositories/host';
+export { McpOAuthTokenRepository } from './repositories/mcp-oauth-token';
 export { McpServerRepository } from './repositories/mcp-server';
 export { ProviderRepository } from './repositories/provider';
 export type { IProviderChangeEvent } from './repositories/provider';
@@ -39,9 +40,11 @@ export type { SecretCipherScheme } from './services/secret-cipher.service';
 export {
   decryptCredential,
   decryptIfNeeded,
+  decryptMcpConfig,
   decryptProxy,
   encryptCredential,
   encryptIfNeeded,
+  encryptMcpConfig,
   encryptProxy,
 } from './services/secret-cipher/credential-masker';
 export { LocalDerivedSecretCipher } from './services/secret-cipher/local-derived.cipher';

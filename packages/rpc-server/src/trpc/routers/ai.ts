@@ -15,6 +15,8 @@
 
 import { IAIAgentService, ILLMProviderService, ITerminalSuggestService } from '@termlnk/agent';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
+import { map } from 'rxjs/operators';
+import { sanitizeProviderUserConfig } from '../../common/sanitize-secrets';
 import { addCustomModelSchema, addProviderSchema, applyTerminalErrorFixSchema, cancelPendingSchema, cancelTerminalSuggestionSchema, compactConversationSchema, editUserMessageSchema, getProviderConfigSchema, invokeToolSchema, refreshProviderModelsSchema, removeCustomModelSchema, removeProviderSchema, resetModelOverridesSchema, retryMessageSchema, sendMessageSchema, setActiveModelSchema, setApiKeySchema, setModelSchema, setSystemPromptSchema, setThinkingLevelSchema, testProviderModelSchema, toggleModelSchema, updateModelOverridesSchema, updateProviderConfigSchema } from '../schema/ai.schema';
 import { publicProcedure, router } from '../trpc';
 
@@ -227,7 +229,7 @@ export const aiRouter = router({
     .input(getProviderConfigSchema)
     .query(async ({ ctx, input }) => {
       const providerService = ctx.injector.get(ILLMProviderService);
-      return providerService.getProviderConfig(input.providerId);
+      return sanitizeProviderUserConfig(providerService.getProviderConfig(input.providerId));
     }),
 
   // --- Subscriptions ---
@@ -265,7 +267,9 @@ export const aiRouter = router({
   activeProvider$: publicProcedure
     .subscription(async function* ({ ctx }) {
       const providerService = ctx.injector.get(ILLMProviderService);
-      yield* observableToAsyncGenerator(providerService.activeProvider$);
+      yield* observableToAsyncGenerator(
+        providerService.activeProvider$.pipe(map((c) => sanitizeProviderUserConfig(c)))
+      );
     }),
 
   isCompacting$: publicProcedure

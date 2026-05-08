@@ -22,6 +22,7 @@ import { DatabasePlugin } from '@termlnk/database';
 import { ElectronPlugin } from '@termlnk/electron';
 import { AgentHookController } from './controllers/agent-hook.controller';
 import { AgentKeepAwakeController } from './controllers/agent-keep-awake.controller';
+import { AIKeySyncController } from './controllers/ai-key-sync.controller';
 import { CompactController } from './controllers/compact.controller';
 import { AGENT_CORE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { McpController } from './controllers/mcp.controller';
@@ -125,6 +126,7 @@ export class AgentCorePlugin extends Plugin {
       // Controllers
       [AgentHookController],
       [AgentKeepAwakeController],
+      [AIKeySyncController],
       [MyMcpController],
       [McpController],
       [SkillController],
@@ -139,6 +141,7 @@ export class AgentCorePlugin extends Plugin {
     touchDependencies(this._injector, [
       [AgentHookController],
       [AgentKeepAwakeController],
+      [AIKeySyncController],
       [MyMcpController],
       [McpController],
       [SkillController],

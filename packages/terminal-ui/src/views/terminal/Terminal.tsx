@@ -193,7 +193,10 @@ export function TerminalView(props: ITerminalViewProps) {
         if (host?.type === HostType.HOST) {
           const normalized = host as IHost;
           setHostInfo(normalized);
-          const needsPassword = normalized.credential?.type === 'password' && !normalized.credential.password;
+          // host 经 tRPC 脱敏后 credential 仅含 type/username + hasPassword/hasPrivateKey 占位符；
+          // 用 hasPassword 判断是否已配置密码（而非检查 password 字段，已脱敏不存在）
+          const credAsPublic = normalized.credential as unknown as { type?: string; hasPassword?: boolean } | null;
+          const needsPassword = credAsPublic?.type === 'password' && !credAsPublic.hasPassword;
           setRequiresPassword(needsPassword);
         }
       })
