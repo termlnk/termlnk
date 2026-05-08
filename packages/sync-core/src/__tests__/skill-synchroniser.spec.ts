@@ -14,8 +14,8 @@
  */
 
 import type { ILogService, LogLevel } from '@termlnk/core';
-import type { ISkillEntity, ISkillEntityInsert, SkillRepository, SyncRowMetaRepository } from '@termlnk/database';
-import type { ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem, ISyncRowMetaEntity, SyncResourceId } from '@termlnk/sync';
+import type { ISkillEntity, ISkillEntityInsert, ISyncRowMetaEntity, SkillRepository, SyncRowMetaRepository } from '@termlnk/database';
+import type { ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem, SyncResourceId } from '@termlnk/sync';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SkillSynchroniser } from '../synchronisers/skill-synchroniser';
