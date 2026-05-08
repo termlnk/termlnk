@@ -17,6 +17,8 @@ export type { IDerivedSubKeys } from './crypto/kdf';
 export { computeArgon2Salt, deriveMasterKey, deriveSubKeys, zeroize } from './crypto/kdf';
 export { AUTH_CORE_PLUGIN_NAME, AuthCorePlugin } from './plugin';
 export type { IAuthCorePluginConfig } from './plugin';
+export { HttpAuthService } from './services/http-auth.service';
+export type { IHttpAuthServiceConfig } from './services/http-auth.service';
 export { HttpTokenRefresher } from './services/http-token-refresher.service';
 export type { IHttpTokenRefresherConfig } from './services/http-token-refresher.service';
 export { MasterKeyService } from './services/master-key.service';

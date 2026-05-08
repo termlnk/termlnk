@@ -14,13 +14,14 @@
  */
 
 import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
-import { AuthCorePlugin } from '@termlnk/auth-core';
-import { DependentOn, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { AuthCorePlugin, TokenManager } from '@termlnk/auth-core';
+import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService, SyncPlugin } from '@termlnk/sync';
 import { SynchroniserRegistrationController } from './controllers/synchroniser-registration.controller';
 import { BackupService } from './services/backup.service';
 import { SyncCryptoService } from './services/crypto.service';
+import { HttpSyncTransportService } from './services/http-transport.service';
 import { NoopSyncTransportService } from './services/noop-transport.service';
 import { SyncOutboxService } from './services/outbox.service';
 import { SyncService } from './services/sync.service';
@@ -33,7 +34,18 @@ import { SkillSynchroniser } from './synchronisers/skill-synchroniser';
 export const SYNC_CORE_PLUGIN_NAME = 'SYNC_CORE_PLUGIN';
 
 export interface ISyncCorePluginConfig {
-  /** Override 列表——desktop main 用它把 NoopSyncTransportService 替换为真实 HTTP/WS 实现。 */
+  /**
+   * 云服务根（含版本前缀，如 `https://cloud.termlnk.io/v1`）。
+   *
+   * 配置后会用 HttpSyncTransportService 替换默认的 NoopSyncTransportService——
+   * 一行 config 让 SyncService 接入真实云端。
+   *
+   * 不配置时保持 Noop，SyncService.enable 会立即转 Offline 状态——
+   * 渲染端 SyncStatusPanel 显示离线，备份/导入等独立功能仍可用。
+   */
+  cloudBaseUrl?: string;
+
+  /** Override 列表——desktop main 也可以直接 override transport 实现绕过 cloudBaseUrl。 */
   override?: DependencyOverride;
 }
 
@@ -73,13 +85,17 @@ export class SyncCorePlugin extends Plugin {
   }
 
   override onStarting(): void {
+    const transportBinding = this._config.cloudBaseUrl
+      ? this._buildHttpTransportBinding(this._config.cloudBaseUrl)
+      : ([ISyncTransportService, { useClass: NoopSyncTransportService }] as Dependency);
+
     const dependencies: Dependency[] = [
       // 服务
       [ISyncCryptoService, { useClass: SyncCryptoService }],
       [ISyncOutboxService, { useClass: SyncOutboxService }],
       [IBackupService, { useClass: BackupService }],
       [ISyncService, { useClass: SyncService }],
-      [ISyncTransportService, { useClass: NoopSyncTransportService }],
+      transportBinding,
 
       // SyncService 注册路径需要 concrete class binding（DI 通过类型 token 取到的是 ISyncService
       // 接口实现，但 SynchroniserRegistrationController 注入的是具体 SyncService 类——
@@ -97,6 +113,21 @@ export class SyncCorePlugin extends Plugin {
       [SynchroniserRegistrationController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
+  }
+
+  private _buildHttpTransportBinding(baseUrl: string): Dependency {
+    return [ISyncTransportService, {
+      // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
+      useFactory: (
+        tokenManager: TokenManager,
+        logService: ILogService
+      ) => new HttpSyncTransportService(
+        { baseUrl },
+        tokenManager,
+        logService
+      ),
+      deps: [TokenManager, ILogService],
+    }];
   }
 
   override onReady(): void {
