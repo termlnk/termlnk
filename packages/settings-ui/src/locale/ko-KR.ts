@@ -31,6 +31,7 @@ const locale: typeof enUS = {
       chat: '채팅',
       skill: '스킬',
       island: '다이나믹 아일랜드',
+      account: '계정 및 동기화',
       shortcuts: '단축키',
       about: '정보',
     },
@@ -46,8 +47,15 @@ const locale: typeof enUS = {
       chat: '채팅 동작 설정',
       skill: 'AI 스킬 및 기능 관리',
       island: '다이나믹 아일랜드 알림 및 사운드 설정',
+      account: '로그인하여 호스트, 프로바이더, MCP, 스킬을 기기 간 동기화',
       shortcuts: '등록된 키보드 단축키 확인',
       about: '앱 정보 및 버전 업데이트',
+    },
+    account: {
+      'section-account': '계정',
+      'section-account-description': '클라우드 동기화를 사용하려면 로그인하거나 회원가입하세요',
+      'section-sync': '클라우드 동기화',
+      'section-sync-description': '동기화 엔진 상태 및 리소스별 동기화 진행 상황',
     },
     appearance: {
       'language-settings-title': '언어 설정',

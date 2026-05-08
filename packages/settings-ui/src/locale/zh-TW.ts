@@ -31,6 +31,7 @@ const locale: typeof enUS = {
       chat: '聊天',
       skill: '技能',
       island: '動態島',
+      account: '帳號與同步',
       shortcuts: '快速鍵',
       about: '關於',
     },
@@ -46,8 +47,15 @@ const locale: typeof enUS = {
       chat: '聊天行為設定',
       skill: '管理 AI 技能和能力',
       island: '設定動態島通知和提示音',
+      account: '登入後可跨裝置同步主機、Provider、MCP 與 Skill 設定',
       shortcuts: '檢視已註冊的鍵盤快速鍵',
       about: '應用程式資訊與版本更新',
+    },
+    account: {
+      'section-account': '帳號',
+      'section-account-description': '登入或註冊帳號以在多台裝置間使用雲端同步',
+      'section-sync': '雲端同步',
+      'section-sync-description': '同步引擎的運行狀態及各資源的同步進度',
     },
     appearance: {
       'language-settings-title': '語言設定',

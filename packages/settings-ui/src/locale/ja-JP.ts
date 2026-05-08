@@ -31,6 +31,7 @@ const locale: typeof enUS = {
       chat: 'チャット',
       skill: 'スキル',
       island: 'ダイナミックアイランド',
+      account: 'アカウントと同期',
       shortcuts: 'ショートカット',
       about: 'バージョン情報',
     },
@@ -46,8 +47,15 @@ const locale: typeof enUS = {
       chat: 'チャットの動作設定',
       skill: 'AIスキルと機能を管理',
       island: 'ダイナミックアイランドの通知とサウンドを設定',
+      account: 'サインインしてホスト、プロバイダー、MCP、スキルをデバイス間で同期',
       shortcuts: '登録済みキーボードショートカットを確認',
       about: 'アプリ情報とバージョン更新',
+    },
+    account: {
+      'section-account': 'アカウント',
+      'section-account-description': 'クラウド同期を利用するにはサインインまたは新規登録してください',
+      'section-sync': 'クラウド同期',
+      'section-sync-description': '同期エンジンのステータスと各リソースの同期状況',
     },
     appearance: {
       'language-settings-title': '言語設定',

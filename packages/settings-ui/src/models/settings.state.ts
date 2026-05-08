@@ -26,6 +26,7 @@ export enum SettingsTab {
   CHAT = 'chat',
   SKILL = 'skill',
   ISLAND = 'island',
+  ACCOUNT = 'account',
   SHORTCUTS = 'shortcuts',
   ABOUT = 'about',
 }

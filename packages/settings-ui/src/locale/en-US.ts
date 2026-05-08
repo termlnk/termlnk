@@ -29,6 +29,7 @@ const locale = {
       chat: 'Chat',
       skill: 'Skills',
       island: 'Island',
+      account: 'Account & Sync',
       shortcuts: 'Shortcuts',
       about: 'About',
     },
@@ -44,8 +45,15 @@ const locale = {
       chat: 'Chat behavior settings',
       skill: 'Manage AI skills and capabilities',
       island: 'Configure Dynamic Island notifications and sounds',
+      account: 'Sign in to sync your hosts, providers, MCP, and skills across devices',
       shortcuts: 'Review registered keyboard shortcuts',
       about: 'App information and version updates',
+    },
+    account: {
+      'section-account': 'Account',
+      'section-account-description': 'Sign in or create an account to use cloud sync across your devices',
+      'section-sync': 'Cloud sync',
+      'section-sync-description': 'Status of the synchroniser engine and per-resource sync state',
     },
     appearance: {
       'language-settings-title': 'Language Settings',

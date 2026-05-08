@@ -1434,6 +1434,12 @@ importers:
       '@termlnk/agent-ui':
         specifier: workspace:*
         version: link:../agent-ui
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@termlnk/auth-ui':
+        specifier: workspace:*
+        version: link:../auth-ui
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core
@@ -1452,6 +1458,12 @@ importers:
       '@termlnk/rpc-client':
         specifier: workspace:*
         version: link:../rpc-client
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../sync
+      '@termlnk/sync-ui':
+        specifier: workspace:*
+        version: link:../sync-ui
       '@termlnk/terminal':
         specifier: workspace:*
         version: link:../terminal

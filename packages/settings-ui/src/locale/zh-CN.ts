@@ -31,6 +31,7 @@ const locale: typeof enUS = {
       chat: '聊天',
       skill: '技能',
       island: '灵动岛',
+      account: '账号与同步',
       shortcuts: '快捷键',
       about: '关于',
     },
@@ -46,8 +47,15 @@ const locale: typeof enUS = {
       chat: '聊天行为配置',
       skill: '管理 AI 技能和能力',
       island: '配置灵动岛通知和提示音',
+      account: '登录后跨设备同步主机、Provider、MCP 和 Skill 配置',
       shortcuts: '查看已注册的快捷键映射',
       about: '应用信息与版本更新',
+    },
+    account: {
+      'section-account': '账号',
+      'section-account-description': '登录或注册以在多台设备间使用云同步',
+      'section-sync': '云同步',
+      'section-sync-description': '同步引擎的运行状态及各资源的同步进度',
     },
     appearance: {
       'language-settings-title': '语言设置',

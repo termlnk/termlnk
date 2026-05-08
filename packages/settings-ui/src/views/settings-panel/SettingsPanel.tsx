@@ -19,11 +19,12 @@ import type { ISettingsState } from '../../models/settings.state';
 import { AgentTab } from '@termlnk/agent-ui';
 import { isMacintosh, IThemeService, LocaleService } from '@termlnk/core';
 import { cn, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
-import { Info, Keyboard, LayoutDashboard, MessageSquare, Monitor, Palette, Smartphone, Sparkles, Terminal, Unplug, Wand2, Wifi } from 'lucide-react';
+import { Info, Keyboard, LayoutDashboard, MessageSquare, Monitor, Palette, Smartphone, Sparkles, Terminal, Unplug, UserRoundIcon, Wand2, Wifi } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { SettingsTab } from '../../models/settings.state';
 import { SettingsService } from '../../services/settings/settings.service';
 import { AboutTab } from './components/AboutTab';
+import { AccountTab } from './components/AccountTab';
 import { AiProviderTab } from './components/AiProviderTab';
 import { AppearanceTab } from './components/AppearanceTab';
 import { ColorSchemeTab } from './components/ColorSchemeTab';
@@ -106,6 +107,12 @@ const TABS: ITabDef[] = [
     description: 'settings-ui.tab-description.island',
     icon: Smartphone,
     platform: 'darwin',
+  },
+  {
+    key: SettingsTab.ACCOUNT,
+    labelKey: 'settings-ui.tab.account',
+    description: 'settings-ui.tab-description.account',
+    icon: UserRoundIcon,
   },
   {
     key: SettingsTab.SHORTCUTS,
@@ -245,6 +252,9 @@ export function SettingsPanel() {
             </TabsContent>
             <TabsContent value={SettingsTab.ISLAND} className="tm:m-0">
               <IslandTab />
+            </TabsContent>
+            <TabsContent value={SettingsTab.ACCOUNT} className="tm:m-0">
+              <AccountTab />
             </TabsContent>
             <TabsContent value={SettingsTab.SHORTCUTS} className="tm:m-0">
               <ShortcutsTab />
