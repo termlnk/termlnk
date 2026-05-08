@@ -15,6 +15,8 @@
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
     "@termlnk/agent": "workspace:*",
     "@termlnk/agent-core": "workspace:*",
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/electron": "workspace:*",
@@ -24,6 +26,8 @@
     "@termlnk/island-core": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "@termlnk/sync-core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "node-pty": "^1.1.0"

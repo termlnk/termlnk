@@ -223,6 +223,12 @@ importers:
       '@termlnk/agent-core':
         specifier: workspace:*
         version: link:../../../packages/agent-core
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../../packages/auth
+      '@termlnk/auth-core':
+        specifier: workspace:*
+        version: link:../../../packages/auth-core
       '@termlnk/core':
         specifier: workspace:*
         version: link:../../../packages/core
@@ -250,6 +256,12 @@ importers:
       '@termlnk/rpc-server':
         specifier: workspace:*
         version: link:../../../packages/rpc-server
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../../../packages/sync
+      '@termlnk/sync-core':
+        specifier: workspace:*
+        version: link:../../../packages/sync-core
       '@termlnk/terminal':
         specifier: workspace:*
         version: link:../../../packages/terminal

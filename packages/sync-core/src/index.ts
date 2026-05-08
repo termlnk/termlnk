@@ -13,8 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
+export { SYNC_CORE_PLUGIN_NAME, SyncCorePlugin } from './plugin';
+export type { ISyncCorePluginConfig } from './plugin';
 export { BackupService } from './services/backup.service';
 export { SyncCryptoService } from './services/crypto.service';
+export { NoopSyncTransportService } from './services/noop-transport.service';
 export { SyncOutboxService } from './services/outbox.service';
 export { SyncService } from './services/sync.service';
 export { ConfigSynchroniser } from './synchronisers/config-synchroniser';

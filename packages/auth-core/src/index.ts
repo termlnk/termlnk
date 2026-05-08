@@ -15,6 +15,8 @@
 
 export type { IDerivedSubKeys } from './crypto/kdf';
 export { computeArgon2Salt, deriveMasterKey, deriveSubKeys, zeroize } from './crypto/kdf';
+export { AUTH_CORE_PLUGIN_NAME, AuthCorePlugin } from './plugin';
+export type { IAuthCorePluginConfig } from './plugin';
 export { MasterKeyService } from './services/master-key.service';
 export { SrpClientService } from './services/srp-client.service';
 export { TokenManager } from './services/token-manager.service';

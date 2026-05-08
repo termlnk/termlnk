@@ -20,6 +20,8 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
 import { AgentCorePlugin } from '@termlnk/agent-core';
+import { AuthPlugin } from '@termlnk/auth';
+import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
 import { ElectronPlugin, IUpdaterService } from '@termlnk/electron';
@@ -29,6 +31,8 @@ import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IslandCorePlugin } from '@termlnk/island-core';
 import { RPCPlugin } from '@termlnk/rpc';
 import { IFileDialogService, RPCServerPlugin } from '@termlnk/rpc-server';
+import { SyncPlugin } from '@termlnk/sync';
+import { SyncCorePlugin } from '@termlnk/sync-core';
 import { chadracula } from '@termlnk/themes';
 import { app, protocol } from 'electron';
 import { dirname, join, relative } from 'pathe';
@@ -206,6 +210,15 @@ app.whenReady().then(async () => {
     ],
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
+
+  // Auth + Sync 契约层先于实现层注册（DependentOn 链：AuthCorePlugin → AuthPlugin + DatabasePlugin；
+  // SyncCorePlugin → SyncPlugin + AuthCorePlugin + DatabasePlugin）。
+  // ITokenRefresher / ISyncTransportService 暂用 contract 缺省 / Noop——Phase 3 网络层落地后
+  // 通过对应插件的 override 替换为 HTTP 实现。
+  core.registerPlugin(AuthPlugin);
+  core.registerPlugin(AuthCorePlugin);
+  core.registerPlugin(SyncPlugin);
+  core.registerPlugin(SyncCorePlugin);
 
   // Bundled skills must live outside app.asar — Node's fs APIs throw ENOENT
   // on asar virtual directory entries; extraResources drops them into
