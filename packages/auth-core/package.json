@@ -51,12 +51,14 @@
   "peerDependencies": {
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
     "@noble/hashes": "^2.2.0",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
     "hash-wasm": "^4.12.0",
     "secure-remote-password": "^0.3.1"
   },

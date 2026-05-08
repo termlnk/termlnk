@@ -26,4 +26,5 @@ export { IAuthService } from './services/auth.service';
 export { IMasterKeyService } from './services/master-key.service';
 export { ISrpClientService } from './services/srp-client.service';
 export type { ISrpClientSession, ISrpEnrollment, ISrpEphemeral } from './services/srp-client.service';
+export { ITokenRefresher } from './services/token-refresher.service';
 export { ITokenStorageService } from './services/token-storage.service';

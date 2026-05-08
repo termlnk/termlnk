@@ -647,6 +647,9 @@ importers:
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core
+      '@termlnk/database':
+        specifier: workspace:*
+        version: link:../database
       hash-wasm:
         specifier: ^4.12.0
         version: 4.12.0
