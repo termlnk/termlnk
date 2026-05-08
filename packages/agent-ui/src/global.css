@@ -32,14 +32,17 @@
     animation: tm-thinking-pulse 1.6s ease-in-out infinite;
   }
 
-  .tm-stream-cursor {
-    display: inline-block;
-    width: 0.45em;
-    height: 1em;
-    margin-left: 2px;
-    vertical-align: -0.1em;
-    background-color: currentColor;
-    animation: tm-stream-cursor-blink 1s step-end infinite;
+  .stream-char {
+    opacity: 0;
+    animation-name: tm-stream-fade;
+    animation-duration: 280ms;
+    animation-timing-function: cubic-bezier(0.33, 0, 0.67, 1);
+    animation-fill-mode: forwards;
+  }
+
+  .stream-char-revealed {
+    opacity: 1;
+    animation: none;
   }
 }
 
@@ -78,13 +81,12 @@
   }
 }
 
-@keyframes tm-stream-cursor-blink {
-  0%,
+@keyframes tm-stream-fade {
+  0% {
+    opacity: 0;
+  }
   100% {
     opacity: 1;
-  }
-  50% {
-    opacity: 0;
   }
 }
 
@@ -107,8 +109,9 @@
     opacity: 0.8;
   }
 
-  .tm-stream-cursor {
+  .stream-char,
+  .stream-char-revealed {
+    opacity: 1;
     animation: none;
-    opacity: 0.6;
   }
 }

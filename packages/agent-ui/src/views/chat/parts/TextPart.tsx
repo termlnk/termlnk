@@ -15,24 +15,17 @@
 
 import type { ITextPart } from '@termlnk/agent';
 import { memo } from 'react';
-import { MarkdownRenderer } from '../MarkdownRenderer';
-import { useSmoothStream } from '../use-smooth-stream';
+import { MarkdownRenderer } from '../markdown/MarkdownRenderer';
 
 interface ITextPartProps {
   part: ITextPart;
   isStreaming: boolean;
-  showStreamingCursor: boolean;
 }
 
-export const TextPart = memo(function TextPart({ part, isStreaming, showStreamingCursor }: ITextPartProps) {
-  const displayed = useSmoothStream(part.text, isStreaming);
-
+export const TextPart = memo(function TextPart({ part, isStreaming }: ITextPartProps) {
   return (
     <div className="tm:text-white">
-      <MarkdownRenderer content={displayed} isStreaming={isStreaming} />
-      {showStreamingCursor && (
-        <span className="tm-stream-cursor tm:text-nord-blue" aria-hidden />
-      )}
+      <MarkdownRenderer content={part.text} isStreaming={isStreaming} />
     </div>
   );
 });

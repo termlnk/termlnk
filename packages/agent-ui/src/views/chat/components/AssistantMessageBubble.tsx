@@ -167,13 +167,11 @@ export const AssistantMessageBubble = memo(function AssistantMessageBubble({ mes
                 switch (part.type) {
                   case 'text': {
                     const isLastText = index === lastTextIdx;
-                    const showCursor = isStreaming && isLastText && part.text.length > 0;
                     return (
                       <TextPart
                         key={`text-${index}`}
                         part={part}
                         isStreaming={isStreaming && isLastText}
-                        showStreamingCursor={showCursor}
                       />
                     );
                   }
