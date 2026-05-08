@@ -21,6 +21,7 @@ import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDepend
 import { DEFAULT_DB_ADAPTOR } from './config/config';
 import { DATABASE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
+import { BackupRepository } from './repositories/backup';
 import { ChatRepository } from './repositories/chat';
 import { ConfigRepository } from './repositories/config';
 import { HostRepository } from './repositories/host';
@@ -75,6 +76,7 @@ export class DatabasePlugin extends Plugin {
       [IDBAdaptorService, { useClass: dbAdaptor }],
       // 默认注册跨平台兜底加密器；apps/desktop/main 通过 config.override 替换为 SafeStorageCipher
       [ISecretCipherService, { useClass: LocalDerivedSecretCipher }],
+      [BackupRepository, { useClass: BackupRepository }],
       [ConfigRepository, { useClass: ConfigRepository }],
       [ChatRepository, { useClass: ChatRepository }],
       [HostRepository, { useClass: HostRepository }],

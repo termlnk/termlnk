@@ -27,6 +27,12 @@ export type { ISyncCursor, ISyncFieldMeta, ISyncMutation, ISyncPatchItem } from 
 export type { IResourceSyncStats, ISyncError, ISyncStats, SyncErrorCode } from './models/state';
 export { SynchroniserStatus, SyncState } from './models/state';
 export { SyncPlugin } from './plugin';
+export {
+  BACKUP_PAYLOAD_PREFIX,
+  BACKUP_PAYLOAD_VERSION,
+  IBackupService,
+} from './services/backup.service';
+export type { BackupImportMode, IBackupExportSummary, IBackupImportSummary } from './services/backup.service';
 export { ISyncCryptoService } from './services/crypto.service';
 export { ISyncOutboxService } from './services/outbox.service';
 export type { IResourceSynchroniser, IResourceSynchroniserFactory } from './services/resource-synchroniser';

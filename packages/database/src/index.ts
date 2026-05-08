@@ -22,6 +22,8 @@ export { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-
 export type { IEncryptSecretsResult } from './migrations/runtime/encrypt-secrets.runtime';
 export type { IConfigChangeEvent, IConfigEntry } from './models/config';
 export { DATABASE_PLUGIN_NAME, DatabasePlugin } from './plugin';
+export { BackupRepository } from './repositories/backup';
+export type { BackupImportMode, IBackupSnapshot } from './repositories/backup';
 export { ChatRepository } from './repositories/chat';
 export type { IChatSessionChangeEvent } from './repositories/chat';
 export { ConfigRepository } from './repositories/config';
