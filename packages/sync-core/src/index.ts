@@ -17,6 +17,8 @@ export { SYNC_CORE_PLUGIN_NAME, SyncCorePlugin } from './plugin';
 export type { ISyncCorePluginConfig } from './plugin';
 export { BackupService } from './services/backup.service';
 export { SyncCryptoService } from './services/crypto.service';
+export { HttpSyncTransportService } from './services/http-transport.service';
+export type { IHttpSyncTransportConfig } from './services/http-transport.service';
 export { NoopSyncTransportService } from './services/noop-transport.service';
 export { SyncOutboxService } from './services/outbox.service';
 export { SyncService } from './services/sync.service';

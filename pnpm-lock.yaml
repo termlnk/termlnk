@@ -668,6 +668,9 @@ importers:
       secure-remote-password:
         specifier: ^0.3.1
         version: 0.3.1
+      undici:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
       '@termlnk/shared':
         specifier: workspace:*
@@ -696,9 +699,6 @@ importers:
       '@termlnk/design':
         specifier: workspace:*
         version: link:../design
-      '@termlnk/ui':
-        specifier: workspace:*
-        version: link:../ui
       lucide-react:
         specifier: ^1.14.0
         version: 1.14.0(react@19.2.5)
@@ -1581,6 +1581,9 @@ importers:
       '@termlnk/auth':
         specifier: workspace:*
         version: link:../auth
+      '@termlnk/auth-core':
+        specifier: workspace:*
+        version: link:../auth-core
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core
@@ -1590,10 +1593,10 @@ importers:
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../sync
+      undici:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
-      '@termlnk/auth-core':
-        specifier: workspace:*
-        version: link:../auth-core
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared

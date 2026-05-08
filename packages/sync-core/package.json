@@ -59,9 +59,11 @@
     "@noble/ciphers": "^2.2.0",
     "@noble/hashes": "^2.2.0",
     "@termlnk/auth": "workspace:*",
+    "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
-    "@termlnk/sync": "workspace:*"
+    "@termlnk/sync": "workspace:*",
+    "undici": "^8.2.0"
   },
   "devDependencies": {
     "@termlnk/auth-core": "workspace:*",
