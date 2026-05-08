@@ -1529,6 +1529,9 @@ importers:
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core
+      '@termlnk/database':
+        specifier: workspace:*
+        version: link:../database
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../sync

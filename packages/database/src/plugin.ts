@@ -28,6 +28,7 @@ import { McpOAuthTokenRepository } from './repositories/mcp-oauth-token';
 import { McpServerRepository } from './repositories/mcp-server';
 import { ProviderRepository } from './repositories/provider';
 import { SkillRepository } from './repositories/skill';
+import { SyncOutboxRepository } from './repositories/sync-outbox';
 import { TerminalSessionBackupRepository } from './repositories/terminal-session-backup';
 import { IDBAdaptorService } from './services/db-adaptor.service';
 import { ISecretCipherService } from './services/secret-cipher.service';
@@ -81,6 +82,7 @@ export class DatabasePlugin extends Plugin {
       [McpOAuthTokenRepository, { useClass: McpOAuthTokenRepository }],
       [ProviderRepository, { useClass: ProviderRepository }],
       [SkillRepository, { useClass: SkillRepository }],
+      [SyncOutboxRepository, { useClass: SyncOutboxRepository }],
       [TerminalSessionBackupRepository, { useClass: TerminalSessionBackupRepository }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));

@@ -14,3 +14,4 @@
  */
 
 export { SyncCryptoService } from './services/crypto.service';
+export { SyncOutboxService } from './services/outbox.service';

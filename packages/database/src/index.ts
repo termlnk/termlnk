@@ -16,8 +16,8 @@
 export { DEFAULT_DB_ADAPTOR } from './config/config';
 export { DATABASE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IDatabaseConfig } from './controllers/config.schema';
-export { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity, chatMessageEntity, chatSessionEntity, configEntity, hostEntity, mcpOAuthTokenEntity, mcpServerEntity, skillEntity, terminalSessionBackupEntity } from './entities';
-export type { IAICustomModelEntity, IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntity, IAIProviderModelEntityInsert, IChatMessageEntity, IChatMessageEntityInsert, IChatSessionEntity, IChatSessionEntityInsert, IConfigEntity, IConfigEntityInsert, IHostEntity, IHostEntityInsert, IMcpOAuthTokenEntity, IMcpOAuthTokenEntityInsert, IMcpServerEntity, IMcpServerEntityInsert, ISkillEntity, ISkillEntityInsert, ITerminalSessionBackupEntity, ITerminalSessionBackupEntityInsert } from './entities';
+export { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity, chatMessageEntity, chatSessionEntity, configEntity, hostEntity, mcpOAuthTokenEntity, mcpServerEntity, skillEntity, syncCursorEntity, syncFieldMetaEntity, syncOutboxEntity, syncRowMetaEntity, terminalSessionBackupEntity } from './entities';
+export type { IAICustomModelEntity, IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntity, IAIProviderModelEntityInsert, IChatMessageEntity, IChatMessageEntityInsert, IChatSessionEntity, IChatSessionEntityInsert, IConfigEntity, IConfigEntityInsert, IHostEntity, IHostEntityInsert, IMcpOAuthTokenEntity, IMcpOAuthTokenEntityInsert, IMcpServerEntity, IMcpServerEntityInsert, ISkillEntity, ISkillEntityInsert, ISyncCursorEntity, ISyncCursorEntityInsert, ISyncFieldMetaEntity, ISyncFieldMetaEntityInsert, ISyncOutboxEntity, ISyncOutboxEntityInsert, ISyncRowMetaEntity, ISyncRowMetaEntityInsert, ITerminalSessionBackupEntity, ITerminalSessionBackupEntityInsert } from './entities';
 export { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
 export type { IEncryptSecretsResult } from './migrations/runtime/encrypt-secrets.runtime';
 export type { IConfigChangeEvent, IConfigEntry } from './models/config';
@@ -31,6 +31,7 @@ export { McpServerRepository } from './repositories/mcp-server';
 export { ProviderRepository } from './repositories/provider';
 export type { IProviderChangeEvent } from './repositories/provider';
 export { SkillRepository } from './repositories/skill';
+export { SyncOutboxRepository } from './repositories/sync-outbox';
 export { TerminalSessionBackupRepository } from './repositories/terminal-session-backup';
 export { IDBAdaptorService } from './services/db-adaptor.service';
 export { SQLiteAdaptor } from './services/db-adaptor/sqlite.adaptor';

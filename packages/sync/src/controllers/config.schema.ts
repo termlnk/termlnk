@@ -37,6 +37,15 @@ export interface ISyncPluginConfig {
    * 首次启动时随机生成并持久化到 sync_cursor 表附属。
    */
   clientId?: string;
+
+  /**
+   * 内部状态——本设备最近一次发出的 client_mut_id（per-device monotonic）。
+   *
+   * 由 SyncOutboxService 通过 ConfigRepository.setField 持久化；启动时读取以避免
+   * outbox 被 ack 清空后重新从 0 开始重复利用旧 ID。**禁止用户手动修改**——
+   * 改它会让服务端去重失效甚至产生 mutation 覆写。
+   */
+  lastClientMutId?: number;
 }
 
 export const defaultPluginConfig: ISyncPluginConfig = {

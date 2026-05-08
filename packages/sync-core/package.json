@@ -51,6 +51,7 @@
   "peerDependencies": {
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "rxjs": ">=7.0.0"
   },
@@ -59,6 +60,7 @@
     "@noble/hashes": "^2.2.0",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
     "@termlnk/sync": "workspace:*"
   },
   "devDependencies": {
