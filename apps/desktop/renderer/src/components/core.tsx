@@ -16,6 +16,8 @@
 import type { ICoreConfig } from '@termlnk/core';
 import type { ITerminalUIConfig } from '@termlnk/terminal-ui';
 import { AgentUIPlugin } from '@termlnk/agent-ui';
+import { AuthPlugin } from '@termlnk/auth';
+import { AuthUIPlugin } from '@termlnk/auth-ui';
 import { Core, LocaleType, LogLevel, merge } from '@termlnk/core';
 import { ElectronPlugin } from '@termlnk/electron';
 import { ElectronRendererPlugin, UpdaterUIPlugin } from '@termlnk/electron-renderer';
@@ -25,6 +27,8 @@ import { RPCPlugin } from '@termlnk/rpc';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { SettingsUIPlugin } from '@termlnk/settings-ui';
 import { SFTPUIPlugin } from '@termlnk/sftp-ui';
+import { SyncPlugin } from '@termlnk/sync';
+import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
 import { TerminalUIPlugin } from '@termlnk/terminal-ui';
 import { chadracula } from '@termlnk/themes';
@@ -63,6 +67,13 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   const core = new Core(defaultOptions);
   core.registerPlugin(RPCPlugin);
   core.registerPlugin(RPCClientPlugin);
+  // Auth + Sync 契约 + UI（与主进程对应；架构 §7.1）。Quantity.OPTIONAL 注入
+  // 让 IAuthClientService 未注册时 AuthGate 渲染降级占位——主进程 cloudBaseUrl
+  // 不配置时该路径自然走，组件不会崩溃
+  core.registerPlugin(AuthPlugin);
+  core.registerPlugin(AuthUIPlugin);
+  core.registerPlugin(SyncPlugin);
+  core.registerPlugin(SyncUIPlugin);
   core.registerPlugin(UIPlugin, {
     container: ref!,
   });

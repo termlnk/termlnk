@@ -293,6 +293,12 @@ importers:
       '@termlnk/agent-ui':
         specifier: workspace:*
         version: link:../../../packages/agent-ui
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../../packages/auth
+      '@termlnk/auth-ui':
+        specifier: workspace:*
+        version: link:../../../packages/auth-ui
       '@termlnk/core':
         specifier: workspace:*
         version: link:../../../packages/core
@@ -329,6 +335,12 @@ importers:
       '@termlnk/sftp-ui':
         specifier: workspace:*
         version: link:../../../packages/sftp-ui
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../../../packages/sync
+      '@termlnk/sync-ui':
+        specifier: workspace:*
+        version: link:../../../packages/sync-ui
       '@termlnk/terminal':
         specifier: workspace:*
         version: link:../../../packages/terminal

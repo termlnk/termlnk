@@ -18,6 +18,7 @@ import { AuthCorePlugin, TokenManager } from '@termlnk/auth-core';
 import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService, SyncPlugin } from '@termlnk/sync';
+import { AuthSyncBridgeController } from './controllers/auth-sync-bridge.controller';
 import { SynchroniserRegistrationController } from './controllers/synchroniser-registration.controller';
 import { BackupService } from './services/backup.service';
 import { SyncCryptoService } from './services/crypto.service';
@@ -111,6 +112,7 @@ export class SyncCorePlugin extends Plugin {
 
       // 注册控制器
       [SynchroniserRegistrationController],
+      [AuthSyncBridgeController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
   }
@@ -131,8 +133,10 @@ export class SyncCorePlugin extends Plugin {
   }
 
   override onReady(): void {
-    // touch SynchroniserRegistrationController 触发其构造，将 synchroniser 注入 SyncService
+    // touch SynchroniserRegistrationController + AuthSyncBridgeController：
+    // 前者把 synchroniser 注入 SyncService；后者订阅 IAuthService.authState$
     touchDependencies(this._injector, [
+      [AuthSyncBridgeController],
       [SynchroniserRegistrationController],
     ]);
   }
