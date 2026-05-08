@@ -15,6 +15,7 @@
 
 import { agentMonitorRouter } from './routers/agent-monitor';
 import { aiRouter } from './routers/ai';
+import { authRouter } from './routers/auth';
 import { chatRouter } from './routers/chat';
 import { configRouter } from './routers/config';
 import { extensionRouter } from './routers/extension';
@@ -36,6 +37,7 @@ import { router } from './trpc';
 export const appRouter = router({
   agentMonitor: agentMonitorRouter,
   ai: aiRouter,
+  auth: authRouter,
   chat: chatRouter,
   config: configRouter,
   host: hostRouter,

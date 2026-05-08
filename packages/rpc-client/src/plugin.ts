@@ -16,6 +16,7 @@
 import type { Dependency } from '@termlnk/core';
 import type { IRPCClientConfig } from './controllers/config.schema';
 import { IMcpRegistryService, IMcpService, ISkillService } from '@termlnk/agent';
+import { IAuthClientService } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { INotifyService, RPCPlugin } from '@termlnk/rpc';
 import { IPTYService } from '@termlnk/terminal';
@@ -23,6 +24,7 @@ import { defaultPluginConfig, RPC_CLIENT_PLUGIN_CONFIG_KEY } from './controllers
 import { AIAgentClientService, IAIAgentClientService } from './services/ai/ai-agent-client.service';
 import { ChatSessionClientService, IChatSessionClientService } from './services/ai/chat-session-client.service';
 import { IProviderConfigClientService, ProviderConfigClientService } from './services/ai/provider-config-client.service';
+import { AuthClientService } from './services/auth/auth-client.service';
 import { ConfigManagerService, IConfigManagerService } from './services/config/config-manager.service';
 import { ExtensionClientService, IExtensionClientService } from './services/extension/extension-client.service';
 import { FileTransferClientService, IFileTransferClientService } from './services/file-transfer/file-transfer.service';
@@ -72,6 +74,7 @@ export class RPCClientPlugin extends Plugin {
   private _registerDependencies() {
     const dependencies: Dependency[] = [
       [IAIAgentClientService, { useClass: AIAgentClientService }],
+      [IAuthClientService, { useClass: AuthClientService }],
       [IChatSessionClientService, { useClass: ChatSessionClientService }],
       [IProviderConfigClientService, { useClass: ProviderConfigClientService }],
       [IConfigManagerService, { useClass: ConfigManagerService }],

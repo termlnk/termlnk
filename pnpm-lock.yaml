@@ -1321,6 +1321,9 @@ importers:
       '@termlnk/agent':
         specifier: workspace:*
         version: link:../agent
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core
@@ -1364,6 +1367,9 @@ importers:
       '@termlnk/agent':
         specifier: workspace:*
         version: link:../agent
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core

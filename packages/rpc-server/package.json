@@ -50,6 +50,7 @@
   },
   "peerDependencies": {
     "@termlnk/agent": "workspace:*",
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/extension": "workspace:*",
@@ -63,6 +64,7 @@
   "dependencies": {
     "@sinclair/typebox": "^0.34.49",
     "@termlnk/agent": "workspace:*",
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/extension": "workspace:*",
