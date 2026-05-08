@@ -268,7 +268,7 @@ export const aiRouter = router({
     .subscription(async function* ({ ctx }) {
       const providerService = ctx.injector.get(ILLMProviderService);
       yield* observableToAsyncGenerator(
-        providerService.activeProvider$.pipe(map((c) => sanitizeProviderUserConfig(c)))
+        providerService.activeProvider$.pipe(map(sanitizeProviderUserConfig))
       );
     }),
 

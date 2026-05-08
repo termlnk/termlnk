@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IHost } from '@termlnk/terminal';
+import type { ICredential, IHost } from '@termlnk/terminal';
 import type { ITerminalViewProps } from '../../services/terminal/terminal-view-registry.service';
 import { LocaleService } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
@@ -193,10 +193,10 @@ export function TerminalView(props: ITerminalViewProps) {
         if (host?.type === HostType.HOST) {
           const normalized = host as IHost;
           setHostInfo(normalized);
-          // host 经 tRPC 脱敏后 credential 仅含 type/username + hasPassword/hasPrivateKey 占位符；
-          // 用 hasPassword 判断是否已配置密码（而非检查 password 字段，已脱敏不存在）
-          const credAsPublic = normalized.credential as unknown as { type?: string; hasPassword?: boolean } | null;
-          const needsPassword = credAsPublic?.type === 'password' && !credAsPublic.hasPassword;
+          // host 经 tRPC 脱敏后 credential 仅含 type/username + hasPassword/hasPrivateKey 占位符——
+          // IHost 类型签名是历史遗留，runtime 实际是脱敏版；此处用 intersection cast 访问占位符
+          const cred = normalized.credential as (ICredential & { hasPassword?: boolean }) | null;
+          const needsPassword = cred?.type === 'password' && !cred.hasPassword;
           setRequiresPassword(needsPassword);
         }
       })

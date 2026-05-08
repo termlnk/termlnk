@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { McpServerConfig } from '@termlnk/agent';
 import type { ICredential } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../../entities';
@@ -153,19 +154,12 @@ export async function runEncryptSecretsRuntimeMigration(
   return result;
 }
 
-/** 判断 mcp_server.config 是否还有未加密的敏感字段（env/headers 任一 value 是明文即视为需迁移）*/
-function _mcpConfigNeedsEncryption(config: { type: string; [k: string]: unknown }): boolean {
-  if (config.type === 'stdio' && config.env && typeof config.env === 'object') {
-    return Object.values(config.env as Record<string, string>).some(
-      (v) => typeof v === 'string' && v !== '' && !isEncrypted(v)
-    );
-  }
-  if (config.type === 'http' && config.headers && typeof config.headers === 'object') {
-    return Object.values(config.headers as Record<string, string>).some(
-      (v) => typeof v === 'string' && v !== '' && !isEncrypted(v)
-    );
-  }
-  return false;
+/** 判断 mcp_server.config 是否还有未加密的敏感字段（env/headers 任一 value 是明文即视为需迁移） */
+function _mcpConfigNeedsEncryption(config: McpServerConfig): boolean {
+  const sensitive = config.type === 'stdio'
+    ? config.env
+    : config.headers;
+  return Object.values(sensitive ?? {}).some((v) => v !== '' && !isEncrypted(v));
 }
 
 /** 判断 host.credential 是否还有未加密的敏感字段 */

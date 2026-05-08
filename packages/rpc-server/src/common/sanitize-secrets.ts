@@ -26,11 +26,10 @@ import type { ICredential, IProxy } from '@termlnk/terminal';
  * 设计要点：
  * - 保留**用户可见的非敏感字段**（type / username / addr / port）以便 UI 渲染列表
  * - 用 `hasXxx: boolean` 占位符告诉 UI"该字段已配置"，不暴露任何明文/校验和/长度
- * - 类型推导由 tRPC `inferRouterOutputs` 自动跟踪，渲染端无需手写脱敏类型
+ * - 类型推导由 tRPC `inferRouterOutputs` 自动跟踪，渲染端无需引用本文件的中间类型
  */
 
-/** 仅 type / username + 占位符的安全凭据 */
-export interface IPublicCredential {
+interface IPublicCredential {
   type: ICredential['type'];
   username: string;
   hasPassword?: boolean;
@@ -46,26 +45,20 @@ export function sanitizeCredential(credential: ICredential | null | undefined): 
       return {
         type: 'password',
         username: credential.username,
-        hasPassword: !!credential.password && credential.password !== '',
+        hasPassword: !!credential.password,
       };
     case 'rsa':
       return {
         type: 'rsa',
         username: credential.username,
-        hasPrivateKey: !!credential.privateKey && credential.privateKey !== '',
+        hasPrivateKey: !!credential.privateKey,
       };
     case 'always':
-      return {
-        type: 'always',
-        username: credential.username,
-      };
-    default:
-      return null;
+      return { type: 'always', username: credential.username };
   }
 }
 
-/** 仅 host/port/type/username + hasPassword 占位符的安全代理 */
-export interface IPublicProxy extends Omit<IProxy, 'password'> {
+interface IPublicProxy extends Omit<IProxy, 'password'> {
   hasPassword: boolean;
 }
 
@@ -74,14 +67,10 @@ export function sanitizeProxy(proxy: IProxy | null | undefined): IPublicProxy | 
     return null;
   }
   const { password, ...rest } = proxy;
-  return {
-    ...rest,
-    hasPassword: !!password && password !== '',
-  };
+  return { ...rest, hasPassword: !!password };
 }
 
-/** 完整 host 实体脱敏版本（用于 host.getInfo / tree / list 等输出） */
-export type IPublicHostEntity = Omit<IHostEntity, 'credential' | 'proxy'> & {
+type IPublicHostEntity = Omit<IHostEntity, 'credential' | 'proxy'> & {
   credential: IPublicCredential | null;
   proxy: IPublicProxy | null;
 };
@@ -98,8 +87,7 @@ export function sanitizeHostEntities<T extends IHostEntity>(entities: T[]): IPub
   return entities.map((entity) => sanitizeHostEntity(entity));
 }
 
-/** 树结构递归脱敏（保留 children 字段） */
-export interface IPublicHostTreeNode extends IPublicHostEntity {
+interface IPublicHostTreeNode extends IPublicHostEntity {
   children: IPublicHostTreeNode[];
 }
 
@@ -114,35 +102,29 @@ export function sanitizeHostTree(nodes: Array<IHostEntity & { children: any[] }>
 // AI Provider
 // ---------------------------------------------------------------------------
 
-/** 不含 apiKey 的 provider 实体（用于 ai.getProviders / activeProvider$ 等输出） */
-export type IPublicProviderEntity = Omit<IAIProviderEntity, 'apiKey'> & {
+type IPublicProviderEntity = Omit<IAIProviderEntity, 'apiKey'> & {
   apiKeyConfigured: boolean;
 };
 
 export function sanitizeProviderEntity(entity: IAIProviderEntity): IPublicProviderEntity {
   const { apiKey, ...rest } = entity;
-  return {
-    ...rest,
-    apiKeyConfigured: !!apiKey && apiKey !== '',
-  };
+  return { ...rest, apiKeyConfigured: !!apiKey };
 }
 
 export function sanitizeProviderEntities(entities: IAIProviderEntity[]): IPublicProviderEntity[] {
   return entities.map(sanitizeProviderEntity);
 }
 
-/** 不含 apiKey 的 provider 用户配置（活跃 provider 推送使用） */
-export type IPublicProviderUserConfig = Omit<IProviderUserConfig, 'apiKey'> & {
+type IPublicProviderUserConfig = Omit<IProviderUserConfig, 'apiKey'> & {
   apiKeyConfigured: boolean;
 };
 
-export function sanitizeProviderUserConfig(config: IProviderUserConfig | null | undefined): IPublicProviderUserConfig | null {
+export function sanitizeProviderUserConfig(
+  config: IProviderUserConfig | null | undefined
+): IPublicProviderUserConfig | null {
   if (!config) {
     return null;
   }
   const { apiKey, ...rest } = config;
-  return {
-    ...rest,
-    apiKeyConfigured: !!apiKey && apiKey !== '',
-  };
+  return { ...rest, apiKeyConfigured: !!apiKey };
 }

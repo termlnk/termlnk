@@ -198,9 +198,11 @@ describe('credentialMasker', () => {
       expect(decryptIfNeeded('', cipher)).toBe('');
     });
 
-    it('returns null/undefined as empty string', () => {
-      expect(encryptIfNeeded(null, cipher)).toBe('');
-      expect(encryptIfNeeded(undefined, cipher)).toBe('');
+    it('returns null for null/undefined input', () => {
+      expect(encryptIfNeeded(null, cipher)).toBeNull();
+      expect(encryptIfNeeded(undefined, cipher)).toBeNull();
+      expect(decryptIfNeeded(null, cipher)).toBeNull();
+      expect(decryptIfNeeded(undefined, cipher)).toBeNull();
     });
 
     it('idempotent: does not re-encrypt already encrypted', () => {

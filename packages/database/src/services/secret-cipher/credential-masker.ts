@@ -36,22 +36,12 @@ export function encryptCredential(
   if (!credential) {
     return null;
   }
-
   switch (credential.type) {
     case 'password':
-      return {
-        ...credential,
-        password: encryptIfNeeded(credential.password, cipher),
-      };
+      return { ...credential, password: encryptIfNeeded(credential.password, cipher) };
     case 'rsa':
-      return {
-        ...credential,
-        privateKey: encryptIfNeeded(credential.privateKey, cipher),
-      };
+      return { ...credential, privateKey: encryptIfNeeded(credential.privateKey, cipher) };
     case 'always':
-      return credential;
-    default:
-      // 未来新类型：保持类型安全，编译期会强制处理
       return credential;
   }
 }
@@ -64,21 +54,12 @@ export function decryptCredential(
   if (!credential) {
     return null;
   }
-
   switch (credential.type) {
     case 'password':
-      return {
-        ...credential,
-        password: decryptIfNeeded(credential.password, cipher),
-      };
+      return { ...credential, password: decryptIfNeeded(credential.password, cipher) };
     case 'rsa':
-      return {
-        ...credential,
-        privateKey: decryptIfNeeded(credential.privateKey, cipher),
-      };
+      return { ...credential, privateKey: decryptIfNeeded(credential.privateKey, cipher) };
     case 'always':
-      return credential;
-    default:
       return credential;
   }
 }
@@ -117,29 +98,35 @@ export function decryptProxy(
   };
 }
 
-/** 加密单个字符串字段（如 ai_provider.apiKey）；空值或已加密值原样返回 */
-export function encryptIfNeeded(
-  value: string | null | undefined,
-  cipher: ISecretCipherService
-): string {
-  if (value == null || value === '') {
-    return value ?? '';
+/**
+ * 加密单个字符串字段（如 ai_provider.apiKey）。
+ *
+ * Nullability 透传：
+ * - 输入 string → 输出 string（用于 ICredential.password 等必填字段）
+ * - 输入 string | null | undefined → 输出 string | null（用于可空数据库字段）
+ *
+ * 空字符串（'')与已加密值原样返回——空字符串不会触发加密，已加密保持幂等。
+ */
+export function encryptIfNeeded(value: string, cipher: ISecretCipherService): string;
+export function encryptIfNeeded(value: string | null | undefined, cipher: ISecretCipherService): string | null;
+export function encryptIfNeeded(value: string | null | undefined, cipher: ISecretCipherService): string | null {
+  if (value == null) {
+    return null;
   }
-  if (isEncrypted(value)) {
+  if (value === '' || isEncrypted(value)) {
     return value;
   }
   return cipher.encrypt(value);
 }
 
-/** 解密单个字符串字段；空值或未加密值原样返回 */
-export function decryptIfNeeded(
-  value: string | null | undefined,
-  cipher: ISecretCipherService
-): string {
-  if (value == null || value === '') {
-    return value ?? '';
+/** 解密单个字符串字段；nullability 同 encryptIfNeeded */
+export function decryptIfNeeded(value: string, cipher: ISecretCipherService): string;
+export function decryptIfNeeded(value: string | null | undefined, cipher: ISecretCipherService): string | null;
+export function decryptIfNeeded(value: string | null | undefined, cipher: ISecretCipherService): string | null {
+  if (value == null) {
+    return null;
   }
-  if (!isEncrypted(value)) {
+  if (value === '' || !isEncrypted(value)) {
     return value;
   }
   return cipher.decrypt(value);
@@ -207,13 +194,13 @@ export function decryptMcpConfig(
   return config;
 }
 
-function mapValues<T extends string | undefined>(
-  record: Record<string, T>,
-  fn: (value: T) => T
-): Record<string, T> {
-  const out: Record<string, T> = {};
+function mapValues(
+  record: Record<string, string>,
+  fn: (value: string) => string
+): Record<string, string> {
+  const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(record)) {
-    out[k] = fn(v as T);
+    out[k] = fn(v);
   }
   return out;
 }

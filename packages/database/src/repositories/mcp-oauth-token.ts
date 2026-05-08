@@ -48,10 +48,10 @@ export class McpOAuthTokenRepository extends Disposable {
   private _decryptEntity(entity: IMcpOAuthTokenEntity): IMcpOAuthTokenEntity {
     return {
       ...entity,
-      accessToken: decryptIfNeeded(entity.accessToken, this._cipher) || null,
-      refreshToken: decryptIfNeeded(entity.refreshToken, this._cipher) || null,
-      clientSecret: decryptIfNeeded(entity.clientSecret, this._cipher) || null,
-      codeVerifier: decryptIfNeeded(entity.codeVerifier, this._cipher) || null,
+      accessToken: decryptIfNeeded(entity.accessToken, this._cipher),
+      refreshToken: decryptIfNeeded(entity.refreshToken, this._cipher),
+      clientSecret: decryptIfNeeded(entity.clientSecret, this._cipher),
+      codeVerifier: decryptIfNeeded(entity.codeVerifier, this._cipher),
     };
   }
 
@@ -59,16 +59,16 @@ export class McpOAuthTokenRepository extends Disposable {
   private _encryptPayload<T extends Partial<IMcpOAuthTokenEntityInsert>>(payload: T): T {
     const out = { ...payload };
     if (Object.hasOwn(payload, 'accessToken')) {
-      out.accessToken = encryptIfNeeded(payload.accessToken, this._cipher) || null;
+      out.accessToken = encryptIfNeeded(payload.accessToken, this._cipher);
     }
     if (Object.hasOwn(payload, 'refreshToken')) {
-      out.refreshToken = encryptIfNeeded(payload.refreshToken, this._cipher) || null;
+      out.refreshToken = encryptIfNeeded(payload.refreshToken, this._cipher);
     }
     if (Object.hasOwn(payload, 'clientSecret')) {
-      out.clientSecret = encryptIfNeeded(payload.clientSecret, this._cipher) || null;
+      out.clientSecret = encryptIfNeeded(payload.clientSecret, this._cipher);
     }
     if (Object.hasOwn(payload, 'codeVerifier')) {
-      out.codeVerifier = encryptIfNeeded(payload.codeVerifier, this._cipher) || null;
+      out.codeVerifier = encryptIfNeeded(payload.codeVerifier, this._cipher);
     }
     return out;
   }
@@ -93,7 +93,7 @@ export class McpOAuthTokenRepository extends Disposable {
 
   async upsert(record: Omit<IMcpOAuthTokenEntityInsert, 'id'> & { id?: string }): Promise<string> {
     const id = record.id || generateId();
-    const payload = this._encryptPayload({ ...record, id } as IMcpOAuthTokenEntityInsert);
+    const payload = this._encryptPayload({ ...record, id });
     await this._db
       .insert(mcpOAuthTokenEntity)
       .values(payload)

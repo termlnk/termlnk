@@ -36,16 +36,12 @@ export class AIAgentController extends RxDisposable {
 
   private _setupModelSync(): void {
     const sub = this._providerConfigService.activeModel$.pipe(
-      filter((model) => model !== null),
-      distinctUntilChanged((prev, next) => prev?.id === next?.id)
+      filter((model): model is NonNullable<typeof model> => model !== null),
+      distinctUntilChanged((prev, next) => prev.id === next.id)
     ).subscribe((model) => {
-      if (!model) {
-        return;
-      }
       // 模型 ID 形如 "provider/modelId"
-      const parts = model.id.split('/');
-      const providerId = parts[0];
-      const modelId = parts.slice(1).join('/');
+      const [providerId, ...rest] = model.id.split('/');
+      const modelId = rest.join('/');
       this._aiAgentService.setModel(providerId, modelId).catch((err) => {
         console.error('[AIAgentController] setModel failed:', err);
       });

@@ -40,10 +40,7 @@ export class AIKeySyncController extends Disposable {
     this.disposeWithMe(
       this._providerService.activeProvider$.subscribe({
         next: (provider) => {
-          if (!provider) {
-            return;
-          }
-          if (typeof provider.apiKey === 'string' && provider.apiKey !== '') {
+          if (provider?.apiKey) {
             this._aiAgentService.setApiKey(provider.providerId, provider.apiKey);
           }
         },

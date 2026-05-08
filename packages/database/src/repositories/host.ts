@@ -466,11 +466,9 @@ export class HostRepository extends Disposable {
   }
 
   /**
-   * 当 incoming credential 的敏感字段为空时（password === '' / privateKey === ''），
-   * 使用 existing 中的对应敏感字段；其他字段（type / username）按 incoming 覆盖。
-   *
-   * 类型变化（password ↔ rsa）且新值非空：完全使用 incoming。
-   * 类型变化但新敏感字段为空：抛错（UI 应当保证类型切换时强制要求新值）。
+   * 当 incoming credential 的敏感字段为空时（password / privateKey 为空字符串），
+   * 沿用 existing 同类型字段；其他情况按 incoming 完全覆盖。
+   * 类型切换（password ↔ rsa）但新敏感字段为空时抛错——UI 应当强制输入。
    */
   private _mergeCredentialKeepingOldSecrets(
     existing: IHostEntity['credential'],
@@ -479,40 +477,29 @@ export class HostRepository extends Disposable {
     if (incoming == null) {
       return null;
     }
-
-    if (incoming.type === 'always') {
-      return incoming;
-    }
-
-    const existingSameType = existing && existing.type === incoming.type ? existing : null;
-
-    if (incoming.type === 'password') {
-      const newPwd = incoming.password ?? '';
-      if (newPwd !== '') {
+    switch (incoming.type) {
+      case 'always':
         return incoming;
-      }
-      // 空 → 沿用旧密码
-      if (existingSameType && existingSameType.type === 'password') {
-        return { ...incoming, password: existingSameType.password };
-      }
-      throw new Error('[HostRepository] Password credential changed type but no password provided');
+      case 'password':
+        if (incoming.password) {
+          return incoming;
+        }
+        if (existing?.type === 'password') {
+          return { ...incoming, password: existing.password };
+        }
+        throw new Error('[HostRepository] Password credential changed type but no password provided');
+      case 'rsa':
+        if (incoming.privateKey) {
+          return incoming;
+        }
+        if (existing?.type === 'rsa') {
+          return { ...incoming, privateKey: existing.privateKey };
+        }
+        throw new Error('[HostRepository] RSA credential changed type but no privateKey provided');
     }
-
-    if (incoming.type === 'rsa') {
-      const newKey = incoming.privateKey ?? '';
-      if (newKey !== '') {
-        return incoming;
-      }
-      if (existingSameType && existingSameType.type === 'rsa') {
-        return { ...incoming, privateKey: existingSameType.privateKey };
-      }
-      throw new Error('[HostRepository] RSA credential changed type but no privateKey provided');
-    }
-
-    return incoming;
   }
 
-  /** Proxy 密码同语义：空字符串 → 保留旧；非空 → 覆盖 */
+  /** Proxy 密码同语义：空 → 沿用旧；非空 → 覆盖 */
   private _mergeProxyKeepingOldSecret(
     existing: IHostEntity['proxy'],
     incoming: IHost['proxy'] | null | undefined
@@ -520,11 +507,10 @@ export class HostRepository extends Disposable {
     if (incoming == null) {
       return null;
     }
-    if (incoming.password && incoming.password !== '') {
+    if (incoming.password) {
       return incoming;
     }
-    // 没有新密码或为空：沿用旧密码（如果旧值结构同 host/port）
-    if (existing && existing.password) {
+    if (existing?.password) {
       return { ...incoming, password: existing.password };
     }
     return incoming;

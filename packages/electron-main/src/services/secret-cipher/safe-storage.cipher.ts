@@ -30,16 +30,13 @@ import { safeStorage } from 'electron';
 export class SafeStorageCipher implements ISecretCipherService {
   readonly scheme: SecretCipherScheme;
 
-  /** 当 safeStorage 不可用时启用的兜底加密器 */
-  private readonly _fallback: LocalDerivedSecretCipher;
-  private readonly _useFallback: boolean;
+  /** Local-derived 兜底实例。永远存在：write 路径在 keystore 不可用时使用，read 路径用于解 local-derived scheme 旧密文。 */
+  private readonly _fallback = new LocalDerivedSecretCipher();
 
   constructor(@ILogService private readonly _logService: ILogService) {
-    this._fallback = new LocalDerivedSecretCipher();
-    this._useFallback = !safeStorage.isEncryptionAvailable();
-    this.scheme = this._useFallback ? 'local-derived' : 'safe-storage';
+    this.scheme = safeStorage.isEncryptionAvailable() ? 'safe-storage' : 'local-derived';
 
-    if (this._useFallback) {
+    if (this.scheme === 'local-derived') {
       this._logService.warn(
         '[SafeStorageCipher] OS keystore unavailable on this system; falling back to LocalDerivedSecretCipher. '
         + 'Install gnome-keyring (GNOME) or kwallet (KDE) on Linux for stronger protection.'
@@ -48,14 +45,14 @@ export class SafeStorageCipher implements ISecretCipherService {
   }
 
   isAvailable(): boolean {
-    return true; // 永远可用：要么走 safeStorage，要么走 local-derived
+    return true;
   }
 
   encrypt(plaintext: string): string {
     if (plaintext === '') {
       return '';
     }
-    if (this._useFallback) {
+    if (this.scheme === 'local-derived') {
       return this._fallback.encrypt(plaintext);
     }
 
@@ -79,15 +76,14 @@ export class SafeStorageCipher implements ISecretCipherService {
       [k: string]: unknown;
     };
 
-    // 解密时按 payload 自带 scheme 路由：能跨 scheme 平滑迁移
+    // 按 payload 自带 scheme 路由，支持跨 scheme 平滑迁移
     if (payload.scheme === 'local-derived') {
       return this._fallback.decrypt(ciphertext);
     }
 
     if (payload.scheme === 'safe-storage') {
-      if (this._useFallback) {
-        // safeStorage 加密的密文在不可用环境下读不到——返回空字符串避免 crash
-        // （这种情况只发生在用户从有 keystore 的环境换到无 keystore 的环境，理论上不应发生）
+      if (this.scheme === 'local-derived') {
+        // 用户从有 keystore 的环境切到无 keystore 环境（理论不应发生）；返回空避免崩溃
         this._logService.error(
           '[SafeStorageCipher] Cannot decrypt safe-storage ciphertext: OS keystore unavailable in current session'
         );
