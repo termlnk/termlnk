@@ -19,6 +19,7 @@ import { Button, useDependency, useObservable, useUpdateBinder } from '@termlnk/
 import { IUpdaterService, UpdateStatus } from '@termlnk/electron';
 import { ArrowRight } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { ReleaseNotesMarkdown } from './ReleaseNotesMarkdown';
 
 export const UPDATE_DIALOG_COMPONENT_NAME = 'electron-renderer.update-dialog';
 
@@ -80,11 +81,10 @@ export function UpdateDialog() {
           <div className="tm:text-xs tm:font-medium tm:text-white">{localeService.t('electron-renderer.updater.release-notes')}</div>
           <div
             className={`
-              tm:max-h-[160px] tm:overflow-y-auto tm:rounded-sm tm:border tm:border-line tm:bg-darker-black tm:p-3
-              tm:text-xs/relaxed tm:text-white
+              tm:max-h-[200px] tm:overflow-y-auto tm:rounded-sm tm:border tm:border-line tm:bg-darker-black tm:p-3
             `}
           >
-            <pre className="tm:font-sans tm:whitespace-pre-wrap">{updateInfo.releaseNotes}</pre>
+            <ReleaseNotesMarkdown content={updateInfo.releaseNotes} />
           </div>
         </div>
       )}
