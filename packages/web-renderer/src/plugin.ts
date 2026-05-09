@@ -19,7 +19,7 @@ import { DependentOn, IConfigService, Inject, InjectSelf, merge, mergeOverrideWi
 import { IUpdaterService, IWindowManagerService } from '@termlnk/electron';
 import { IRPCClientService, RPCClientPlugin } from '@termlnk/rpc-client';
 import { IBrowserFileTransferService } from '@termlnk/sftp-ui';
-import { UIPlugin } from '@termlnk/ui';
+import { IHostEnvironmentService, UIPlugin, WebHostEnvironmentService } from '@termlnk/ui';
 import { defaultPluginConfig, WEB_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { WebRPCClientService } from './services/rpc/web-rpc-client.service';
 import { BrowserFileTransferService } from './services/sftp/browser-file-transfer.service';
@@ -68,6 +68,11 @@ export class WebRendererPlugin extends Plugin {
       // surface the upload / download buttons that work against the user's
       // browser instead of the local filesystem.
       [IBrowserFileTransferService, { useClass: BrowserFileTransferService }],
+      // Settings UI / extension UI consult IHostEnvironmentService to decide
+      // whether to render Electron-only controls (system tray, OS auto-launch,
+      // power management). Quantity.OPTIONAL on the consumer side defaults to
+      // electron when this binding is absent — desktop never registers.
+      [IHostEnvironmentService, { useClass: WebHostEnvironmentService }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }

@@ -40,6 +40,8 @@ export { IMenuManagerService, MenuManagerService } from './services/menu/menu-ma
 export { mergeMenuConfigs } from './services/menu/menu-utils';
 export { BuiltInUIPart, IUIPartsService, UIPartsService } from './services/parts/parts.service';
 export type { ComponentRenderer } from './services/parts/parts.service';
+export { ElectronHostEnvironmentService, IHostEnvironmentService, MobileHostEnvironmentService, WebHostEnvironmentService } from './services/host-environment/host-environment.service';
+export type { HostEnvironment } from './services/host-environment/host-environment.service';
 export { IPlatformService, PlatformService } from './services/platform/platform.service';
 export { ResizableService } from './services/resizable/resizable.service';
 export { KeyCode, KeyCodeToChar, MetaKeys } from './services/shortcut/keycode';
