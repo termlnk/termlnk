@@ -14,8 +14,9 @@
  */
 
 import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
-import { DependentOn, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
+import { DependentOn, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { SyncPlugin } from '@termlnk/sync';
+import { SyncUIController } from './controllers/sync-ui.controller';
 
 export const SYNC_UI_PLUGIN_NAME = 'SYNC_UI_PLUGIN';
 
@@ -24,11 +25,11 @@ export interface ISyncUIPluginConfig {
 }
 
 /**
- * Sync UI 插件——同步状态面板的命名导出占位 plugin。
+ * Sync UI 插件——同步状态面板 + 命令注册中心。
  *
- * 与 AuthUIPlugin 同样保持轻量：组件（SyncStatusPanel）作为命名导出，
- * 由 settings-ui 或后续 controller 决定挂载位置。这里只承载 config 注册位
- * 让 desktop main bootstrap 能形式化注册。
+ * 组件（SyncStatusPanel / BackupCard）作为命名导出，由 settings-ui 决定挂载位置。
+ * 命令（sync.command.*）由 SyncUIController 在 onReady 阶段注册到 ICommandService，
+ * 给扩展 / 快捷键 / 脚本使用——架构 §7.3 给出的 ID 契约的兑现方。
  */
 @DependentOn(SyncPlugin)
 export class SyncUIPlugin extends Plugin {
@@ -42,7 +43,15 @@ export class SyncUIPlugin extends Plugin {
   }
 
   override onStarting(): void {
-    const dependencies: Dependency[] = [];
+    const dependencies: Dependency[] = [
+      [SyncUIController],
+    ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
+  }
+
+  override onReady(): void {
+    touchDependencies(this._injector, [
+      [SyncUIController],
+    ]);
   }
 }
