@@ -60,7 +60,7 @@ export function hexToBytes(hex: string): Uint8Array {
   for (let i = 0; i < out.length; i++) {
     const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
     if (Number.isNaN(byte)) {
-      throw new Error(`[hexToBytes] invalid hex at index ${i * 2}`);
+      throw new TypeError(`[hexToBytes] invalid hex at index ${i * 2}`);
     }
     out[i] = byte;
   }

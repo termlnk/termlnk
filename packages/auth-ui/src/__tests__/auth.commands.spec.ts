@@ -40,6 +40,7 @@ class FakeAuthClientService implements IAuthClientService {
   async logout(): Promise<void> {
     this.logoutCalls++;
   }
+
   async listDevices() { return []; }
   async revokeDevice(): Promise<void> {}
 }

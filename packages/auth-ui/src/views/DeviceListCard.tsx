@@ -54,7 +54,7 @@ export function DeviceListCard() {
 
   const authState = useObservable<AuthState>(
     authClient?.authState$ ?? null,
-    AuthState.Unauthenticated,
+    AuthState.Unauthenticated
   );
 
   const [devices, setDevices] = useState<readonly IDevice[]>([]);
@@ -200,8 +200,8 @@ function DeviceListItem({ device, revoking, onRevoke }: IDeviceListItemProps) {
   return (
     <li
       className={cn(`
-        tm:flex tm:items-start tm:justify-between tm:gap-3 tm:rounded-md tm:border tm:border-line
-        tm:bg-black2 tm:px-3 tm:py-2.5
+        tm:flex tm:items-start tm:justify-between tm:gap-3 tm:rounded-md tm:border tm:border-line tm:bg-black2 tm:px-3
+        tm:py-2.5
       `)}
     >
       <div className={cn('tm:flex tm:min-w-0 tm:items-start tm:gap-2.5')}>
@@ -264,7 +264,10 @@ function DeviceListItem({ device, revoking, onRevoke }: IDeviceListItemProps) {
               onClick={() => {
                 void onRevoke(device.id);
               }}
-              className={cn('tm:bg-red tm:text-white tm:hover:bg-red/90')}
+              className={cn(`
+                tm:bg-red tm:text-white
+                tm:hover:bg-red/90
+              `)}
             >
               {localeService.t('auth-ui.devices.revoke')}
             </AlertDialogAction>
