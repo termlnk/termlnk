@@ -1620,6 +1620,12 @@ importers:
       '@termlnk/shared-terminal':
         specifier: workspace:*
         version: link:../shared-terminal
+      '@xterm/addon-serialize':
+        specifier: ^0.15.0-beta.204
+        version: 0.15.0-beta.204(@xterm/xterm@6.1.0-beta.204)
+      '@xterm/headless':
+        specifier: ^6.1.0-beta.204
+        version: 6.1.0-beta.216
       tweetnacl:
         specifier: ^1.0.3
         version: 1.0.3
@@ -6945,6 +6951,9 @@ packages:
     resolution: {integrity: sha512-hTdqbpRFPHY21rc7apR0mLAyufiNJdqYU91fV95pNoxh/jKsgGQyebSljH8vY5JMf3TjioFw08Cfwte8qBr6gA==}
     peerDependencies:
       '@xterm/xterm': ^6.1.0-beta.204
+
+  '@xterm/headless@6.1.0-beta.216':
+    resolution: {integrity: sha512-HCut3ABwBv5zVUAB+5KVTW4svr/fCeVMW9xtaJIhmXZsNHOrhVFOGX7E2CYzRa8xdX/aI2JdTIhgLl8xjcHEoA==}
 
   '@xterm/xterm@6.1.0-beta.204':
     resolution: {integrity: sha512-NV6os+3b1xCG0IOZ5VpKNmiBU2E+y4ODTHo4hTxp178LsJDBoPDMuD/KfNvkYEkzN1NnWNu71P7+jounZzrnKQ==}
@@ -18921,6 +18930,8 @@ snapshots:
   '@xterm/addon-webgl@0.20.0-beta.203(@xterm/xterm@6.1.0-beta.204)':
     dependencies:
       '@xterm/xterm': 6.1.0-beta.204
+
+  '@xterm/headless@6.1.0-beta.216': {}
 
   '@xterm/xterm@6.1.0-beta.204': {}
 

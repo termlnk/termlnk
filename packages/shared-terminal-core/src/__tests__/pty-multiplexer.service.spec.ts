@@ -66,6 +66,18 @@ function ptyDataFrame(bytes: Uint8Array, seq = 0): IFrame {
   return { channel: FrameChannel.PtyData, flags: FrameFlag.None, seq, payload: bytes };
 }
 
+async function waitFor<T>(probe: () => T | undefined, timeoutMs = 1000): Promise<T> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const value = probe();
+    if (value !== undefined) {
+      return value;
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error('[waitFor] condition not met within timeout');
+}
+
 describe('PtyMultiplexerService', () => {
   let mux: PtyMultiplexerService;
   let outbound: IOutboundFrame[];
@@ -112,38 +124,35 @@ describe('PtyMultiplexerService', () => {
     expect(ptyFrames[0]!.frame.payload).toEqual(data);
   });
 
-  it('PTY output without attached clients still buffers in ring', async () => {
+  it('PTY output without attached clients still tracked by headless terminal', async () => {
     const { source, output$ } = createSource('s1');
     mux.register(source);
-    output$.next(new Uint8Array([1, 2, 3]));
-    output$.next(new Uint8Array([4, 5]));
+    output$.next(new TextEncoder().encode('hello '));
+    output$.next(new TextEncoder().encode('world'));
 
-    // attach later — snapshot should still contain those bytes (latin-1 decoded)
+    // attach later — snapshot should contain the printed text within the ANSI replay sequence
     mux.attachClient('s1', 'clientA', SharedTerminalRole.CoPilot);
     const snap = await mux.snapshot('s1');
-    expect(snap.serialized).toBe(String.fromCharCode(1, 2, 3, 4, 5));
+    expect(snap.serialized).toContain('hello world');
   });
 
   it('attachClient sends snapshot frame to that client only', async () => {
     const { source, output$ } = createSource('s1');
     mux.register(source);
-    output$.next(new Uint8Array([0xAA, 0xBB]));
+    output$.next(new TextEncoder().encode('greeting'));
     outbound = [];
 
     mux.attachClient('s1', 'clientA', SharedTerminalRole.CoPilot, 'Alice');
 
-    // snapshot 是 async 发送（snapshot() 返回 Promise），等一个 microtask
-    await Promise.resolve();
-    await Promise.resolve();
-
-    const snapshotFrame = outbound.find(
+    // snapshot 是 async 发送（headless serialize 需等 write flush）
+    // 等到指向 clientA 的 SessionEvent 帧出现，最长 1s
+    const snapshotFrame = await waitFor(() => outbound.find(
       (f) => f.target === 'clientA' && f.frame.channel === FrameChannel.SessionEvent
-    );
-    expect(snapshotFrame).toBeDefined();
-    const snap = JSON.parse(new TextDecoder().decode(snapshotFrame!.frame.payload));
+    ));
+    const snap = JSON.parse(new TextDecoder().decode(snapshotFrame.frame.payload));
     expect(snap.type).toBe('snapshot');
     expect(snap.sessionId).toBe('s1');
-    expect(snap.serialized).toBe(String.fromCharCode(0xAA, 0xBB));
+    expect(snap.serialized).toContain('greeting');
   });
 
   it('only driver clientId can write stdin to PTY; others are ignored', () => {
@@ -240,6 +249,26 @@ describe('PtyMultiplexerService', () => {
 
     mux.handleInbound('s1', 'a', controlFrame({ type: 'resize', cols: 100, rows: 30 }));
     expect(ts.resizes).toEqual([{ cols: 100, rows: 30 }]);
+  });
+
+  it('resize from driver also updates headless session size in snapshot', async () => {
+    const ts = createSource('s1');
+    mux.register(ts.source);
+    mux.attachClient('s1', 'a', SharedTerminalRole.CoPilot);
+    mux.setDriver('s1', 'a');
+
+    mux.handleInbound('s1', 'a', controlFrame({ type: 'resize', cols: 120, rows: 40 }));
+
+    const snap = await mux.snapshot('s1');
+    expect(snap.cols).toBe(120);
+    expect(snap.rows).toBe(40);
+
+    let last: readonly { cols: number; rows: number }[] = [];
+    mux.sessions$.subscribe((v) => {
+      last = v;
+    });
+    expect(last[0]!.cols).toBe(120);
+    expect(last[0]!.rows).toBe(40);
   });
 
   it('resize from non-driver is ignored', () => {

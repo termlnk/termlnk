@@ -18,4 +18,5 @@ export { SharedTerminalCorePlugin } from './plugin';
 export { SharedTerminalCryptoService } from './services/crypto.service';
 export { FrameCodecService } from './services/frame-codec.service';
 export { PtyMultiplexerService } from './services/pty-multiplexer.service';
+export { HeadlessSession } from './utils/headless-session';
 export { RingBuffer } from './utils/ring-buffer';

@@ -49,15 +49,15 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
-    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/shared-terminal": "workspace:*",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/shared-terminal": "workspace:*",
+    "@xterm/addon-serialize": "^0.15.0-beta.204",
+    "@xterm/headless": "^6.1.0-beta.204",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {

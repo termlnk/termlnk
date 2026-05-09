@@ -37,7 +37,11 @@ import {
   SharedSessionState,
 } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
+import { HeadlessSession } from '../utils/headless-session';
 import { RingBuffer } from '../utils/ring-buffer';
+
+/** 默认 snapshot 包含的 scrollback 行数——平衡保真度与帧体积。 */
+const DEFAULT_SNAPSHOT_SCROLLBACK_LINES = 1000;
 
 /**
  * 单个 session 的运行时状态。
@@ -45,6 +49,7 @@ import { RingBuffer } from '../utils/ring-buffer';
 interface ISessionRuntime {
   readonly source: IPtySource;
   readonly ringBuffer: RingBuffer;
+  readonly headless: HeadlessSession;
   readonly clients: Map<string, IClientEntry>;
   readonly participantsSubject: BehaviorSubject<readonly IParticipant[]>;
   readonly driverSubject: BehaviorSubject<IDriverState>;
@@ -53,6 +58,8 @@ interface ISessionRuntime {
   driverHeartbeatAt: number;
   driverLocked: boolean;
   state: SharedSessionState;
+  cols: number;
+  rows: number;
   readonly seqCounters: Record<FrameChannel, number>;
   recording: boolean;
 }
@@ -76,9 +83,10 @@ interface IClientEntry {
  * - Driver 心跳超时（5s）自动 setDriver(null)，UI 上其他 writer 可抢占
  * - Frame seq 在每个通道独立单调递增（uint32 wrap-around 走 modulo）
  *
- * **xterm-headless 集成**：v1 暂不引入；snapshot 用 ring-buffer 字节序列复原
- * 客户端画面（latin-1 编码进 ISessionSnapshot.serialized）。后续 P5.2c 接入
- * @xterm/headless + @xterm/addon-serialize 提供更高保真的 snapshot。
+ * **xterm-headless 集成（P5.2c 落地）**：每 session 维护一个 @xterm/headless Terminal
+ * 实例和 SerializeAddon；PTY 输出同时喂给 ring buffer（raw 字节）和 headless（语义 state）。
+ * snapshot() 通过 SerializeAddon 输出 ANSI 重放序列，客户端 xterm.js 直接 write 即可
+ * 复原完整状态（光标 / SGR / alt-buffer / scrollback）。
  */
 export class PtyMultiplexerService extends Disposable implements IPtyMultiplexerService {
   private readonly _sessions = new Map<string, ISessionRuntime>();
@@ -130,6 +138,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     }
 
     const ringBuffer = new RingBuffer(SHARED_TERMINAL_RING_BUFFER_BYTES);
+    const headless = new HeadlessSession({ cols: source.cols, rows: source.rows });
     const participantsSubject = new BehaviorSubject<readonly IParticipant[]>([]);
     const driverSubject = new BehaviorSubject<IDriverState>({
       sessionId: source.id,
@@ -146,6 +155,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     const runtime: ISessionRuntime = {
       source,
       ringBuffer,
+      headless,
       clients: new Map(),
       participantsSubject,
       driverSubject,
@@ -154,6 +164,8 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       driverHeartbeatAt: 0,
       driverLocked: false,
       state: SharedSessionState.Idle,
+      cols: source.cols,
+      rows: source.rows,
       seqCounters: {
         [FrameChannel.Control]: 0,
         [FrameChannel.PtyData]: 0,
@@ -172,13 +184,13 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
 
   async snapshot(sessionId: string): Promise<ISessionSnapshot> {
     const runtime = this._requireSession(sessionId);
-    const bytes = runtime.ringBuffer.snapshot();
+    const serialized = await runtime.headless.serialize(DEFAULT_SNAPSHOT_SCROLLBACK_LINES);
     return {
       sessionId,
       title: runtime.source.title,
-      cols: runtime.source.cols,
-      rows: runtime.source.rows,
-      serialized: bytesToLatin1(bytes),
+      cols: runtime.cols,
+      rows: runtime.rows,
+      serialized,
       observedSeq: runtime.seqCounters[FrameChannel.PtyData],
       state: runtime.state,
       driverId: runtime.driverId,
@@ -357,6 +369,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       return;
     }
     runtime.ringBuffer.write(chunk);
+    runtime.headless.write(chunk);
     if (runtime.clients.size === 0) {
       return;
     }
@@ -401,8 +414,14 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       case 'resize': {
         const r = parsed as { type: 'resize'; cols?: number; rows?: number };
         if (runtime.driverId === clientId && Number.isInteger(r.cols) && Number.isInteger(r.rows)) {
+          const cols = r.cols!;
+          const rows = r.rows!;
           try {
-            runtime.source.resize(r.cols!, r.rows!);
+            runtime.source.resize(cols, rows);
+            runtime.headless.resize(cols, rows);
+            runtime.cols = cols;
+            runtime.rows = rows;
+            this._publishSessions();
           } catch (err) {
             this._logService.error('[PtyMultiplexerService] PTY resize failed:', err);
           }
@@ -501,8 +520,8 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         id: runtime.source.id,
         title: runtime.source.title,
         state: runtime.state,
-        cols: runtime.source.cols,
-        rows: runtime.source.rows,
+        cols: runtime.cols,
+        rows: runtime.rows,
         createdAt: runtime.participantsSubject.getValue()[0]?.joinedAt ?? Date.now(),
         participantIds: [...runtime.clients.keys()],
         driverId: runtime.driverId,
@@ -546,6 +565,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     // 通知所有 attached clients 会话已关闭
     this._broadcastSessionEvent(sessionId, { type: 'session_closed' });
     runtime.state = SharedSessionState.Closed;
+    runtime.headless.dispose();
     runtime.participantsSubject.complete();
     runtime.driverSubject.complete();
     this._sessions.delete(sessionId);
@@ -572,14 +592,4 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       }
     }
   }
-}
-
-function bytesToLatin1(bytes: Uint8Array): string {
-  // 每个字节 → 一个 Unicode 字符（U+0000-U+00FF），完全可逆。
-  // 客户端解码用 String.charCodeAt 反向。
-  let result = '';
-  for (let i = 0; i < bytes.length; i++) {
-    result += String.fromCharCode(bytes[i]!);
-  }
-  return result;
 }
