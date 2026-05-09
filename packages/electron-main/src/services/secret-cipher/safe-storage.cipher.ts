@@ -18,19 +18,14 @@ import { ILogService } from '@termlnk/core';
 import { isEncrypted, LocalDerivedSecretCipher, SECRET_CIPHER_PREFIX } from '@termlnk/database';
 import { safeStorage } from 'electron';
 
-/**
- * 主进程加密器：基于 Electron `safeStorage` 调用 OS keystore（macOS Keychain / Windows DPAPI / Linux libsecret）。
- *
- * 设计要点：
- * - **优先使用 OS keystore**：被攻陷时需要操作系统级访问才能解密
- * - **Linux 兜底**：当 `safeStorage.isEncryptionAvailable()` 为 false（如未装 gnome-keyring/kwallet 的最小化 Linux），自动降级到 `LocalDerivedSecretCipher`
- * - **可读旧 scheme**：解密时会根据 payload 中的 `scheme` 字段决定走 safeStorage 还是 local-derived，平滑迁移
- * - **威胁模型**：safeStorage 的密钥由 OS 管理，应用自身仅持调用句柄；拷走 SQLite 文件 + 没有 OS 访问 = 解不开
- */
+// Main-process cipher backed by Electron safeStorage (Keychain / DPAPI / libsecret).
+// Falls back to LocalDerivedSecretCipher when the OS keystore is unavailable
+// (e.g. headless Linux without gnome-keyring/kwallet). The fallback is also used
+// to decrypt rows that were written under the local-derived scheme, so users can
+// move between environments without losing access to existing data.
 export class SafeStorageCipher implements ISecretCipherService {
   readonly scheme: SecretCipherScheme;
 
-  /** Local-derived 兜底实例。永远存在：write 路径在 keystore 不可用时使用，read 路径用于解 local-derived scheme 旧密文。 */
   private readonly _fallback = new LocalDerivedSecretCipher();
 
   constructor(@ILogService private readonly _logService: ILogService) {
@@ -38,7 +33,7 @@ export class SafeStorageCipher implements ISecretCipherService {
 
     if (this.scheme === 'local-derived') {
       this._logService.warn(
-        '[SafeStorageCipher] OS keystore unavailable on this system; falling back to LocalDerivedSecretCipher. '
+        '[SafeStorageCipher] OS keystore unavailable; falling back to LocalDerivedSecretCipher. '
         + 'Install gnome-keyring (GNOME) or kwallet (KDE) on Linux for stronger protection.'
       );
     }
@@ -76,14 +71,14 @@ export class SafeStorageCipher implements ISecretCipherService {
       [k: string]: unknown;
     };
 
-    // 按 payload 自带 scheme 路由，支持跨 scheme 平滑迁移
+    // Route by the payload's own scheme so cross-scheme migration works.
     if (payload.scheme === 'local-derived') {
       return this._fallback.decrypt(ciphertext);
     }
 
     if (payload.scheme === 'safe-storage') {
       if (this.scheme === 'local-derived') {
-        // 用户从有 keystore 的环境切到无 keystore 环境（理论不应发生）；返回空避免崩溃
+        // User somehow lost keystore access between sessions; refuse rather than crash.
         this._logService.error(
           '[SafeStorageCipher] Cannot decrypt safe-storage ciphertext: OS keystore unavailable in current session'
         );

@@ -13,25 +13,21 @@
  * governing permissions and limitations under the License.
  */
 
-/**
- * 一台已登录设备的元信息——用于"账号 → 设备列表"UI。
- *
- * `id` 是后端 refresh-token 的 jti（公开它无安全风险，本身不是 secret）；同一物理
- * 设备每次 refresh 后 jti 会变化，但 deviceName 和 createdAt 跨 rotation 保留。
- */
+// One signed-in device, used by the "account → devices" UI.
+//
+// `id` is the refresh-token jti (not a secret). The same physical device gets a fresh jti
+// on each refresh, but `deviceName` and `createdAt` survive rotation.
 export interface IDevice {
-  /** 后端 refresh-token jti；UI 用作 React key + 撤销时的目标 ID */
+  // Server-side jti; suitable React key and revoke target.
   readonly id: string;
-  /** 客户端登录时上报的设备标签（默认 os.hostname()）；可能为 null（旧客户端登录） */
+  // Reported by the client at login (defaults to os.hostname()); null on legacy clients.
   readonly deviceName: string | null;
-  /** User-Agent 头（粗粒度指纹）；可能为 null */
+  // Coarse fingerprint; null when not provided.
   readonly userAgent: string | null;
-  /** 该设备首次登录时间（ISO） */
   readonly createdAt: string;
-  /** 最近一次 refresh 时间（ISO）——UI 排序依据 */
+  // Used to sort the device list.
   readonly lastSeenAt: string;
-  /** refresh-token 过期时间（ISO） */
   readonly expiresAt: string;
-  /** 当前发起请求的设备本身——UI 高亮"This device" */
+  // Marks the device that issued the current request, so the UI can highlight "This device".
   readonly isCurrent: boolean;
 }

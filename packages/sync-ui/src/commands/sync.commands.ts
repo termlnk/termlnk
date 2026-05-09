@@ -18,15 +18,12 @@ import { Quantity } from '@termlnk/core';
 import { ISyncService } from '@termlnk/sync';
 import { firstValueFrom } from 'rxjs';
 
-/**
- * 同步命令集——架构 §7.3 列出的 ID 契约，扩展 / 快捷键 / 脚本可通过
- * ICommandService.executeCommand 触发。
- *
- * 所有命令在 ISyncService 未绑定（云未配置）时静默返回 false——调用方据此
- * 判断"该命令在当前 build 不可用"，不会因 RPC 异常而崩。
- */
+// Sync command set, invokable by extensions / shortcuts / scripts via
+// ICommandService.executeCommand. Each command silently returns false when ISyncService is
+// unbound (cloud not configured), so callers can detect "unavailable in this build"
+// without an RPC exception.
 
-/** sync.command.sync-now —— 立即 push + pull（与 SyncStatusPanel 的 Sync now 按钮等价）。 */
+// Equivalent to SyncStatusPanel's "Sync now" button.
 export const SyncNowCommand: ICommand = {
   id: 'sync.command.sync-now',
   handler: async (accessor: IAccessor): Promise<boolean> => {
@@ -39,7 +36,7 @@ export const SyncNowCommand: ICommand = {
   },
 };
 
-/** sync.command.enable —— 启用同步引擎（首次启用 + 注册 ResourceSynchroniser）。 */
+// Enables the sync engine (registers synchronisers on first enable).
 export const EnableSyncCommand: ICommand = {
   id: 'sync.command.enable',
   handler: async (accessor: IAccessor): Promise<boolean> => {
@@ -52,7 +49,7 @@ export const EnableSyncCommand: ICommand = {
   },
 };
 
-/** sync.command.disable —— 关闭同步引擎；不清本地数据。 */
+// Stops the sync engine; local data is preserved.
 export const DisableSyncCommand: ICommand = {
   id: 'sync.command.disable',
   handler: async (accessor: IAccessor): Promise<boolean> => {
@@ -65,10 +62,8 @@ export const DisableSyncCommand: ICommand = {
   },
 };
 
-/**
- * sync.command.toggle-enabled —— 单键开关：根据当前 enabled$ 翻转。
- * 用于绑快捷键场景，比手动 enable / disable 更顺手。
- */
+// One-shot toggle based on enabled$. Friendlier for keyboard shortcuts than separate
+// enable/disable commands.
 export const ToggleSyncEnabledCommand: ICommand = {
   id: 'sync.command.toggle-enabled',
   handler: async (accessor: IAccessor): Promise<boolean> => {
@@ -86,7 +81,7 @@ export const ToggleSyncEnabledCommand: ICommand = {
   },
 };
 
-/** sync.command.force-full-resync —— 清空所有 cursor 后从头 pull（与"从头同步"按钮等价）。 */
+// Equivalent to the "Resync from scratch" button: clears every cursor before the next pull.
 export const ForceFullResyncCommand: ICommand = {
   id: 'sync.command.force-full-resync',
   handler: async (accessor: IAccessor): Promise<boolean> => {

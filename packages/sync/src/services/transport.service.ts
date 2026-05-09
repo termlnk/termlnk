@@ -24,11 +24,10 @@ export interface IPushRequest {
 }
 
 export interface IPushResponse {
-  /** 成功接受的 mutation IDs */
   readonly accepted: readonly number[];
-  /** 因冲突（baseVersion mismatch）等被拒绝；客户端需 pull 后重试 */
+  // Rejected (e.g. baseVersion conflict); the client should pull and retry.
   readonly rejected: readonly { id: number; reason: string }[];
-  /** 服务端最新的全局版本号（debug / monitoring 用） */
+  // Latest global server version; debug/monitoring only.
   readonly lastServerVersion: number;
 }
 
@@ -41,38 +40,29 @@ export interface IPullRequest {
 export interface IPullResponse {
   readonly cursor: string;
   readonly patch: readonly ISyncPatchItem[];
-  /** 此 client 的最新已确认 mutationId（帮助清理 outbox） */
+  // Highest server-acknowledged mutationId for this client; lets the outbox prune.
   readonly lastMutationId: number;
 }
 
-/** 服务端 poke 信号（无 payload，仅唤醒客户端 pull） */
+// Server-initiated wake-up; carries no payload, only "something changed".
 export interface IPokeMessage {
   readonly type: 'poke';
   readonly resource: SyncResourceId;
-  /** 服务端最新 cursor（客户端可用其判断是否真的需要 pull） */
+  // Latest server cursor so the client can skip a no-op pull.
   readonly cursor: string;
 }
 
-/**
- * 同步传输层抽象——实现细节（HTTP/WebSocket）由 @termlnk/sync-core 提供。
- *
- * 设计参考 Replicache push/pull/poke 三件套：
- * - push：客户端主动调；服务端原子写入 + 计算新 version
- * - pull：客户端主动调；服务端按 cursor 计算 patch + 新 cursor
- * - poke：服务端推；仅是"有更新"信号，不传 payload
- */
+// Sync transport (HTTP/WebSocket implementation lives in @termlnk/sync-core). Models
+// Replicache's push/pull/poke trio: client-initiated push and pull, server-initiated poke.
 export interface ISyncTransportService {
-  /** 长连接状态 */
   readonly connected$: Observable<boolean>;
-  /** 服务端 poke 流 */
   readonly poke$: Observable<IPokeMessage>;
 
   push(req: IPushRequest): Promise<IPushResponse>;
   pull(req: IPullRequest): Promise<IPullResponse>;
 
-  /** 建立 WebSocket 长连接（启用同步时调用） */
+  // Open the WebSocket on enable; close on disable / logout.
   connect(): Promise<void>;
-  /** 断开（禁用同步 / 登出时调用） */
   disconnect(): Promise<void>;
 }
 

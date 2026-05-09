@@ -16,23 +16,17 @@
 import type { ITokenPair, ITokenRefresher } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 
-/**
- * 子集化的 fetch 函数签名——方便测试注入 fake；生产环境直接用 globalThis.fetch
- * （Node 22+ / 浏览器 / RN 原生提供）。
- */
+// Minimal subset of fetch we depend on — easier to fake in tests; production uses
+// globalThis.fetch (native on Node 22+, browsers, RN).
 export type HttpFetchFn = (url: string, init: {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
 }) => Promise<{ ok: boolean; status: number; statusText: string; json: () => Promise<unknown>; text: () => Promise<string> }>;
 
-/**
- * HttpTokenRefresher 配置——构造时注入。
- */
 export interface IHttpTokenRefresherConfig {
-  /** 云服务根（如 `https://cloud.termlnk.io/v1`），与 sync transport 复用同一 baseUrl 即可。 */
+  // Cloud root, e.g. `https://cloud.termlnk.io/v1`. The sync transport reuses the same baseUrl.
   readonly baseUrl: string;
-  /** fetch 实现注入点；默认 globalThis.fetch。 */
   readonly fetchFn?: HttpFetchFn;
 }
 
@@ -47,26 +41,16 @@ const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   };
 };
 
-/**
- * Wire format（与 cloud-sync-architecture.md §6.4 auth-service 一致）：
- *
- * ```
- * POST {baseUrl}/auth/refresh
- *   Body:     { refreshToken: string }
- *   Response: {
- *     accessToken: string,
- *     refreshToken: string,
- *     accessTokenExpiresAt: number,    // epoch ms
- *     refreshTokenExpiresAt: number,   // epoch ms
- *   }
- * ```
- *
- * 服务端**必须**在 refresh 时旋转 refreshToken（一次性），防止重放攻击。
- * 失败语义（HTTP status）：
- *   401 = refresh token 失效（撤销 / 过期）→ 抛错让 TokenManager 触发 clear
- *   429 = 限流 → 抛错；TokenManager 上层会 fail-soft 转发到 SyncErrorCode.rate_limited
- *   5xx = 服务端错误 → 抛错；TokenManager 上层会 fail-soft 转发到 server_error
- */
+// Wire format:
+//   POST {baseUrl}/auth/refresh
+//     Body:     { refreshToken: string }
+//     Response: { accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt }
+//
+// The server MUST rotate refreshToken on every refresh (single-use) to defeat replay.
+// Status semantics:
+//   401 — refresh token invalid or expired (TokenManager will clear).
+//   429 — rate limited.
+//   5xx — server error.
 interface IRefreshRequestBody {
   refreshToken: string;
 }
@@ -78,16 +62,9 @@ interface IRefreshResponseBody {
   refreshTokenExpiresAt: number;
 }
 
-/**
- * 调用云端 `/auth/refresh` 端点的 ITokenRefresher 实现。
- *
- * 与 SRP 登录路径的关系：
- * - 登录时（IAuthService.login）走 SRP6a 握手，最终签发 access+refresh token
- * - access 接近过期（30s margin）时 TokenManager 自动调本类 refresh
- * - refresh 失败 → TokenManager.clear → 用户须重新输入主密码登录（重走 SRP6a）
- *
- * 本类**不持有** master key 或 password。它的职责是单一的：拿 refreshToken 换新对。
- */
+// Calls /auth/refresh. This class never holds the master key or the password — its sole
+// job is exchanging a refreshToken for a new pair. A failed refresh propagates upward so
+// TokenManager can fail-soft into "logged out".
 export class HttpTokenRefresher extends Disposable implements ITokenRefresher {
   private readonly _fetchFn: HttpFetchFn;
 
@@ -122,7 +99,7 @@ export class HttpTokenRefresher extends Disposable implements ITokenRefresher {
 
     const json = await resp.json() as IRefreshResponseBody;
 
-    // 防御：服务端协议错误的最小校验，防止 TokenManager 缓存非法值
+    // Minimal shape check so we never cache a malformed pair.
     if (
       typeof json.accessToken !== 'string' || typeof json.refreshToken !== 'string'
       || typeof json.accessTokenExpiresAt !== 'number' || typeof json.refreshTokenExpiresAt !== 'number'

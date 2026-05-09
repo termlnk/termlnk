@@ -15,21 +15,19 @@
 
 import type { SyncResourceId } from '../common/constants';
 
-/** 全局同步状态（面向用户 UI 展示） */
+// Top-level sync state surfaced to the user UI.
 export enum SyncState {
-  /** 未启用同步（用户未登录或未启用） */
+  // Either logged out or sync intentionally disabled by the user.
   Disabled = 'disabled',
-  /** 已启用但当前未活动（idle） */
   Idle = 'idle',
-  /** 正在 push / pull */
   Syncing = 'syncing',
-  /** 离线（网络不通或后端不可达） */
+  // Network unreachable.
   Offline = 'offline',
-  /** 错误（详情见 lastError） */
+  // See lastError for details.
   Error = 'error',
 }
 
-/** 单个 Synchroniser 状态（per-resource 粒度） */
+// Per-resource synchroniser status.
 export enum SynchroniserStatus {
   Idle = 'idle',
   PushingMutations = 'pushing',
@@ -52,20 +50,19 @@ export interface IResourceSyncStats {
 }
 
 export type SyncErrorCode =
-  | 'unauthenticated' // 未登录或 token 失效
-  | 'master_key_locked' // 同步需要 master key 但当前 locked
-  | 'network' // 网络不可达
-  | 'rate_limited' // 服务端限流
-  | 'protocol_mismatch' // 客户端/服务端 schema 版本不匹配
-  | 'cipher_mismatch' // 解密失败（密钥错误或数据损坏）
-  | 'server_error' // 服务端 5xx
+  | 'unauthenticated'
+  | 'master_key_locked'
+  | 'network'
+  | 'rate_limited'
+  | 'protocol_mismatch'
+  | 'cipher_mismatch'
+  | 'server_error'
   | 'unknown';
 
 export interface ISyncError {
   code: SyncErrorCode;
   message: string;
-  /** 触发错误的资源（若有） */
   resource?: SyncResourceId;
-  /** 是否需要用户介入（如重新登录、重新派生密钥） */
+  // Set when the user must intervene (re-login, re-derive key, etc.).
   requiresUserAction?: boolean;
 }

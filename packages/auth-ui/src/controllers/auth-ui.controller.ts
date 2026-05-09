@@ -16,12 +16,8 @@
 import { Disposable, ICommandService } from '@termlnk/core';
 import { AUTH_COMMANDS } from '../commands/auth.commands';
 
-/**
- * AuthUI 控制器——把架构 §7.3 列出的 auth.command.* 注册到 ICommandService。
- *
- * 命令 handler 用 Quantity.OPTIONAL 取 IAuthClientService，所以未配置云端时
- * 命令返回 false 而不是崩溃。
- */
+// Registers auth.command.* with ICommandService. Handlers resolve IAuthClientService via
+// Quantity.OPTIONAL so commands return false (rather than throw) when the cloud is unconfigured.
 export class AuthUIController extends Disposable {
   constructor(
     @ICommandService private readonly _commandService: ICommandService

@@ -20,17 +20,14 @@ export { AUTH_PLUGIN_CONFIG_KEY } from '../common/constants';
 export interface IAuthPluginConfig {
   override?: DependencyOverride;
 
-  /**
-   * 自动 lock 的空闲时长（分钟）。0 表示永不自动 lock。
-   * 用户主动 logout 永远 lock；本字段仅控制空闲超时。
-   * 由 IdleLockController（@termlnk/auth-core）轮询并触发 IMasterKeyService.lock()。
-   */
+  // Idle minutes before auto-lock; 0 disables. Manual logout always locks.
+  // IdleLockController in @termlnk/auth-core polls this and calls IMasterKeyService.lock().
   autoLockIdleMinutes?: number;
 }
 
-// 注：云服务 base URL 不在本契约层 config——它是 AuthCorePlugin 的构造参数
-// （IAuthCorePluginConfig.cloudBaseUrl），属于"插件实例化时的启动决策"。
-// 重复声明会产生 contract / impl 两边都看似可配置但实际只有 impl 那边生效的歧义。
+// The cloud base URL is intentionally not declared here. It is a startup parameter consumed
+// by AuthCorePlugin (IAuthCorePluginConfig.cloudBaseUrl); duplicating it would create a
+// confusing contract-vs-impl split where only the impl side actually wins.
 
 export const defaultPluginConfig: IAuthPluginConfig = {
   autoLockIdleMinutes: 0,

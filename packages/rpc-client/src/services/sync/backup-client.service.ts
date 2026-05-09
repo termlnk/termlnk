@@ -17,13 +17,10 @@ import type { BackupImportMode, IBackupClientService, IBackupExportFileResult, I
 import { Inject } from '@termlnk/core';
 import { IRPCClientService } from '../rpc-client.service';
 
-/**
- * 渲染端 IBackupClientService 实现——纯 tRPC 转发。
- *
- * 备份字节永远不跨 IPC：主进程的 backup 路由用 IFileDialogService 选路径 +
- * fs 读写文件，渲染端只看到 summary（含路径、计数）。这是架构 §0 安全边界的必要属性——
- * 加密备份字节流即便短暂出现在渲染进程的 IPC channel 也是不必要的暴露。
- */
+// Renderer-side facade: pure tRPC forwarding. The backup payload bytes never cross IPC —
+// the main-process route uses the file dialog and fs APIs, returning only a summary
+// (path, counts). Even a transient appearance of ciphertext in the renderer's IPC channel
+// would be unnecessary exposure.
 export class BackupClientService implements IBackupClientService {
   constructor(
     @Inject(IRPCClientService) private readonly _rpcClientService: IRPCClientService

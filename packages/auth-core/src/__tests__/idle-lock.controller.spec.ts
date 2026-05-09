@@ -86,9 +86,9 @@ class FakeAuthService implements IAuthService {
   async logout(): Promise<void> {
     this.logoutCalls++;
     if (this.logoutShouldThrow) {
-      throw new Error('logout 边界异常');
+      throw new Error('logout boundary exception');
     }
-    // 真实 HttpAuthService.logout 会同时锁 master key + 清 token + 推 Unauthenticated
+    // Mirrors HttpAuthService.logout: lock master key, clear tokens, push Unauthenticated.
     this._master.lock();
   }
 

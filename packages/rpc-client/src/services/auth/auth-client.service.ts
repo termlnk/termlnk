@@ -21,22 +21,13 @@ import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { BehaviorSubject } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
 
-/**
- * 渲染端 IAuthClientService 实现——通过 tRPC 与主进程的 IAuthService 通信。
- *
- * 状态分发：
- * - 构造时启动三条 subscription（currentUser$ / authState$ / lastError$），把
- *   主进程的状态实时镜像到本地 BehaviorSubject。dispose 时一并取消订阅。
- * - 启动后立即拉取一次 getCurrentUser 兜底首次同步——避免 subscription 首次
- *   推送的轻微延迟导致 UI 短暂闪烁"未登录"。
- *
- * 安全语义：
- * - register/login 的 password 经 tRPC 上行——password 在主进程派生 verifier
- *   后即丢弃。这一段瞬时跨 IPC 是架构 §0 明确允许的；其他敏感字段（master key /
- *   access token / refresh token）永不上行。
- * - 渲染端拿不到 access token——同步 RPC 调用走 main-process-side 拦截器附加 token，
- *   渲染端无需感知。
- */
+// Renderer-side facade: mirrors IAuthService state via three tRPC subscriptions
+// (currentUser$ / authState$ / lastError$) and forwards register/login/logout calls.
+// A one-shot getCurrentUser query at construction time prevents a brief "logged out"
+// flash before the subscription's first push lands.
+//
+// register/login transit the password through tRPC; once the main-process derives the
+// verifier the plaintext is discarded. Master key and tokens never travel.
 export class AuthClientService extends Disposable implements IAuthClientService {
   private readonly _currentUser$ = new BehaviorSubject<IUserAccount | null>(null);
   readonly currentUser$: Observable<IUserAccount | null> = this._currentUser$.asObservable();
@@ -53,8 +44,8 @@ export class AuthClientService extends Disposable implements IAuthClientService 
   ) {
     super();
 
-    // 兜底：拉取一次当前用户。失败（未配置云）时静默——subscription 也会失败，
-    // BehaviorSubject 保持初始值
+    // One-shot snapshot to populate before the subscription's first push. Silent on
+    // failure (cloud not configured) — the BehaviorSubject keeps its initial value.
     void this._client.getCurrentUser.query()
       .then((user) => {
         this._currentUser$.next(user ?? null);

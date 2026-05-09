@@ -45,7 +45,7 @@ export function ColorSchemeTab({ currentTheme }: IColorSchemeTabProps) {
 
   return (
     <div className="tm:flex tm:flex-col tm:gap-6">
-      {/* 深色主题卡片 */}
+      {/* Dark themes */}
       <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <div className="tm:flex tm:items-center tm:gap-2">
@@ -67,7 +67,7 @@ export function ColorSchemeTab({ currentTheme }: IColorSchemeTabProps) {
         </CardContent>
       </Card>
 
-      {/* 浅色主题卡片 */}
+      {/* Light themes */}
       <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <div className="tm:flex tm:items-center tm:gap-2">

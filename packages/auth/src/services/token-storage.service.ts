@@ -16,21 +16,13 @@
 import type { ITokenPair } from '../models/session';
 import { createIdentifier } from '@termlnk/core';
 
-/**
- * Token 持久化抽象。
- *
- * 实现需保证 token 在磁盘上是密文：
- * - 主进程实现复用 @termlnk/database 的 ISecretCipherService（OS keystore 加密）
- * - 测试实现可用纯内存 Map
- *
- * 仅主进程使用——access/refresh token 永不跨 IPC。
- */
+// Token persistence abstraction. Implementations must store ciphertext on disk; the
+// main-process implementation reuses ISecretCipherService (OS keystore). Tests can use a
+// pure in-memory map. Tokens never cross IPC.
 export interface ITokenStorageService {
-  /** 保存 token 对（覆盖式） */
   save(tokens: ITokenPair): Promise<void>;
-  /** 加载 token 对；不存在返回 null */
+  // Returns null when no token is stored.
   load(): Promise<ITokenPair | null>;
-  /** 清空（登出时调用） */
   clear(): Promise<void>;
 }
 

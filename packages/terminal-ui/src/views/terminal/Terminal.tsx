@@ -193,8 +193,8 @@ export function TerminalView(props: ITerminalViewProps) {
         if (host?.type === HostType.HOST) {
           const normalized = host as IHost;
           setHostInfo(normalized);
-          // host 经 tRPC 脱敏后 credential 仅含 type/username + hasPassword/hasPrivateKey 占位符——
-          // IHost 类型签名是历史遗留，runtime 实际是脱敏版；此处用 intersection cast 访问占位符
+          // tRPC strips secrets, so credential carries only type/username plus
+          // hasPassword/hasPrivateKey placeholders. IHost still types the original shape, hence the cast.
           const cred = normalized.credential as (ICredential & { hasPassword?: boolean }) | null;
           const needsPassword = cred?.type === 'password' && !cred.hasPassword;
           setRequiresPassword(needsPassword);

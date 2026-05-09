@@ -16,12 +16,8 @@
 import type { IDeviceNameProvider } from '@termlnk/auth';
 import { hostname } from 'node:os';
 
-/**
- * Node 主进程的 IDeviceNameProvider 实现—— `os.hostname()` 返回机器名。
- *
- * 浏览器 SPA / RN 应用应自行实现 IDeviceNameProvider（基于 navigator.userAgent /
- * expo-device 等），不要复用本类（会拉入 `node:os`）。
- */
+// Default for Node main; pulls in `node:os`. Browser SPA / RN apps must register their
+// own provider rather than reuse this class.
 export class OsHostnameDeviceNameProvider implements IDeviceNameProvider {
   getName(): string {
     return hostname();

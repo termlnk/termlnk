@@ -21,19 +21,11 @@ import { SYNC_RESOURCES, SynchroniserStatus, SyncState } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
 
-/**
- * 渲染端 ISyncService 实现——通过 tRPC 与主进程的 SyncService 通信。
- *
- * 状态镜像：
- * - 构造时拉一次 getSnapshot 兜底，避免 BehaviorSubject 初始值短暂闪烁
- * - 启动 4 条 subscription（state$ / stats$ / lastError$ / enabled$），把主进程
- *   的状态实时镜像到本地 BehaviorSubject
- * - dispose 时取消订阅 + complete BehaviorSubject
- *
- * 命令转发：enable / disable / syncNow / forceFullResync 直接 mutate；不缓存任何状态。
- *
- * 错误语义：subscription 通道异常 → 记日志保持上一次值；mutation 异常 → 上抛给调用方。
- */
+// Renderer-side facade: mirrors SyncService state over four tRPC subscriptions
+// (state$ / stats$ / lastError$ / enabled$) and forwards enable/disable/syncNow/
+// forceFullResync directly. A one-shot getSnapshot query at construction time avoids a
+// brief flash with the BehaviorSubject's initial values. Subscription errors keep the last
+// good value and only log; mutation errors propagate to callers.
 export class SyncClientService extends Disposable implements ISyncService {
   private readonly _state$ = new BehaviorSubject<SyncState>(SyncState.Disabled);
   readonly state$: Observable<SyncState> = this._state$.asObservable();
@@ -53,7 +45,7 @@ export class SyncClientService extends Disposable implements ISyncService {
   ) {
     super();
 
-    // 兜底初始 snapshot——失败（云未配置）时静默
+    // Initial snapshot; silent on failure (cloud not configured).
     void this._client.getSnapshot.query()
       .then((snapshot) => {
         if (!snapshot) {

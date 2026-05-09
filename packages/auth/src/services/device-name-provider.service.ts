@@ -15,18 +15,16 @@
 
 import { createIdentifier } from '@termlnk/core';
 
-/**
- * 设备名提供者——auth-core 用此抽象向后端登记 deviceName，避免直接依赖 `node:os`。
- *
- * 各端典型实现：
- * - Electron 主进程：包装 `os.hostname()`，留空时返回 'Unknown device'
- * - 浏览器 SPA：navigator.userAgent 解析或 prompt 用户输入；持久化到 localStorage
- * - React Native：expo-device（Device.deviceName）+ AsyncStorage 持久化
- *
- * 用法：
- * - HttpAuthService 通过 Quantity.OPTIONAL 注入；未注册时降级为 'Unknown device'
- * - 永远是同步调用——不允许阻塞 register/login 主路径
- */
+// Supplies a human-readable device name for cloud registration without forcing auth-core
+// to depend on `node:os`.
+//
+// Typical impls:
+// - Electron main: wraps `os.hostname()`, falls back to 'Unknown device'.
+// - Browser SPA:   parses navigator.userAgent or prompts the user, persisted in localStorage.
+// - React Native:  expo-device + AsyncStorage.
+//
+// Used via Quantity.OPTIONAL injection — missing impl resolves to 'Unknown device'.
+// Must be synchronous so register/login is not blocked.
 export interface IDeviceNameProvider {
   getName(): string;
 }

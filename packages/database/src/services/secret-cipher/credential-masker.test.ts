@@ -41,7 +41,7 @@ describe('credentialMasker', () => {
       const original = { type: 'password' as const, username: 'root', password: 'hunter2' };
       const encrypted = encryptCredential(original, cipher)!;
       expect(encrypted.type).toBe('password');
-      expect(encrypted.username).toBe('root'); // 明文保留
+      expect(encrypted.username).toBe('root'); // username stays plaintext
       expect((encrypted as any).password).not.toBe('hunter2');
       expect(isEncrypted((encrypted as any).password)).toBe(true);
 
@@ -75,17 +75,13 @@ describe('credentialMasker', () => {
       const original = { type: 'password' as const, username: 'root', password: 'hunter2' };
       const once = encryptCredential(original, cipher)!;
       const twice = encryptCredential(once, cipher)!;
-      // 两次加密的密文应当相同（idempotent）
       expect((twice as any).password).toBe((once as any).password);
-      // 解密结果应当还是原值
       expect(decryptCredential(twice, cipher)).toEqual(original);
     });
 
     it('handles legacy plaintext on read path (graceful migration)', () => {
-      // 旧明文：从未被加密过的数据
       const legacy = { type: 'password' as const, username: 'root', password: 'plain-old-pwd' };
       const decrypted = decryptCredential(legacy, cipher)!;
-      // 解密层对未加密值原样返回
       expect((decrypted as any).password).toBe('plain-old-pwd');
     });
   });
@@ -126,7 +122,6 @@ describe('credentialMasker', () => {
       };
       const encrypted = encryptMcpConfig(config, cipher)!;
       expect(encrypted.type).toBe('stdio');
-      // 类型守卫
       if (encrypted.type !== 'stdio') {
         throw new Error('expected stdio');
       }

@@ -17,15 +17,9 @@ import type { IAccessor, ICommand } from '@termlnk/core';
 import { IAuthClientService } from '@termlnk/auth';
 import { Quantity } from '@termlnk/core';
 
-/**
- * Auth 命令集——架构 §7.3 列出的 ID 契约。
- *
- * 注：架构同时列了 `auth.command.login`，但登录需要凭据输入，零知识架构下没有
- * "无参数程序登录"的语义；因此这里只注册 logout（无参数即可执行）。后续若有
- * "用 stored credentials 自动登录"等场景再扩。
- */
-
-/** auth.command.logout —— 程序化登出。IAuthClientService 未绑定（云未配置）时返回 false。 */
+// Programmatic logout. Login is intentionally omitted: zero-knowledge auth requires the
+// password as input, so there is no parameter-less login command we could expose.
+// Returns false when IAuthClientService is unbound (cloud not configured).
 export const LogoutCommand: ICommand = {
   id: 'auth.command.logout',
   handler: async (accessor: IAccessor): Promise<boolean> => {

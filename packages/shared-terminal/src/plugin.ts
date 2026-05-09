@@ -20,17 +20,9 @@ import { defaultPluginConfig, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from './contro
 
 export { SHARED_TERMINAL_PLUGIN_NAME };
 
-/**
- * 共享终端契约层插件——只承载 config 注册，不绑定具体实现。
- *
- * 实现层在 @termlnk/shared-terminal-core（P5.2 起）。
- *
- * 主进程 bootstrap 顺序：
- *   AuthPlugin → AuthCorePlugin → SharedTerminalPlugin → SharedTerminalCorePlugin
- *
- * SharedTerminalCorePlugin 通过 IAuthService 拿 accountToken / IPairingService
- * 持久化等。契约层不引这些实现依赖。
- */
+// Contract-only: registers config but binds no services. Implementation lives in
+// @termlnk/shared-terminal-core. Main-process bootstrap order:
+// AuthPlugin -> AuthCorePlugin -> SharedTerminalPlugin -> SharedTerminalCorePlugin.
 export class SharedTerminalPlugin extends Plugin {
   static override pluginName = SHARED_TERMINAL_PLUGIN_NAME;
 

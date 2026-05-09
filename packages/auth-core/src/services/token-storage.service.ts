@@ -20,16 +20,10 @@ import { ConfigRepository, ISecretCipherService } from '@termlnk/database';
 
 const TOKENS_FIELD = 'tokens';
 
-/**
- * Token 持久化实现：JSON.stringify(ITokenPair) → ISecretCipherService 加密 → ConfigRepository.setField。
- *
- * 设计要点：
- * - 单个 ciphertext 字段持久化（不分别加密 access / refresh），简化 schema 维护
- * - 复用插件 config key 的 subKey 机制（cloud-sync-architecture.md / CLAUDE.md "插件配置键规范"）：
- *   `auth.config` 顶级 key 已存在，新增 `tokens` subKey，避免污染顶级命名空间
- * - 解密失败（迁移到新 SafeStorage / 数据损坏）时返回 null 而非抛错——
- *   调用方会触发重新登录，比硬抛更友好；同时 log warn 留下诊断线索
- */
+// Persists the ITokenPair as a single SecretCipher-encrypted JSON blob under the
+// `auth.config.tokens` subKey. Storing one ciphertext (not separate access/refresh fields)
+// keeps the schema flat. Decrypt failures (cipher rotation, corruption) treat the user as
+// logged out and surface a warning — better UX than crashing on stale ciphertext.
 export class TokenStorageService extends Disposable implements ITokenStorageService {
   constructor(
     @Inject(ISecretCipherService) private readonly _cipher: ISecretCipherService,

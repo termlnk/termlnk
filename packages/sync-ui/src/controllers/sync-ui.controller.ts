@@ -16,12 +16,9 @@
 import { Disposable, ICommandService } from '@termlnk/core';
 import { SYNC_COMMANDS } from '../commands/sync.commands';
 
-/**
- * SyncUI 控制器——把架构 §7.3 列出的 sync.command.* 注册到 ICommandService。
- *
- * 所有命令的具体逻辑都在 sync.commands.ts，控制器只承担"在合适生命周期注册 + dispose 撤销"
- * 的职责。命令本身用 Quantity.OPTIONAL 取 ISyncService，所以即便云未配置也不会崩。
- */
+// Registers sync.command.* with ICommandService and undoes registration on dispose.
+// Command bodies live in sync.commands.ts; each resolves ISyncService via Quantity.OPTIONAL
+// so an unconfigured cloud cannot crash the app.
 export class SyncUIController extends Disposable {
   constructor(
     @ICommandService private readonly _commandService: ICommandService

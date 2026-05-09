@@ -68,7 +68,8 @@ export class DatabasePlugin extends Plugin {
   }
 
   override onReady(): void {
-    // fire-and-forget：迁移失败不阻塞应用启动；Repository 解密路径已兼容明文回退
+    // Fire-and-forget: a migration failure must not block startup. Repositories already
+    // tolerate plaintext rows on read, so the next launch will retry.
     void this._runEncryptSecretsMigration();
   }
 
@@ -77,7 +78,8 @@ export class DatabasePlugin extends Plugin {
 
     const dependencies: Dependency[] = [
       [IDBAdaptorService, { useClass: dbAdaptor }],
-      // 默认注册跨平台兜底加密器；apps/desktop/main 通过 config.override 替换为 SafeStorageCipher
+      // Default to the cross-platform fallback; apps/desktop/main overrides this with
+      // SafeStorageCipher via plugin config.
       [ISecretCipherService, { useClass: LocalDerivedSecretCipher }],
       [BackupRepository, { useClass: BackupRepository }],
       [ConfigRepository, { useClass: ConfigRepository }],
@@ -96,12 +98,7 @@ export class DatabasePlugin extends Plugin {
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
   }
 
-  /**
-   * 启动时一次性把存量明文敏感字段加密回去。幂等：已加密字段不会重复加密。
-   *
-   * 容错：迁移失败不阻塞应用启动——仅记录错误。Repository 的解密路径已兼容明文回退，
-   * 所以即使迁移卡住，应用仍可继续工作；下次启动会重新尝试。
-   */
+  // Idempotent: re-runs are safe because the prefix probe skips already-encrypted rows.
   private async _runEncryptSecretsMigration(): Promise<void> {
     try {
       const dbService = this._injector.get(IDBAdaptorService);

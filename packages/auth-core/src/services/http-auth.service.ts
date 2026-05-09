@@ -20,33 +20,25 @@ import { Disposable, ILogService, Inject, Optional } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { TokenManager } from './token-manager.service';
 
-/** Argon2id salt 的随机部分长度（字节）；用户邮箱拼上这串随机字节构成完整 salt。 */
+// Random component length (bytes) of the Argon2id salt; combined with the email to form
+// the full salt material.
 const ARGON2_RANDOM_SALT_LENGTH = 32;
 
-/** Device name 的兜底值——IDeviceNameProvider 未注册或抛错时使用。 */
 const FALLBACK_DEVICE_NAME = 'Unknown device';
 
-/**
- * 子集化的 fetch 函数签名——方便测试注入 fake；生产环境直接用 globalThis.fetch
- * （Node 22+ / 浏览器 / RN 原生提供）。
- */
+// Subset of fetch() that we depend on; production passes globalThis.fetch, tests inject a fake.
 export type HttpFetchFn = (url: string, init: {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
 }) => Promise<{ ok: boolean; status: number; statusText: string; json: () => Promise<unknown>; text: () => Promise<string> }>;
 
-/**
- * HttpAuthService 配置——构造时注入。
- */
 export interface IHttpAuthServiceConfig {
-  /** 云服务根（含版本前缀，如 `https://cloud.termlnk.io/v1`），与 sync transport 共用同一 baseUrl。 */
+  // Cloud root with version prefix; shared with the sync transport.
   readonly baseUrl: string;
-  /** fetch 实现注入点；默认 globalThis.fetch。 */
   readonly fetchFn?: HttpFetchFn;
 }
 
-/** 默认 fetch——用 globalThis.fetch；Node 22+ / 浏览器 / RN 原生提供，跨平台无 polyfill 需求。 */
 const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   const resp = await globalThis.fetch(url, init as RequestInit);
   return {
@@ -58,29 +50,25 @@ const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   };
 };
 
-/**
- * Wire format（基于 cloud-sync-architecture.md §6.4 的 SRP 端点扩展）：
- *
- * ```
- * POST {baseUrl}/auth/register
- *   Body: { email, argon2SaltB64, srpSalt, srpVerifier, displayName? }
- *   Resp: { user, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt }
- *
- * POST {baseUrl}/auth/srp/init
- *   Body: { email }
- *   Resp: { argon2SaltB64, srpSalt, srpServerEphemeralPublic }
- *
- * POST {baseUrl}/auth/srp/verify
- *   Body: { email, clientPublicEphemeral, clientSessionProof }
- *   Resp: { serverSessionProof, user, accessToken, refreshToken,
- *           accessTokenExpiresAt, refreshTokenExpiresAt }
- *
- * POST {baseUrl}/auth/logout      (Bearer auth, best-effort)
- *   Resp: 204
- * ```
- *
- * 服务端在 SRP verify 阶段必须先校验 srpM1，再签发 token——避免提前泄漏 token 给猜测密码的攻击者。
- */
+// Wire format:
+//
+//   POST {baseUrl}/auth/register
+//     Body: { email, argon2SaltB64, srpSalt, srpVerifier, displayName?, deviceName? }
+//     Resp: { user, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt }
+//
+//   POST {baseUrl}/auth/srp/init
+//     Body: { email }
+//     Resp: { argon2SaltB64, srpSalt, srpServerEphemeralPublic }
+//
+//   POST {baseUrl}/auth/srp/verify
+//     Body: { email, clientPublicEphemeral, clientSessionProof, deviceName? }
+//     Resp: { serverSessionProof, user, accessToken, refreshToken, ...expires }
+//
+//   POST {baseUrl}/auth/logout    (Bearer auth, best-effort)
+//     Resp: 204
+//
+// Server MUST validate srpM1 before issuing tokens; otherwise an attacker that guessed
+// the password could observe a token leak alongside the SRP rejection.
 interface IRegisterRequestBody {
   email: string;
   displayName?: string;
@@ -128,33 +116,15 @@ interface ISrpVerifyResponseBody {
   refreshTokenExpiresAt: number;
 }
 
-/**
- * IAuthService 的 HTTP 实现（**仅主进程**）。
- *
- * 数据流（register）：
- * 1. 客户端生成 32 字节 argon2Salt（随机部分）
- * 2. IMasterKeyService.derive(password, { email, saltB64 }) → master key 在主进程内存
- * 3. 取 authKey hex → ISrpClientService.enroll(email, authKey) → (srpSalt, srpVerifier)
- * 4. POST /auth/register { email, argon2SaltB64, srpSalt, srpVerifier, displayName }
- * 5. 服务端返回 user + tokens；TokenManager.setTokens 持久化；currentUser$ 推送
- *
- * 数据流（login）：
- * 1. POST /auth/srp/init { email } → server salt + ephemeral
- * 2. IMasterKeyService.derive 派生 master key（同样的 Argon2id+HKDF 链）
- * 3. ISrpClientService.generateEphemeral + deriveSession
- * 4. POST /auth/srp/verify → server M2 + tokens + user
- * 5. ISrpClientService.verifySession（失败 = MITM，丢弃 master key + tokens）
- * 6. TokenManager.setTokens；currentUser$ 推送；authState → Authenticated
- *
- * 数据流（logout）：
- * 1. POST /auth/logout (Bearer)（best-effort，网络失败不阻塞本地清理）
- * 2. IMasterKeyService.lock；TokenManager.clear；currentUser$/authState 重置
- *
- * 边界：
- * - **明文密码**仅在 register/login 调用栈内瞬时使用（IMasterKeyService.derive 后即丢弃引用）
- * - **master key**永不跨 IPC（仅本类与 IMasterKeyService 在主进程持有）
- * - **tokens**永不跨 IPC（TokenManager 内部）
- */
+// Main-process IAuthService over HTTP.
+//
+// Register: derive master key, enroll SRP verifier, POST /auth/register, store tokens.
+// Login:    POST /auth/srp/init, derive master key, deriveSession, POST /auth/srp/verify,
+//           verify M2 (rejects MITM), store tokens.
+// Logout:   POST /auth/logout (best-effort), lock master key, clear tokens.
+//
+// Trust boundaries: plaintext password is consumed inside register/login only; master key
+// and tokens never leave the main process.
 export class HttpAuthService extends Disposable implements IAuthService {
   private readonly _currentUser$ = new BehaviorSubject<IUserAccount | null>(null);
   readonly currentUser$: Observable<IUserAccount | null> = this._currentUser$.asObservable();

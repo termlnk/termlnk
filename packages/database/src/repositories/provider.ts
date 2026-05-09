@@ -45,7 +45,6 @@ export class ProviderRepository extends Disposable {
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
-  /** 解密 provider 实体的 apiKey 字段；返回新对象 */
   private _decryptProvider(row: IAIProviderEntity): IAIProviderEntity {
     return {
       ...row,
@@ -72,7 +71,6 @@ export class ProviderRepository extends Disposable {
   }
 
   async upsertProvider(data: IAIProviderEntityInsert) {
-    // 入库前透明加密 apiKey；明文永不入库
     const encryptedApiKey = encryptIfNeeded(data.apiKey, this._cipher);
     const payload: IAIProviderEntityInsert = {
       ...data,

@@ -24,14 +24,9 @@ import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { ISecretCipherService } from '../services/secret-cipher.service';
 import { decryptIfNeeded, encryptIfNeeded } from '../services/secret-cipher/credential-masker';
 
-/**
- * MCP OAuth Token 仓库。
- *
- * 设计原则：
- * - 4 个敏感字段透明加密：accessToken / refreshToken / clientSecret / codeVerifier
- * - 非敏感字段（serverId / authorizationServerUrl / scope / expiresAt 等）保持明文，便于查询和过期判断
- * - 与 HostRepository / ProviderRepository 同模式：DI 注入 cipher，业务代码无感
- */
+const SENSITIVE_FIELDS = ['accessToken', 'refreshToken', 'clientSecret', 'codeVerifier'] as const;
+type SensitiveField = typeof SENSITIVE_FIELDS[number];
+
 export class McpOAuthTokenRepository extends Disposable {
   constructor(
     @Inject(IDBAdaptorService) private readonly _dbService: IDBAdaptorService,
@@ -44,31 +39,20 @@ export class McpOAuthTokenRepository extends Disposable {
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
-  /** 解密 OAuth token 实体的全部敏感字段 */
   private _decryptEntity(entity: IMcpOAuthTokenEntity): IMcpOAuthTokenEntity {
-    return {
-      ...entity,
-      accessToken: decryptIfNeeded(entity.accessToken, this._cipher),
-      refreshToken: decryptIfNeeded(entity.refreshToken, this._cipher),
-      clientSecret: decryptIfNeeded(entity.clientSecret, this._cipher),
-      codeVerifier: decryptIfNeeded(entity.codeVerifier, this._cipher),
-    };
+    const out = { ...entity };
+    for (const field of SENSITIVE_FIELDS) {
+      out[field] = decryptIfNeeded(entity[field], this._cipher);
+    }
+    return out;
   }
 
-  /** 加密入库 payload 的全部敏感字段；幂等（已加密值跳过） */
   private _encryptPayload<T extends Partial<IMcpOAuthTokenEntityInsert>>(payload: T): T {
     const out = { ...payload };
-    if (Object.hasOwn(payload, 'accessToken')) {
-      out.accessToken = encryptIfNeeded(payload.accessToken, this._cipher);
-    }
-    if (Object.hasOwn(payload, 'refreshToken')) {
-      out.refreshToken = encryptIfNeeded(payload.refreshToken, this._cipher);
-    }
-    if (Object.hasOwn(payload, 'clientSecret')) {
-      out.clientSecret = encryptIfNeeded(payload.clientSecret, this._cipher);
-    }
-    if (Object.hasOwn(payload, 'codeVerifier')) {
-      out.codeVerifier = encryptIfNeeded(payload.codeVerifier, this._cipher);
+    for (const field of SENSITIVE_FIELDS) {
+      if (Object.hasOwn(payload, field)) {
+        out[field] = encryptIfNeeded(payload[field as SensitiveField], this._cipher);
+      }
     }
     return out;
   }

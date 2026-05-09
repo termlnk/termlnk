@@ -23,28 +23,16 @@ import { BehaviorSubject, debounceTime, filter, interval, merge, Subject, Subscr
 
 const CLIENT_ID_FIELD = 'clientId';
 
-/**
- * 同步引擎主协调器（**仅主进程**）。
- *
- * 职责：
- * - 注册 ResourceSynchroniser，跨它们协调 push/pull/poke 节奏
- * - 在 enable / disable 间维护生命周期；保证启用前 master key 已 unlocked + transport 已就绪
- * - 暴露面向用户 UI 的状态流（state$ / stats$ / lastError$）
- *
- * 节奏（cloud-sync-architecture.md §4.6 触发策略表）：
- * - 本地变更 → outbox.pendingCount$ 增加 → debounce 500ms → push
- * - 收到 poke → debounce 200ms → pull
- * - 每 5 min 兜底 polling pull（防 WS 静默断连）
- * - syncNow() 是用户手动触发的立刻 push + pull
- *
- * 不做的事：
- * - 不直接处理加密 / 解密（synchroniser 自行用 ISyncCryptoService）
- * - 不写本地业务表（synchroniser 通过 Repository 完成）
- * - 不管 token / 网络重连（ISyncTransportService 实现负责）
- *
- * 注册模式：synchronisers 通过 `register()` 在 Plugin onReady / onSteady 时挂入；
- * 接口 ISyncService 不暴露 register（外部 RPC caller 不应触碰它）。
- */
+// Top-level sync coordinator (main-process only). Registers ResourceSynchronisers and
+// drives the push/pull/poke cadence:
+//   - local change      -> debounce 500 ms -> push
+//   - server poke       -> debounce 200 ms -> pull
+//   - every 5 min       -> poll pull (catches silent WS drops)
+//   - syncNow() / poke  -> push + pull immediately
+// Out of scope: payload encryption (per-synchroniser via ISyncCryptoService), Repository
+// writes (also per-synchroniser), token / reconnect handling (transport implementation).
+//
+// register() lives on the concrete class only; ISyncService consumers cannot reach it.
 export class SyncService extends Disposable implements ISyncService {
   private readonly _state$ = new BehaviorSubject<SyncState>(SyncState.Disabled);
   readonly state$: Observable<SyncState> = this._state$.asObservable();
@@ -58,20 +46,18 @@ export class SyncService extends Disposable implements ISyncService {
   private readonly _enabled$ = new BehaviorSubject<boolean>(false);
   readonly enabled$: Observable<boolean> = this._enabled$.asObservable();
 
-  /** Synchroniser 索引：以 resourceId 为主键，便于 applyPatch 路由。 */
+  // Indexed by resourceId so applyPatch can route incoming patches in O(1).
   private readonly _synchronisers: Map<SyncResourceId, IResourceSynchroniser> = new Map();
 
-  /** 启用期间的活跃订阅；disable 时 unsubscribe。 */
+  // Subscriptions live only between enable() and disable().
   private _runtimeSub: Subscription | null = null;
-  /** transport.connected 监听（独立于 _runtimeSub，因为 disable 后还要监听重连成功） */
+  // Kept separate from _runtimeSub because we still want to observe reconnects after disable.
   private _transportSub: Subscription | null = null;
 
-  /** 客户端 ID（per-device）。enable 首次启动时从 config 加载或新建。 */
+  // Per-device client id; loaded or generated at first enable().
   private _clientId: string | null = null;
 
-  /** 用于触发 push 的内部信号（手动 syncNow 也走这路） */
   private readonly _pushTrigger$ = new Subject<void>();
-  /** 用于触发 pull 的内部信号 */
   private readonly _pullTrigger$ = new Subject<void>();
 
   constructor(
@@ -100,10 +86,8 @@ export class SyncService extends Disposable implements ISyncService {
     super.dispose();
   }
 
-  /**
-   * 注册一个 synchroniser。返回 IDisposable，调用方可显式取消注册（生产路径下
-   * 由插件 dispose 链统一处理；测试也用得上）。
-   */
+  // Registers a synchroniser; returns an IDisposable for explicit unregistration.
+  // Production flows rely on the plugin dispose chain; tests use the disposable directly.
   register(synchroniser: IResourceSynchroniser): IDisposable {
     const existing = this._synchronisers.get(synchroniser.resourceId);
     if (existing) {
@@ -124,13 +108,12 @@ export class SyncService extends Disposable implements ISyncService {
     this._state$.next(SyncState.Idle);
     this._enabled$.next(true);
 
-    // 启动 synchronisers + 初始化 clientId
     for (const s of this._synchronisers.values()) {
       s.start();
     }
     this._clientId = await this._loadOrCreateClientId();
 
-    // 监听 transport 连接状态——断线 → Offline，回连 → Idle + 立即 pull
+    // Disconnect -> Offline; reconnect -> Idle + immediate pull.
     this._transportSub = this._transport.connected$.subscribe((isConnected) => {
       if (!this._enabled$.getValue()) {
         return;
@@ -143,7 +126,7 @@ export class SyncService extends Disposable implements ISyncService {
       this._pullTrigger$.next();
     });
 
-    // 先建立 push/pull 触发器订阅（必须先于 connect，否则 connected$ 立即推动的 pull 会丢失）
+    // Wire triggers before connect() so the immediate pull driven by connected$ is not lost.
     this._runtimeSub = new Subscription();
     this._runtimeSub.add(
       this._outbox.pendingCount$.pipe(
@@ -168,9 +151,9 @@ export class SyncService extends Disposable implements ISyncService {
       })
     );
 
-    // 建立长连接。失败时只标 Offline、不抛错。
-    // 连接成功的首次 pull 由 transportSub 监听 connected$ 翻为 true 后自然触发——
-    // 不在这里显式 trigger，否则会和 transportSub 重复发 pull。
+    // Connect failures fall through to Offline; do not throw.
+    // The initial pull is triggered by transportSub when connected$ flips true; an explicit
+    // trigger here would double-fire.
     try {
       await this._transport.connect();
     } catch (err) {
@@ -208,7 +191,7 @@ export class SyncService extends Disposable implements ISyncService {
     if (!this._enabled$.getValue()) {
       return;
     }
-    // 清空所有 cursor → 下次 pull 自然从头开始
+    // Clearing every cursor makes the next pull restart from the beginning.
     for (const resource of SYNC_RESOURCES) {
       await this._cursors.delete(resource);
     }
@@ -234,7 +217,8 @@ export class SyncService extends Disposable implements ISyncService {
         const rejectedIds = resp.rejected.map((r) => r.id);
         const reason = resp.rejected.map((r) => `${r.id}:${r.reason}`).join(';');
         await this._outbox.markRejected(rejectedIds, reason);
-        // 拒绝通常因 baseVersion 冲突——立即 pull 补齐再让用户重发
+        // Rejections almost always mean a baseVersion conflict; pull first so the next
+        // push is built against the latest state.
         this._pullTrigger$.next();
       }
       this._state$.next(SyncState.Idle);
@@ -266,8 +250,8 @@ export class SyncService extends Disposable implements ISyncService {
           await synchroniser.applyPatch([...resp.patch]);
         }
         if (resp.lastMutationId > 0) {
-          // server 报告它已确认的 mutationId — outbox 已经按 push.accepted 清过了，
-          // 但 pull 是兜底渠道（如 push 到一半重启就靠这条恢复一致）
+          // Backstop ack: push.accepted has usually cleared the outbox already, but if
+          // we crashed mid-push this keeps the outbox in sync with what the server has.
           await this._outbox.ack([resp.lastMutationId]);
         }
         await this._cursors.upsert({

@@ -13,14 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-/**
- * 跨平台 base64 / hex 编解码工具——纯函数，可在 Node 22+ / 浏览器 / React Native
- * （含 react-native-get-random-values polyfill）三类环境中无差异运行。
- *
- * 设计依据：cloud-sync-architecture.md §3.1 / §7.3——auth-core 与 sync-core 不应
- * 强绑 node:buffer / undici 等 Node 本局 API；wire format 一致才能让 vault 在任意端
- * 解出同一字节串。
- */
+// Cross-platform base64 / hex encoding helpers. Pure functions; works identically on
+// Node 22+, browsers, and React Native (with `react-native-get-random-values` polyfill).
+// auth-core / sync-core deliberately avoid `node:buffer` / `undici` so the same wire
+// format opens vaults on every runtime.
 
 /** Convert raw bytes to standard base64 (with padding `=`). */
 export function bytesToBase64(bytes: Uint8Array): string {
@@ -28,7 +24,7 @@ export function bytesToBase64(bytes: Uint8Array): string {
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]!);
   }
-  // btoa 是 Web 标准，Node 22+ / 浏览器 / RN（不需要 polyfill）皆原生提供。
+  // btoa is a Web standard available natively on Node 22+, browsers and RN.
   return btoa(binary);
 }
 
@@ -67,14 +63,8 @@ export function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
-/**
- * Cryptographically-strong random bytes using Web Crypto API.
- *
- * 可用环境：
- * - Node 22+：`globalThis.crypto` 自带（基于 Web Crypto）
- * - 浏览器：原生
- * - React Native：需 `react-native-get-random-values` polyfill（在 app entry 之前 import）
- */
+// Cryptographically-strong random bytes via Web Crypto. React Native requires the
+// `react-native-get-random-values` polyfill to be imported before this module loads.
 export function randomBytes(length: number): Uint8Array {
   const out = new Uint8Array(length);
   globalThis.crypto.getRandomValues(out);

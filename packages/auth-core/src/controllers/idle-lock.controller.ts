@@ -18,35 +18,20 @@ import { AUTH_PLUGIN_CONFIG_KEY, IAuthService as IAuthServiceId, IIdleProbe as I
 import { IConfigService, ILogService, Inject, Optional, RxDisposable } from '@termlnk/core';
 import { takeUntil } from 'rxjs';
 
-/** 多久回查一次 IdleProbe；够频繁让锁定窗口 ≈ 配置阈值，又不至于压 CPU。 */
+// Polling cadence: tight enough that the lock window approximates the configured threshold,
+// loose enough to not burden the CPU.
 const IDLE_POLL_INTERVAL_MS = 15_000;
 
-/**
- * 空闲自动锁主密钥控制器（**仅主进程**）。
- *
- * 行为契约（schema 已声明，本控制器是兑现方）：
- * - `IAuthPluginConfig.autoLockIdleMinutes = 0` → 永不自动锁
- * - `> 0` → 用户连续空闲 N 分钟后自动 logout（首选）/ lock master key（兜底）
- *
- * 锁定路径（按优先级）：
- * 1. **IAuthService.logout()**：当 cloudBaseUrl 已配置时首选——清空 token、
- *    锁 master key、authState 转回 Unauthenticated，渲染端 UI 自然刷新到登录页。
- *    HTTP 撤销是 best-effort（HttpAuthService 内吞掉异常），不会阻塞本地登出
- * 2. **IMasterKeyService.lock()**：cloud 未配置时的兜底——只清密钥不动 token
- *    （此时根本没 token 可清）
- *
- * 为什么不只调 lock()：authState 不会变 ➜ 渲染端的 IAuthClientService.authState$
- * 还以为"已登录"，BackupCard 等用 authState 守门的 UI 就开门，但 master key 已没。
- * 一调用就抛技术性错误。logout() 把状态推平，UI 一致性恢复。
- *
- * 设计要点：
- * - **只在 master key 已 Unlocked 时跑轮询**。state 转 Locked 后立即停轮询，
- *   不浪费 CPU；下次 derive 让 state 再回 Unlocked，自动恢复轮询
- * - **每个 tick 重新读 config**——用户改 autoLockIdleMinutes 不需要重启
- * - **getIdleSeconds 抛异常时静默吞掉**——OS 探针挂了宁可不锁也别误锁用户
- * - 平台无关：实际"OS 空闲多少秒"由注入的 IIdleProbe 决定（auth-core 提供
- *   NoopIdleProbe 默认；electron-main 提供 ElectronIdleProbe 包装 powerMonitor）
- */
+// Auto-locks the master key after the user has been idle for `autoLockIdleMinutes` minutes
+// (0 disables). Prefers IAuthService.logout() when available — that path clears tokens and
+// flips authState back to Unauthenticated so the renderer's BackupCard etc. transition
+// cleanly. Falls back to IMasterKeyService.lock() when cloudBaseUrl is unset (there are no
+// tokens to clear in that mode anyway).
+//
+// Polling only runs while master key is Unlocked: when state flips Locked we stop polling,
+// when derive() flips it back we resume. Config is re-read every tick so the user does not
+// need to restart after changing the threshold. Idle-probe exceptions are swallowed —
+// failing closed (forced lock) would punish users when the OS API hiccups.
 export class IdleLockController extends RxDisposable {
   private _intervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -116,8 +101,8 @@ export class IdleLockController extends RxDisposable {
         await this._authService.logout();
         return;
       } catch (err) {
-        // logout() 内部已经 best-effort 吞掉网络异常；走到 catch 说明本地状态机
-        // 出错——降级到 bare lock 仍然能保证 master key 被清掉
+        // logout() already absorbs network errors; reaching this branch means the local
+        // state machine itself failed. Fall back to bare lock to at least clear the key.
         this._logService.warn('[IdleLockController] logout failed; falling back to bare master-key lock:', err);
       }
     }

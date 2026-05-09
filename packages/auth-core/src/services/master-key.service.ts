@@ -20,15 +20,7 @@ import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { computeArgon2Salt, deriveMasterKey, deriveSubKeys, zeroize } from '../crypto/kdf';
 
-/**
- * MasterKeyService 实现：仅主进程内生命周期，永不落盘、永不跨 IPC。
- *
- * 状态机：
- * - Locked（初始）：内存中无 master key；任何 getCurrent() 返回 null
- * - Unlocked：derive() 成功后进入；调用 lock() 或 dispose() 退出
- *
- * 派生流程：password + (email, saltB64) → Argon2id → HKDF 三把子密钥
- */
+// State machine: starts Locked; derive() flips to Unlocked, lock()/dispose() return to Locked.
 export class MasterKeyService extends Disposable implements IMasterKeyService {
   private readonly _state$ = new BehaviorSubject<MasterKeyState>(MasterKeyState.Locked);
   readonly state$: Observable<MasterKeyState> = this._state$.asObservable();
@@ -55,7 +47,7 @@ export class MasterKeyService extends Disposable implements IMasterKeyService {
       throw new Error('[MasterKeyService] derivation material requires both email and saltB64');
     }
 
-    // 派生过程中先清掉旧 key，避免短时间内同时持有两份 master key
+    // Drop any prior key first so we do not briefly hold two master keys.
     this._zeroizeAndClear();
 
     const salt = computeArgon2Salt(material.email, material.saltB64);
@@ -73,7 +65,7 @@ export class MasterKeyService extends Disposable implements IMasterKeyService {
       this._logService.log('[MasterKeyService] master key derived for', material.email);
       return next;
     } finally {
-      // master key 本身已经被 HKDF 派生使用过，从这里开始不再需要——清掉
+      // The HKDF inputs above already consumed the master key; nothing else needs it.
       zeroize(masterKey);
     }
   }

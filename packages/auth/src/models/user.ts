@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-/** 用户账号（不含敏感字段；可经 IPC 传给渲染端） */
+// User account snapshot. Carries no sensitive fields and may cross IPC freely.
 export interface IUserAccount {
   readonly id: string;
   readonly email: string;
@@ -24,18 +24,16 @@ export interface IUserAccount {
   readonly updatedAt: string;
 }
 
-/** 注册输入：用户输入的明文密码仅在主进程瞬时使用（派生 verifier/master key 后立即销毁） */
 export interface IRegisterInput {
   email: string;
-  /** 用户主密码——客户端用其派生 verifier；永不发送给服务端，永不持久化 */
+  // Used transiently inside register() only; never sent to the server, never persisted.
   password: string;
   displayName?: string;
 }
 
-/** 登录输入 */
 export interface ILoginInput {
   email: string;
   password: string;
-  /** 是否记住登录态（持久化加密的 refresh token，下次启动免登录） */
+  // When true the encrypted refresh token is persisted so the next launch skips login.
   rememberMe?: boolean;
 }

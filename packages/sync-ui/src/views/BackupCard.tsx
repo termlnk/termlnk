@@ -28,18 +28,10 @@ type BackupActionStatus =
   | { kind: 'success-import'; result: IBackupImportFileResult }
   | { kind: 'error'; message: string };
 
-/**
- * 加密备份卡片——导出/导入按钮组。
- *
- * 优雅降级：
- * - IBackupClientService 未注册（rpc-client 未配置或测试 stub）→ 不渲染
- * - IAuthClientService.authState !== Authenticated → 按钮禁用 + 显示"先登录"占位
- *   （加密备份 frame 需要 master key，master key 仅在登录时派生 + 内存持有）
- *
- * 安全语义：
- * - 备份字节流不出主进程；本组件只发出 mutate 请求 + 接收 summary
- * - 导入采用 `replace` 模式——P2.5 LWW 引擎已落地的 `merge` 模式将在后续版本启用
- */
+// Encrypted backup export/import card. Returns null when IBackupClientService is unbound;
+// disables buttons until the user is authenticated (master key is required to seal/open
+// the backup). Backup bytes never cross IPC — the renderer only sees a path + summary.
+// Import currently uses `replace` mode; `merge` is gated on the LWW engine.
 export function BackupCard() {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);

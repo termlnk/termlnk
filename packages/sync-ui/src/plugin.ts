@@ -24,13 +24,8 @@ export interface ISyncUIPluginConfig {
   override?: DependencyOverride;
 }
 
-/**
- * Sync UI 插件——同步状态面板 + 命令注册中心。
- *
- * 组件（SyncStatusPanel / BackupCard）作为命名导出，由 settings-ui 决定挂载位置。
- * 命令（sync.command.*）由 SyncUIController 在 onReady 阶段注册到 ICommandService，
- * 给扩展 / 快捷键 / 脚本使用——架构 §7.3 给出的 ID 契约的兑现方。
- */
+// Sync UI plugin: registers sync.command.* via SyncUIController during onReady. Components
+// (SyncStatusPanel / BackupCard) are named exports; settings-ui chooses where to mount them.
 @DependentOn(SyncPlugin)
 export class SyncUIPlugin extends Plugin {
   static override pluginName = SYNC_UI_PLUGIN_NAME;

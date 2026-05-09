@@ -18,34 +18,28 @@ import type { SyncResourceId } from '../common/constants';
 import type { ISyncMutation } from '../models/mutation';
 import { createIdentifier } from '@termlnk/core';
 
-/**
- * 待推送 mutation 队列。
- *
- * 持久化到 SQLite `sync_outbox` 表——离线时累积，重连后批量 flush。
- * 设计参考 Replicache pendingMutations + Linear LSE TransactionQueue。
- *
- * **去重语义**：服务端按 `(clientId, mutationId)` 幂等。客户端只需保证 mutationId 单调递增。
- */
+// Pending-mutation queue persisted to the SQLite `sync_outbox` table — accumulates while
+// offline, flushes on reconnect. The server is idempotent on (clientId, mutationId), so
+// the client only has to keep mutationId monotonic.
 export interface ISyncOutboxService {
-  /** 待推送的 mutation 总数 */
   readonly pendingCount$: Observable<number>;
 
-  /** 入队（在事务内调用——与触发本地 SQLite 写入一起完成原子提交） */
+  // Call inside the same SQLite transaction that performs the local write so the two
+  // commits are atomic.
   enqueue(mutation: Omit<ISyncMutation, 'id' | 'createdAt'>): Promise<ISyncMutation>;
 
-  /** 批量取出（FIFO）；不删除，直到 ack */
+  // FIFO peek; entries stay until ack().
   peek(limit?: number): Promise<ISyncMutation[]>;
 
-  /** 服务端确认接收后调用 — 按 mutationId 删除 */
+  // Server confirmed receipt — drop by mutationId.
   ack(mutationIds: number[]): Promise<void>;
 
-  /** 服务端拒绝（如 baseVersion 冲突）— 标记重试 */
+  // Server rejected (e.g. baseVersion conflict) — mark for retry.
   markRejected(mutationIds: number[], reason: string): Promise<void>;
 
-  /** 按资源 ID 统计 */
   countByResource(resource: SyncResourceId): Promise<number>;
 
-  /** 清空特定资源（用于 forceFullResync） */
+  // Used by forceFullResync.
   clearResource(resource: SyncResourceId): Promise<void>;
 }
 

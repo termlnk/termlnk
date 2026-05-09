@@ -31,42 +31,14 @@ import { TokenStorageService } from './services/token-storage.service';
 export const AUTH_CORE_PLUGIN_NAME = 'AUTH_CORE_PLUGIN';
 
 export interface IAuthCorePluginConfig {
-  /**
-   * 云服务根（含版本前缀，如 `https://cloud.termlnk.io/v1`）。
-   *
-   * 配置后会自动注册：
-   * - IAuthService → HttpAuthService（绑定到该 baseUrl）
-   * - ITokenRefresher → HttpTokenRefresher（绑定到该 baseUrl）
-   *
-   * 不配置时这两个服务保持未绑定状态——AuthGate 等组件用 Quantity.OPTIONAL
-   * 注入会得到 null，UI 自动呈现"未配置云服务"占位。
-   *
-   * Phase 3 公开测试 / self-host 部署后，desktop main bootstrap 通过本字段
-   * 一次激活整个云端登录链。
-   */
+  // Cloud root with version prefix (e.g. `https://cloud.termlnk.io/v1`). When set, IAuthService
+  // and ITokenRefresher are bound to their HTTP implementations. When unset, both stay
+  // unbound; consumers using Quantity.OPTIONAL receive null and the UI shows a placeholder.
   cloudBaseUrl?: string;
 
-  /** Override 列表，便于测试和 desktop main 替换具体实现。 */
   override?: DependencyOverride;
 }
 
-/**
- * Auth Core 插件——主进程实现的注册中心。
- *
- * 依赖：
- * - DatabasePlugin（TokenStorageService 使用 ConfigRepository + ISecretCipherService）
- * - AuthPlugin（契约层 config key + DI 标识符）
- *
- * 始终注册的服务：
- * - IMasterKeyService → MasterKeyService（password+salt → Argon2id → HKDF 三把子密钥）
- * - ISrpClientService → SrpClientService（5 步 SRP6a 握手）
- * - ITokenStorageService → TokenStorageService（加密持久化 ITokenPair）
- * - TokenManager（concrete class；access/refresh 缓存 + 自动续期）
- *
- * 仅当 `cloudBaseUrl` 配置时注册：
- * - IAuthService → HttpAuthService（SRP6a register/login/logout over HTTP）
- * - ITokenRefresher → HttpTokenRefresher（POST /auth/refresh）
- */
 @DependentOn(DatabasePlugin, AuthPlugin)
 export class AuthCorePlugin extends Plugin {
   static override pluginName = AUTH_CORE_PLUGIN_NAME;
@@ -84,13 +56,12 @@ export class AuthCorePlugin extends Plugin {
       [ISrpClientService, { useClass: SrpClientService }],
       [ITokenStorageService, { useClass: TokenStorageService }],
       [TokenManager, { useClass: TokenManager }],
-      // IDeviceNameProvider 缺省实现——Node 主进程使用 `os.hostname()`。
-      // 浏览器 SPA / RN 应用应通过 override 替换为各端原生实现，不要复用此类。
+      // Defaults for Node main; browser SPA / RN apps must override via plugin config.
       [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
-      // IIdleProbe 缺省实现："从不空闲"——纯 Node 测试 / 非 Electron 集成场景安全默认。
-      // ElectronMainPlugin 通过 override 替换为 powerMonitor 实现。
+      // Safe default for non-Electron contexts; ElectronMainPlugin overrides with a
+      // powerMonitor-backed implementation.
       [IIdleProbe, { useClass: NoopIdleProbe }],
-      // IdleLockController 自身没有公共接口，由 onReady 触发实例化即可生效。
+      // No public interface; onReady touches it so the constructor wires up subscriptions.
       [IdleLockController],
     ];
 
@@ -127,8 +98,8 @@ export class AuthCorePlugin extends Plugin {
   }
 
   override onReady(): void {
-    // touch IdleLockController 让它实例化——构造里订阅 IMasterKeyService.state$
-    // 才能开始空闲检测。Plugin 的 onStarting 阶段服务尚未就绪，所以放 onReady。
+    // Force IdleLockController to instantiate so its constructor can subscribe to
+    // IMasterKeyService.state$. onStarting is too early — the service is not yet bound.
     touchDependencies(this._injector, [
       [IdleLockController],
     ]);

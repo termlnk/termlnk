@@ -21,19 +21,9 @@ import { ISyncService, SyncState } from '@termlnk/sync';
 import { CloudCheckIcon, CloudOffIcon, RefreshCwIcon, RotateCcwIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
 
-/**
- * 同步状态面板——订阅 ISyncService 的 state$/stats$/lastError$ 渲染。
- *
- * 优雅降级：
- * - ISyncService 未注册（云服务未配置）→ 不渲染（返回 null）。SettingsTab 等
- *   消费方应该自己提供"云服务未配置"占位文案，而不是把降级状态混进同步组件
- *
- * 触发动作：
- * - syncNow：立即 push + pull
- * - forceFullResync：清 cursor 后 pull（用户怀疑本地数据落后或损坏时）
- *
- * 这两个按钮在 state === Disabled 时禁用——sync 未启用，触发也无意义。
- */
+// Renders state$ / stats$ / lastError$ from ISyncService and offers Sync Now / Resync
+// buttons. Returns null when ISyncService is unbound (cloud unconfigured) — host pages
+// must provide their own "cloud not configured" placeholder.
 export function SyncStatusPanel() {
   const syncService = useDependency(ISyncService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);

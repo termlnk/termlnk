@@ -18,17 +18,10 @@ import type { ICredential, IProxy } from '@termlnk/terminal';
 import type { ISecretCipherService } from '../secret-cipher.service';
 import { isEncrypted } from '../secret-cipher.service';
 
-/**
- * Credential 字段级加解密工具。
- *
- * 设计原则：
- * - 仅加密真正敏感字段（password / privateKey / proxy.password），保留 type / username / host / port 等明文
- * - 这让"列表展示用户名"、"按 username 搜索"等能力不需要解密整批数据
- * - 加密幂等：对已加密字段不会重复加密
- * - 解密容错：未加密的旧值原样返回（迁移期共存）
- */
+// Field-level encrypt/decrypt helpers. Only sensitive subfields are touched —
+// usernames, host addresses, ports, transport types, etc. stay plaintext so list
+// views and queries do not need the cipher.
 
-/** 加密 ICredential 中的敏感字段；返回新对象，不修改入参 */
 export function encryptCredential(
   credential: ICredential | null | undefined,
   cipher: ISecretCipherService
@@ -46,7 +39,6 @@ export function encryptCredential(
   }
 }
 
-/** 解密 ICredential 中的敏感字段；返回新对象 */
 export function decryptCredential(
   credential: ICredential | null | undefined,
   cipher: ISecretCipherService
@@ -64,7 +56,6 @@ export function decryptCredential(
   }
 }
 
-/** 加密 IProxy 中的密码字段 */
 export function encryptProxy(
   proxy: IProxy | null | undefined,
   cipher: ISecretCipherService
@@ -75,13 +66,9 @@ export function encryptProxy(
   if (!proxy.password) {
     return proxy;
   }
-  return {
-    ...proxy,
-    password: encryptIfNeeded(proxy.password, cipher),
-  };
+  return { ...proxy, password: encryptIfNeeded(proxy.password, cipher) };
 }
 
-/** 解密 IProxy 中的密码字段 */
 export function decryptProxy(
   proxy: IProxy | null | undefined,
   cipher: ISecretCipherService
@@ -92,21 +79,14 @@ export function decryptProxy(
   if (!proxy.password) {
     return proxy;
   }
-  return {
-    ...proxy,
-    password: decryptIfNeeded(proxy.password, cipher),
-  };
+  return { ...proxy, password: decryptIfNeeded(proxy.password, cipher) };
 }
 
-/**
- * 加密单个字符串字段（如 ai_provider.apiKey）。
- *
- * Nullability 透传：
- * - 输入 string → 输出 string（用于 ICredential.password 等必填字段）
- * - 输入 string | null | undefined → 输出 string | null（用于可空数据库字段）
- *
- * 空字符串（'')与已加密值原样返回——空字符串不会触发加密，已加密保持幂等。
- */
+// Overloaded so nullability flows through to callers:
+// - string in -> string out (required fields like ICredential.password)
+// - nullable in -> nullable out (optional database columns)
+//
+// Empty strings and already-encrypted values pass through unchanged.
 export function encryptIfNeeded(value: string, cipher: ISecretCipherService): string;
 export function encryptIfNeeded(value: string | null | undefined, cipher: ISecretCipherService): string | null;
 export function encryptIfNeeded(value: string | null | undefined, cipher: ISecretCipherService): string | null {
@@ -119,7 +99,6 @@ export function encryptIfNeeded(value: string | null | undefined, cipher: ISecre
   return cipher.encrypt(value);
 }
 
-/** 解密单个字符串字段；nullability 同 encryptIfNeeded */
 export function decryptIfNeeded(value: string, cipher: ISecretCipherService): string;
 export function decryptIfNeeded(value: string | null | undefined, cipher: ISecretCipherService): string | null;
 export function decryptIfNeeded(value: string | null | undefined, cipher: ISecretCipherService): string | null {
@@ -132,65 +111,39 @@ export function decryptIfNeeded(value: string | null | undefined, cipher: ISecre
   return cipher.decrypt(value);
 }
 
-/**
- * 加密 MCP server config 中的敏感字段：
- * - stdio.env 的所有 value（环境变量常含 API_KEY/TOKEN）
- * - http.headers 的所有 value（常含 Authorization/x-api-key）
- *
- * 仅加密 value，key 保持明文（便于排查和列表展示）。
- */
+// MCP server config: only env (stdio) / headers (http) values are encrypted —
+// keys stay plaintext so logs and list views remain useful for debugging.
+export function encryptMcpConfig(config: McpServerConfig, cipher: ISecretCipherService): McpServerConfig;
+export function encryptMcpConfig(config: McpServerConfig | null | undefined, cipher: ISecretCipherService): McpServerConfig | null;
 export function encryptMcpConfig(
   config: McpServerConfig | null | undefined,
   cipher: ISecretCipherService
 ): McpServerConfig | null {
-  if (!config) {
-    return null;
-  }
-
-  if (config.type === 'stdio') {
-    return {
-      ...config,
-      env: config.env ? mapValues(config.env, (v) => encryptIfNeeded(v, cipher)) : config.env,
-    };
-  }
-
-  if (config.type === 'http') {
-    return {
-      ...config,
-      headers: config.headers
-        ? mapValues(config.headers, (v) => encryptIfNeeded(v, cipher))
-        : config.headers,
-    };
-  }
-
-  return config;
+  return _mapMcpConfigSecrets(config, (v) => encryptIfNeeded(v, cipher));
 }
 
-/** 解密 MCP server config 中的敏感字段 */
+export function decryptMcpConfig(config: McpServerConfig, cipher: ISecretCipherService): McpServerConfig;
+export function decryptMcpConfig(config: McpServerConfig | null | undefined, cipher: ISecretCipherService): McpServerConfig | null;
 export function decryptMcpConfig(
   config: McpServerConfig | null | undefined,
   cipher: ISecretCipherService
 ): McpServerConfig | null {
+  return _mapMcpConfigSecrets(config, (v) => decryptIfNeeded(v, cipher));
+}
+
+function _mapMcpConfigSecrets(
+  config: McpServerConfig | null | undefined,
+  fn: (value: string) => string
+): McpServerConfig | null {
   if (!config) {
     return null;
   }
-
   if (config.type === 'stdio') {
-    return {
-      ...config,
-      env: config.env ? mapValues(config.env, (v) => decryptIfNeeded(v, cipher)) : config.env,
-    };
+    return config.env ? { ...config, env: mapValues(config.env, fn) } : config;
   }
-
   if (config.type === 'http') {
-    return {
-      ...config,
-      headers: config.headers
-        ? mapValues(config.headers, (v) => decryptIfNeeded(v, cipher))
-        : config.headers,
-    };
+    return config.headers ? { ...config, headers: mapValues(config.headers, fn) } : config;
   }
-
   return config;
 }
 

@@ -41,11 +41,10 @@ export class McpServerRepository extends Disposable {
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
-  /** 读取后透明解密 config 中的敏感字段 */
   private _decryptEntity(entity: IMcpServerEntity): IMcpServerEntity {
     return {
       ...entity,
-      config: decryptMcpConfig(entity.config, this._cipher) ?? entity.config,
+      config: decryptMcpConfig(entity.config, this._cipher),
     };
   }
 
@@ -66,11 +65,10 @@ export class McpServerRepository extends Disposable {
 
   async create(record: Omit<IMcpServerEntityInsert, 'id'> & { id?: string }): Promise<string> {
     const id = record.id || generateId();
-    // 透明加密 env / headers 中的密钥；明文不入库
     const payload: IMcpServerEntityInsert = {
       ...record,
       id,
-      config: record.config ? encryptMcpConfig(record.config, this._cipher) ?? record.config : record.config,
+      config: record.config ? encryptMcpConfig(record.config, this._cipher) : record.config,
     };
     await this._db.insert(mcpServerEntity).values(payload);
     this._changed$.next({ type: 'add', id });
@@ -83,7 +81,7 @@ export class McpServerRepository extends Disposable {
       updatedAt: new Date().toISOString(),
     };
     if (Object.hasOwn(updates, 'config') && updates.config != null) {
-      payload.config = encryptMcpConfig(updates.config, this._cipher) ?? updates.config;
+      payload.config = encryptMcpConfig(updates.config, this._cipher);
     }
     await this._db
       .update(mcpServerEntity)

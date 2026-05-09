@@ -49,8 +49,8 @@ export function AiProviderTab() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [providerQuery, setProviderQuery] = useState('');
   const [modelQuery, setModelQuery] = useState('');
-  // apiKeyInputs 仅保存"用户在 UI 当前输入的明文"——server 端的 apiKey 永不下发到渲染端。
-  // 留空提交时主进程 smart-merge 会保留原值；输入新值则覆盖。
+  // Holds whatever the user is currently typing; the server never returns plaintext keys.
+  // An empty submission means "unchanged" (main process smart-merges); a new value replaces.
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<string, string>>({});
   const [apiKeyConfigured, setApiKeyConfigured] = useState<Record<string, boolean>>({});
   const [baseUrlInputs, setBaseUrlInputs] = useState<Record<string, string>>({});
@@ -81,7 +81,7 @@ export function AiProviderTab() {
 
       for (const [providerId, config] of entries) {
         if (!config) continue;
-        // server 端不再下发明文 apiKey；仅告诉我们是否已配置（apiKeyConfigured 占位符）
+        // Server returns only an `apiKeyConfigured` placeholder, never the plaintext key.
         configuredFlags[providerId] = !!(config as { apiKeyConfigured?: boolean }).apiKeyConfigured;
         if (config.baseUrl) baseUrls[providerId] = config.baseUrl;
       }

@@ -20,18 +20,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, cn, useDepen
 import { IBackupClientService, ISyncService } from '@termlnk/sync';
 import { BackupCard, SyncStatusPanel } from '@termlnk/sync-ui';
 
-/**
- * 账号 + 同步标签页——把 auth-ui 的 AuthGate 和 sync-ui 的 SyncStatusPanel
- * 合并到 settings-ui 的标签体系下。
- *
- * 三层降级：
- * 1. IAuthClientService 未注册 → 显示 "云服务未配置" 占位（auth-ui 默认行为）
- * 2. IAuthClientService 已注册但用户未登录 → AuthGate 渲染 LoginForm/RegisterForm
- * 3. 已登录 → AuthGate 渲染 AccountPanel；下方 SyncStatusPanel 渲染同步状态
- *
- * Phase 3 落地后，IAuthClientService 由 RPCClientPlugin 或 AuthCorePlugin 注册，
- * 同步将在登录时自动激活——本 tab 不需要任何改动。
- */
+// Account & Sync tab: composes auth-ui's AuthGate with sync-ui's SyncStatusPanel /
+// BackupCard / DeviceListCard. Each section appears only when its underlying service is
+// bound, so an unconfigured cloud build collapses to just the AuthGate placeholder.
 export function AccountTab() {
   const localeService = useDependency(LocaleService);
   const authClient = useDependency(IAuthClientService, Quantity.OPTIONAL);

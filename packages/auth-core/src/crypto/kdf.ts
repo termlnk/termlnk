@@ -22,21 +22,17 @@ import { argon2id } from 'hash-wasm';
 
 const TEXT_ENCODER = new TextEncoder();
 
-/** 派生出的三把子密钥（auth/enc/index）；长度均为 32 字节。 */
 export interface IDerivedSubKeys {
   readonly authKey: Uint8Array;
   readonly encKey: Uint8Array;
   readonly indexKey: Uint8Array;
 }
 
-/**
- * 构造 Argon2id 输入 salt：`utf8(lowercased(email)) || base64decode(saltB64)`。
- *
- * 设计要点：
- * - 邮箱固定部分实现"同一密码 + 不同账号 → 不同 master key"——防止跨账号字典攻击
- * - 服务端发的随机部分保证用户首次注册时具备不可预测的熵
- * - 邮箱归一化（trim + lowercase）以避免大小写差异导致重复登录派生不同 key
- */
+// Composes the Argon2id input salt as `utf8(lowercased(email)) || base64decode(saltB64)`.
+// Including the email gives "same password, different account -> different master key" so
+// dictionary attacks across accounts do not amortize. The random server-side component
+// guarantees first-time entropy. Email is normalized (trim + lowercase) so case differences
+// cannot derive different keys for the same login.
 export function computeArgon2Salt(email: string, saltB64: string): Uint8Array {
   const emailBytes = TEXT_ENCODER.encode(email.trim().toLowerCase());
   const serverSaltBytes = base64ToBytes(saltB64);
@@ -49,15 +45,8 @@ export function computeArgon2Salt(email: string, saltB64: string): Uint8Array {
   return out;
 }
 
-/**
- * 用 Argon2id 把用户主密码拉伸成 32 字节 master key。
- *
- * 参数读取自 `@termlnk/auth` 的 `MASTER_KEY_DERIVATION`（OWASP 2023 推荐基线）。
- * 在主进程内执行：hash-wasm 通过 WASM 计算，纯 JS 跨平台一致。
- *
- * @param password 用户明文密码（瞬时使用；调用方应在派生后立即丢弃引用）
- * @param salt     `computeArgon2Salt` 的输出
- */
+// Argon2id stretch using OWASP-baseline parameters from `@termlnk/auth`. Runs via WASM
+// for cross-platform parity. Callers must drop the password reference once this returns.
 export async function deriveMasterKey(password: string, salt: Uint8Array): Promise<Uint8Array> {
   return await argon2id({
     password,
@@ -70,15 +59,9 @@ export async function deriveMasterKey(password: string, salt: Uint8Array): Promi
   });
 }
 
-/**
- * 用 HKDF-SHA256 把 master key 拆成三把独立用途的子密钥。
- *
- * 三把密钥相互不可推导（HKDF 单向 + 不同 info 标签提供 domain separation）：
- * 服务端拿到 authKey 也无法反推 encKey/indexKey。
- *
- * @param masterKey `deriveMasterKey` 输出（32 字节）
- * @param salt      可选 HKDF salt；通常省略即可（HKDF 已内置 PRK extract，info 已提供 domain separation）
- */
+// Splits the master key into three independent sub-keys via HKDF-SHA256. The info labels
+// provide domain separation; given authKey alone the server cannot derive enc/indexKey.
+// `salt` defaults to empty; HKDF performs PRK extraction internally.
 export function deriveSubKeys(masterKey: Uint8Array, salt: Uint8Array = new Uint8Array(0)): IDerivedSubKeys {
   return {
     authKey: hkdf(sha256, masterKey, salt, TEXT_ENCODER.encode(HKDF_INFO.AUTH), MASTER_KEY_DERIVATION.outputBytes),
@@ -87,7 +70,7 @@ export function deriveSubKeys(masterKey: Uint8Array, salt: Uint8Array = new Uint
   };
 }
 
-/** 尽力清零 Uint8Array（V8 可能持有副本，不能完全保证，仅减少残留窗口）。 */
+// Best-effort zeroing. V8 may keep copies elsewhere; this only shrinks the residual window.
 export function zeroize(buf: Uint8Array | null | undefined): void {
   if (!buf) {
     return;

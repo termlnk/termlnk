@@ -15,14 +15,9 @@
 
 import type { IIdleProbe } from '@termlnk/auth';
 
-/**
- * 占位 IdleProbe——永远返回 0（"从不空闲"）。
- *
- * 用途：非 Electron 集成（纯 Node 测试 / CLI 工具 / 单元测试 testbed）下提供
- * 一个不需要 OS API 的实现；IdleLockController 注入它后，autoLockIdleMinutes
- * 永远不会触发，等于实际禁用空闲自动锁——这在没有 OS 输入信号的环境里是
- * 唯一安全的默认值。
- */
+// Default idle probe for non-Electron contexts (CLI, unit tests). Always reports "0 idle
+// seconds", effectively disabling idle auto-lock — the only safe default when we lack OS
+// input signals.
 export class NoopIdleProbe implements IIdleProbe {
   getIdleSeconds(): number {
     return 0;

@@ -35,45 +35,16 @@ import { SkillSynchroniser } from './synchronisers/skill-synchroniser';
 export const SYNC_CORE_PLUGIN_NAME = 'SYNC_CORE_PLUGIN';
 
 export interface ISyncCorePluginConfig {
-  /**
-   * 云服务根（含版本前缀，如 `https://cloud.termlnk.io/v1`）。
-   *
-   * 配置后会用 HttpSyncTransportService 替换默认的 NoopSyncTransportService——
-   * 一行 config 让 SyncService 接入真实云端。
-   *
-   * 不配置时保持 Noop，SyncService.enable 会立即转 Offline 状态——
-   * 渲染端 SyncStatusPanel 显示离线，备份/导入等独立功能仍可用。
-   */
+  // Cloud root with version prefix (e.g. `https://cloud.termlnk.io/v1`). When set the
+  // HTTP transport replaces the default Noop binding. With no URL, SyncService.enable()
+  // immediately transitions to Offline; backup / import still work because they do not
+  // depend on the network.
   cloudBaseUrl?: string;
 
-  /** Override 列表——desktop main 也可以直接 override transport 实现绕过 cloudBaseUrl。 */
+  // Override path; lets desktop-main swap the transport without going through cloudBaseUrl.
   override?: DependencyOverride;
 }
 
-/**
- * Sync Core 插件——主进程实现的注册中心。
- *
- * 依赖：
- * - DatabasePlugin（synchroniser 用 Repository；outbox 用 ConfigRepository 持久化 clientMutId）
- * - AuthCorePlugin（synchroniser 通过 IMasterKeyService 拿 encKey 加密）
- * - SyncPlugin（契约层 config key + DI 标识符）
- *
- * 注册的服务：
- * - ISyncCryptoService → SyncCryptoService
- * - ISyncOutboxService → SyncOutboxService
- * - IBackupService → BackupService（独立可用，不依赖网络）
- * - ISyncService → SyncService
- * - ISyncTransportService → NoopSyncTransportService（占位；Phase 3 通过 override 替换）
- * - 5 synchroniser concrete classes（HostSynchroniser / ConfigSynchroniser / ...）
- *
- * 注册的控制器：
- * - SynchroniserRegistrationController（onReady 把 synchroniser 接入 SyncService）
- *
- * Phase 3 落地清单：
- * - 在 desktop main 的 SyncCorePlugin 配置中 override `ISyncTransportService` 为 HTTP 实现
- * - 在 AuthCorePlugin 配置中 override `ITokenRefresher` 为 HTTP 实现
- * - 触发 IAuthService 注册（含 server SRP 通信）
- */
 @DependentOn(DatabasePlugin, AuthCorePlugin, SyncPlugin)
 export class SyncCorePlugin extends Plugin {
   static override pluginName = SYNC_CORE_PLUGIN_NAME;
@@ -91,26 +62,22 @@ export class SyncCorePlugin extends Plugin {
       : ([ISyncTransportService, { useClass: NoopSyncTransportService }] as Dependency);
 
     const dependencies: Dependency[] = [
-      // 服务
       [ISyncCryptoService, { useClass: SyncCryptoService }],
       [ISyncOutboxService, { useClass: SyncOutboxService }],
       [IBackupService, { useClass: BackupService }],
       [ISyncService, { useClass: SyncService }],
       transportBinding,
 
-      // SyncService 注册路径需要 concrete class binding（DI 通过类型 token 取到的是 ISyncService
-      // 接口实现，但 SynchroniserRegistrationController 注入的是具体 SyncService 类——
-      // 把同一个实例同时绑给 ISyncService 和 SyncService 两个 token）
+      // SynchroniserRegistrationController injects the concrete SyncService class, so we
+      // bind the same instance under both the interface token and the concrete token.
       [SyncService, { useClass: SyncService }],
 
-      // 5 个 synchroniser
       [HostSynchroniser, { useClass: HostSynchroniser }],
       [ConfigSynchroniser, { useClass: ConfigSynchroniser }],
       [ProviderSynchroniser, { useClass: ProviderSynchroniser }],
       [McpSynchroniser, { useClass: McpSynchroniser }],
       [SkillSynchroniser, { useClass: SkillSynchroniser }],
 
-      // 注册控制器
       [SynchroniserRegistrationController],
       [AuthSyncBridgeController],
     ];
@@ -133,8 +100,8 @@ export class SyncCorePlugin extends Plugin {
   }
 
   override onReady(): void {
-    // touch SynchroniserRegistrationController + AuthSyncBridgeController：
-    // 前者把 synchroniser 注入 SyncService；后者订阅 IAuthService.authState$
+    // Touch the registration + bridge controllers: the former wires synchronisers into
+    // SyncService, the latter subscribes to IAuthService.authState$.
     touchDependencies(this._injector, [
       [AuthSyncBridgeController],
       [SynchroniserRegistrationController],

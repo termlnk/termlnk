@@ -20,11 +20,9 @@ import { AUTH_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/confi
 
 export { AUTH_PLUGIN_NAME };
 
-/**
- * Auth 契约层插件——只承载 config 注册，不绑定任何具体实现。
- * 主进程实现由 @termlnk/auth-core 提供（P1.2/3/4）；
- * 渲染端门面由 @termlnk/rpc-client 注册（与现有 IXxxClientService 同模式）。
- */
+// Contract-only plugin: registers config but binds no services.
+// Main-process implementation lives in @termlnk/auth-core; the renderer facade is in
+// @termlnk/rpc-client.
 export class AuthPlugin extends Plugin {
   static override pluginName = AUTH_PLUGIN_NAME;
 

@@ -85,7 +85,7 @@ describe('deriveMasterKey', () => {
 });
 
 describe('deriveSubKeys', () => {
-  // 用一把 deterministic 假 master key 替代真正的 Argon2 派生（测试只关心 HKDF 行为）
+  // Use a deterministic fake master key — these tests only exercise HKDF behavior.
   const FAKE_MASTER_KEY = new Uint8Array(32).fill(0x42);
 
   it('returns three 32-byte sub keys', () => {

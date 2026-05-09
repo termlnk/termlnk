@@ -15,19 +15,8 @@
 
 import { Observable } from 'rxjs';
 
-/**
- * 将 RxJS Observable 转换为 AsyncGenerator
- * 用于 tRPC subscription 返回
- *
- * @param observable - RxJS Observable
- * @returns AsyncGenerator 用于 tRPC subscription
- *
- * @example
- * ```typescript
- * const observable = someService.getData$();
- * yield* observableToAsyncGenerator(observable);
- * ```
- */
+// Adapt an RxJS Observable to an AsyncGenerator so it can be returned from a tRPC
+// subscription resolver.
 export async function* observableToAsyncGenerator<T>(observable: Observable<T>): AsyncGenerator<T> {
   const buffer: T[] = [];
   let resolve: (() => void) | null = null;
@@ -80,9 +69,8 @@ export async function* observableToAsyncGenerator<T>(observable: Observable<T>):
   }
 }
 
-/**
- * tRPC subscription 对象，包含 subscribe 方法
- */
+// Minimal tRPC subscription shape: anything exposing a `subscribe` method that takes
+// onData / onError / onComplete callbacks.
 interface TRPCSubscriptionLike<TData> {
   subscribe: (opts: {
     onData: (data: TData) => void;
@@ -91,30 +79,9 @@ interface TRPCSubscriptionLike<TData> {
   }) => { unsubscribe: () => void };
 }
 
-/**
- * 将 tRPC subscription 转换为 RxJS Observable
- * 用于在客户端订阅 tRPC subscription
- *
- * @param subscription - tRPC subscription 对象或函数，接收 onData/onError/onComplete 回调
- * @returns Observable 用于 RxJS 流处理
- *
- * @example
- * ```typescript
- * // 方式 1：直接传入 tRPC subscription 对象（无 input 的 subscription）
- * const onChanged$ = trpcSubscriptionToObservable(client.host.onChanged$);
- *
- * // 方式 2：传入函数（有 input 的 subscription）
- * const windowState$ = trpcSubscriptionToObservable(
- *   (opts) => client.window.getWindowState$.subscribe({ input: 1 }, opts)
- * );
- *
- * windowState$.subscribe({
- *   next: (state) => console.log('Window state:', state),
- *   error: (err) => console.error('Error:', err),
- *   complete: () => console.log('Completed'),
- * });
- * ```
- */
+// Adapt a tRPC subscription (either the object or a function returning the subscribe
+// handle) to an RxJS Observable. Pass a function form when the subscription needs input
+// arguments — e.g. `(opts) => client.window.getWindowState$.subscribe({ input: id }, opts)`.
 export function trpcSubscriptionToObservable<TData>(
   subscription: TRPCSubscriptionLike<TData>
 ): Observable<TData>;
@@ -133,7 +100,6 @@ export function trpcSubscriptionToObservable<TData>(
   }) => { unsubscribe: () => void })
 ): Observable<TData> {
   return new Observable<TData>((subscriber) => {
-    // 判断是 subscription 对象还是函数
     const subscribe = typeof subscriptionOrFn === 'function'
       ? subscriptionOrFn
       : subscriptionOrFn.subscribe.bind(subscriptionOrFn);

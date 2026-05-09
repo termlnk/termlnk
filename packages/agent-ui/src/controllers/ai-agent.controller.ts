@@ -13,21 +13,18 @@
  * governing permissions and limitations under the License.
  */
 
-import { RxDisposable } from '@termlnk/core';
+import { ILogService, RxDisposable } from '@termlnk/core';
 import { IAIAgentClientService, IProviderConfigClientService } from '@termlnk/rpc-client';
-import { distinctUntilChanged, filter } from 'rxjs';
+import { distinctUntilChanged, filter, takeUntil } from 'rxjs';
 
-/**
- * 渲染端 AI 控制器：当用户切换模型时，把 (providerId, modelId) 推给主进程。
- *
- * apiKey 同步**不再由渲染端负责**——主进程的 AIKeySyncController 直接订阅
- * activeProvider$ 内部完成；本 controller 仅传递模型选择。这让 apiKey 永不
- * 跨过 IPC 边界，配合 ai 路由的 sanitize 实现"渲染端零明文凭据"。
- */
+// Forwards model selection (providerId / modelId) to the main process when the user
+// switches models. apiKey sync runs in the main process (AIKeySyncController), so the
+// renderer never sees plaintext credentials.
 export class AIAgentController extends RxDisposable {
   constructor(
     @IAIAgentClientService private readonly _aiAgentService: IAIAgentClientService,
-    @IProviderConfigClientService private readonly _providerConfigService: IProviderConfigClientService
+    @IProviderConfigClientService private readonly _providerConfigService: IProviderConfigClientService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
 
@@ -35,18 +32,17 @@ export class AIAgentController extends RxDisposable {
   }
 
   private _setupModelSync(): void {
-    const sub = this._providerConfigService.activeModel$.pipe(
+    this._providerConfigService.activeModel$.pipe(
       filter((model): model is NonNullable<typeof model> => model !== null),
-      distinctUntilChanged((prev, next) => prev.id === next.id)
+      distinctUntilChanged((prev, next) => prev.id === next.id),
+      takeUntil(this.dispose$)
     ).subscribe((model) => {
-      // 模型 ID 形如 "provider/modelId"
+      // Composite model id is `providerId/modelId`; modelId may itself contain '/'.
       const [providerId, ...rest] = model.id.split('/');
       const modelId = rest.join('/');
       this._aiAgentService.setModel(providerId, modelId).catch((err) => {
-        console.error('[AIAgentController] setModel failed:', err);
+        this._logService.error('[AIAgentController] setModel failed:', err);
       });
     });
-
-    this.disposeWithMe({ dispose: () => sub.unsubscribe() });
   }
 }

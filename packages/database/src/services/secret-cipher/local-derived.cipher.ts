@@ -18,20 +18,10 @@ import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'node:
 import { hostname, userInfo } from 'node:os';
 import { SECRET_CIPHER_PREFIX } from '../secret-cipher.service';
 
-/**
- * 跨平台兜底加密器。
- *
- * 设计取舍（明示）：
- * - **不依赖 OS keystore**：纯 Node crypto + 设备指纹派生 master key，CI/容器/Linux 无 secret-service 都能跑
- * - **设备绑定**：master key 派生输入 = `hostname || username || fixed-salt`，搬到另一台机器就解不开
- * - **威胁模型边界**：拷走 SQLite 文件 + 同机器 = 仍可解密（master key 来自相同设备指纹）；这是相对 plaintext 的进步，**不是替代 OS keystore 的强加密**
- * - **算法**：PBKDF2-SHA256(100k 轮) → AES-256-GCM；都是 Node 原生支持
- *
- * 何时使用：
- * - apps/desktop/main 检测 `safeStorage.isEncryptionAvailable()` 失败时降级
- * - 单元测试 / CI（无 Electron 上下文）
- * - 未来支持的 headless server 模式
- */
+// Cross-platform fallback cipher. Master key is derived from a device fingerprint
+// (hostname + username), so an SQLite copy moved to another machine cannot be decrypted.
+// This is strictly a hardening step over plaintext storage, not a substitute for
+// an OS-managed keystore.
 export class LocalDerivedSecretCipher implements ISecretCipherService {
   readonly scheme: SecretCipherScheme = 'local-derived';
 
@@ -66,7 +56,7 @@ export class LocalDerivedSecretCipher implements ISecretCipherService {
   }
 
   decrypt(ciphertext: string): string {
-    // 兼容：未加密的旧明文原样返回（迁移期能继续读旧数据）
+    // Legacy plaintext (no prefix) passes through; lets readers cope with un-migrated rows.
     if (!ciphertext.startsWith(SECRET_CIPHER_PREFIX)) {
       return ciphertext;
     }
@@ -102,8 +92,8 @@ export class LocalDerivedSecretCipher implements ISecretCipherService {
 
   private _deriveKeyFromDevice(): Buffer {
     const fingerprint = `${hostname()}|${userInfo().username}|termlnk-local-derived-v1`;
-    // PBKDF2-SHA256, 100k iterations, 256-bit output
-    // salt 用固定值是因为输入本身已经是设备指纹（不是用户密码），这里 KDF 主要用于均匀化分布到 256-bit 密钥空间
+    // Salt is fixed because the input is already a device fingerprint, not a user password;
+    // PBKDF2 here is used purely to expand the fingerprint into a uniform 256-bit key.
     return pbkdf2Sync(fingerprint, 'termlnk-secret-cipher-v1', 100_000, 32, 'sha256');
   }
 }

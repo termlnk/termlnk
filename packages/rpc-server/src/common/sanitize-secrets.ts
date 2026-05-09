@@ -17,17 +17,11 @@ import type { IProviderUserConfig } from '@termlnk/agent';
 import type { IAIProviderEntity, IHostEntity } from '@termlnk/database';
 import type { ICredential, IProxy } from '@termlnk/terminal';
 
-/**
- * tRPC 边界脱敏工具集。
- *
- * 第一性原理：明文凭据可在主进程业务代码中流动；但**不应跨过 tRPC 序列化边界**进入渲染端。
- * 这套 sanitizer 就是这条边界的强制层——所有面向渲染端的 query/subscription 输出必须先过这里。
- *
- * 设计要点：
- * - 保留**用户可见的非敏感字段**（type / username / addr / port）以便 UI 渲染列表
- * - 用 `hasXxx: boolean` 占位符告诉 UI"该字段已配置"，不暴露任何明文/校验和/长度
- * - 类型推导由 tRPC `inferRouterOutputs` 自动跟踪，渲染端无需引用本文件的中间类型
- */
+// tRPC boundary sanitizers. Plaintext secrets may circulate inside the main process but must
+// not cross the IPC boundary; every renderer-facing query/subscription pipes through here.
+// Non-sensitive fields (type / username / addr / port) stay so list views render without the
+// cipher; sensitive fields collapse to `hasXxx` boolean placeholders. Renderer types are
+// derived via tRPC `inferRouterOutputs` — these IPublic* aliases stay file-private.
 
 interface IPublicCredential {
   type: ICredential['type'];

@@ -19,14 +19,9 @@ import type { AuthState, IAuthError } from '../models/session';
 import type { ILoginInput, IRegisterInput, IUserAccount } from '../models/user';
 import { createIdentifier } from '@termlnk/core';
 
-/**
- * 渲染端认证门面。
- *
- * 与 IAuthService 的接口表面看起来相似，但语义不同：
- * - 渲染端永远拿不到 master key / access token / refresh token
- * - 仅暴露用户可观察的状态（currentUser / authState）和触发动作的入口
- * - 通过 tRPC 与主进程通信；password 在 register/login 调用栈内瞬时上行
- */
+// Renderer-side facade. Mirrors IAuthService for triggering actions and observing state,
+// but the renderer never holds the master key or any token. The password transits inside
+// the register/login tRPC call stack only.
 export interface IAuthClientService {
   readonly currentUser$: Observable<IUserAccount | null>;
   readonly authState$: Observable<AuthState>;

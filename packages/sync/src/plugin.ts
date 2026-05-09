@@ -20,10 +20,8 @@ import { defaultPluginConfig, SYNC_PLUGIN_CONFIG_KEY } from './controllers/confi
 
 export { SYNC_PLUGIN_NAME };
 
-/**
- * Sync 契约层插件——只承载 config 注册，不绑定任何具体实现。
- * 主进程实现由 @termlnk/sync-core 提供（P2.2/3/4/5/6）。
- */
+// Contract-only: registers config but binds no services. Main-process implementation
+// lives in @termlnk/sync-core.
 export class SyncPlugin extends Plugin {
   static override pluginName = SYNC_PLUGIN_NAME;
 

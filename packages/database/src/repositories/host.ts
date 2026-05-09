@@ -68,7 +68,6 @@ export class HostRepository extends Disposable {
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
-  /** 解密单条 host 实体的敏感字段；返回新对象 */
   private _decryptEntity<T extends IHostEntity>(entity: T): T {
     if (!entity) {
       return entity;
@@ -80,7 +79,6 @@ export class HostRepository extends Disposable {
     };
   }
 
-  /** 批量解密 */
   private _decryptEntities<T extends IHostEntity>(entities: T[]): T[] {
     return entities.map((entity) => this._decryptEntity(entity));
   }
@@ -203,7 +201,6 @@ export class HostRepository extends Disposable {
       tree,
       sort: maxSort + 1,
       hostChainIds,
-      // 透明加密敏感字段；明文永不入库
       credential: encryptCredential(partial.credential, this._cipher),
       proxy: encryptProxy(partial.proxy, this._cipher),
     };
@@ -225,9 +222,8 @@ export class HostRepository extends Disposable {
       updatedAt: new Date().toISOString(),
     };
 
-    // Smart merge：调用方传入空的敏感字段时保留旧值，仅覆盖类型/用户名等非敏感字段。
-    // 这让"渲染端拿不到明文凭据但仍能编辑名称/认证类型"成为稳定 API 语义——
-    // tRPC 路由层把 password/privateKey 脱敏成 hasXxx 占位，UI 表单提交时空值即"未变更"。
+    // Empty sensitive fields preserve the existing value; the renderer never sees plaintext
+    // (sanitized to hasXxx placeholders) and submits "" to mean "unchanged".
     if (Object.hasOwn(record, 'credential')) {
       updatePayload.credential = encryptCredential(
         this._mergeCredentialKeepingOldSecrets(entity.credential, partial.credential),
@@ -257,15 +253,11 @@ export class HostRepository extends Disposable {
     this._emitChange('update', entity.id, entity.pid);
   }
 
-  /**
-   * 同步层专用：按完整 row 上行写入（保留远端 tree/sort/pid，不重新计算）。
-   *
-   * 与 create/update 的差异：
-   * - 不调用 _validateHostChain（远端写入前已自验证；本地拒绝会让两端永久分歧）
-   * - 不做 credential 智能 merge（远端总是携带完整字段；merge 只在 UI 编辑路径需要）
-   * - 仍透明加密 credential / proxy（本地 SecretCipher 是设备绑定，必须重新加密）
-   * - 仍发出 changed$ 事件（订阅 UI 能正常刷新；同步层用 _applyingPatch 标志屏蔽自反）
-   */
+  // Sync-layer entry point: writes a row verbatim (preserves remote tree / sort / pid).
+  // Skips chain validation and credential smart-merge — remote rows are always complete,
+  // and local rejection would diverge the two ends. Credential / proxy still get re-encrypted
+  // because the local cipher is device-bound. Emits changed$ for UI refresh; the sync layer
+  // suppresses self-echoes via its own _applyingPatch flag.
   async syncUpsertRow(entity: IHostEntity): Promise<void> {
     const encrypted: IHostEntity = {
       ...entity,
@@ -298,7 +290,7 @@ export class HostRepository extends Disposable {
     if (finalTargetPid !== sourcePid) {
       await this._moveToDifferentParent(id, host, sourcePid, sourceSort, finalTargetPid, finalTargetSort);
     } else {
-      await this._moveWithinSameParent(id, host, sourcePid, sourceSort, finalTargetSort);
+      await this._moveWithinSameParent(id, sourcePid, sourceSort, finalTargetSort);
     }
 
     const updated = await this.getInfoById(id);
@@ -315,7 +307,6 @@ export class HostRepository extends Disposable {
       return;
     }
 
-    // 获取所有子节点
     const descendants = await this._db.select().from(hostEntity).where(
       and(
         not(eq(hostEntity.id, id)),
@@ -359,12 +350,10 @@ export class HostRepository extends Disposable {
   }
 
   /**
-   * Resolve `owner.hostChainIds` to its ordered hop list, validating
-   * cycles, depth, and reference integrity. `owner` need not be persisted:
-   * only `owner.id` is used for self-reference checks, so callers can pass
-   * a transient owner (e.g. test-connection).
-   *
-   * 跳板链的下游会用 credential 建 SSH 连接，必须返回明文。
+   * Resolve `owner.hostChainIds` to its ordered hop list, validating cycles, depth and
+   * reference integrity. `owner` need not be persisted; only `owner.id` is used for the
+   * self-reference check, so callers can pass a transient owner (e.g. test-connection).
+   * Returns plaintext credentials because the downstream SSH client requires them.
    */
   async resolveHostChain(owner: Pick<IHost, 'id' | 'hostChainIds'>): Promise<IHost[]> {
     const ids = this._normalizeHostChainIds(owner.hostChainIds);
@@ -490,11 +479,9 @@ export class HostRepository extends Disposable {
     this._changed$.next({ type, id, pid });
   }
 
-  /**
-   * 当 incoming credential 的敏感字段为空时（password / privateKey 为空字符串），
-   * 沿用 existing 同类型字段；其他情况按 incoming 完全覆盖。
-   * 类型切换（password ↔ rsa）但新敏感字段为空时抛错——UI 应当强制输入。
-   */
+  // Empty sensitive field on the incoming credential preserves the existing one; otherwise
+  // the incoming value wins. A type change (password ↔ rsa) without a fresh secret throws,
+  // since the UI must require explicit input.
   private _mergeCredentialKeepingOldSecrets(
     existing: IHostEntity['credential'],
     incoming: IHost['credential'] | null | undefined
@@ -524,7 +511,7 @@ export class HostRepository extends Disposable {
     }
   }
 
-  /** Proxy 密码同语义：空 → 沿用旧；非空 → 覆盖 */
+  // Same empty-keeps-old semantics as _mergeCredentialKeepingOldSecrets, applied to proxy.password.
   private _mergeProxyKeepingOldSecret(
     existing: IHostEntity['proxy'],
     incoming: IHost['proxy'] | null | undefined
@@ -552,7 +539,7 @@ export class HostRepository extends Disposable {
     const targetMaxSort = await this.getMaxSortByParentId(targetPid);
     const clampedTargetSort = Math.max(0, Math.min(targetSort, targetMaxSort + 1));
 
-    // 在事务外查询 tree 路径
+    // Resolve the new tree path outside the transaction to keep tx body sync-only.
     let newTree = `${DEFAULT_HOST_ROOT}_${id}`;
     if (targetPid !== DEFAULT_HOST_ROOT) {
       const targetTree = await this._getTreeById(targetPid);
@@ -585,16 +572,15 @@ export class HostRepository extends Disposable {
 
   private async _moveWithinSameParent(
     id: string,
-    _host: IHostEntity,
     sourcePid: string,
     sourceSort: number,
     targetSort: number
-  ): Promise<IHostEntity | undefined> {
+  ): Promise<void> {
     const maxSort = await this.getMaxSortByParentId(sourcePid);
     const clampedTargetSort = Math.max(0, Math.min(targetSort, maxSort));
 
     if (clampedTargetSort === sourceSort) {
-      return _host;
+      return;
     }
 
     this._db.transaction((tx) => {
@@ -616,8 +602,6 @@ export class HostRepository extends Disposable {
         .where(eq(hostEntity.id, id))
         .run();
     });
-
-    return undefined;
   }
 
   private _updateDescendantsTreeSync(
