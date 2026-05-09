@@ -23,6 +23,7 @@ export { ELECTRON_MAIN_PLUGIN_NAME, ElectronMainPlugin } from './plugin';
 export { FileDialogService } from './services/file-dialog/file-dialog.service';
 export { DiskFileService } from './services/file/disk-file.service';
 export { FilePermission, FileType } from './services/file/types';
+export { ElectronIdleProbe } from './services/idle-probe/idle-probe.service';
 export type { IFileAtomicDeleteOptions, IFileAtomicOptions, IFileAtomicReadOptions, IFileAtomicWriteOptions, IFileDeleteOptions, IFileOpenForReadOptions, IFileOpenForWriteOptions, IFileOpenOptions, IFileOverwriteOptions, IFileUnlockOptions, IFileWriteOptions, IStat } from './services/file/types';
 export { IPlatformService, PlatformService } from './services/platform/platform.service';
 export { SafeStorageCipher } from './services/secret-cipher/safe-storage.cipher';

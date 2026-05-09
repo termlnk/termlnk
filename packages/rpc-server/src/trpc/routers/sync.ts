@@ -18,6 +18,7 @@ import type { ISyncError, ISyncService, ISyncStats, SyncState } from '@termlnk/s
 import { Quantity } from '@termlnk/core';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { ISyncService as ISyncServiceId } from '@termlnk/sync';
+import { firstValueFrom } from 'rxjs';
 import { publicProcedure, router } from '../trpc';
 
 /**
@@ -53,11 +54,11 @@ export const syncRouter = router({
     if (!service) {
       return null;
     }
-    // BehaviorSubject 持有当前值——take 一次即可
-    const state = await firstValue(service.state$);
-    const stats = await firstValue(service.stats$);
-    const lastError = await firstValue(service.lastError$);
-    const enabled = await firstValue(service.enabled$);
+    // BehaviorSubject 持有当前值——firstValueFrom 取一次即可
+    const state = await firstValueFrom(service.state$);
+    const stats = await firstValueFrom(service.stats$);
+    const lastError = await firstValueFrom(service.lastError$);
+    const enabled = await firstValueFrom(service.enabled$);
     return { state, stats, lastError, enabled };
   }),
 
@@ -110,16 +111,3 @@ export type ISyncSnapshot = {
   lastError: ISyncError | null;
   enabled: boolean;
 } | null;
-
-/** 取 Observable 的下一个值——BehaviorSubject 立即推 current value。 */
-function firstValue<T>(observable: import('rxjs').Observable<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const sub = observable.subscribe({
-      next: (value) => {
-        resolve(value);
-        sub.unsubscribe();
-      },
-      error: reject,
-    });
-  });
-}

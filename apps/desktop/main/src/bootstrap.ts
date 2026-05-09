@@ -20,12 +20,12 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
 import { AgentCorePlugin } from '@termlnk/agent-core';
-import { AuthPlugin } from '@termlnk/auth';
+import { AuthPlugin, IIdleProbe } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
 import { ElectronPlugin, IUpdaterService } from '@termlnk/electron';
-import { ElectronMainPlugin, FileDialogService, MockUpdaterService, SafeStorageCipher } from '@termlnk/electron-main';
+import { ElectronIdleProbe, ElectronMainPlugin, FileDialogService, MockUpdaterService, SafeStorageCipher } from '@termlnk/electron-main';
 import { IExtensionStateService, IExtensionStorageService } from '@termlnk/extension';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IslandCorePlugin } from '@termlnk/island-core';
@@ -216,7 +216,14 @@ app.whenReady().then(async () => {
   // ITokenRefresher / ISyncTransportService 暂用 contract 缺省 / Noop——Phase 3 网络层落地后
   // 通过对应插件的 override 替换为 HTTP 实现。
   core.registerPlugin(AuthPlugin);
-  core.registerPlugin(AuthCorePlugin);
+  core.registerPlugin(AuthCorePlugin, {
+    // Electron 集成下用 powerMonitor 实现 IIdleProbe，让
+    // IAuthPluginConfig.autoLockIdleMinutes 真正生效；非 Electron 场景
+    // （纯 Node 测试 / self-host）保持 auth-core 的 NoopIdleProbe 缺省。
+    override: [
+      [IIdleProbe, { useClass: ElectronIdleProbe }],
+    ],
+  });
   core.registerPlugin(SyncPlugin);
   core.registerPlugin(SyncCorePlugin);
 
