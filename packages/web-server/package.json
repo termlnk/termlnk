@@ -49,16 +49,20 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
+    "@noble/hashes": "^2.2.0",
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@trpc/server": "^11.16.0",
+    "hash-wasm": "^4.12.0",
     "ws": "^8.20.0"
   },
   "devDependencies": {

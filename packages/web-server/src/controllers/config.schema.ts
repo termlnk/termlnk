@@ -69,6 +69,43 @@ export interface IWebServerConfig {
   tlsKey?: string;
 
   /**
+   * Master password injection — required for the server to derive the master
+   * key and the browser-login access verifier. Browser never sees the master
+   * password through this knob: it lives in the deployer's environment / docker
+   * secrets, gets read once at startup, and is wiped from memory after Argon2id
+   * runs.
+   *
+   * Resolution order on startup:
+   *   1. `masterPassword` (literal — only for tests; never set in production).
+   *   2. `masterPasswordFile` (file path — recommended; works with docker secrets).
+   *   3. `masterPasswordEnv` env-var name (defaults to `TERMLNK_MASTER_PASSWORD`).
+   *
+   * Deployment shape (recommended):
+   * ```yaml
+   * services:
+   *   termlnk-web:
+   *     environment:
+   *       TERMLNK_MASTER_PASSWORD_FILE: /run/secrets/master_password
+   *     secrets:
+   *       - master_password
+   * ```
+   *
+   * Without any source available the server starts in `error` state with a
+   * clear message; nothing else can come up because RPC procedures need the
+   * master key to decrypt vault rows.
+   */
+  masterPassword?: string;
+  masterPasswordFile?: string;
+  masterPasswordEnv?: string;
+
+  /**
+   * Idle window before a browser session is auto-evicted from the in-memory
+   * session map. Defaults to 30 minutes per cloud-sync-architecture.md §7.2.5.
+   * The master key itself is not affected — it lives with the process.
+   */
+  sessionIdleTimeoutMs?: number;
+
+  /**
    * Plugin DI override — same mechanism as ElectronMainPlugin / SyncCorePlugin.
    * Tests can swap IWebServerService for an in-memory fake; deployments can
    * inject a custom IStaticFileService.
@@ -76,7 +113,15 @@ export interface IWebServerConfig {
   override?: DependencyOverride;
 }
 
+/** Default env var name to pull the master password from when masterPasswordFile / masterPassword aren't set. */
+export const DEFAULT_MASTER_PASSWORD_ENV = 'TERMLNK_MASTER_PASSWORD';
+
+/** Default browser-session idle timeout — 30 minutes (cloud-sync-architecture.md §7.2.5). */
+export const DEFAULT_SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
 export const defaultPluginConfig: IWebServerConfig = {
   port: 3000,
   host: '127.0.0.1',
+  masterPasswordEnv: DEFAULT_MASTER_PASSWORD_ENV,
+  sessionIdleTimeoutMs: DEFAULT_SESSION_IDLE_TIMEOUT_MS,
 };
