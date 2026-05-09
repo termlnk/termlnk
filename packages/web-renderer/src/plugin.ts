@@ -15,12 +15,13 @@
 
 import type { Dependency, Injector } from '@termlnk/core';
 import type { IWebRendererConfig } from './controllers/config.schema';
-import { DependentOn, IConfigService, Inject, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
+import { DependentOn, IConfigService, Inject, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IUpdaterService, IWindowManagerService } from '@termlnk/electron';
 import { IRPCClientService, RPCClientPlugin } from '@termlnk/rpc-client';
 import { IBrowserFileTransferService } from '@termlnk/sftp-ui';
 import { IHostEnvironmentService, UIPlugin, WebHostEnvironmentService } from '@termlnk/ui';
 import { defaultPluginConfig, WEB_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
+import { WebHeaderController } from './controllers/header.controller';
 import { WebRPCClientService } from './services/rpc/web-rpc-client.service';
 import { BrowserFileTransferService } from './services/sftp/browser-file-transfer.service';
 import { NoopUpdaterService } from './services/updater/noop-updater.service';
@@ -73,7 +74,21 @@ export class WebRendererPlugin extends Plugin {
       // power management). Quantity.OPTIONAL on the consumer side defaults to
       // electron when this binding is absent — desktop never registers.
       [IHostEnvironmentService, { useClass: WebHostEnvironmentService }],
+      // WebHeaderController registers WebHeader into BuiltInUIPart.HEADER —
+      // the browser counterpart to ElectronRendererPlugin's HeaderController.
+      // Without this, BuiltInUIPart.HEADER stays empty and the workbench
+      // renders without a top bar.
+      [WebHeaderController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
+  }
+
+  override onReady(): void {
+    // Touch the header controller so its constructor runs and registers the
+    // component into IUIPartsService before the workbench paints. Mirrors
+    // the way RPCClientPlugin / UIPlugin trigger their controllers.
+    touchDependencies(this._injector, [
+      [WebHeaderController],
+    ]);
   }
 }

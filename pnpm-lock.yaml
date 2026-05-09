@@ -557,9 +557,9 @@ importers:
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../../internal/shared
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
 
   internal/macos-utils: {}
 
@@ -2152,6 +2152,9 @@ importers:
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core
+      '@termlnk/design':
+        specifier: workspace:*
+        version: link:../design
       '@termlnk/electron':
         specifier: workspace:*
         version: link:../electron
@@ -2170,6 +2173,9 @@ importers:
       '@trpc/client':
         specifier: ^11.16.0
         version: 11.16.0(@trpc/server@11.16.0(typescript@6.0.3))(typescript@6.0.3)
+      lucide-react:
+        specifier: ^1.14.0
+        version: 1.14.0(react@19.2.5)
     devDependencies:
       '@termlnk/rpc-server':
         specifier: workspace:*
