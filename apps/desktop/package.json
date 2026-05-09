@@ -13,6 +13,7 @@
   "main": "./dist/main/index.js",
   "scripts": {
     "postinstall": "node scripts/postinstall.mjs",
+    "predev": "node scripts/ensure-electron-abi.mjs",
     "dev": "electron-vite dev --watch",
     "build": "electron-vite build",
     "stage": "tsx scripts/stage-app.ts",
