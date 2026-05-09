@@ -971,6 +971,9 @@ importers:
       '@termlnk/rpc-server':
         specifier: workspace:*
         version: link:../rpc-server
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../sync
       '@trpc/server':
         specifier: ^11.16.0
         version: 11.16.0(typescript@6.0.3)

@@ -26,6 +26,7 @@ import { MainController } from './controllers/main.controller';
 import { MenuController } from './controllers/menu.controller';
 import { RPCController } from './controllers/rpc.controller';
 import { SingleInstanceController } from './controllers/single-instance.controller';
+import { WindowFocusSyncController } from './controllers/window-focus-sync.controller';
 import { WindowStateController } from './controllers/window-state.controller';
 import { DiskFileService } from './services/file/disk-file.service';
 import { ElectronIdleProbe } from './services/idle-probe/idle-probe.service';
@@ -65,6 +66,7 @@ export class ElectronMainPlugin extends Plugin {
       [MenuController],
       [RPCController],
       [AppSettingsController],
+      [WindowFocusSyncController],
     ]);
   }
 
@@ -101,6 +103,7 @@ export class ElectronMainPlugin extends Plugin {
       [RPCController],
       [AppSettingsController],
       [DynamicIslandController],
+      [WindowFocusSyncController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }
