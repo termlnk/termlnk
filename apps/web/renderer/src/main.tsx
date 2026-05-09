@@ -13,32 +13,29 @@
  * governing permissions and limitations under the License.
  */
 
+import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { createRoot } from 'react-dom/client';
+import { routeTree } from './routeTree.gen';
 
-/**
- * termlnk-web renderer entrypoint (skeleton).
- *
- * Per docs/agent/cloud-sync-architecture.md §3.2 / §7.2.3 / §8.0 P7.4,
- * this entrypoint will mirror apps/desktop/renderer/src/components/core.tsx
- * minus the Electron triplet (ElectronPlugin / ElectronRendererPlugin /
- * UpdaterUIPlugin) plus WebRendererPlugin from @termlnk/web-renderer.
- *
- * Implementation lands in P7.2 (`@termlnk/web-renderer` package) + P7.4 (this entrypoint).
- */
+import './index.css';
 
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  createRoot(rootElement).render(
-    <div style={{ padding: '2rem', fontFamily: 'monospace' }}>
-      <h1>Termlnk Web</h1>
-      <p>Renderer skeleton — implementation lands in P7.2 + P7.4.</p>
-      <p>
-        See
-        {' '}
-        <code>docs/agent/cloud-sync-architecture.md</code>
-        {' '}
-        §3.2 / §7.2 / §8.0 Phase 7.
-      </p>
-    </div>
-  );
+// termlnk-web is always served over http(s), so TanStack Router's default
+// browser history is correct. The desktop renderer falls back to hash history
+// when running under custom Electron protocols (`app://` / `file://`) — that
+// branch never applies here.
+const router = createRouter({
+  routeTree,
+  trailingSlash: 'preserve',
+});
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router;
+  }
+}
+
+const rootElement = document.getElementById('root')!;
+if (!rootElement.innerHTML) {
+  const root = createRoot(rootElement);
+  root.render(<RouterProvider router={router} />);
 }
