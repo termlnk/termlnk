@@ -1,9 +1,8 @@
 {
   "name": "@termlnk/web-app-server",
-  "type": "module",
   "version": "0.0.0",
   "private": true,
-  "description": "termlnk-web server entrypoint — Node.js + Hono + tRPC HTTP/WS adapter (P7.1+ implementation)",
+  "description": "termlnk-web server entrypoint — Node.js + tRPC standalone HTTP/WS adapter (P7.3)",
   "author": "telan <telanflow@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -13,7 +12,22 @@
   "main": "./src/main.ts",
   "scripts": {
     "dev": "tsx ./src/main.ts",
-    "build": "echo 'apps/web/server build is wired in P7.1' && exit 0"
+    "typecheck": "tsgo --noEmit",
+    "build": "echo 'apps/web/server build pipeline lands in P7.9 (docker image)' && exit 0"
+  },
+  "dependencies": {
+    "@termlnk/agent-core": "workspace:*",
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/auth-core": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
+    "@termlnk/extension-core": "workspace:*",
+    "@termlnk/island-core": "workspace:*",
+    "@termlnk/rpc": "workspace:*",
+    "@termlnk/rpc-server": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "@termlnk/sync-core": "workspace:*",
+    "@termlnk/web-server": "workspace:*"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",

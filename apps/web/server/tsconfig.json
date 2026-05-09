@@ -1,5 +1,5 @@
 {
-  "extends": "@termlnk/shared/tsconfig/node",
+  "extends": "@termlnk/shared/tsconfig/base",
   "compilerOptions": {
     "types": ["node"],
     "noEmit": true
