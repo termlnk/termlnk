@@ -248,14 +248,11 @@ interface IHostJsonShape {
 }
 
 function readOrCreateClientId(): string {
-  try {
-    const cached = globalThis.localStorage?.getItem(CLIENT_ID_STORAGE_KEY);
-    if (cached) {
-      return cached;
-    }
-  } catch {
-    // localStorage unavailable
+  const cached = globalThis.localStorage?.getItem(CLIENT_ID_STORAGE_KEY);
+  if (cached) {
+    return cached;
   }
+
   // Web Crypto: 16 random bytes → hex
   const bytes = new Uint8Array(16);
   globalThis.crypto.getRandomValues(bytes);
