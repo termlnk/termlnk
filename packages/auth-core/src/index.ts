@@ -22,6 +22,7 @@ export type { IHttpAuthServiceConfig } from './services/http-auth.service';
 export { HttpTokenRefresher } from './services/http-token-refresher.service';
 export type { IHttpTokenRefresherConfig } from './services/http-token-refresher.service';
 export { MasterKeyService } from './services/master-key.service';
+export { OsHostnameDeviceNameProvider } from './services/os-hostname-device-name-provider.service';
 export { SrpClientService } from './services/srp-client.service';
 export { TokenManager } from './services/token-manager.service';
 export { TokenStorageService } from './services/token-storage.service';

@@ -13,12 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import { Buffer } from 'node:buffer';
 // eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { hkdf } from '@noble/hashes/hkdf.js';
 // eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { sha256 } from '@noble/hashes/sha2.js';
-import { HKDF_INFO, MASTER_KEY_DERIVATION } from '@termlnk/auth';
+import { base64ToBytes, HKDF_INFO, MASTER_KEY_DERIVATION } from '@termlnk/auth';
 import { argon2id } from 'hash-wasm';
 
 const TEXT_ENCODER = new TextEncoder();
@@ -40,13 +39,13 @@ export interface IDerivedSubKeys {
  */
 export function computeArgon2Salt(email: string, saltB64: string): Uint8Array {
   const emailBytes = TEXT_ENCODER.encode(email.trim().toLowerCase());
-  const randomBytes = Buffer.from(saltB64, 'base64');
-  if (randomBytes.length === 0) {
+  const serverSaltBytes = base64ToBytes(saltB64);
+  if (serverSaltBytes.length === 0) {
     throw new Error('Argon2 salt material is empty: serverSaltB64 must decode to >= 1 byte');
   }
-  const out = new Uint8Array(emailBytes.length + randomBytes.length);
+  const out = new Uint8Array(emailBytes.length + serverSaltBytes.length);
   out.set(emailBytes, 0);
-  out.set(randomBytes, emailBytes.length);
+  out.set(serverSaltBytes, emailBytes.length);
   return out;
 }
 

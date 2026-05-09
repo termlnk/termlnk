@@ -15,10 +15,10 @@
 
 import type { ITokenPair, ITokenRefresher } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
-import { fetch as undiciFetch } from 'undici';
 
 /**
- * 子集化的 fetch 函数签名——方便测试注入 fake，不强绑定 undici 类型。
+ * 子集化的 fetch 函数签名——方便测试注入 fake；生产环境直接用 globalThis.fetch
+ * （Node 22+ / 浏览器 / RN 原生提供）。
  */
 export type HttpFetchFn = (url: string, init: {
   method?: string;
@@ -32,12 +32,12 @@ export type HttpFetchFn = (url: string, init: {
 export interface IHttpTokenRefresherConfig {
   /** 云服务根（如 `https://cloud.termlnk.io/v1`），与 sync transport 复用同一 baseUrl 即可。 */
   readonly baseUrl: string;
-  /** fetch 实现注入点；默认 undici.fetch。 */
+  /** fetch 实现注入点；默认 globalThis.fetch。 */
   readonly fetchFn?: HttpFetchFn;
 }
 
 const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
-  const resp = await undiciFetch(url, init as never);
+  const resp = await globalThis.fetch(url, init as RequestInit);
   return {
     ok: resp.ok,
     status: resp.status,

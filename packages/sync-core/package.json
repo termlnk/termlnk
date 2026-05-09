@@ -62,8 +62,7 @@
     "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
-    "@termlnk/sync": "workspace:*",
-    "undici": "^8.2.0"
+    "@termlnk/sync": "workspace:*"
   },
   "devDependencies": {
     "@termlnk/auth-core": "workspace:*",

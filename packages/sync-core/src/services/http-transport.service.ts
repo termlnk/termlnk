@@ -15,12 +15,11 @@
 
 import type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse, ISyncMutation, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { Buffer } from 'node:buffer';
+import { base64ToBytes, bytesToBase64 } from '@termlnk/auth';
 import { TokenManager } from '@termlnk/auth-core';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { SYNC_TRIGGER_INTERVALS } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { fetch as undiciFetch, WebSocket as UndiciWebSocket } from 'undici';
 
 /** 最大重连退避时间——超过这个值就不再增长，但仍持续尝试。 */
 const MAX_RECONNECT_BACKOFF_MS = 30_000;
@@ -64,15 +63,18 @@ export interface IHttpSyncTransportConfig {
   readonly baseUrl: string;
   /** WebSocket URL；不显式传时从 baseUrl 推导（http→ws / https→wss + /sync/poke）。 */
   readonly websocketUrl?: string;
-  /** fetch 实现注入点；默认 undici.fetch。 */
+  /** fetch 实现注入点；默认 globalThis.fetch。 */
   readonly fetchFn?: HttpFetchFn;
-  /** WebSocket 构造器注入点；默认 undici.WebSocket。 */
+  /** WebSocket 构造器注入点；默认 globalThis.WebSocket。 */
   readonly webSocketCtor?: HttpWebSocketCtor;
 }
 
-/** 默认 fetch——绕一层包装让 TS 接受松散类型。 */
+/**
+ * 默认 fetch—— globalThis.fetch；Node 22+ / 浏览器 / RN 原生提供，
+ * 跨平台无需 polyfill 即可工作。
+ */
 const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
-  const resp = await undiciFetch(url, init as never);
+  const resp = await globalThis.fetch(url, init as RequestInit);
   return {
     ok: resp.ok,
     status: resp.status,
@@ -82,7 +84,11 @@ const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   };
 };
 
-const DEFAULT_WEBSOCKET_CTOR: HttpWebSocketCtor = UndiciWebSocket as never;
+/**
+ * 默认 WebSocket—— globalThis.WebSocket；Node 22+ / 浏览器 / RN 均原生提供，
+ * 接口与 RFC 6455 一致；子协议传 token 这一惯用法在三端通用。
+ */
+const DEFAULT_WEBSOCKET_CTOR: HttpWebSocketCtor = globalThis.WebSocket as unknown as HttpWebSocketCtor;
 
 /**
  * Wire format（与 cloud-sync-architecture.md §4.3 一致）：
@@ -296,7 +302,7 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
       resource: m.resource,
       op: m.op,
       entityId: m.entityId,
-      payload: m.payload === null ? null : Buffer.from(m.payload).toString('base64'),
+      payload: m.payload === null ? null : bytesToBase64(m.payload),
       baseVersion: m.baseVersion,
       createdAt: m.createdAt,
     };
@@ -307,7 +313,7 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
       op: wire.op,
       resource: wire.resource,
       entityId: wire.entityId,
-      payload: wire.payload === null ? null : new Uint8Array(Buffer.from(wire.payload, 'base64')),
+      payload: wire.payload === null ? null : base64ToBytes(wire.payload),
       version: wire.version,
     };
   }

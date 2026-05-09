@@ -13,22 +13,22 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthError, IAuthService, IDevice, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenPair, IUserAccount } from '@termlnk/auth';
+import type { IAuthError, IAuthService, IDevice, IDeviceNameProvider, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenPair, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { Buffer } from 'node:buffer';
-import { randomBytes } from 'node:crypto';
-import { hostname } from 'node:os';
-import { AuthState, IMasterKeyService as IMasterKeyServiceId, ISrpClientService as ISrpClientServiceId } from '@termlnk/auth';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { AuthState, bytesToBase64, bytesToHex, IDeviceNameProvider as IDeviceNameProviderId, IMasterKeyService as IMasterKeyServiceId, ISrpClientService as ISrpClientServiceId, randomBytes } from '@termlnk/auth';
+import { Disposable, ILogService, Inject, Optional } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
-import { fetch as undiciFetch } from 'undici';
 import { TokenManager } from './token-manager.service';
 
 /** Argon2id salt 的随机部分长度（字节）；用户邮箱拼上这串随机字节构成完整 salt。 */
 const ARGON2_RANDOM_SALT_LENGTH = 32;
 
+/** Device name 的兜底值——IDeviceNameProvider 未注册或抛错时使用。 */
+const FALLBACK_DEVICE_NAME = 'Unknown device';
+
 /**
- * 子集化的 fetch 函数签名——方便测试注入 fake，不强绑定 undici 类型。
+ * 子集化的 fetch 函数签名——方便测试注入 fake；生产环境直接用 globalThis.fetch
+ * （Node 22+ / 浏览器 / RN 原生提供）。
  */
 export type HttpFetchFn = (url: string, init: {
   method?: string;
@@ -42,12 +42,13 @@ export type HttpFetchFn = (url: string, init: {
 export interface IHttpAuthServiceConfig {
   /** 云服务根（含版本前缀，如 `https://cloud.termlnk.io/v1`），与 sync transport 共用同一 baseUrl。 */
   readonly baseUrl: string;
-  /** fetch 实现注入点；默认 undici.fetch。 */
+  /** fetch 实现注入点；默认 globalThis.fetch。 */
   readonly fetchFn?: HttpFetchFn;
 }
 
+/** 默认 fetch——用 globalThis.fetch；Node 22+ / 浏览器 / RN 原生提供，跨平台无 polyfill 需求。 */
 const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
-  const resp = await undiciFetch(url, init as never);
+  const resp = await globalThis.fetch(url, init as RequestInit);
   return {
     ok: resp.ok,
     status: resp.status,
@@ -171,7 +172,8 @@ export class HttpAuthService extends Disposable implements IAuthService {
     @Inject(IMasterKeyServiceId) private readonly _masterKey: IMasterKeyService,
     @Inject(ISrpClientServiceId) private readonly _srp: ISrpClientService,
     @Inject(TokenManager) private readonly _tokenManager: TokenManager,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @Inject(ILogService) private readonly _logService: ILogService,
+    @Optional(IDeviceNameProviderId) private readonly _deviceNameProvider: IDeviceNameProvider | null = null
   ) {
     super();
     this._fetchFn = _config.fetchFn ?? DEFAULT_FETCH_FN;
@@ -198,13 +200,13 @@ export class HttpAuthService extends Disposable implements IAuthService {
 
     try {
       const argon2SaltBytes = randomBytes(ARGON2_RANDOM_SALT_LENGTH);
-      const argon2SaltB64 = argon2SaltBytes.toString('base64');
+      const argon2SaltB64 = bytesToBase64(argon2SaltBytes);
 
       const masterKey = await this._masterKey.derive(input.password, {
         email: input.email,
         saltB64: argon2SaltB64,
       });
-      const authKeyHex = Buffer.from(masterKey.authKey).toString('hex');
+      const authKeyHex = bytesToHex(masterKey.authKey);
 
       const enrollment = this._srp.enroll(input.email, authKeyHex);
 
@@ -213,7 +215,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
         argon2SaltB64,
         srpSalt: enrollment.srpSalt,
         srpVerifier: enrollment.srpVerifier,
-        deviceName: safeHostname(),
+        deviceName: this._safeDeviceName(),
       };
       if (input.displayName !== undefined) {
         body.displayName = input.displayName;
@@ -242,7 +244,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
         email: input.email,
         saltB64: initResp.argon2SaltB64,
       });
-      const authKeyHex = Buffer.from(masterKey.authKey).toString('hex');
+      const authKeyHex = bytesToHex(masterKey.authKey);
 
       const ephemeral = this._srp.generateEphemeral();
       const session = this._srp.deriveSession(
@@ -259,7 +261,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
           email: input.email,
           clientPublicEphemeral: ephemeral.public,
           clientSessionProof: session.proof,
-          deviceName: safeHostname(),
+          deviceName: this._safeDeviceName(),
         } satisfies ISrpVerifyRequestBody
       );
 
@@ -413,14 +415,17 @@ export class HttpAuthService extends Disposable implements IAuthService {
   private _joinUrl(path: string): string {
     return `${this._config.baseUrl.replace(/\/+$/, '')}${path}`;
   }
-}
 
-/** Captures os.hostname() once; falls back to a placeholder if the OS call throws. */
-function safeHostname(): string {
-  try {
-    const name = hostname();
-    return name && name.length > 0 ? name : 'Unknown device';
-  } catch {
-    return 'Unknown device';
+  private _safeDeviceName(): string {
+    if (!this._deviceNameProvider) {
+      return FALLBACK_DEVICE_NAME;
+    }
+    try {
+      const name = this._deviceNameProvider.getName();
+      return name && name.length > 0 ? name : FALLBACK_DEVICE_NAME;
+    } catch (err) {
+      this._logService.warn('[HttpAuthService] device name provider threw, falling back:', err);
+      return FALLBACK_DEVICE_NAME;
+    }
   }
 }

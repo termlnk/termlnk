@@ -13,8 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IDeviceNameProvider as IDeviceNameProviderType, IMasterKeyService as IMasterKeyServiceType, ISrpClientService as ISrpClientServiceType } from '@termlnk/auth';
 import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
-import { AuthPlugin, IAuthService, IIdleProbe, IMasterKeyService, ISrpClientService, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
+import { AuthPlugin, IAuthService, IDeviceNameProvider, IIdleProbe, IMasterKeyService, ISrpClientService, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
 import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { IdleLockController } from './controllers/idle-lock.controller';
@@ -22,6 +23,7 @@ import { HttpAuthService } from './services/http-auth.service';
 import { HttpTokenRefresher } from './services/http-token-refresher.service';
 import { NoopIdleProbe } from './services/idle-probe.service';
 import { MasterKeyService } from './services/master-key.service';
+import { OsHostnameDeviceNameProvider } from './services/os-hostname-device-name-provider.service';
 import { SrpClientService } from './services/srp-client.service';
 import { TokenManager } from './services/token-manager.service';
 import { TokenStorageService } from './services/token-storage.service';
@@ -82,6 +84,9 @@ export class AuthCorePlugin extends Plugin {
       [ISrpClientService, { useClass: SrpClientService }],
       [ITokenStorageService, { useClass: TokenStorageService }],
       [TokenManager, { useClass: TokenManager }],
+      // IDeviceNameProvider 缺省实现——Node 主进程使用 `os.hostname()`。
+      // 浏览器 SPA / RN 应用应通过 override 替换为各端原生实现，不要复用此类。
+      [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
       // IIdleProbe 缺省实现："从不空闲"——纯 Node 测试 / 非 Electron 集成场景安全默认。
       // ElectronMainPlugin 通过 override 替换为 powerMonitor 实现。
       [IIdleProbe, { useClass: NoopIdleProbe }],
@@ -100,18 +105,20 @@ export class AuthCorePlugin extends Plugin {
         [IAuthService, {
           // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
           useFactory: (
-            masterKey: IMasterKeyService,
-            srp: ISrpClientService,
+            masterKey: IMasterKeyServiceType,
+            srp: ISrpClientServiceType,
             tokenManager: TokenManager,
-            logService: ILogService
+            logService: ILogService,
+            deviceNameProvider: IDeviceNameProviderType
           ) => new HttpAuthService(
             { baseUrl },
             masterKey,
             srp,
             tokenManager,
-            logService
+            logService,
+            deviceNameProvider
           ),
-          deps: [IMasterKeyService, ISrpClientService, TokenManager, ILogService],
+          deps: [IMasterKeyService, ISrpClientService, TokenManager, ILogService, IDeviceNameProvider],
         }]
       );
     }
