@@ -22,7 +22,10 @@ export interface ISyncPluginConfig {
   override?: DependencyOverride;
 
   /**
-   * 是否在登录后自动启用同步。false 时需用户在设置中手动开启。
+   * 是否在登录后自动启用同步。
+   * 默认 true——架构 §4.6"应用启动→立即 pull 一次"的预期行为，登录后立即 enable。
+   * 设 false 时只在用户手动通过 SyncStatusPanel 的开关启用后才同步；本字段
+   * 仅控制"登录瞬间"的自动行为，不会反复推翻用户后续的手动选择。
    */
   autoEnableOnLogin?: boolean;
 
@@ -49,6 +52,6 @@ export interface ISyncPluginConfig {
 }
 
 export const defaultPluginConfig: ISyncPluginConfig = {
-  autoEnableOnLogin: false,
+  autoEnableOnLogin: true,
   excludedResources: [],
 };
