@@ -17,7 +17,7 @@ import type { AgentSessionStatus, AgentStatus } from '@termlnk/agent';
 import type { IDisposable } from '@termlnk/core';
 import type { IAppSettings } from '@termlnk/electron';
 import { IAgentMonitorService, IAIAgentService } from '@termlnk/agent';
-import { ILifecycleService, ILogService, Inject, LifecycleStages, RxDisposable } from '@termlnk/core';
+import { ILifecycleService, ILogService, Inject, LifecycleStages, Optional, RxDisposable } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { ELECTRON_PLUGIN_CONFIG_KEY, IKeepAwakeService, normalizeAppSettings } from '@termlnk/electron';
 import { BehaviorSubject, combineLatest, distinctUntilChanged, filter, map, takeUntil } from 'rxjs';
@@ -41,12 +41,12 @@ export class AgentKeepAwakeController extends RxDisposable {
   private _currentHandle: IDisposable | null = null;
 
   constructor(
-    @IKeepAwakeService private readonly _keepAwakeService: IKeepAwakeService,
     @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository,
     @IAIAgentService private readonly _aiAgentService: IAIAgentService,
     @IAgentMonitorService private readonly _agentMonitorService: IAgentMonitorService,
     @ILifecycleService private readonly _lifecycleService: ILifecycleService,
-    @ILogService private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @Optional(IKeepAwakeService) private readonly _keepAwakeService?: IKeepAwakeService
   ) {
     super();
 
@@ -123,6 +123,11 @@ export class AgentKeepAwakeController extends RxDisposable {
   }
 
   private _applyHold(shouldHold: boolean): void {
+    if (!this._keepAwakeService) {
+      // No power-management backend on this host (e.g. termlnk-web). The
+      // setting is honoured at the UI level but there's nothing to acquire.
+      return;
+    }
     if (shouldHold && !this._currentHandle) {
       this._currentHandle = this._keepAwakeService.acquire(ACQUIRE_REASON);
       return;
