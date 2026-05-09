@@ -5,6 +5,7 @@ packages:
   - apps/desktop
   - apps/desktop/main
   - apps/desktop/renderer
+  - apps/web
 
 ignoredBuiltDependencies:
   - javascript-obfuscator

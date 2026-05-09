@@ -1,0 +1,22 @@
+@import 'tailwindcss' prefix(tm);
+@import '@termlnk/shared/tailwind/theme.css';
+
+@source '../../../packages/auth-ui/src';
+@source '../../../packages/design/src';
+
+html,
+body,
+#root {
+  background-color: var(--tm-black, #1d2021);
+  color: var(--tm-light-grey, #d4be98);
+  font-family:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  overflow: hidden;
+}

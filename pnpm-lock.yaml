@@ -388,6 +388,79 @@ importers:
         specifier: ^0.5.6
         version: 0.5.6(esbuild@0.28.0)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
 
+  apps/web:
+    dependencies:
+      '@noble/hashes':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@tanstack/react-router':
+        specifier: ^1.169.1
+        version: 1.169.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@tanstack/react-router-devtools':
+        specifier: ^1.166.13
+        version: 1.166.13(@tanstack/react-router@1.169.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(@tanstack/router-core@1.169.1)(csstype@3.2.3)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@termlnk/auth-core':
+        specifier: workspace:*
+        version: link:../../packages/auth-core
+      '@termlnk/auth-ui':
+        specifier: workspace:*
+        version: link:../../packages/auth-ui
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+      '@termlnk/themes':
+        specifier: workspace:*
+        version: link:../../packages/themes
+      hash-wasm:
+        specifier: ^4.12.0
+        version: 4.12.0
+      jotai:
+        specifier: ^2.19.1
+        version: 2.19.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.5)
+      react:
+        specifier: ^19.2.5
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.2.5
+        version: 19.2.5(react@19.2.5)
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      secure-remote-password:
+        specifier: ^0.3.1
+        version: 0.3.1
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.2.4
+        version: 4.2.4(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+      '@tanstack/router-plugin':
+        specifier: ^1.167.33
+        version: 1.167.33(@tanstack/react-router@1.169.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(webpack@5.105.4(esbuild@0.28.0))
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+
   internal/macos-utils: {}
 
   internal/shared:

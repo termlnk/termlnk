@@ -1,0 +1,6 @@
+{
+  "extends": "@termlnk/shared/tsconfig/base",
+  "include": [
+    "src/**/*"
+  ]
+}
