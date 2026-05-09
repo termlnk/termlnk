@@ -52,5 +52,30 @@ export default defineConfig({
   },
   server: {
     port: 5179,
+    // In dev, the SPA is served from this Vite dev server while the tRPC /
+    // auth endpoints are owned by the termlnk-web Node server on port 3000.
+    // Same-origin fetch / WebSocket calls in WebShell + WebRPCClientService
+    // resolve against http://localhost:5179, so without a proxy
+    //   GET /__termlnk-web/status   -> 404 (vite dev has no such route)
+    //   POST /trpc/...              -> 404
+    //   WS   /trpc-ws               -> 404
+    // The proxy below forwards all three to the actual server. In production
+    // (Docker image), the SPA is served by web-server itself, same origin —
+    // no proxy needed there.
+    proxy: {
+      '/__termlnk-web': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: false,
+      },
+      '/trpc': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: false,
+      },
+      '/trpc-ws': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: false,
+        ws: true,
+      },
+    },
   },
 });
