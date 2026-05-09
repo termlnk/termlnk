@@ -2,7 +2,16 @@
   "extends": "@termlnk/shared/tsconfig/base",
   "compilerOptions": {
     "types": ["node"],
-    "noEmit": true
+    "noEmit": true,
+    // tsx's esbuild integration only reads the tsconfig that lives next to
+    // the file it is transforming — it does not walk an `extends` chain
+    // across npm-package boundaries. When `pnpm dev` follows a workspace
+    // import like `@termlnk/agent-core` into another package's source, the
+    // decorator configuration carried in `@termlnk/shared/tsconfig/base`
+    // is invisible from there. Re-declare the two flags here so esbuild
+    // sees them on every file it touches via this tsconfig.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": [
     "src/**/*"

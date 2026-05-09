@@ -2,8 +2,16 @@
   "extends": "@termlnk/shared/tsconfig/base",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib/types"
+    "outDir": "lib/types",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
-  "references": [{ "path": "./tsconfig.node.json" }],
-  "include": ["src"]
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ],
+  "include": [
+    "src"
+  ]
 }
