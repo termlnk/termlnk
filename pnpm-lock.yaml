@@ -1651,6 +1651,9 @@ importers:
 
   packages/sync-ui:
     dependencies:
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core

@@ -55,6 +55,7 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/sync": "workspace:*",
@@ -64,6 +65,7 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/sync": "workspace:*",

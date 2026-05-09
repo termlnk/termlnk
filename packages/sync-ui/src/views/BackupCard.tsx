@@ -14,10 +14,11 @@
  */
 
 import type { IBackupClientService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
+import { AuthState, IAuthClientService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, Button, cn, useDependency } from '@termlnk/design';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { IBackupClientService as IBackupClientServiceId } from '@termlnk/sync';
-import { CheckCircle2Icon, DownloadIcon, TriangleAlertIcon, UploadIcon } from 'lucide-react';
+import { CheckCircle2Icon, DownloadIcon, LockIcon, TriangleAlertIcon, UploadIcon } from 'lucide-react';
 import { useState } from 'react';
 
 type BackupActionStatus =
@@ -30,15 +31,25 @@ type BackupActionStatus =
 /**
  * 加密备份卡片——导出/导入按钮组。
  *
- * 优雅降级：IBackupClientService 未注册（rpc-client 未配置或测试 stub）→ 不渲染。
+ * 优雅降级：
+ * - IBackupClientService 未注册（rpc-client 未配置或测试 stub）→ 不渲染
+ * - IAuthClientService.authState !== Authenticated → 按钮禁用 + 显示"先登录"占位
+ *   （加密备份 frame 需要 master key，master key 仅在登录时派生 + 内存持有）
  *
- * 安全语义：备份字节流不出主进程；本组件只发出 mutate 请求 + 接收 summary。
- * 导入采用 `replace` 模式——P2.5 LWW 引擎已落地的 `merge` 模式将在后续版本启用。
+ * 安全语义：
+ * - 备份字节流不出主进程；本组件只发出 mutate 请求 + 接收 summary
+ * - 导入采用 `replace` 模式——P2.5 LWW 引擎已落地的 `merge` 模式将在后续版本启用
  */
 export function BackupCard() {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
   const backupClient = useDependency(IBackupClientServiceId, Quantity.OPTIONAL);
+  const authClient = useDependency(IAuthClientService, Quantity.OPTIONAL);
+
+  const authState = useObservable<AuthState>(
+    authClient?.authState$ ?? null,
+    AuthState.Unauthenticated
+  );
 
   const [status, setStatus] = useState<BackupActionStatus>({ kind: 'idle' });
 
@@ -46,7 +57,9 @@ export function BackupCard() {
     return null;
   }
 
+  const isUnlocked = authState === AuthState.Authenticated;
   const isBusy = status.kind === 'busy';
+  const buttonsDisabled = !isUnlocked || isBusy;
 
   return (
     <div className={cn('tm:flex tm:flex-col tm:gap-3 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-4')}>
@@ -59,11 +72,22 @@ export function BackupCard() {
         </span>
       </div>
 
+      {!isUnlocked && (
+        <div
+          className={cn(`
+            tm:flex tm:items-start tm:gap-2 tm:rounded-md tm:bg-yellow/10 tm:px-3 tm:py-2 tm:text-xs tm:text-yellow
+          `)}
+        >
+          <LockIcon className={cn('tm:mt-0.5 tm:size-3.5 tm:shrink-0')} />
+          <span>{localeService.t('sync-ui.backup.locked-hint')}</span>
+        </div>
+      )}
+
       <div className={cn('tm:flex tm:items-center tm:gap-2')}>
         <Button
           variant="outline"
           size="sm"
-          disabled={isBusy}
+          disabled={buttonsDisabled}
           onClick={() => {
             void runExport(backupClient, setStatus, logService);
           }}
@@ -73,7 +97,12 @@ export function BackupCard() {
           {localeService.t('sync-ui.backup.export')}
         </Button>
 
-        <ImportTrigger isBusy={isBusy} backupClient={backupClient} setStatus={setStatus} logService={logService} />
+        <ImportTrigger
+          disabled={buttonsDisabled}
+          backupClient={backupClient}
+          setStatus={setStatus}
+          logService={logService}
+        />
       </div>
 
       <BackupStatusLine status={status} />
@@ -141,19 +170,19 @@ function BackupStatusLine({ status }: { status: BackupActionStatus }) {
 }
 
 interface IImportTriggerProps {
-  readonly isBusy: boolean;
+  readonly disabled: boolean;
   readonly backupClient: IBackupClientService;
   readonly setStatus: (status: BackupActionStatus) => void;
   readonly logService: ILogService;
 }
 
-function ImportTrigger({ isBusy, backupClient, setStatus, logService }: IImportTriggerProps) {
+function ImportTrigger({ disabled, backupClient, setStatus, logService }: IImportTriggerProps) {
   const localeService = useDependency(LocaleService);
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={isBusy} className={cn('tm:gap-1.5')}>
+        <Button variant="outline" size="sm" disabled={disabled} className={cn('tm:gap-1.5')}>
           <UploadIcon className={cn('tm:size-3.5')} />
           {localeService.t('sync-ui.backup.import')}
         </Button>

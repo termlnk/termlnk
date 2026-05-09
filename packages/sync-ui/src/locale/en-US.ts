@@ -47,6 +47,7 @@ export default {
     backup: {
       title: 'Encrypted backup',
       description: 'Export and restore your hosts, configs, AI providers, MCP servers and skills as a single encrypted file. Master key required.',
+      'locked-hint': 'Sign in first — encrypted backups need the master key derived from your password.',
       export: 'Export…',
       import: 'Restore…',
       exporting: 'Encrypting and writing backup…',

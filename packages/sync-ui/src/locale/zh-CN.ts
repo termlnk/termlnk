@@ -47,6 +47,7 @@ export default {
     backup: {
       title: '加密备份',
       description: '把主机、设置、AI Provider、MCP 服务器和 Skill 导出为单个加密文件，可在另一台设备还原。需先解锁主密钥。',
+      'locked-hint': '请先登录——加密备份需要从主密码派生的 master key 才能加解密。',
       export: '导出…',
       import: '还原…',
       exporting: '加密并写入备份文件…',
