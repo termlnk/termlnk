@@ -1,0 +1,58 @@
+# termlnk-web — single-tenant self-hosted deployment.
+#
+# Usage:
+#   1. cp ./apps/web/secrets/master_password.example ./apps/web/secrets/master_password
+#      and replace the placeholder with a strong password.
+#   2. (optional) Adjust the cloud sync target via TERMLNK_CLOUD_BASE_URL.
+#   3. docker compose -f apps/web/docker-compose.yml up -d
+#
+# Bind 127.0.0.1 only and put nginx / caddy in front for TLS — see
+# docs/agent/termlnk-web-self-hosting.md for the recipe.
+#
+# Run from repo root so the build context picks up the whole monorepo:
+#   docker compose -f apps/web/docker-compose.yml build
+services:
+  termlnk-web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    image: termlnk-web:latest
+    restart: unless-stopped
+    # Bind to loopback. A reverse proxy (caddy / nginx / traefik) on the host
+    # terminates TLS and forwards to 127.0.0.1:3000. If you absolutely must
+    # expose the container directly, change "127.0.0.1:3000" to "0.0.0.0:3000"
+    # and accept that browsers will reach the cookie-gated SPA over plain
+    # HTTP — only acceptable on a trusted LAN.
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # File-based secret injection. The container reads the password from
+      # the mounted file at startup, derives the master key in memory, and
+      # immediately discards the plaintext (architecture decision Δ30).
+      TERMLNK_MASTER_PASSWORD_FILE: /run/secrets/master_password
+      # Optional: connect this self-hosted instance to a cloud sync server so
+      # the user's vault stays in sync across desktop / web / mobile.
+      # TERMLNK_CLOUD_BASE_URL: "https://sync.example.com"
+      TERMLNK_WEB_HOST: "0.0.0.0"
+      TERMLNK_WEB_PORT: "3000"
+    secrets:
+      - master_password
+    volumes:
+      # Vault: SQLite database, derived key cache, and config live here.
+      # Back this up like you would any other secrets store.
+      - vault:/data
+    healthcheck:
+      # /__termlnk-web/status is the only public-facing endpoint that does
+      # not require a session cookie — perfect for a liveness probe.
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/__termlnk-web/status >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+secrets:
+  master_password:
+    file: ./secrets/master_password
+
+volumes:
+  vault:
