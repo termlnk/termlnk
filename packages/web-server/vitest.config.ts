@@ -1,9 +1,16 @@
 import createConfig from '@termlnk/shared/vitest';
 
-// @termlnk/web-server 启动真实的 Node http server，需要 node 环境（happy-dom 的 fetch
-// 套了 same-origin 策略，会把测试中跨向 127.0.0.1:port 的请求 block 成 NetworkError）。
+// `@termlnk/web-server` boots a real Node http server, so it needs the `node`
+// environment. happy-dom (the workspace default) applies a same-origin policy
+// to `fetch` and would block the test's calls to 127.0.0.1:<port> as
+// "Cross-Origin Request Blocked".
+//
+// `fileParallelism: false` serialises the two spec files because each binds
+// a real port; running them in parallel risks EADDRINUSE on collisions in
+// the random port range.
 export default createConfig({
   test: {
     environment: 'node',
+    fileParallelism: false,
   },
 });

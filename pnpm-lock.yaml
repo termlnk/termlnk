@@ -2025,10 +2025,16 @@ importers:
       '@trpc/server':
         specifier: ^11.16.0
         version: 11.16.0(typescript@6.0.3)
+      ws:
+        specifier: ^8.20.0
+        version: 8.20.0
     devDependencies:
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2

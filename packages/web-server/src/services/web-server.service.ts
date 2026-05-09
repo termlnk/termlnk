@@ -13,29 +13,32 @@
  * governing permissions and limitations under the License.
  */
 
+import type { Buffer } from 'node:buffer';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { Server as HttpsServer } from 'node:https';
 import type { Observable } from 'rxjs';
 import type { IWebServerConfig } from '../controllers/config.schema';
 import type { AnyRouter } from '../trpc/types';
+import type { ITRPCWSHandlerHandle } from '../trpc/ws-handler';
 import type { IRouteHandler } from './static-file.service';
 import { readFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { createIdentifier, Disposable, IConfigService, ILogService, Inject, Injector } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
-import { WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/config.schema';
+import { TRPC_WS_PATH, WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/config.schema';
 import { createTRPCStandaloneHandler } from '../trpc/http-handler';
+import { createTRPCWSHandler } from '../trpc/ws-handler';
 import { IStaticFileService } from './static-file.service';
 
-/** Web Server 运行时状态。 */
+/** Lifecycle status of the web server. */
 export type WebServerStatus = 'stopped' | 'starting' | 'running' | 'error';
 
 export interface IWebServerStateSnapshot {
   readonly status: WebServerStatus;
-  /** running 时是 listen 上的 origin（含 protocol + host + port）；其它状态为 null。 */
+  /** Origin string (`<protocol>://<host>:<port>`) while running, otherwise null. */
   readonly origin: string | null;
-  /** error 状态下的错误消息；其它状态为 null。 */
+  /** Error message while in error state, otherwise null. */
   readonly errorMessage: string | null;
 }
 
@@ -46,63 +49,73 @@ const INITIAL_STATE: IWebServerStateSnapshot = {
 };
 
 /**
- * IWebServerService —— Node http/https + tRPC standalone HTTP adapter 的封装。
+ * IWebServerService — Node http/https plus tRPC HTTP/WS adapters.
  *
- * 职责（P7.1a 范围）：
- * - 启动 / 停止 HTTP(S) server
- * - 把 `/trpc/*` 请求转发到 tRPC standalone HTTP handler
- * - 把其它请求转发到 IStaticFileService（serve SPA dist）
- * - 暴露 `state$` 让 UI / 控制器订阅运行状态
+ * Responsibilities:
+ * - Start / stop the HTTP(S) server.
+ * - Dispatch `/trpc/*` to the tRPC standalone HTTP handler (query/mutation).
+ * - Dispatch upgrades on `/trpc-ws` to the tRPC WebSocket handler (subscription).
+ * - Reject upgrades on any other path so unknown paths cannot hold sockets open.
+ * - Forward everything else to IStaticFileService (SPA dist).
+ * - Expose `state$` so UI / controllers can observe lifecycle.
  *
- * 不在 P7.1a 范围内：
- * - WebSocket subscription（P7.1b）
- * - SRP6a 解锁握手 + session cookie（P7.1c）
- *
- * 这两项由后续子任务通过 `mountRouteHandler(prefix, handler)` 注入。
+ * SRP6a master-password unlock + session cookie (P7.1c) plug in via
+ * `mountRouteHandler(prefix, handler)` without changing this service.
  */
 export interface IWebServerService {
   readonly state$: Observable<IWebServerStateSnapshot>;
 
-  /** 同步快照——给立刻需要状态判断的调用方避免订阅。 */
+  /** Synchronous snapshot for callers that need state without subscribing. */
   getState(): IWebServerStateSnapshot;
 
   /**
-   * 启动 server。需先通过 setRouter 注入 tRPC router。
-   * 重复 start 在 running 状态下是 no-op；error 状态下重置后重启。
+   * Start the server. `setRouter` must be called first; otherwise `start`
+   * throws and the state stays `stopped` (caller misuse, not a runtime error).
+   * Calling `start` while `running` or `starting` is a no-op.
    */
   start(): Promise<void>;
 
-  /** 停止 server。stopped 状态下是 no-op。返回 Promise 在 server 完全 close 后 resolve。 */
+  /** Stop the server. No-op when `stopped`. Resolves once the server is fully closed. */
   stop(): Promise<void>;
 
   /**
-   * 注入 tRPC router——通常由 WebServerController 在 onReady 阶段把 desktop 同款
-   * appRouter（来自 @termlnk/rpc-server）传进来。
-   *
-   * 必须在 start() 前调用，否则 start() 会抛错。
+   * Inject the tRPC router. Typically wired in `WebServerController.onReady`
+   * with the same appRouter desktop already exposes via Electron IPC
+   * (`@termlnk/rpc-server`). Must be called before `start`.
    */
   setRouter(router: AnyRouter): void;
 
   /**
-   * 在 tRPC handler / 静态 SPA fallback 之外挂一个自定义路径前缀的 handler。
-   * 用法：P7.1c 把 SRP6a 端点挂到 `/__termlnk-web/`；测试中可挂 health check 端点等。
-   *
-   * 多个 handler 按注册顺序匹配；先到先配；任一 handler 返回 true 即视为已处理。
-   * 没有匹配则继续走 tRPC / 静态 SPA。
+   * Mount a custom HTTP handler under a given path prefix (P7.1c uses this
+   * for `/__termlnk-web/login/*`, tests can mount health-check endpoints, ...).
+   * Handlers run in registration order before tRPC / static SPA. A handler
+   * returning `true` short-circuits the chain; `false` lets the request fall
+   * through.
    */
   mountRouteHandler(prefix: string, handler: IRouteHandler): void;
+
+  /**
+   * Tell every active WebSocket client to reconnect. Useful when the server
+   * config changed mid-flight (SRP session invalidated, router upgraded).
+   * No-op while stopped.
+   */
+  broadcastReconnect(): void;
 }
 
 export const IWebServerService = createIdentifier<IWebServerService>('web-server.service');
 
 /**
- * Node http/https + tRPC standalone HTTP adapter 实现。
+ * Default IWebServerService implementation.
  *
- * 路由优先级（按注册顺序）：
- *   1. 自定义 mountRouteHandler 挂载的 handler（P7.1c SRP6a 用）
- *   2. /trpc/* → tRPC standalone HTTP handler
- *   3. 其它 → IStaticFileService（SPA dist + history fallback）
- *   4. 都不匹配 → 404
+ * Routing priority for HTTP requests:
+ *   1. Custom `mountRouteHandler` handlers (e.g. P7.1c SRP6a endpoints).
+ *   2. `/trpc/*` -> tRPC standalone HTTP handler.
+ *   3. Anything else -> IStaticFileService (SPA dist + history fallback).
+ *   4. 404 fallback.
+ *
+ * For HTTP `upgrade`:
+ *   - `/trpc-ws` -> tRPC WebSocket handler.
+ *   - Anything else -> `socket.destroy()` (immediate rejection).
  */
 export class WebServerService extends Disposable implements IWebServerService {
   private readonly _state$ = new BehaviorSubject<IWebServerStateSnapshot>(INITIAL_STATE);
@@ -111,6 +124,8 @@ export class WebServerService extends Disposable implements IWebServerService {
   private _server: Server | HttpsServer | null = null;
   private _router: AnyRouter | null = null;
   private _trpcHandler: ((req: IncomingMessage, res: ServerResponse) => Promise<void> | void) | null = null;
+  private _wsHandle: ITRPCWSHandlerHandle | null = null;
+  private _upgradeListener: ((req: IncomingMessage, socket: import('node:net').Socket, head: Buffer) => void) | null = null;
   private readonly _customRoutes: Array<{ prefix: string; handler: IRouteHandler }> = [];
 
   constructor(
@@ -145,6 +160,10 @@ export class WebServerService extends Disposable implements IWebServerService {
     this._customRoutes.push({ prefix, handler });
   }
 
+  broadcastReconnect(): void {
+    this._wsHandle?.broadcastReconnect();
+  }
+
   async start(): Promise<void> {
     const current = this._state$.getValue();
     if (current.status === 'running' || current.status === 'starting') {
@@ -162,10 +181,31 @@ export class WebServerService extends Disposable implements IWebServerService {
 
     try {
       this._server = await this._listen(config, requestListener);
+
+      // tRPC subscription over WebSocket — single shared port with HTTP.
+      // Same router across both transports: query/mutation -> HTTP, subscription -> WS.
+      this._wsHandle = createTRPCWSHandler({
+        router: this._router!,
+        injector: this._injector,
+      });
+
+      // Single upgrade dispatcher: route /trpc-ws to the tRPC WS handler;
+      // everything else is rejected immediately so unmatched upgrades don't
+      // hang the socket (e.g. someone hitting an unknown path with `wscat`).
+      this._upgradeListener = (req, socket, head) => {
+        const pathname = (req.url ?? '').split('?')[0];
+        if (pathname === TRPC_WS_PATH) {
+          this._wsHandle?.handleUpgrade(req, socket, head);
+          return;
+        }
+        socket.destroy();
+      };
+      this._server.on('upgrade', this._upgradeListener);
+
       const protocol = config.tlsCert && config.tlsKey ? 'https' : 'http';
       const origin = `${protocol}://${config.host}:${config.port}`;
       this._state$.next({ status: 'running', origin, errorMessage: null });
-      this._logService.log(`[WebServerService] listening on ${origin}`);
+      this._logService.log(`[WebServerService] listening on ${origin} (HTTP /trpc, WS ${TRPC_WS_PATH})`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this._state$.next({ status: 'error', origin: null, errorMessage: message });
@@ -176,10 +216,25 @@ export class WebServerService extends Disposable implements IWebServerService {
 
   async stop(): Promise<void> {
     const server = this._server;
+    const wsHandle = this._wsHandle;
+    const upgradeListener = this._upgradeListener;
     if (!server) {
       return;
     }
     this._server = null;
+    this._wsHandle = null;
+    this._upgradeListener = null;
+
+    // Order matters: detach upgrade listener first so no new WS connections
+    // race against teardown; then drop active WS clients; finally close HTTP.
+    // Plain `server.close()` only stops new HTTP connections, it does not
+    // touch upgraded WebSocket connections.
+    if (upgradeListener) {
+      server.removeListener('upgrade', upgradeListener);
+    }
+    if (wsHandle) {
+      await wsHandle.close();
+    }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });
@@ -203,7 +258,7 @@ export class WebServerService extends Disposable implements IWebServerService {
       try {
         const pathname = this._extractPathname(req.url ?? '/');
 
-        // 1. 自定义 mount handler（P7.1c 的 SRP6a 端点等）
+        // 1. Custom mounted handlers (P7.1c SRP6a endpoints, etc.).
         for (const route of this._customRoutes) {
           if (this._pathMatchesPrefix(pathname, route.prefix)) {
             const handled = await route.handler(req, res);
@@ -213,19 +268,19 @@ export class WebServerService extends Disposable implements IWebServerService {
           }
         }
 
-        // 2. tRPC HTTP（query / mutation）
+        // 2. tRPC HTTP (query / mutation).
         if (this._pathMatchesPrefix(pathname, '/trpc')) {
           await this._trpcHandler!(req, res);
           return;
         }
 
-        // 3. 静态 SPA（含 history fallback）
+        // 3. Static SPA (with history fallback).
         const staticHandled = await this._staticFileService.handle(req, res);
         if (staticHandled) {
           return;
         }
 
-        // 4. 兜底 404
+        // 4. 404 fallback.
         res.statusCode = 404;
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.end('Not Found');
@@ -272,7 +327,9 @@ export class WebServerService extends Disposable implements IWebServerService {
     }
 
     return new Promise<Server | HttpsServer>((resolve, reject) => {
-      // once() 已是 one-shot——触发后自动移除自己；只需在对端事件触发时移除"另一边"，避免双触发
+      // `once()` is one-shot already — each handler removes itself on fire.
+      // We only need to remove the *other* handler when one fires, to avoid
+      // a late-arriving event leaving a dangling listener.
       function onListening(this: Server | HttpsServer): void {
         server.removeListener('error', onError);
         resolve(server);

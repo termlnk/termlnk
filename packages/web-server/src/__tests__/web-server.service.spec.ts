@@ -42,8 +42,9 @@ interface ITestBed {
 }
 
 function pickPort(): number {
-  // 0 让 OS 分配空闲端口；start() 不能直接传 0 因为构造时 host 必须实绑定，
-  // 但我们通过外层管理：设一个 41000+rand 范围避开常见冲突
+  // Random port in 41000..46000 to avoid collisions with common services /
+  // parallel test runs. Letting the OS pick (port 0) would require fishing
+  // the bound port back out of the listener, which complicates the test bed.
   return 41000 + Math.floor(Math.random() * 5000);
 }
 
@@ -87,8 +88,9 @@ describe('webServerService P7.1a', () => {
   it('refuses to start without a router (misuse — state stays stopped)', async () => {
     bed = createTestBed();
     await expect(bed.webServerService.start()).rejects.toThrow(/setRouter/);
-    // 未注入 router 是 caller misuse，与 listen 失败（端口冲突等）语义不同——
-    // 后者会转 'error' 状态，前者抛错后 state 保持 'stopped' 让 caller 修正后再 start
+    // Missing router is caller misuse, distinct from listen failure (port
+    // conflict etc.). Listen failure flips state to 'error'; misuse throws
+    // synchronously while leaving state at 'stopped' so caller can recover.
     expect(bed.webServerService.getState().status).toBe('stopped');
   });
 
@@ -145,7 +147,8 @@ describe('webServerService P7.1a', () => {
     bed.webServerService.setRouter(createMinimalRouter() as any);
     await bed.webServerService.start();
 
-    // 缺失的 .png 不应当返回 index.html，否则浏览器会拿 HTML 当图片解析
+    // A missing `.png` must not be served the index.html body, otherwise the
+    // browser would try to render HTML as an image and break the page.
     const resp = await fetch(`${bed.origin()}/missing.png`);
     expect(resp.status).toBe(404);
   });

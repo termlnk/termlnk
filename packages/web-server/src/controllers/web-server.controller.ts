@@ -18,19 +18,22 @@ import { createIdentifier, Disposable, ILogService, Inject } from '@termlnk/core
 import { IWebServerService } from '../services/web-server.service';
 
 /**
- * IWebServerRouterProvider —— 把 tRPC router 注入给 IWebServerService 的来源。
+ * IWebServerRouterProvider — DI source that yields the tRPC router for IWebServerService.
  *
- * 由 apps/web/server 进程入口在 registerPlugin 时 override，比如：
+ * apps/web/server overrides this token at `registerPlugin` time, e.g.:
  *
  * ```ts
  * core.registerPlugin(WebServerPlugin, {
- *   override: [[IWebServerRouterProvider, { useFactory: () => ({ getRouter: () => createWebAppRouter() }), deps: [] }]]
+ *   override: [[IWebServerRouterProvider, {
+ *     useFactory: () => ({ getRouter: () => createWebAppRouter() }),
+ *     deps: [],
+ *   }]],
  * });
  * ```
  *
- * 与 @termlnk/electron-main 的 createDesktopAppRouter 平行——
- * desktop 在 RPCController 内部直接 import & 组合 router；
- * web 走 DI 注入，避免 web-server 包硬绑业务 router 的具体形状。
+ * Sibling of @termlnk/electron-main's `createDesktopAppRouter`. Desktop imports
+ * and composes the router directly inside RPCController; web-server stays
+ * router-shape-agnostic and lets the edge process wire it via DI.
  */
 export interface IWebServerRouterProvider {
   getRouter(): AnyRouter;
@@ -39,18 +42,20 @@ export interface IWebServerRouterProvider {
 export const IWebServerRouterProvider = createIdentifier<IWebServerRouterProvider>('web-server.router-provider');
 
 /**
- * WebServerController —— Plugin 生命周期与 IWebServerService 启动节奏的桥。
+ * WebServerController — bridge between plugin lifecycle and IWebServerService startup.
  *
- * 流程：
- * 1. onStarting：DI 注册（在 plugin.ts 完成）
- * 2. onReady（Plugin.onReady 阶段触发）：
- *    a. 从 IWebServerRouterProvider 取 router
- *    b. webServerService.setRouter(router)
- *    c. webServerService.start()
- * 3. dispose：触发 webServerService.stop()
+ * Flow:
+ * 1. onStarting: DI registration (handled inside plugin.ts).
+ * 2. onReady (Plugin.onReady phase):
+ *    a. Pull the router from IWebServerRouterProvider.
+ *    b. webServerService.setRouter(router).
+ *    c. webServerService.start().
+ * 3. dispose: trigger webServerService.stop().
  *
- * 不直接在构造函数里 start —— Plugin onStarting → Repositories / Services 还在构造，
- * router 里的 procedures 解析依赖时可能 NPE。Plugin onReady 是所有依赖 ready 后的稳态。
+ * We deliberately do not start inside the constructor: during Plugin.onStarting,
+ * repositories / services are still being constructed, so the router's
+ * procedures may NPE while resolving dependencies. Plugin.onReady is the
+ * steady state where every dependency is wired up.
  */
 export class WebServerController extends Disposable {
   constructor(
@@ -69,11 +74,12 @@ export class WebServerController extends Disposable {
   }
 
   /**
-   * 由 WebServerPlugin.onReady 调用。
+   * Called by WebServerPlugin.onReady.
    *
-   * 错误不向 Plugin 抛——start 失败时 webServerService.state$ 已切到 'error'，
-   * UI / 监控可以读到错误状态决定如何降级。Plugin 链不应该因 server 起不来而崩溃，
-   * 比如 SQLite vault 还能离线访问。
+   * Errors are swallowed here on purpose: when `start()` fails, IWebServerService
+   * has already flipped `state$` to 'error', and UI / monitoring can read that
+   * to decide how to degrade. The plugin chain should not crash just because
+   * the server cannot bind — the SQLite vault still serves offline reads.
    */
   async startServer(): Promise<void> {
     try {

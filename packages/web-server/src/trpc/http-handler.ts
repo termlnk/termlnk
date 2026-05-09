@@ -23,21 +23,22 @@ export interface ICreateTRPCStandaloneHandlerOptions {
   readonly router: AnyRouter;
   readonly injector: Injector;
   /**
-   * URL 路径前缀。`/trpc` 会被识别成 `/trpc/{procedurePath}`——
-   * tRPC 内部要求 basePath 末尾含斜杠，本函数自动补斜杠。
+   * URL prefix. `/trpc` resolves to `/trpc/{procedurePath}`. tRPC requires the
+   * basePath to end with a slash; this helper adds one when missing.
    */
   readonly basePath: string;
 }
 
 /**
- * 把 @termlnk/rpc-server 的 appRouter 适配到 Node http RequestListener。
+ * Adapt the `@termlnk/rpc-server` appRouter to a Node http RequestListener.
  *
- * 与 desktop 端 `packages/electron-main/src/controllers/rpc.controller.ts` 中
- * `createIPCHandler` 是平行物——transport 不同（HTTP vs Electron IPC），
- * 两者构造的 IRPCContext 都包含 injector。
+ * Sibling of `createIPCHandler` in `packages/electron-main/src/controllers/rpc.controller.ts`:
+ * the transport differs (HTTP vs Electron IPC), but both produce an IRPCContext
+ * carrying the same injector.
  *
- * P7.1a 暂不附 windowId / sessionId（只服务 query / mutation 不需要广播路由）；
- * P7.1c 引入 session cookie 后会在这里读 cookie 并把解析出的 sessionId 注入 context。
+ * For now no windowId / sessionId is attached — pure query/mutation does not
+ * need a per-connection identity. P7.1c will extend the createContext callback
+ * to read the session cookie and inject sessionId here.
  */
 export function createTRPCStandaloneHandler(opts: ICreateTRPCStandaloneHandlerOptions): (req: IncomingMessage, res: ServerResponse) => void {
   const basePath = opts.basePath.endsWith('/') ? opts.basePath : `${opts.basePath}/`;

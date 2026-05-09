@@ -25,25 +25,27 @@ import { IWebServerService, WebServerService } from './services/web-server.servi
 export const WEB_SERVER_PLUGIN_NAME = 'WEB_SERVER_PLUGIN';
 
 /**
- * WebServerPlugin —— termlnk-web 进程的 HTTP/WS 入口。
+ * WebServerPlugin — HTTP/WS entry point for the termlnk-web process.
  *
- * 与 ElectronMainPlugin 形态对齐：都依赖 RPCServerPlugin，差别在 transport——
- * Electron 用 IPC 暴露 router，web 用 Node http + tRPC standalone adapter。
+ * Mirrors ElectronMainPlugin in shape: both depend on RPCServerPlugin and only
+ * differ in transport. Electron exposes the router over IPC; web exposes it
+ * over Node http with the tRPC standalone HTTP adapter plus a WS adapter.
  *
- * 使用方需要：
- * 1. 通过 plugin config 提供 staticRoot / port 等配置
- * 2. **必须**通过 `override` 注入 IWebServerRouterProvider，否则 onReady 阶段抛错
- *    （契约层不依赖具体的 appRouter 形状——desktop main 直接 import & 组合 router；
- *    web 走 DI 让上层进程 apps/web/server 自己组装）
+ * Caller responsibilities:
+ * 1. Pass `staticRoot` / `port` / TLS material via plugin config.
+ * 2. **Must** override `IWebServerRouterProvider` to supply the appRouter.
+ *    The package is intentionally agnostic about the router shape so
+ *    apps/web/server can wire its own composition at the edge.
  *
- * P7.1a 范围：
- * - HTTP server 启动 / 停止
- * - tRPC standalone HTTP adapter（query / mutation）
- * - 静态 SPA 托管（dist + history fallback）
+ * In scope for P7.1a/b:
+ * - HTTP server lifecycle (start / stop).
+ * - tRPC standalone HTTP adapter (query / mutation).
+ * - Static SPA hosting (dist + history fallback).
+ * - tRPC WebSocket subscription adapter (P7.1b).
  *
- * 后续子任务：
- * - P7.1b：ws subscription adapter
- * - P7.1c：SRP6a master password 解锁握手 + session cookie + idle 30 min
+ * Out of scope (P7.1c):
+ * - SRP6a master-password unlock handshake.
+ * - Session cookie + idle 30-min auto-clear of master key.
  */
 @DependentOn(RPCServerPlugin)
 export class WebServerPlugin extends Plugin {
@@ -74,7 +76,7 @@ export class WebServerPlugin extends Plugin {
       [WebServerController],
     ]);
 
-    // start() 是异步的；Plugin.onReady 不需要等它——server 自己用 state$ 上报
+    // start() is async; Plugin.onReady does not await it — state$ surfaces the result.
     const controller = this._injector.get(WebServerController);
     void controller.startServer();
   }

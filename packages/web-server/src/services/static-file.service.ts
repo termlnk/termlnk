@@ -22,18 +22,19 @@ import { createIdentifier, IConfigService, ILogService } from '@termlnk/core';
 import { WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/config.schema';
 
 /**
- * 自定义路由 handler——挂在 IWebServerService.mountRouteHandler 上。
+ * Custom HTTP handler mounted via `IWebServerService.mountRouteHandler`.
  *
- * 返回 true 表示已写出响应（res.end / res.writeHead 等）；返回 false 让请求继续走兜底链。
+ * Returns `true` once the response has been written (res.end / writeHead);
+ * returns `false` to let the request continue down the fallback chain.
  */
 export type IRouteHandler = (req: IncomingMessage, res: ServerResponse) => boolean | Promise<boolean>;
 
 export interface IStaticFileService {
   /**
-   * 处理静态资源请求。
-   * - 命中 dist 内文件 → 流式响应 + 正确 mime + 200 → 返回 true
-   * - SPA history fallback：路径不带后缀 / 不存在 → 返回 index.html → 返回 true
-   * - 未配置 staticRoot → 返回 false（让上层走 404）
+   * Handle a static-asset request.
+   * - File hit inside dist -> stream with correct mime, status 200, returns true.
+   * - SPA history fallback (no extension or missing) -> serve index.html, returns true.
+   * - No `staticRoot` configured -> returns false so the caller can 404.
    */
   handle(req: IncomingMessage, res: ServerResponse): Promise<boolean>;
 }
@@ -41,8 +42,8 @@ export interface IStaticFileService {
 export const IStaticFileService = createIdentifier<IStaticFileService>('web-server.static-file.service');
 
 /**
- * 静态文件 mime 表——只列 Termlnk SPA 实际需要的类型。
- * apps/desktop/main 的 bootstrap.ts 用的是同一份契约。
+ * Mime table — restricted to types the Termlnk SPA actually serves.
+ * Mirrors apps/desktop/main/bootstrap.ts so both transports stay aligned.
  */
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -63,16 +64,15 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 /**
- * Node http 静态 SPA 服务实现。
+ * Node-http static SPA implementation.
  *
- * 特性：
- * - 防 path-traversal：解析后路径必须仍在 staticRoot 内，否则 403
- * - 支持 SPA history fallback：未匹配文件 → 返回 index.html
- * - GET / HEAD 之外的方法直接返回 false（让 tRPC / 自定义 handler 处理）
+ * - Path-traversal guard: resolved path must stay inside `staticRoot`, else 403.
+ * - SPA history fallback: extension-less misses fall through to index.html.
+ * - GET / HEAD only; other verbs return false so tRPC / custom handlers can claim them.
  *
- * 不在 P7.1a 范围：
- * - gzip / br 压缩协商（生产建议反代层做）
- * - 长缓存 / immutable 头（apps/web/renderer 产物文件名带 hash 后再加）
+ * Out of scope for P7.1a:
+ * - gzip / brotli negotiation (delegate to the reverse proxy in production).
+ * - Long-lived / immutable cache headers (enable once renderer ships hashed filenames).
  */
 export class StaticFileService implements IStaticFileService {
   constructor(
@@ -100,10 +100,10 @@ export class StaticFileService implements IStaticFileService {
       return true;
     }
 
-    // 优先尝试匹配真实文件；不存在则 SPA history fallback 到 index.html
+    // Try the real file first, then SPA history fallback to index.html.
     const resolved = (await this._statFileOrFallback(filePath, root)) ?? null;
     if (!resolved) {
-      // 连 index.html 都没有 → 让上层 404；不是这里的责任
+      // Not even index.html exists -> let the caller emit a 404.
       return false;
     }
 
@@ -150,7 +150,8 @@ export class StaticFileService implements IStaticFileService {
       // fall through to SPA history fallback
     }
 
-    // SPA fallback：仅当请求不带文件后缀时走 index.html，避免把缺失的 .png 也吐 HTML
+    // SPA fallback only kicks in when the request has no extension; otherwise
+    // a missing `.png` would be served the HTML body and break the browser.
     const ext = extname(filePath);
     if (ext && ext !== '.html') {
       return null;
