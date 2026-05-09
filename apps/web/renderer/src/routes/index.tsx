@@ -13,30 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Core } from '@termlnk/core';
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useRef } from 'react';
-import { createCore } from '../components/core';
+import { WebShell } from '../components/WebShell';
 
 export const Route = createFileRoute('/')({
   component: Index,
 });
 
 function Index() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const coreRef = useRef<Core>(null);
-
-  useEffect(() => {
-    coreRef.current = createCore(containerRef.current!);
-
-    return () => {
-      if (coreRef.current) {
-        coreRef.current.dispose();
-      }
-    };
-  }, []);
-
-  return (
-    <div ref={containerRef} className="tm:min-w-0 tm:flex-1" />
-  );
+  // Workbench mount + lifecycle is owned by WebShell now: it keeps the Core
+  // instance behind a login gate and tears it down on logout.
+  return <WebShell />;
 }

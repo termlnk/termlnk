@@ -20,6 +20,7 @@ import type { IncomingMessage } from 'node:http';
 import type { Socket } from 'node:net';
 import type { AnyRouter } from './types';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
+import { TRPCError } from '@trpc/server';
 import { WebSocketServer } from 'ws';
 
 export interface ICreateTRPCWSHandlerOptions {
@@ -31,6 +32,14 @@ export interface ICreateTRPCWSHandlerOptions {
    * so 30s ping keeps the connection alive.
    */
   readonly keepAlive?: { pingMs?: number; pongWaitMs?: number };
+  /**
+   * Optional gate evaluated on each upgrade — typically the cookie-based
+   * session check. Returning `false` rejects the upgrade *before* a
+   * WebSocket connection is established, so the unauthenticated peer never
+   * gets to send a single subscription frame. Same intent as the HTTP
+   * `authenticate` hook; keeps web-only `sessionId` out of `IRPCContext`.
+   */
+  readonly authenticate?: (req: IncomingMessage) => boolean;
 }
 
 /**
@@ -57,6 +66,10 @@ export interface ITRPCWSHandlerHandle {
  * owning service's responsibility (`WebServerService`), so multiple WS subsystems
  * (e.g. shared-terminal relay in Phase 5) can coexist on a single port without
  * each registering an `upgrade` listener and racing.
+ *
+ * Authentication runs at upgrade time before the socket is handed to the
+ * WebSocketServer, so unauthenticated peers cannot waste resources establishing
+ * a half-open WS just to be told "no" on the first subscription frame.
  */
 export function createTRPCWSHandler(
   opts: ICreateTRPCWSHandlerOptions
@@ -71,13 +84,36 @@ export function createTRPCWSHandler(
       pingMs: opts.keepAlive?.pingMs ?? 30_000,
       pongWaitMs: opts.keepAlive?.pongWaitMs ?? 5_000,
     },
-    createContext: async (): Promise<IRPCContext> => {
+    createContext: async ({ req }): Promise<IRPCContext> => {
+      // The connection-level upgrade gate already rejected unauthenticated
+      // peers, but we re-check here so the rejection layer is still correct
+      // when callers wire `authenticate` only to the WS factory and forget
+      // the upgrade-time pre-check (e.g. unit tests).
+      if (opts.authenticate && req && !opts.authenticate(req)) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
       return { injector: opts.injector };
     },
   });
 
   return {
     handleUpgrade: (req, socket, head) => {
+      if (opts.authenticate && !opts.authenticate(req)) {
+        // Send a 401 status line on the raw socket before destroying it so the
+        // client sees a deterministic close instead of a generic ECONNRESET.
+        // This matches what the standard library does for failed handshakes.
+        try {
+          socket.write(
+            'HTTP/1.1 401 Unauthorized\r\n'
+            + 'Connection: close\r\n'
+            + 'Content-Length: 0\r\n'
+            + '\r\n'
+          );
+        } finally {
+          socket.destroy();
+        }
+        return;
+      }
       wss.handleUpgrade(req, socket, head, (client) => {
         wss.emit('connection', client, req);
       });

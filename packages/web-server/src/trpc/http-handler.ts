@@ -18,6 +18,7 @@ import type { IRPCContext } from '@termlnk/rpc';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AnyRouter } from './types';
 import { createHTTPHandler } from '@trpc/server/adapters/standalone';
+import { TRPCError } from '@trpc/server';
 
 export interface ICreateTRPCStandaloneHandlerOptions {
   readonly router: AnyRouter;
@@ -27,6 +28,16 @@ export interface ICreateTRPCStandaloneHandlerOptions {
    * basePath to end with a slash; this helper adds one when missing.
    */
   readonly basePath: string;
+  /**
+   * Optional gate evaluated on every HTTP query / mutation. Returning `false`
+   * forces a `TRPCError({ code: 'UNAUTHORIZED' })`, which `createHTTPHandler`
+   * surfaces to the wire as `401 UNAUTHORIZED`. Designed for the cookie-based
+   * session check the WebServerService applies at the transport layer — keeping
+   * authentication out of business procedures avoids leaking web-only
+   * `sessionId` into the protocol-shared `IRPCContext`. When omitted, every
+   * request is accepted (suits unit tests and Electron IPC parity).
+   */
+  readonly authenticate?: (req: IncomingMessage) => boolean;
 }
 
 /**
@@ -34,11 +45,8 @@ export interface ICreateTRPCStandaloneHandlerOptions {
  *
  * Sibling of `createIPCHandler` in `packages/electron-main/src/controllers/rpc.controller.ts`:
  * the transport differs (HTTP vs Electron IPC), but both produce an IRPCContext
- * carrying the same injector.
- *
- * For now no windowId / sessionId is attached — pure query/mutation does not
- * need a per-connection identity. P7.1c will extend the createContext callback
- * to read the session cookie and inject sessionId here.
+ * carrying the same injector. The `authenticate` callback is the one piece
+ * unique to HTTP (Electron IPC is implicitly trusted same-process).
  */
 export function createTRPCStandaloneHandler(opts: ICreateTRPCStandaloneHandlerOptions): (req: IncomingMessage, res: ServerResponse) => void {
   const basePath = opts.basePath.endsWith('/') ? opts.basePath : `${opts.basePath}/`;
@@ -46,7 +54,10 @@ export function createTRPCStandaloneHandler(opts: ICreateTRPCStandaloneHandlerOp
   return createHTTPHandler({
     router: opts.router,
     basePath,
-    createContext: async (): Promise<IRPCContext> => {
+    createContext: async ({ req }): Promise<IRPCContext> => {
+      if (opts.authenticate && !opts.authenticate(req)) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
       return {
         injector: opts.injector,
       };

@@ -24,6 +24,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/config.schema';
 import { IStaticFileService, StaticFileService } from '../services/static-file.service';
 import { IWebServerService, WebServerService } from '../services/web-server.service';
+import { IWebSessionService } from '../services/web-session.service';
+import { FakeWebSessionService } from './test-helpers';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -54,6 +56,9 @@ function createTestBed(opts: { staticRoot?: string; port?: number } = {}): ITest
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
   injector.add([IConfigService, { useClass: ConfigService }]);
   injector.add([IStaticFileService, { useClass: StaticFileService }]);
+  // Always-allow stub keeps these P7.1a transport specs orthogonal to the
+  // P7.5 cookie-gate behaviour, which has its own dedicated spec.
+  injector.add([IWebSessionService, { useValue: new FakeWebSessionService('allow-all') }]);
   injector.add([IWebServerService, { useClass: WebServerService }]);
 
   const config = injector.get(IConfigService);

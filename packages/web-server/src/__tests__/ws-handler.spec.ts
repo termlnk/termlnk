@@ -23,6 +23,8 @@ import WebSocket from 'ws';
 import { TRPC_WS_PATH, WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/config.schema';
 import { IStaticFileService, StaticFileService } from '../services/static-file.service';
 import { IWebServerService, WebServerService } from '../services/web-server.service';
+import { IWebSessionService } from '../services/web-session.service';
+import { FakeWebSessionService } from './test-helpers';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -49,6 +51,7 @@ function createTestBed(port: number = pickPort()): ITestBed {
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
   injector.add([IConfigService, { useClass: ConfigService }]);
   injector.add([IStaticFileService, { useClass: StaticFileService }]);
+  injector.add([IWebSessionService, { useValue: new FakeWebSessionService('allow-all') }]);
   injector.add([IWebServerService, { useClass: WebServerService }]);
 
   const config = injector.get(IConfigService);

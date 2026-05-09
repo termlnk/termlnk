@@ -30,6 +30,7 @@ import { TRPC_WS_PATH, WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/confi
 import { createTRPCStandaloneHandler } from '../trpc/http-handler';
 import { createTRPCWSHandler } from '../trpc/ws-handler';
 import { IStaticFileService } from './static-file.service';
+import { IWebSessionService } from './web-session.service';
 
 /** Lifecycle status of the web server. */
 export type WebServerStatus = 'stopped' | 'starting' | 'running' | 'error';
@@ -131,6 +132,7 @@ export class WebServerService extends Disposable implements IWebServerService {
   constructor(
     @IConfigService private readonly _configService: IConfigService,
     @IStaticFileService private readonly _staticFileService: IStaticFileService,
+    @IWebSessionService private readonly _sessionService: IWebSessionService,
     @Inject(Injector) private readonly _injector: Injector,
     @ILogService private readonly _logService: ILogService
   ) {
@@ -153,6 +155,10 @@ export class WebServerService extends Disposable implements IWebServerService {
       router,
       injector: this._injector,
       basePath: '/trpc',
+      // Cookie-based session check. WebSessionService.resolveFromRequest also
+      // bumps lastActivityAt on hit, so RPC traffic naturally keeps the
+      // session alive past the idle timeout.
+      authenticate: (req) => this._sessionService.resolveFromRequest(req) !== null,
     });
   }
 
@@ -184,9 +190,13 @@ export class WebServerService extends Disposable implements IWebServerService {
 
       // tRPC subscription over WebSocket — single shared port with HTTP.
       // Same router across both transports: query/mutation -> HTTP, subscription -> WS.
+      // The cookie gate at upgrade time prevents unauthenticated peers from
+      // even establishing a WebSocket; touch the session on each upgrade so
+      // the act of opening a long-lived WS itself counts as activity.
       this._wsHandle = createTRPCWSHandler({
         router: this._router!,
         injector: this._injector,
+        authenticate: (req) => this._sessionService.resolveFromRequest(req) !== null,
       });
 
       // Single upgrade dispatcher: route /trpc-ws to the tRPC WS handler;
