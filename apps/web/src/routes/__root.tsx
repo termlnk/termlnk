@@ -17,7 +17,7 @@ import { createRootRoute, Outlet } from '@tanstack/react-router';
 
 function RootLayout() {
   return (
-    <div className="tm:flex tm:h-full tm:w-full tm:flex-col tm:bg-black tm:text-light-grey">
+    <div className="tm:flex tm:size-full tm:flex-col tm:bg-black tm:text-light-grey">
       <Outlet />
     </div>
   );

@@ -19,7 +19,9 @@ import { HostListView } from '../components/host-list-view';
 
 function HomePage() {
   return (
-    <main className="tm:mx-auto tm:flex tm:h-full tm:w-full tm:max-w-2xl tm:flex-col tm:gap-6 tm:overflow-y-auto tm:px-6 tm:py-12">
+    <main
+      className="tm:mx-auto tm:flex tm:size-full tm:max-w-2xl tm:flex-col tm:gap-6 tm:overflow-y-auto tm:px-6 tm:py-12"
+    >
       <header className="tm:flex tm:flex-col tm:gap-2">
         <h1 className="tm:text-2xl tm:font-semibold tm:text-light-grey">Termlnk Web</h1>
         <p className="tm:text-sm tm:text-grey-fg">
