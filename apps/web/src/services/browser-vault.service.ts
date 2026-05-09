@@ -15,12 +15,11 @@
 
 import type { IAuthService } from '@termlnk/auth';
 import type { ISyncCryptoService, ISyncTransportService } from '@termlnk/sync';
-import type { IHostItemBase } from '@termlnk/terminal';
+import type { HostType, IHostItemBase } from '@termlnk/terminal';
 import type { Observable, Subscription } from 'rxjs';
 import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { createIdentifier, Disposable, ILogService, Inject } from '@termlnk/core';
 import { ISyncCryptoService as ISyncCryptoServiceId, ISyncTransportService as ISyncTransportServiceId } from '@termlnk/sync';
-import { HostType } from '@termlnk/terminal';
 import { BehaviorSubject } from 'rxjs';
 
 /** clientId 持久化 key——重复打开同账号也复用同一 ID，避免后端 device 列表抖动。 */
@@ -58,10 +57,10 @@ export interface IBrowserHost extends Omit<IHostItemBase, 'type'> {
 }
 
 export const enum BrowserVaultStatus {
-  Disabled = 'disabled',     // 未配置 cloudBaseUrl 或未登录
-  Idle = 'idle',             // 已加载完毕等待下次 poke
-  Pulling = 'pulling',       // 网络中
-  Error = 'error',           // 上一次拉取失败
+  Disabled = 'disabled', // 未配置 cloudBaseUrl 或未登录
+  Idle = 'idle', // 已加载完毕等待下次 poke
+  Pulling = 'pulling', // 网络中
+  Error = 'error', // 上一次拉取失败
 }
 
 export const IBrowserVaultService = createIdentifier<IBrowserVaultService>('web.browser-vault-service');
@@ -265,10 +264,6 @@ function readOrCreateClientId(): string {
     hex += bytes[i]!.toString(16).padStart(2, '0');
   }
   const id = `web-${hex}`;
-  try {
-    globalThis.localStorage?.setItem(CLIENT_ID_STORAGE_KEY, id);
-  } catch {
-    // ignored
-  }
+  globalThis.localStorage?.setItem(CLIENT_ID_STORAGE_KEY, id);
   return id;
 }

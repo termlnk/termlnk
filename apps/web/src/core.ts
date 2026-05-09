@@ -18,6 +18,7 @@ import { AuthUIPlugin } from '@termlnk/auth-ui';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { SyncPlugin } from '@termlnk/sync';
 import { chadracula } from '@termlnk/themes';
+import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
 import { WebAuthCorePlugin } from './plugins/web-auth-core.plugin';
 
 /** 从 Vite env 读取云服务地址；未配置时 IAuthService 不绑定，AuthGate 渲染降级占位。 */
@@ -28,6 +29,7 @@ export function createWebCore(): Core {
     theme: chadracula,
     logLevel: LogLevel.INFO,
     locale: LocaleType.EN_US,
+    locales: { enUS, zhCN, zhTW, jaJP, koKR },
   });
 
   core.registerPlugin(AuthPlugin);

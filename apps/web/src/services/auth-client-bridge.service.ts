@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthClientService, IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
+import type { AuthState, IAuthClientService, IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
+import { IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { Disposable, Inject } from '@termlnk/core';
 
 /**
