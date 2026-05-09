@@ -16,6 +16,7 @@
 import { AuthPlugin } from '@termlnk/auth';
 import { AuthUIPlugin } from '@termlnk/auth-ui';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
+import { SyncPlugin } from '@termlnk/sync';
 import { chadracula } from '@termlnk/themes';
 import { WebAuthCorePlugin } from './plugins/web-auth-core.plugin';
 
@@ -30,6 +31,7 @@ export function createWebCore(): Core {
   });
 
   core.registerPlugin(AuthPlugin);
+  core.registerPlugin(SyncPlugin);
   core.registerPlugin(WebAuthCorePlugin, { cloudBaseUrl: CLOUD_BASE_URL });
   core.registerPlugin(AuthUIPlugin);
 

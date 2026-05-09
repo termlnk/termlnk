@@ -16,7 +16,10 @@
 import type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse, ISyncMutation, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { base64ToBytes, bytesToBase64 } from '@termlnk/auth';
-import { TokenManager } from '@termlnk/auth-core';
+// Deep import: @termlnk/auth-core/index.ts re-exports AuthCorePlugin (含 @termlnk/database
+// 间接拉入 better-sqlite3 native module)。本服务跨端共享（desktop/web/mobile），
+// 使用 .ts 子路径导出避免在浏览器 bundle 误带 sqlite。
+import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { SYNC_TRIGGER_INTERVALS } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';

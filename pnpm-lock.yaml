@@ -414,6 +414,15 @@ importers:
       '@termlnk/design':
         specifier: workspace:*
         version: link:../../packages/design
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
+      '@termlnk/sync-core':
+        specifier: workspace:*
+        version: link:../../packages/sync-core
+      '@termlnk/terminal':
+        specifier: workspace:*
+        version: link:../../packages/terminal
       '@termlnk/themes':
         specifier: workspace:*
         version: link:../../packages/themes

@@ -15,14 +15,13 @@
 
 import type { IMasterKey, IMasterKeyService } from '@termlnk/auth';
 import type { ISyncCryptoService } from '@termlnk/sync';
-import { randomBytes } from 'node:crypto';
 // eslint-disable-next-line penetrating/no-penetrating-import -- @noble/ciphers 2.x exports only `.js` subpaths
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 // eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { hmac } from '@noble/hashes/hmac.js';
 // eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { sha256 } from '@noble/hashes/sha2.js';
-import { IMasterKeyService as IMasterKeyServiceId } from '@termlnk/auth';
+import { IMasterKeyService as IMasterKeyServiceId, randomBytes } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { SYNC_PAYLOAD_PREFIX } from '@termlnk/sync';
 

@@ -25,9 +25,15 @@ import { HttpTokenRefresher } from '@termlnk/auth-core/services/http-token-refre
 import { MasterKeyService } from '@termlnk/auth-core/services/master-key.service.ts';
 import { SrpClientService } from '@termlnk/auth-core/services/srp-client.service.ts';
 import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
-import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
+import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { ISyncCryptoService, ISyncTransportService, SyncPlugin } from '@termlnk/sync';
+// 同样原因 deep import @termlnk/sync-core 的纯加密 / 传输服务——避免 SyncCorePlugin
+// 拉入 @termlnk/database（outbox / synchroniser / backup 都强依赖 SQLite 仓库）。
+import { SyncCryptoService } from '@termlnk/sync-core/services/crypto.service.ts';
+import { HttpSyncTransportService } from '@termlnk/sync-core/services/http-transport.service.ts';
 import { AuthClientBridgeService } from '../services/auth-client-bridge.service';
 import { BrowserDeviceNameProvider } from '../services/browser-device-name-provider.service';
+import { BrowserVaultService, IBrowserVaultService } from '../services/browser-vault.service';
 import { InMemoryTokenStorageService } from '../services/in-memory-token-storage.service';
 
 export const WEB_AUTH_CORE_PLUGIN_NAME = 'WEB_AUTH_CORE_PLUGIN';
@@ -49,7 +55,7 @@ export interface IWebAuthCorePluginConfig {
  * 不复用 AuthCorePlugin 通过 override 替换是因为后者的 plugin-level @DependentOn(DatabasePlugin)
  * 是硬约束，浏览器无法满足。复制服务注册列表是 first-principles 上更干净的解。
  */
-@DependentOn(AuthPlugin)
+@DependentOn(AuthPlugin, SyncPlugin)
 export class WebAuthCorePlugin extends Plugin {
   static override pluginName = WEB_AUTH_CORE_PLUGIN_NAME;
 
@@ -95,10 +101,30 @@ export class WebAuthCorePlugin extends Plugin {
           ),
           deps: [IMasterKeyServiceId, ISrpClientServiceId, TokenManager, ILogService, IDeviceNameProviderId],
         }],
-        [IAuthClientService, { useClass: AuthClientBridgeService }]
+        [IAuthClientService, { useClass: AuthClientBridgeService }],
+        // Sync 层服务——只引 crypto + transport；浏览器不做 push / outbox / synchroniser 编排，
+        // BrowserVaultService 单独承担 pull-only 状态机（详见 services/browser-vault.service.ts）
+        [ISyncCryptoService, { useClass: SyncCryptoService }],
+        [ISyncTransportService, {
+          // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
+          useFactory: (tokenManager: TokenManager, logService: ILogService) =>
+            new HttpSyncTransportService({ baseUrl }, tokenManager, logService),
+          deps: [TokenManager, ILogService],
+        }],
+        [IBrowserVaultService, { useClass: BrowserVaultService }]
       );
     }
 
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
+  }
+
+  override onReady(): void {
+    if (!this._config.cloudBaseUrl) {
+      return;
+    }
+    // touch BrowserVaultService 让它构造，从而订阅 authState$ 启动 pull 流程。
+    touchDependencies(this._injector, [
+      [IBrowserVaultService],
+    ]);
   }
 }
