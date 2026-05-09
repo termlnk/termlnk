@@ -67,3 +67,42 @@ export interface IBackupService {
 }
 
 export const IBackupService = createIdentifier<IBackupService>('sync.backup-service');
+
+/**
+ * 备份字节流不跨 IPC——文件对话框和磁盘 I/O 都在主进程完成。
+ * 渲染端的"导出"按钮应该调用 IBackupClientService.exportToFile()；
+ * `Uint8Array` 永远不上行/下行。
+ */
+export interface IBackupExportFileResult {
+  /** 用户最终选择的存盘绝对路径。 */
+  readonly filePath: string;
+  readonly exportedAt: number;
+  readonly counts: Readonly<Record<string, number>>;
+}
+
+export interface IBackupImportFileResult {
+  /** 用户选中的备份源文件绝对路径。 */
+  readonly filePath: string;
+  readonly mode: BackupImportMode;
+  readonly exportedAt: number;
+  readonly counts: Readonly<Record<string, number>>;
+}
+
+/**
+ * 渲染端备份门面——承载用户从设置页触发的导出/导入交互。
+ *
+ * 与 IBackupService 的差别：
+ * - 主进程版本以原始字节为契约；渲染端版本封装文件对话框 + 磁盘 I/O
+ * - 用户取消对话框返回 `null`，已选路径错误（写入失败 / 解析失败）以异常上抛
+ *
+ * 主进程实现位置：rpc-server `backup` tRPC router；
+ * 渲染端实现位置：rpc-client BackupClientService。
+ */
+export interface IBackupClientService {
+  /** 弹保存对话框，加密导出到所选文件。用户取消返回 null。 */
+  exportToFile(): Promise<IBackupExportFileResult | null>;
+  /** 弹打开对话框，从所选文件解密导入。用户取消返回 null。 */
+  importFromFile(mode: BackupImportMode): Promise<IBackupImportFileResult | null>;
+}
+
+export const IBackupClientService = createIdentifier<IBackupClientService>('sync.backup-client-service');

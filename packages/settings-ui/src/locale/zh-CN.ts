@@ -56,6 +56,8 @@ const locale: typeof enUS = {
       'section-account-description': '登录或注册以在多台设备间使用云同步',
       'section-sync': '云同步',
       'section-sync-description': '同步引擎的运行状态及各资源的同步进度',
+      'section-backup': '加密备份',
+      'section-backup-description': '使用与云同步相同的端到端加密导出/还原配置文件，离线即可使用',
     },
     appearance: {
       'language-settings-title': '语言设置',

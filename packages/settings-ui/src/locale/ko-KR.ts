@@ -56,6 +56,8 @@ const locale: typeof enUS = {
       'section-account-description': '클라우드 동기화를 사용하려면 로그인하거나 회원가입하세요',
       'section-sync': '클라우드 동기화',
       'section-sync-description': '동기화 엔진 상태 및 리소스별 동기화 진행 상황',
+      'section-backup': '암호화 백업',
+      'section-backup-description': '클라우드 동기화와 동일한 종단간 암호화를 사용해 오프라인에서 설정을 내보내고 복원합니다',
     },
     appearance: {
       'language-settings-title': '언어 설정',

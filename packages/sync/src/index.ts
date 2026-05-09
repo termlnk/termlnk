@@ -30,9 +30,16 @@ export { SyncPlugin } from './plugin';
 export {
   BACKUP_PAYLOAD_PREFIX,
   BACKUP_PAYLOAD_VERSION,
+  IBackupClientService,
   IBackupService,
 } from './services/backup.service';
-export type { BackupImportMode, IBackupExportSummary, IBackupImportSummary } from './services/backup.service';
+export type {
+  BackupImportMode,
+  IBackupExportFileResult,
+  IBackupExportSummary,
+  IBackupImportFileResult,
+  IBackupImportSummary,
+} from './services/backup.service';
 export { ISyncCryptoService } from './services/crypto.service';
 export { ISyncOutboxService } from './services/outbox.service';
 export type { IResourceSynchroniser, IResourceSynchroniserFactory } from './services/resource-synchroniser';

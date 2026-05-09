@@ -17,8 +17,8 @@ import { IAuthClientService } from '@termlnk/auth';
 import { AuthGate } from '@termlnk/auth-ui';
 import { LocaleService, Quantity } from '@termlnk/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, cn, useDependency } from '@termlnk/design';
-import { ISyncService } from '@termlnk/sync';
-import { SyncStatusPanel } from '@termlnk/sync-ui';
+import { IBackupClientService, ISyncService } from '@termlnk/sync';
+import { BackupCard, SyncStatusPanel } from '@termlnk/sync-ui';
 
 /**
  * 账号 + 同步标签页——把 auth-ui 的 AuthGate 和 sync-ui 的 SyncStatusPanel
@@ -36,6 +36,7 @@ export function AccountTab() {
   const localeService = useDependency(LocaleService);
   const authClient = useDependency(IAuthClientService, Quantity.OPTIONAL);
   const syncService = useDependency(ISyncService, Quantity.OPTIONAL);
+  const backupClient = useDependency(IBackupClientService, Quantity.OPTIONAL);
 
   return (
     <div className={cn('tm:flex tm:flex-col tm:gap-4')}>
@@ -65,6 +66,22 @@ export function AccountTab() {
           </CardHeader>
           <CardContent>
             <SyncStatusPanel />
+          </CardContent>
+        </Card>
+      )}
+
+      {backupClient && (
+        <Card>
+          <CardHeader>
+            <CardTitle className={cn('tm:text-sm')}>
+              {localeService.t('settings-ui.account.section-backup')}
+            </CardTitle>
+            <CardDescription className={cn('tm:text-xs')}>
+              {localeService.t('settings-ui.account.section-backup-description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BackupCard />
           </CardContent>
         </Card>
       )}

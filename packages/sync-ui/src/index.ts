@@ -15,4 +15,5 @@
 
 export { SYNC_UI_PLUGIN_NAME, SyncUIPlugin } from './plugin';
 export type { ISyncUIPluginConfig } from './plugin';
+export { BackupCard } from './views/BackupCard';
 export { SyncStatusPanel } from './views/SyncStatusPanel';

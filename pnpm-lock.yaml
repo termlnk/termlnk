@@ -1342,6 +1342,9 @@ importers:
       '@termlnk/rpc':
         specifier: workspace:*
         version: link:../rpc
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../sync
       '@termlnk/terminal':
         specifier: workspace:*
         version: link:../terminal
@@ -1397,6 +1400,9 @@ importers:
       '@termlnk/rpc':
         specifier: workspace:*
         version: link:../rpc
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../sync
       '@termlnk/terminal':
         specifier: workspace:*
         version: link:../terminal

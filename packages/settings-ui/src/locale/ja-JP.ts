@@ -56,6 +56,8 @@ const locale: typeof enUS = {
       'section-account-description': 'クラウド同期を利用するにはサインインまたは新規登録してください',
       'section-sync': 'クラウド同期',
       'section-sync-description': '同期エンジンのステータスと各リソースの同期状況',
+      'section-backup': '暗号化バックアップ',
+      'section-backup-description': 'クラウド同期と同じエンドツーエンド暗号化で設定をオフラインでエクスポート／復元できます',
     },
     appearance: {
       'language-settings-title': '言語設定',

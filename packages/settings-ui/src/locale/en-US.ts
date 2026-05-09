@@ -54,6 +54,8 @@ const locale = {
       'section-account-description': 'Sign in or create an account to use cloud sync across your devices',
       'section-sync': 'Cloud sync',
       'section-sync-description': 'Status of the synchroniser engine and per-resource sync state',
+      'section-backup': 'Encrypted backup',
+      'section-backup-description': 'Export and restore your config offline with the same end-to-end encryption used for cloud sync',
     },
     appearance: {
       'language-settings-title': 'Language Settings',

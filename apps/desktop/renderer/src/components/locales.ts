@@ -19,6 +19,8 @@ import agentuijaJP from '@termlnk/agent-ui/locale/ja-JP';
 import agentuikoKR from '@termlnk/agent-ui/locale/ko-KR';
 import agentuizhCN from '@termlnk/agent-ui/locale/zh-CN';
 import agentuizhTW from '@termlnk/agent-ui/locale/zh-TW';
+import authuienUS from '@termlnk/auth-ui/locale/en-US';
+import authuizhCN from '@termlnk/auth-ui/locale/zh-CN';
 import { merge } from '@termlnk/core';
 import designenUS from '@termlnk/design/locale/en-US';
 import designjaJP from '@termlnk/design/locale/ja-JP';
@@ -50,6 +52,8 @@ import sftpuijaJP from '@termlnk/sftp-ui/locale/ja-JP';
 import sftpuikoKR from '@termlnk/sftp-ui/locale/ko-KR';
 import sftpuizhCN from '@termlnk/sftp-ui/locale/zh-CN';
 import sftpuizhTW from '@termlnk/sftp-ui/locale/zh-TW';
+import syncuienUS from '@termlnk/sync-ui/locale/en-US';
+import syncuizhCN from '@termlnk/sync-ui/locale/zh-CN';
 import terminaluienUS from '@termlnk/terminal-ui/locale/en-US';
 import terminaluijaJP from '@termlnk/terminal-ui/locale/ja-JP';
 import terminaluikoKR from '@termlnk/terminal-ui/locale/ko-KR';
@@ -64,60 +68,72 @@ import uizhTW from '@termlnk/ui/locale/zh-TW';
 export const enUS = merge(
   {},
   agentuienUS,
+  authuienUS,
   designenUS,
   electronrendererenUS,
   extensionuienUS,
   islanduienUS,
   settingsuienUS,
   sftpuienUS,
+  syncuienUS,
   terminaluienUS,
   uienUS
 );
 export const zhCN = merge(
   {},
   agentuizhCN,
+  authuizhCN,
   designzhCN,
   electronrendererzhCN,
   extensionuizhCN,
   islanduizhCN,
   settingsuizhCN,
   sftpuizhCN,
+  syncuizhCN,
   terminaluizhCN,
   uizhCN
 );
+// auth-ui / sync-ui currently only ship en-US + zh-CN; non-sinophone non-anglophone
+// locales fall back to en-US via LocaleService when sync-ui keys aren't found.
 export const jaJP = merge(
   {},
   agentuijaJP,
+  authuienUS,
   designjaJP,
   electronrendererjaJP,
   extensionuijaJP,
   islanduijaJP,
   settingsuijaJP,
   sftpuijaJP,
+  syncuienUS,
   terminaluijaJP,
   uijaJP
 );
 export const koKR = merge(
   {},
   agentuikoKR,
+  authuienUS,
   designkoKR,
   electronrendererkoKR,
   extensionuikoKR,
   islanduikoKR,
   settingsuikoKR,
   sftpuikoKR,
+  syncuienUS,
   terminaluikoKR,
   uikoKR
 );
 export const zhTW = merge(
   {},
   agentuizhTW,
+  authuizhCN,
   designzhTW,
   electronrendererzhTW,
   extensionuizhTW,
   islanduizhTW,
   settingsuizhTW,
   sftpuizhTW,
+  syncuizhCN,
   terminaluizhTW,
   uizhTW
 );

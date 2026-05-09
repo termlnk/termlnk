@@ -16,6 +16,7 @@
 import { agentMonitorRouter } from './routers/agent-monitor';
 import { aiRouter } from './routers/ai';
 import { authRouter } from './routers/auth';
+import { backupRouter } from './routers/backup';
 import { chatRouter } from './routers/chat';
 import { configRouter } from './routers/config';
 import { extensionRouter } from './routers/extension';
@@ -31,6 +32,7 @@ import { ptyRouter } from './routers/pty';
 import { sftpRouter } from './routers/sftp';
 import { skillRouter } from './routers/skill';
 import { sshRouter } from './routers/ssh';
+import { syncRouter } from './routers/sync';
 import { terminalSessionBackupRouter } from './routers/terminal-session-backup';
 import { router } from './trpc';
 
@@ -38,6 +40,7 @@ export const appRouter = router({
   agentMonitor: agentMonitorRouter,
   ai: aiRouter,
   auth: authRouter,
+  backup: backupRouter,
   chat: chatRouter,
   config: configRouter,
   host: hostRouter,
@@ -48,6 +51,7 @@ export const appRouter = router({
   proxy: proxyRouter,
   skill: skillRouter,
   ssh: sshRouter,
+  sync: syncRouter,
   fileTransfer: fileTransferRouter,
   sftp: sftpRouter,
   pty: ptyRouter,
