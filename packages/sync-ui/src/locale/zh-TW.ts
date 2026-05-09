@@ -17,6 +17,7 @@ export default {
   'sync-ui': {
     status: {
       title: '雲端同步',
+      'toggle-label': '同步',
       'sync-now': '立即同步',
       'force-resync': '從頭同步',
       'force-resync-hint': '清空游標重新拉取全部資料。懷疑本地落後或資料損壞時使用。',

@@ -17,6 +17,7 @@ export default {
   'sync-ui': {
     status: {
       title: 'Cloud sync',
+      'toggle-label': 'Sync',
       'sync-now': 'Sync now',
       'force-resync': 'Resync from scratch',
       'force-resync-hint': 'Pulls every record again. Useful if you suspect local data is stale.',

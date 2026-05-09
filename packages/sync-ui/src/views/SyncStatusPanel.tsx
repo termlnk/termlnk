@@ -16,7 +16,7 @@
 import type { ISyncError, ISyncStats } from '@termlnk/sync';
 import type { ReactElement } from 'react';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { Badge, Button, cn, useDependency, useObservable } from '@termlnk/design';
+import { Badge, Button, cn, Switch, useDependency, useObservable } from '@termlnk/design';
 import { ISyncService, SyncState } from '@termlnk/sync';
 import { CloudCheckIcon, CloudOffIcon, RefreshCwIcon, RotateCcwIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -51,6 +51,10 @@ export function SyncStatusPanel() {
     syncService?.lastError$ ?? null,
     null
   );
+  const enabled = useObservable<boolean>(
+    syncService?.enabled$ ?? null,
+    false
+  );
 
   const [busy, setBusy] = useState(false);
 
@@ -75,6 +79,21 @@ export function SyncStatusPanel() {
       await syncService.forceFullResync();
     } catch (err) {
       logService.error('[SyncStatusPanel] forceFullResync failed:', err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggleEnabled = async (next: boolean): Promise<void> => {
+    setBusy(true);
+    try {
+      if (next) {
+        await syncService.enable();
+      } else {
+        await syncService.disable();
+      }
+    } catch (err) {
+      logService.error('[SyncStatusPanel] toggle enabled failed:', err);
     } finally {
       setBusy(false);
     }
@@ -107,7 +126,21 @@ export function SyncStatusPanel() {
           </div>
         </div>
 
-        <div className={cn('tm:flex tm:items-center tm:gap-2')}>
+        <div className={cn('tm:flex tm:items-center tm:gap-3')}>
+          <div className={cn('tm:flex tm:items-center tm:gap-2')}>
+            <span className={cn('tm:text-xs tm:text-grey-fg')}>
+              {localeService.t('sync-ui.status.toggle-label')}
+            </span>
+            <Switch
+              size="sm"
+              checked={enabled}
+              disabled={busy}
+              onCheckedChange={(next) => {
+                void handleToggleEnabled(next);
+              }}
+              aria-label={localeService.t('sync-ui.status.toggle-label')}
+            />
+          </div>
           <Button
             variant="outline"
             size="sm"
