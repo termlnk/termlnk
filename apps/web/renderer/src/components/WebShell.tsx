@@ -223,10 +223,12 @@ function LoginView({ onSuccess }: ILoginViewProps) {
             </div>
             {error
               ? (
-                  <div className="tm:rounded-md tm:border tm:border-red tm:bg-black tm:px-3 tm:py-2 tm:text-sm tm:text-red">
-                    {error}
-                  </div>
-                )
+                <div
+                  className="tm:rounded-md tm:border tm:border-red tm:bg-black tm:px-3 tm:py-2 tm:text-sm tm:text-red"
+                >
+                  {error}
+                </div>
+              )
               : null}
             <Button type="submit" disabled={submitting || password.length === 0}>
               {submitting ? 'Signing in...' : 'Sign in'}

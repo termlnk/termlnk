@@ -17,8 +17,8 @@ import type { Injector } from '@termlnk/core';
 import type { IRPCContext } from '@termlnk/rpc';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AnyRouter } from './types';
-import { createHTTPHandler } from '@trpc/server/adapters/standalone';
 import { TRPCError } from '@trpc/server';
+import { createHTTPHandler } from '@trpc/server/adapters/standalone';
 
 export interface ICreateTRPCStandaloneHandlerOptions {
   readonly router: AnyRouter;

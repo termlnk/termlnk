@@ -24,13 +24,19 @@ interface IFileContextMenuProps {
   entry: IFileListEntry;
   onClose: () => void;
   onDownload?: () => void;
+  /**
+   * Web shell only: download the remote file directly to the user's browser
+   * (Blob + `<a download>`) instead of going through the dual-pane local
+   * filesystem path. When undefined the menu item is hidden.
+   */
+  onDownloadToBrowser?: () => void;
   onRename?: () => void;
   onDelete?: () => void;
   onPermissions?: () => void;
 }
 
 export function FileContextMenu(props: IFileContextMenuProps) {
-  const { x, y, entry, onClose, onDownload, onRename, onDelete, onPermissions } = props;
+  const { x, y, entry, onClose, onDownload, onDownloadToBrowser, onRename, onDelete, onPermissions } = props;
   const [open, setOpen] = useState(true);
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -62,6 +68,18 @@ export function FileContextMenu(props: IFileContextMenuProps) {
           <Download size={14} />
           {entry.isDirectory ? 'Download folder' : 'Download'}
         </DropdownMenuItem>
+
+        {onDownloadToBrowser
+          ? (
+              <DropdownMenuItem
+                disabled={entry.isDirectory}
+                onSelect={() => runAction(onDownloadToBrowser)}
+              >
+                <Download size={14} />
+                Download to browser
+              </DropdownMenuItem>
+            )
+          : null}
 
         <DropdownMenuItem disabled={!onRename} onSelect={() => runAction(onRename)}>
           <Edit3 size={14} />

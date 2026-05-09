@@ -15,9 +15,11 @@
 
 import type { ISFTPTransferTask } from '@termlnk/rpc';
 import type { DragSourceType } from './hooks/use-panel-drop';
-import { Button } from '@termlnk/design';
+import { Quantity } from '@termlnk/core';
+import { Button, useDependency } from '@termlnk/design';
 import { FolderSync, Unplug } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { IBrowserFileTransferService } from '../services/transfer/browser-file-transfer.service';
 import { DualPaneLayout } from './dual-pane/DualPaneLayout';
 import { useSFTPPageConnection } from './hooks/use-sftp-page-connection';
 import { useTransferQueue } from './hooks/use-transfer-queue';
@@ -33,6 +35,13 @@ interface ISelectedHost {
 }
 
 export function SFTPPage() {
+  // Web shell registers IBrowserFileTransferService; desktop leaves it unbound.
+  // Presence flips DualPaneLayout to single-pane (LocalFilePane hidden) since
+  // "local" in termlnk-web means the browser — surfaced via dedicated upload /
+  // download buttons in RemoteFilePane.
+  const browserTransfer = useDependency(IBrowserFileTransferService, Quantity.OPTIONAL);
+  const isWebShell = browserTransfer !== null;
+
   const [selectedHost, setSelectedHost] = useState<ISelectedHost | null>(null);
   const connection = useSFTPPageConnection(selectedHost?.id ?? null);
 
@@ -144,6 +153,7 @@ export function SFTPPage() {
               onUploadDrop={handleUploadDrop}
               onDownloadDrop={handleDownloadDrop}
               refreshTrigger={refreshTrigger}
+              singlePane={isWebShell}
             />
           </div>
         )}

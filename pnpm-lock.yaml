@@ -2161,6 +2161,9 @@ importers:
       '@termlnk/rpc-client':
         specifier: workspace:*
         version: link:../rpc-client
+      '@termlnk/sftp-ui':
+        specifier: workspace:*
+        version: link:../sftp-ui
       '@termlnk/ui':
         specifier: workspace:*
         version: link:../ui

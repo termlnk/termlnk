@@ -21,5 +21,6 @@ export {
 export type { IWebRendererConfig } from './controllers/config.schema';
 export { WEB_RENDERER_PLUGIN_NAME, WebRendererPlugin } from './plugin';
 export { WebRPCClientService } from './services/rpc/web-rpc-client.service';
+export { BrowserFileTransferService } from './services/sftp/browser-file-transfer.service';
 export { NoopUpdaterService } from './services/updater/noop-updater.service';
 export { NoopWindowManagerService } from './services/window-manager/noop-window-manager.service';

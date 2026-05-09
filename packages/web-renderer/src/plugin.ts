@@ -18,9 +18,11 @@ import type { IWebRendererConfig } from './controllers/config.schema';
 import { DependentOn, IConfigService, Inject, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
 import { IUpdaterService, IWindowManagerService } from '@termlnk/electron';
 import { IRPCClientService, RPCClientPlugin } from '@termlnk/rpc-client';
+import { IBrowserFileTransferService } from '@termlnk/sftp-ui';
 import { UIPlugin } from '@termlnk/ui';
 import { defaultPluginConfig, WEB_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { WebRPCClientService } from './services/rpc/web-rpc-client.service';
+import { BrowserFileTransferService } from './services/sftp/browser-file-transfer.service';
 import { NoopUpdaterService } from './services/updater/noop-updater.service';
 import { NoopWindowManagerService } from './services/window-manager/noop-window-manager.service';
 
@@ -61,6 +63,11 @@ export class WebRendererPlugin extends Plugin {
       [IRPCClientService, { useClass: WebRPCClientService }],
       [IWindowManagerService, { useClass: NoopWindowManagerService }],
       [IUpdaterService, { useClass: NoopUpdaterService }],
+      // SFTP UI looks up IBrowserFileTransferService via Quantity.OPTIONAL —
+      // its presence is the signal to switch into single-pane (web) mode and
+      // surface the upload / download buttons that work against the user's
+      // browser instead of the local filesystem.
+      [IBrowserFileTransferService, { useClass: BrowserFileTransferService }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }

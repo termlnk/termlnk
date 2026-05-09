@@ -53,6 +53,7 @@
     "@termlnk/electron": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
+    "@termlnk/sftp-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
     "rxjs": ">=7.0.0"
   },
@@ -61,6 +62,7 @@
     "@termlnk/electron": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
+    "@termlnk/sftp-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
     "@trpc/client": "^11.16.0"
   },
