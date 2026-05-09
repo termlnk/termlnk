@@ -15,6 +15,8 @@
 
 import type { Observable } from 'rxjs';
 import type { IDriverState } from '../models/driver';
+import type { IFrame } from '../models/frame';
+import type { SharedTerminalRole } from '../models/role';
 import type { IParticipant, ISessionSnapshot, ISharedSession } from '../models/session';
 import { createIdentifier } from '@termlnk/core';
 
@@ -55,9 +57,25 @@ export interface IPtySource {
  *
  * 实现位置：@termlnk/shared-terminal-core (P5.2)
  */
+/**
+ * 出站帧——multiplexer 决定要发到 transport 的帧；transport 按 target 路由。
+ */
+export interface IOutboundFrame {
+  readonly sessionId: string;
+  /** 'broadcast' = 该 session 所有 attached client；否则是具体 clientId */
+  readonly target: string;
+  readonly frame: IFrame;
+}
+
 export interface IPtyMultiplexerService {
   /** 当前所有 active 共享会话 */
   readonly sessions$: Observable<readonly ISharedSession[]>;
+
+  /**
+   * 全局 outbound 流——transport 订阅此流把帧发给具体 client / 广播。
+   * Multiplexer 不知道 transport 的存在；解耦在此线分割。
+   */
+  readonly outbound$: Observable<IOutboundFrame>;
 
   /** 单 session 的 driver 状态变化流（供 UI 渲染软锁状态） */
   driverState$(sessionId: string): Observable<IDriverState>;
@@ -85,6 +103,27 @@ export interface IPtyMultiplexerService {
 
   /** 强制踢出某客户端（撤销时调用） */
   kick(sessionId: string, clientId: string, reason?: string): void;
+
+  /**
+   * Attach 一个逻辑客户端——transport 在 pair_ack / invite_claim 完成后调用。
+   * Multiplexer 自动为该客户端发送 snapshot frame（session event）。
+   */
+  attachClient(sessionId: string, clientId: string, role: SharedTerminalRole, displayName?: string): void;
+
+  /** Detach（client 断开时 transport 调用）——清 driver 标记 / 移除参与者 */
+  detachClient(sessionId: string, clientId: string): void;
+
+  /**
+   * 处理一个来自客户端的入站帧——transport 收到 pair-ed client 的帧后调用。
+   *
+   * - PtyData：检查 clientId 是 driver → 写到底层 PTY
+   * - Control：driver_request / driver_release / heartbeat / resize 等
+   * - SessionEvent：通常 client → owner 不发；若发则忽略（防伪造）
+   */
+  handleInbound(sessionId: string, clientId: string, frame: IFrame): void;
+
+  /** 客户端心跳——multiplexer 用来判断 driver 是否还活着（5s 超时清空） */
+  clientHeartbeat(sessionId: string, clientId: string): void;
 }
 
 /**

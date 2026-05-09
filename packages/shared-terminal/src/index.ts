@@ -54,7 +54,7 @@ export { SharedTerminalPlugin } from './plugin';
 export { ISharedTerminalCryptoService } from './services/crypto.service';
 export { IFrameCodecService } from './services/frame-codec.service';
 export { IPairingService } from './services/pairing.service';
-export type { IPtySource, IRegisteredPty } from './services/pty-multiplexer.service';
+export type { IOutboundFrame, IPtySource, IRegisteredPty } from './services/pty-multiplexer.service';
 export { IPtyMultiplexerService } from './services/pty-multiplexer.service';
 export type { IRecordingHandle, IRecordingMetadata } from './services/recording.service';
 export { ISharedSessionRecordingService } from './services/recording.service';

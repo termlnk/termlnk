@@ -30,6 +30,7 @@ import {
 } from '@termlnk/core';
 import {
   IFrameCodecService,
+  IPtyMultiplexerService,
   ISharedTerminalCryptoService,
   SHARED_TERMINAL_PLUGIN_CONFIG_KEY,
   SharedTerminalPlugin,
@@ -37,6 +38,7 @@ import {
 import { SHARED_TERMINAL_CORE_PLUGIN_NAME } from './common/constants';
 import { SharedTerminalCryptoService } from './services/crypto.service';
 import { FrameCodecService } from './services/frame-codec.service';
+import { PtyMultiplexerService } from './services/pty-multiplexer.service';
 
 /**
  * 共享终端实现层插件——绑定主进程的 NaCl 加密 / 帧编解码 / PTY 多路复用 / 配对
@@ -67,6 +69,7 @@ export class SharedTerminalCorePlugin extends Plugin {
     const dependencies: Dependency[] = [
       [ISharedTerminalCryptoService, { useClass: SharedTerminalCryptoService }],
       [IFrameCodecService, { useClass: FrameCodecService }],
+      [IPtyMultiplexerService, { useClass: PtyMultiplexerService }],
     ];
 
     const merged = mergeOverrideWithDependencies(dependencies, this._mergedConfig().override);
@@ -74,6 +77,7 @@ export class SharedTerminalCorePlugin extends Plugin {
     touchDependencies(this._injector, [
       [ISharedTerminalCryptoService],
       [IFrameCodecService],
+      [IPtyMultiplexerService],
     ]);
   }
 
