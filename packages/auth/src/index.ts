@@ -23,6 +23,7 @@ export type { ILoginInput, IRegisterInput, IUserAccount } from './models/user';
 export { AuthPlugin } from './plugin';
 export { IAuthClientService } from './services/auth-client.service';
 export { IAuthService } from './services/auth.service';
+export { IIdleProbe } from './services/idle-probe.service';
 export { IMasterKeyService } from './services/master-key.service';
 export { ISrpClientService } from './services/srp-client.service';
 export type { ISrpClientSession, ISrpEnrollment, ISrpEphemeral } from './services/srp-client.service';

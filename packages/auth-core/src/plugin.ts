@@ -14,11 +14,13 @@
  */
 
 import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
-import { AuthPlugin, IAuthService, IMasterKeyService, ISrpClientService, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
-import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
+import { AuthPlugin, IAuthService, IIdleProbe, IMasterKeyService, ISrpClientService, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
+import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
+import { IdleLockController } from './controllers/idle-lock.controller';
 import { HttpAuthService } from './services/http-auth.service';
 import { HttpTokenRefresher } from './services/http-token-refresher.service';
+import { NoopIdleProbe } from './services/idle-probe.service';
 import { MasterKeyService } from './services/master-key.service';
 import { SrpClientService } from './services/srp-client.service';
 import { TokenManager } from './services/token-manager.service';
@@ -80,6 +82,11 @@ export class AuthCorePlugin extends Plugin {
       [ISrpClientService, { useClass: SrpClientService }],
       [ITokenStorageService, { useClass: TokenStorageService }],
       [TokenManager, { useClass: TokenManager }],
+      // IIdleProbe 缺省实现："从不空闲"——纯 Node 测试 / 非 Electron 集成场景安全默认。
+      // ElectronMainPlugin 通过 override 替换为 powerMonitor 实现。
+      [IIdleProbe, { useClass: NoopIdleProbe }],
+      // IdleLockController 自身没有公共接口，由 onReady 触发实例化即可生效。
+      [IdleLockController],
     ];
 
     if (this._config.cloudBaseUrl) {
@@ -110,5 +117,13 @@ export class AuthCorePlugin extends Plugin {
     }
 
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
+  }
+
+  override onReady(): void {
+    // touch IdleLockController 让它实例化——构造里订阅 IMasterKeyService.state$
+    // 才能开始空闲检测。Plugin 的 onStarting 阶段服务尚未就绪，所以放 onReady。
+    touchDependencies(this._injector, [
+      [IdleLockController],
+    ]);
   }
 }

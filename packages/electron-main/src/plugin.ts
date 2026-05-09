@@ -15,6 +15,7 @@
 
 import type { Dependency } from '@termlnk/core';
 import type { IElectronMainConfig } from './controllers/config.schema';
+import { IIdleProbe } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ElectronPlugin, IKeepAwakeService, IUpdaterService, IWindowManagerService } from '@termlnk/electron';
 import { RPCServerPlugin } from '@termlnk/rpc-server';
@@ -27,6 +28,7 @@ import { RPCController } from './controllers/rpc.controller';
 import { SingleInstanceController } from './controllers/single-instance.controller';
 import { WindowStateController } from './controllers/window-state.controller';
 import { DiskFileService } from './services/file/disk-file.service';
+import { ElectronIdleProbe } from './services/idle-probe/idle-probe.service';
 import { KeepAwakeService } from './services/keep-awake/keep-awake.service';
 import { IPlatformService, PlatformService } from './services/platform';
 import { ITrayService, TrayService } from './services/tray/tray.service';
@@ -88,6 +90,9 @@ export class ElectronMainPlugin extends Plugin {
       [IUpdaterService, { useClass: UpdaterService }],
       [ITrayService, { useClass: TrayService }],
       [IKeepAwakeService, { useClass: KeepAwakeService }],
+      // 把 IIdleProbe 从 NoopIdleProbe（auth-core 的占位）替换成 powerMonitor 实现，
+      // 让 IAuthPluginConfig.autoLockIdleMinutes 在 Electron 集成下真正生效。
+      [IIdleProbe, { useClass: ElectronIdleProbe }],
 
       [WindowStateController],
       [SingleInstanceController],
