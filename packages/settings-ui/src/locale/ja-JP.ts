@@ -58,6 +58,8 @@ const locale: typeof enUS = {
       'section-sync-description': '同期エンジンのステータスと各リソースの同期状況',
       'section-backup': '暗号化バックアップ',
       'section-backup-description': 'クラウド同期と同じエンドツーエンド暗号化で設定をオフラインでエクスポート／復元できます',
+      'section-devices': 'デバイス管理',
+      'section-devices-description': 'このアカウントにサインインしているデバイスを管理します',
     },
     appearance: {
       'language-settings-title': '言語設定',

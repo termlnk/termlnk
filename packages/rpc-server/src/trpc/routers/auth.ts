@@ -100,6 +100,22 @@ export const authRouter = router({
     const authService = requireAuthService(ctx.injector);
     yield* observableToAsyncGenerator(authService.lastError$);
   }),
+
+  /** 拉取当前账号下所有 active 设备（refresh-token jti 视图）。 */
+  listDevices: publicProcedure
+    .query(async ({ ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      // tRPC 序列化 readonly array → 普通 array
+      return [...await authService.listDevices()];
+    }),
+
+  /** 撤销指定设备；deviceId = IDevice.id（refresh-token jti）。 */
+  revokeDevice: publicProcedure
+    .input(z.object({ deviceId: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      await authService.revokeDevice(input.deviceId);
+    }),
 });
 
 export type AuthRouter = typeof authRouter;

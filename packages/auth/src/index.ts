@@ -15,6 +15,7 @@
 
 export { AUTH_PLUGIN_CONFIG_KEY, AUTH_PLUGIN_NAME, HKDF_INFO, MASTER_KEY_DERIVATION } from './common/constants';
 export type { IAuthPluginConfig } from './controllers/config.schema';
+export type { IDevice } from './models/device';
 export type { IDerivationMaterial, IMasterKey } from './models/master-key';
 export { MasterKeyState } from './models/master-key';
 export { AuthState } from './models/session';

@@ -14,6 +14,7 @@
  */
 
 import type { Observable } from 'rxjs';
+import type { IDevice } from '../models/device';
 import type { AuthState, IAuthError } from '../models/session';
 import type { ILoginInput, IRegisterInput, IUserAccount } from '../models/user';
 import { createIdentifier } from '@termlnk/core';
@@ -60,6 +61,20 @@ export interface IAuthService {
 
   /** 同步获取当前用户（无需订阅 Observable 时用） */
   getCurrentUser(): IUserAccount | null;
+
+  /**
+   * 拉取当前账号下所有已登录设备（active refresh tokens）。
+   * 返回列表用 lastSeenAt 倒序；当前设备 isCurrent=true。
+   */
+  listDevices(): Promise<readonly IDevice[]>;
+
+  /**
+   * 撤销指定设备（按 IDevice.id 即 refresh-token jti）。
+   * - 撤销当前设备 = 远程登出本机；本端的下次 RPC 会因 401 触发自动登出
+   * - 撤销其他设备 = 该设备下次刷新 token 时收到 401，强制重新登录
+   * - 服务端不区分"撤销不存在的 id"——总是 204；不会泄漏其他用户的 jti 是否存在
+   */
+  revokeDevice(deviceId: string): Promise<void>;
 }
 
 export const IAuthService = createIdentifier<IAuthService>('auth.auth-service');

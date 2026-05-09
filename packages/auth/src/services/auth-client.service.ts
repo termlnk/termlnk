@@ -14,6 +14,7 @@
  */
 
 import type { Observable } from 'rxjs';
+import type { IDevice } from '../models/device';
 import type { AuthState, IAuthError } from '../models/session';
 import type { ILoginInput, IRegisterInput, IUserAccount } from '../models/user';
 import { createIdentifier } from '@termlnk/core';
@@ -34,6 +35,9 @@ export interface IAuthClientService {
   register(input: IRegisterInput): Promise<void>;
   login(input: ILoginInput): Promise<void>;
   logout(): Promise<void>;
+
+  listDevices(): Promise<readonly IDevice[]>;
+  revokeDevice(deviceId: string): Promise<void>;
 }
 
 export const IAuthClientService = createIdentifier<IAuthClientService>('auth.auth-client-service');

@@ -49,6 +49,8 @@ class FakeAuthService implements IAuthService {
   async logout(): Promise<void> {}
   getCurrentUser(): IUserAccount | null { return null; }
   async getAccessToken(): Promise<string | null> { return null; }
+  async listDevices() { return []; }
+  async revokeDevice(): Promise<void> {}
 }
 
 class FakeSyncService {

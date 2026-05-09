@@ -14,7 +14,7 @@
  */
 
 import { IAuthClientService } from '@termlnk/auth';
-import { AuthGate } from '@termlnk/auth-ui';
+import { AuthGate, DeviceListCard } from '@termlnk/auth-ui';
 import { LocaleService, Quantity } from '@termlnk/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, cn, useDependency } from '@termlnk/design';
 import { IBackupClientService, ISyncService } from '@termlnk/sync';
@@ -66,6 +66,22 @@ export function AccountTab() {
           </CardHeader>
           <CardContent>
             <SyncStatusPanel />
+          </CardContent>
+        </Card>
+      )}
+
+      {authClient && (
+        <Card>
+          <CardHeader>
+            <CardTitle className={cn('tm:text-sm')}>
+              {localeService.t('settings-ui.account.section-devices')}
+            </CardTitle>
+            <CardDescription className={cn('tm:text-xs')}>
+              {localeService.t('settings-ui.account.section-devices-description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DeviceListCard />
           </CardContent>
         </Card>
       )}

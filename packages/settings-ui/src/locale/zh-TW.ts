@@ -58,6 +58,8 @@ const locale: typeof enUS = {
       'section-sync-description': '同步引擎的運行狀態及各資源的同步進度',
       'section-backup': '加密備份',
       'section-backup-description': '使用與雲端同步相同的端對端加密匯出/還原設定檔，離線即可使用',
+      'section-devices': '裝置管理',
+      'section-devices-description': '查看並撤銷當前帳號下的已登入裝置',
     },
     appearance: {
       'language-settings-title': '語言設定',

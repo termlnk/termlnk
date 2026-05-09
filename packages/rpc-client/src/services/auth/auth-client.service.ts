@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthClientService, IAuthError, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
+import type { IAuthClientService, IAuthError, IDevice, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
 import { AuthState } from '@termlnk/auth';
 import { Disposable, ILogService, Inject, toDisposable } from '@termlnk/core';
@@ -110,5 +110,13 @@ export class AuthClientService extends Disposable implements IAuthClientService 
 
   async logout(): Promise<void> {
     await this._client.logout.mutate();
+  }
+
+  async listDevices(): Promise<readonly IDevice[]> {
+    return this._client.listDevices.query();
+  }
+
+  async revokeDevice(deviceId: string): Promise<void> {
+    await this._client.revokeDevice.mutate({ deviceId });
   }
 }

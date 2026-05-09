@@ -18,6 +18,7 @@ export type { IAuthUIPluginConfig } from './plugin';
 export { AccountPanel } from './views/AccountPanel';
 export type { IAccountPanelProps } from './views/AccountPanel';
 export { AuthGate } from './views/AuthGate';
+export { DeviceListCard } from './views/DeviceListCard';
 export { LoginForm } from './views/LoginForm';
 export type { ILoginFormProps } from './views/LoginForm';
 export { RegisterForm } from './views/RegisterForm';

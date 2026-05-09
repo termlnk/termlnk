@@ -13,10 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthError, IAuthService, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenPair, IUserAccount } from '@termlnk/auth';
+import type { IAuthError, IAuthService, IDevice, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenPair, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
 import { Buffer } from 'node:buffer';
 import { randomBytes } from 'node:crypto';
+import { hostname } from 'node:os';
 import { AuthState, IMasterKeyService as IMasterKeyServiceId, ISrpClientService as ISrpClientServiceId } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
@@ -85,6 +86,7 @@ interface IRegisterRequestBody {
   argon2SaltB64: string;
   srpSalt: string;
   srpVerifier: string;
+  deviceName?: string;
 }
 
 interface IRegisterResponseBody {
@@ -109,6 +111,11 @@ interface ISrpVerifyRequestBody {
   email: string;
   clientPublicEphemeral: string;
   clientSessionProof: string;
+  deviceName?: string;
+}
+
+interface IDeviceListResponseBody {
+  devices: IDevice[];
 }
 
 interface ISrpVerifyResponseBody {
@@ -206,6 +213,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
         argon2SaltB64,
         srpSalt: enrollment.srpSalt,
         srpVerifier: enrollment.srpVerifier,
+        deviceName: safeHostname(),
       };
       if (input.displayName !== undefined) {
         body.displayName = input.displayName;
@@ -251,6 +259,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
           email: input.email,
           clientPublicEphemeral: ephemeral.public,
           clientSessionProof: session.proof,
+          deviceName: safeHostname(),
         } satisfies ISrpVerifyRequestBody
       );
 
@@ -266,6 +275,49 @@ export class HttpAuthService extends Disposable implements IAuthService {
       // derived. Lock it to keep the in-memory invariant clean.
       this._masterKey.lock();
       throw err;
+    }
+  }
+
+  async listDevices(): Promise<readonly IDevice[]> {
+    const token = await this._tokenManager.getAccessToken();
+    if (!token) {
+      throw new Error('[HttpAuthService] not authenticated');
+    }
+    const url = this._joinUrl('/auth/devices');
+    const resp = await this._fetchFn(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`[HttpAuthService] GET /auth/devices → ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 200)}` : ''}`);
+    }
+    const json = await resp.json() as IDeviceListResponseBody;
+    return json.devices;
+  }
+
+  async revokeDevice(deviceId: string): Promise<void> {
+    if (!deviceId) {
+      throw new Error('[HttpAuthService] deviceId is required');
+    }
+    const token = await this._tokenManager.getAccessToken();
+    if (!token) {
+      throw new Error('[HttpAuthService] not authenticated');
+    }
+    const url = this._joinUrl(`/auth/devices/${encodeURIComponent(deviceId)}/revoke`);
+    const resp = await this._fetchFn(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`[HttpAuthService] POST /auth/devices/.../revoke → ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 200)}` : ''}`);
     }
   }
 
@@ -360,5 +412,15 @@ export class HttpAuthService extends Disposable implements IAuthService {
 
   private _joinUrl(path: string): string {
     return `${this._config.baseUrl.replace(/\/+$/, '')}${path}`;
+  }
+}
+
+/** Captures os.hostname() once; falls back to a placeholder if the OS call throws. */
+function safeHostname(): string {
+  try {
+    const name = hostname();
+    return name && name.length > 0 ? name : 'Unknown device';
+  } catch {
+    return 'Unknown device';
   }
 }

@@ -58,6 +58,8 @@ const locale: typeof enUS = {
       'section-sync-description': '同步引擎的运行状态及各资源的同步进度',
       'section-backup': '加密备份',
       'section-backup-description': '使用与云同步相同的端到端加密导出/还原配置文件，离线即可使用',
+      'section-devices': '设备管理',
+      'section-devices-description': '查看并撤销当前账号下的已登录设备',
     },
     appearance: {
       'language-settings-title': '语言设置',

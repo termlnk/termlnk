@@ -56,6 +56,8 @@ const locale = {
       'section-sync-description': 'Status of the synchroniser engine and per-resource sync state',
       'section-backup': 'Encrypted backup',
       'section-backup-description': 'Export and restore your config offline with the same end-to-end encryption used for cloud sync',
+      'section-devices': 'Devices',
+      'section-devices-description': 'Manage devices currently signed in to your account',
     },
     appearance: {
       'language-settings-title': 'Language Settings',
