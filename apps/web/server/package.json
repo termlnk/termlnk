@@ -1,5 +1,6 @@
 {
   "name": "@termlnk/web-app-server",
+  "type": "module",
   "version": "0.0.0",
   "private": true,
   "description": "termlnk-web server entrypoint — Node.js + tRPC standalone HTTP/WS adapter (P7.3)",
@@ -11,10 +12,12 @@
   },
   "main": "./src/main.ts",
   "scripts": {
-    "dev": "tsx ./src/main.ts",
-    "start": "tsx ./src/main.ts",
+    "predev": "node ./scripts/ensure-node-abi.mjs",
+    "dev": "node ./bin/dev.js",
+    "prestart": "node ./scripts/ensure-node-abi.mjs",
+    "start": "node ./bin/dev.js",
     "typecheck": "tsgo --noEmit",
-    "build": "echo 'apps/web/server has no compile step — main.ts runs through tsx; image build (apps/web/Dockerfile) compiles every workspace dependency to lib/es first.' && exit 0"
+    "build": "echo 'apps/web/server has no compile step — main.ts runs through vite/module-runner; image build (apps/web/Dockerfile) bundles every workspace dependency to lib/es first.' && exit 0"
   },
   "dependencies": {
     "@termlnk/agent-core": "workspace:*",
@@ -32,6 +35,6 @@
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
-    "tsx": "^4.21.0"
+    "vite": "^8.0.10"
   }
 }
