@@ -19,7 +19,7 @@ import { DependentOn, IConfigService, Inject, InjectSelf, merge, mergeOverrideWi
 import { RPCServerPlugin } from '@termlnk/rpc-server';
 import { AuthController } from './controllers/auth.controller';
 import { defaultPluginConfig, WEB_SERVER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
-import { WebServerController } from './controllers/web-server.controller';
+import { IWebServerRouterProvider, WebServerController } from './controllers/web-server.controller';
 import { IMasterKeyHolderService, MasterKeyHolderService } from './services/master-key-holder.service';
 import { IStaticFileService, StaticFileService } from './services/static-file.service';
 import { IWebServerService, WebServerService } from './services/web-server.service';
@@ -74,6 +74,17 @@ export class WebServerPlugin extends Plugin {
       [IWebServerService, { useClass: WebServerService }],
       [IMasterKeyHolderService, { useClass: MasterKeyHolderService }],
       [IWebSessionService, { useClass: WebSessionService }],
+      // IWebServerRouterProvider must always be supplied by the edge process
+      // (apps/web/server) via plugin config override. Register a placeholder
+      // here so `mergeOverrideWithDependencies` recognises the identifier and
+      // can swap in the real provider — without this entry the plugin's
+      // override mechanism silently drops the binding because it only
+      // replaces existing dependencies.
+      [IWebServerRouterProvider, {
+        useFactory: () => {
+          throw new Error('[WebServerPlugin] IWebServerRouterProvider was not overridden in plugin config — the edge process must inject the appRouter via `override: [[IWebServerRouterProvider, { useValue: { getRouter: () => appRouter } }]]`.');
+        },
+      }],
       [WebServerController],
       [AuthController],
     ];
