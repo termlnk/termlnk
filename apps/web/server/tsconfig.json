@@ -1,0 +1,10 @@
+{
+  "extends": "@termlnk/shared/tsconfig/node",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

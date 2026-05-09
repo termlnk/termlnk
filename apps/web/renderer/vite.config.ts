@@ -13,16 +13,20 @@
  * governing permissions and limitations under the License.
  */
 
-import { createRootRoute, Outlet } from '@tanstack/react-router';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
 
-function RootLayout() {
-  return (
-    <div className="tm:flex tm:size-full tm:flex-col tm:bg-black tm:text-light-grey">
-      <Outlet />
-    </div>
-  );
-}
-
-export const Route = createRootRoute({
-  component: RootLayout,
+// Skeleton config — P7.4 will extend with @tanstack/router-plugin, tailwindcss,
+// and the desktop renderer plugin chain (minus Electron triplet, plus
+// WebRendererPlugin from @termlnk/web-renderer).
+export default defineConfig({
+  base: './',
+  plugins: [react()],
+  build: {
+    outDir: 'dist',
+    target: 'es2022',
+  },
+  server: {
+    port: 5179,
+  },
 });

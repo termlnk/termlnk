@@ -1,0 +1,22 @@
+{
+  "name": "@termlnk/web-app-server",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "description": "termlnk-web server entrypoint — Node.js + Hono + tRPC HTTP/WS adapter (P7.1+ implementation)",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "main": "./src/main.ts",
+  "scripts": {
+    "dev": "tsx ./src/main.ts",
+    "build": "echo 'apps/web/server build is wired in P7.1' && exit 0"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "tsx": "^4.21.0"
+  }
+}
