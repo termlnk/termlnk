@@ -95,21 +95,16 @@ export function SyncStatusPanel() {
     : localeService.t('sync-ui.status.never-synced');
 
   return (
-    <div
-      className={cn('tm:flex tm:flex-col tm:gap-3 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-4')}
-    >
+    <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
       <div className={cn('tm:flex tm:items-center tm:justify-between tm:gap-4')}>
         <div className={cn('tm:flex tm:flex-col tm:gap-1')}>
           <div className={cn('tm:flex tm:items-center tm:gap-2')}>
-            <span className={cn('tm:text-sm tm:font-medium tm:text-light-grey')}>
-              {localeService.t('sync-ui.status.title')}
-            </span>
             {stateBadge}
-          </div>
-          <div className={cn('tm:text-xs tm:text-grey-fg')}>
-            {lastSyncedText}
+            <span className={cn('tm:text-xs tm:text-grey-fg')}>
+              {lastSyncedText}
+            </span>
             {stats && stats.pendingMutations > 0 && (
-              <span className={cn('tm:ml-2 tm:text-yellow')}>
+              <span className={cn('tm:text-xs tm:text-yellow')}>
                 {localeService.t('sync-ui.status.pending', String(stats.pendingMutations))}
               </span>
             )}

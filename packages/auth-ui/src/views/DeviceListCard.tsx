@@ -35,18 +35,6 @@ import {
 import { LaptopIcon, LockIcon, RefreshCwIcon, TrashIcon, TriangleAlertIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-/**
- * 设备列表卡片——展示当前账号下所有 active refresh-token，可单点撤销。
- *
- * 优雅降级：
- * - IAuthClientService 未注册（云未配置）→ 不渲染
- * - authState !== Authenticated → 占位"先登录" + 锁图标
- *
- * 安全语义：
- * - device id = 后端 refresh-token jti（公开它无安全风险）
- * - 撤销当前设备 = 远程登出本机；下次 RPC 401 后 TokenManager 会触发本地登出（fail-soft）
- * - 撤销其他设备 = 该设备下次 refresh 时 401，强制重登
- */
 export function DeviceListCard() {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
@@ -98,7 +86,6 @@ export function DeviceListCard() {
     setRevokingId(deviceId);
     try {
       await authClient.revokeDevice(deviceId);
-      // re-load to reflect server state — including possible logout side-effect on current device
       await loadDevices();
     } catch (err) {
       logService.error('[DeviceListCard] revokeDevice failed:', err);
@@ -114,16 +101,8 @@ export function DeviceListCard() {
   }
 
   return (
-    <div className={cn('tm:flex tm:flex-col tm:gap-3 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-4')}>
-      <div className={cn('tm:flex tm:items-start tm:justify-between tm:gap-3')}>
-        <div className={cn('tm:flex tm:flex-col tm:gap-1')}>
-          <span className={cn('tm:text-sm tm:font-medium tm:text-light-grey')}>
-            {localeService.t('auth-ui.devices.title')}
-          </span>
-          <span className={cn('tm:text-xs tm:text-grey-fg')}>
-            {localeService.t('auth-ui.devices.description')}
-          </span>
-        </div>
+    <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
+      <div className={cn('tm:flex tm:items-center tm:justify-end')}>
         <Button
           variant="ghost"
           size="sm"
@@ -278,10 +257,6 @@ function DeviceListItem({ device, revoking, onRevoke }: IDeviceListItemProps) {
   );
 }
 
-/**
- * Coarse "X minutes/hours/days ago" formatter — same heuristic SyncStatusPanel uses but
- * exported as a pure helper here to avoid coupling. Returns localized text via LocaleService.
- */
 function formatRelativeTime(iso: string, localeService: LocaleService): string {
   const ts = Date.parse(iso);
   if (!Number.isFinite(ts)) {
@@ -308,8 +283,6 @@ function formatAbsoluteDate(iso: string, localeService: LocaleService): string {
   if (!Number.isFinite(ts)) {
     return iso;
   }
-  // Use the JS toLocaleDateString — picks up the OS locale, which matches what the user expects
-  // in their settings UI. Don't tie to LocaleService's i18n locale; that's for translatable
-  // strings, not numeric/date formatting.
+  // Follow the OS locale for date formatting; LocaleService is for translatable strings only.
   return new Date(ts).toLocaleDateString();
 }

@@ -18,10 +18,7 @@ import { LocaleService } from '@termlnk/core';
 import { Button, cn, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, Input, useDependency } from '@termlnk/design';
 import { useMemo, useState } from 'react';
 
-/**
- * 主密码最小长度——不是安全护栏（暴力攻击主要由 Argon2id 抵御），而是
- * 提醒用户用户使用人类可记的、但不至于太短的密码。
- */
+// UX nudge, not a security gate; Argon2id is the actual brute-force defense.
 const MIN_PASSWORD_LENGTH = 8;
 
 export interface IRegisterFormProps {
@@ -31,17 +28,6 @@ export interface IRegisterFormProps {
   readonly busy?: boolean;
 }
 
-/**
- * 注册表单——纯展示组件。
- *
- * 设计要点：
- * - **密码二次确认**：register 一旦提交，密码就经 SRP6a + Argon2id 派生 verifier；
- *   一旦上传 verifier 后用户忘记密码 = 数据永久丢失（零知识架构无法找回）。
- *   二次确认是唯一的纠错关口。
- * - 显示密码长度建议但不强制——超短密码也允许（例如 `passphrase` 形式），
- *   服务端不能拒绝（拒绝意味着服务端能区分密码强度→破坏零知识）。
- * - displayName 可选（服务端把空字符串视为未设置，UI 用 email 兜底显示）。
- */
 export function RegisterForm(props: IRegisterFormProps) {
   const localeService = useDependency(LocaleService);
 
@@ -196,20 +182,18 @@ export function RegisterForm(props: IRegisterFormProps) {
       </Button>
 
       {props.onSwitchToLogin && (
-        <div className={cn('tm:text-center tm:text-sm tm:text-grey-fg')}>
-          {localeService.t('auth-ui.register.have-account')}
-          {' '}
-          <button
+        <div className={cn('tm:flex tm:items-center tm:justify-center tm:gap-1 tm:text-sm tm:text-grey-fg')}>
+          <span>{localeService.t('auth-ui.register.have-account')}</span>
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={props.onSwitchToLogin}
-            className={cn(`
-              tm:font-medium tm:text-blue tm:underline-offset-4
-              tm:hover:underline
-            `)}
             disabled={props.busy}
+            className={cn('tm:h-auto tm:px-0 tm:font-medium')}
           >
             {localeService.t('auth-ui.register.go-login')}
-          </button>
+          </Button>
         </div>
       )}
     </form>

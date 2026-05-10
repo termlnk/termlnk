@@ -24,19 +24,8 @@ import { RegisterForm } from './RegisterForm';
 
 type ViewMode = 'login' | 'register';
 
-/**
- * 主认证视图——按 IAuthClientService 状态切换 LoginForm / RegisterForm / AccountPanel。
- *
- * 优雅降级：
- * - 若 IAuthClientService 未注册（云端服务未启用、Phase 3 未上线），整个组件渲染
- *   "未配置云服务" 占位文案，按钮禁用。这是 Phase 1.5 的必然过渡态——
- *   要么用户主动 opt-in 云服务，要么管理员未部署后端。
- *
- * 错误处理：
- * - lastError$ 由 IAuthClientService 推送；本组件把当前 lastError 透传给子表单
- * - 用户切换 login/register 视图时清空错误（避免 stale 提示）——通过本地 viewMode state
- */
 export function AuthGate() {
+  // OPTIONAL: cloud service may be unconfigured; fall through to a placeholder below.
   const authClient = useDependency(IAuthClientService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);
   const localeService = useDependency(LocaleService);
@@ -61,10 +50,7 @@ export function AuthGate() {
     return (
       <div
         role="status"
-        className={cn(`
-          tm:flex tm:flex-col tm:gap-2 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-4 tm:text-sm
-          tm:text-grey-fg
-        `)}
+        className={cn('tm:flex tm:flex-col tm:gap-2 tm:text-sm tm:text-grey-fg')}
       >
         <div className={cn('tm:font-medium tm:text-light-grey')}>
           {localeService.t('auth-ui.gate.unavailable-title')}

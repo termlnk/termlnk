@@ -54,16 +54,7 @@ export function BackupCard() {
   const buttonsDisabled = !isUnlocked || isBusy;
 
   return (
-    <div className={cn('tm:flex tm:flex-col tm:gap-3 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-4')}>
-      <div className={cn('tm:flex tm:flex-col tm:gap-1')}>
-        <span className={cn('tm:text-sm tm:font-medium tm:text-light-grey')}>
-          {localeService.t('sync-ui.backup.title')}
-        </span>
-        <span className={cn('tm:text-xs tm:text-grey-fg')}>
-          {localeService.t('sync-ui.backup.description')}
-        </span>
-      </div>
-
+    <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
       {!isUnlocked && (
         <div
           className={cn(`

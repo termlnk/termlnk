@@ -19,29 +19,12 @@ import { Button, Checkbox, cn, Field, FieldContent, FieldGroup, FieldLabel, Inpu
 import { useState } from 'react';
 
 export interface ILoginFormProps {
-  /** 提交时调用；外层负责真正的认证逻辑（IAuthClientService.login）。 */
   readonly onSubmit: (input: ILoginInput) => Promise<void> | void;
-  /** 切换到注册视图。 */
   readonly onSwitchToRegister?: () => void;
-  /** 来自 IAuthClientService.lastError$，由外层订阅后传入。 */
   readonly errorMessage?: string;
-  /** 外层在认证 in-flight 时设为 true，禁用提交按钮。 */
   readonly busy?: boolean;
 }
 
-/**
- * 登录表单——纯展示组件。
- *
- * 安全语义：
- * - password 只在 onSubmit 调用栈内瞬时使用；不通过 ref 存储、不放在 state 之外
- * - rememberMe 决定主进程是否持久化 refresh token（IAuthClientService 决定具体行为）
- * - 错误展示由外层提供 `errorMessage` 控制——本组件不做错误格式化（避免重复国际化）
- *
- * 不做的事：
- * - 不直接调 IAuthClientService（容器组件职责）
- * - 不做密码强度校验（注册路径才需要；登录用户输入啥就发啥）
- * - 不做 email 格式校验（服务端权威；前端校验只做 UX 提示，不做安全屏障）
- */
 export function LoginForm(props: ILoginFormProps) {
   const localeService = useDependency(LocaleService);
 
@@ -135,20 +118,18 @@ export function LoginForm(props: ILoginFormProps) {
       </Button>
 
       {props.onSwitchToRegister && (
-        <div className={cn('tm:text-center tm:text-sm tm:text-grey-fg')}>
-          {localeService.t('auth-ui.login.no-account')}
-          {' '}
-          <button
+        <div className={cn('tm:flex tm:items-center tm:justify-center tm:gap-1 tm:text-sm tm:text-grey-fg')}>
+          <span>{localeService.t('auth-ui.login.no-account')}</span>
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={props.onSwitchToRegister}
-            className={cn(`
-              tm:font-medium tm:text-blue tm:underline-offset-4
-              tm:hover:underline
-            `)}
             disabled={props.busy}
+            className={cn('tm:h-auto tm:px-0 tm:font-medium')}
           >
             {localeService.t('auth-ui.login.go-register')}
-          </button>
+          </Button>
         </div>
       )}
     </form>
