@@ -26,6 +26,7 @@
     "@termlnk/design": "workspace:*",
     "@termlnk/extension": "workspace:*",
     "@termlnk/extension-ui": "workspace:*",
+    "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
     "@termlnk/settings-ui": "workspace:*",

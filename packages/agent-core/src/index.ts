@@ -21,6 +21,7 @@ export { SkillAgentController } from './controllers/skill-agent.controller';
 export { SkillController } from './controllers/skill.controller';
 export { AGENT_CORE_PLUGIN_NAME, AgentCorePlugin } from './plugin';
 export { AIAgentService } from './services/agent/ai-agent.service';
+export { NodeProxyFetchProvider } from './services/network/node-proxy-fetch-provider';
 export { LLMProviderService } from './services/llm-provider/llm-provider.service';
 export { AgentToolRegistryService } from './services/mcp/agent-tool-registry.service';
 export { McpConnection } from './services/mcp/mcp-connection';

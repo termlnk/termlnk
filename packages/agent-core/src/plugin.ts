@@ -19,9 +19,7 @@ import type { IAgentCorePluginConfig } from './controllers/config.schema';
 import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_MCP_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IAgentToolPermissionService, IAgentToolRegistryService, IAIAgentService, IHookLauncherService, ILLMProviderService, IMcpRegistryService, IMcpService, IMyMcpService, IPermissionRuleService, IPlatformContextService, IRiskAssessmentService, ISkillDiscoveryService, ISkillInstallerService, ISkillPromptService, ISkillStateService, ISystemPromptService, SKILL_CONFIG_KEY } from '@termlnk/agent';
 import { DependentOn, IConfigService, ILogService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
-import { ElectronPlugin } from '@termlnk/electron';
 import { AgentHookController } from './controllers/agent-hook.controller';
-import { AgentKeepAwakeController } from './controllers/agent-keep-awake.controller';
 import { AIKeySyncController } from './controllers/ai-key-sync.controller';
 import { CompactController } from './controllers/compact.controller';
 import { AGENT_CORE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
@@ -52,7 +50,7 @@ import { SkillStateService } from './services/skill/skill-state.service';
 
 export const AGENT_CORE_PLUGIN_NAME = 'AGENT_CORE_PLUGIN';
 
-@DependentOn(DatabasePlugin, ElectronPlugin)
+@DependentOn(DatabasePlugin)
 export class AgentCorePlugin extends Plugin {
   static override pluginName = AGENT_CORE_PLUGIN_NAME;
 
@@ -125,7 +123,6 @@ export class AgentCorePlugin extends Plugin {
 
       // Controllers
       [AgentHookController],
-      [AgentKeepAwakeController],
       [AIKeySyncController],
       [MyMcpController],
       [McpController],
@@ -140,7 +137,6 @@ export class AgentCorePlugin extends Plugin {
   override onReady(): void {
     touchDependencies(this._injector, [
       [AgentHookController],
-      [AgentKeepAwakeController],
       [AIKeySyncController],
       [MyMcpController],
       [McpController],

@@ -63,13 +63,14 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { AgentCorePlugin } from '@termlnk/agent-core';
+import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
 import { AuthPlugin } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, LocalDerivedSecretCipher, SQLiteAdaptor } from '@termlnk/database';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IslandCorePlugin } from '@termlnk/island-core';
+import { IFetchProvider, NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { appRouter, RPCServerPlugin } from '@termlnk/rpc-server';
 import { SyncPlugin } from '@termlnk/sync';
@@ -116,6 +117,16 @@ async function bootstrap(): Promise<void> {
     ],
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
+  // Same shape as desktop main: route all node-side HTTP through the user's
+  // configured proxy via NodeProxyFetchProvider. Registers HTTPService for
+  // any future node-side direct callers and aligns AI Provider / MCP / web
+  // tool fetches with the proxy preference stored in network.config.
+  core.registerPlugin(NetworkPlugin, {
+    useFetchImpl: true,
+    override: [
+      [IFetchProvider, { useClass: NodeProxyFetchProvider }],
+    ],
+  });
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl: process.env.TERMLNK_CLOUD_BASE_URL,

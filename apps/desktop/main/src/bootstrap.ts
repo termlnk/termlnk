@@ -19,7 +19,7 @@ import { extname, isAbsolute, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
-import { AgentCorePlugin } from '@termlnk/agent-core';
+import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
 import { AuthPlugin, IIdleProbe } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
@@ -29,6 +29,7 @@ import { ElectronIdleProbe, ElectronMainPlugin, FileDialogService, MockUpdaterSe
 import { IExtensionStateService, IExtensionStorageService } from '@termlnk/extension';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IslandCorePlugin } from '@termlnk/island-core';
+import { IFetchProvider, NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { IFileDialogService, RPCServerPlugin } from '@termlnk/rpc-server';
 import { SyncPlugin } from '@termlnk/sync';
@@ -205,21 +206,33 @@ app.whenReady().then(async () => {
     migrationsFolder,
     override: [
       [IDBAdaptorService, { useValue: dbAdaptor }],
-      // 主进程用 OS keystore 加密敏感凭据；不可用时类内部自动降级到 LocalDerivedSecretCipher
+      // OS keystore for sensitive creds; auto-falls back to LocalDerivedSecretCipher when unavailable.
       [ISecretCipherService, { useClass: SafeStorageCipher }],
     ],
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
 
-  // Auth + Sync 契约层先于实现层注册（DependentOn 链：AuthCorePlugin → AuthPlugin + DatabasePlugin；
-  // SyncCorePlugin → SyncPlugin + AuthCorePlugin + DatabasePlugin）。
-  // ITokenRefresher / ISyncTransportService 暂用 contract 缺省 / Noop——Phase 3 网络层落地后
-  // 通过对应插件的 override 替换为 HTTP 实现。
+  // NetworkPlugin: register before plugins that issue HTTP traffic so they
+  // resolve HTTPService against this binding. Override IFetchProvider with
+  // NodeProxyFetchProvider so all in-process HTTP (LLM provider sync, MCP
+  // registry, web fetch tool, future direct callers) routes through the
+  // user's configured HTTP/SOCKS5 proxy without each call site rebuilding
+  // the dispatcher. useFetchImpl forces the Fetch implementation in main
+  // process — XHR is browser-only and the default switch picks XHR when
+  // `window` is absent (the inverse of what we need here).
+  core.registerPlugin(NetworkPlugin, {
+    useFetchImpl: true,
+    override: [
+      [IFetchProvider, { useClass: NodeProxyFetchProvider }],
+    ],
+  });
+
+  // Auth/Sync contracts ship with Noop ITokenRefresher / ISyncTransportService;
+  // Phase 3 swaps in HTTP impls via plugin overrides.
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
-    // Electron 集成下用 powerMonitor 实现 IIdleProbe，让
-    // IAuthPluginConfig.autoLockIdleMinutes 真正生效；非 Electron 场景
-    // （纯 Node 测试 / self-host）保持 auth-core 的 NoopIdleProbe 缺省。
+    // powerMonitor-backed probe makes autoLockIdleMinutes effective on Electron;
+    // auth-core's NoopIdleProbe stays the default for pure Node hosts.
     override: [
       [IIdleProbe, { useClass: ElectronIdleProbe }],
     ],

@@ -27,6 +27,7 @@
     "@termlnk/database": "workspace:*",
     "@termlnk/extension-core": "workspace:*",
     "@termlnk/island-core": "workspace:*",
+    "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@termlnk/sync": "workspace:*",

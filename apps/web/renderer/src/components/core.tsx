@@ -21,6 +21,7 @@ import { AuthUIPlugin } from '@termlnk/auth-ui';
 import { Core, LocaleType, LogLevel, merge } from '@termlnk/core';
 import { ExtensionPlugin } from '@termlnk/extension';
 import { ExtensionUIPlugin } from '@termlnk/extension-ui';
+import { NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { SettingsUIPlugin } from '@termlnk/settings-ui';
@@ -50,11 +51,15 @@ export interface ICreateTermlnkConfig extends ICoreConfig {
 
 // Mirrors apps/desktop/renderer/src/components/core.tsx, with three swaps
 // driven by cloud-sync-architecture.md §7.2.3 / §7.2.4:
-// 1. Drop ElectronPlugin / ElectronRendererPlugin / UpdaterUIPlugin — those
-//    rely on Electron preload bridges that do not exist in the browser.
+// 1. Drop ElectronPlugin / ElectronRendererPlugin — those rely on Electron
+//    preload bridges that do not exist in the browser.
 // 2. Add WebRendererPlugin, which registers WebRPCClientService (httpBatchLink
-//    + wsLink instead of ipcLink) and Noop window/updater placeholders so
-//    downstream UI plugins keep resolving the same DI tokens unchanged.
+//    + wsLink instead of ipcLink), a Noop window manager, and a real
+//    WebUpdaterService that polls GitHub Releases for "new version available"
+//    hints (download / install rejected — operators update by pulling a new
+//    docker image). UIPlugin's UpdaterUIController picks up that binding and
+//    renders the sidebar button + dialog with the same components used on
+//    desktop.
 // 3. Skip island plugins entirely — the dynamic-island secondary window is an
 //    Electron-only concept; the web SPA has only the main workbench surface.
 export function createCore(ref: string | HTMLElement, options?: Partial<ICreateTermlnkConfig>) {
@@ -75,6 +80,12 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   const core = new Core(defaultOptions);
   core.registerPlugin(RPCPlugin);
   core.registerPlugin(RPCClientPlugin);
+  // Register NetworkPlugin so HTTPService is available for browser-side
+  // direct HTTP calls (WebUpdaterService GitHub poll, WebShell session
+  // checks). The browser SPA leaves IFetchProvider on its DefaultFetchProvider
+  // — proxy injection is a node-only concern handled in the desktop main /
+  // server bootstrap.
+  core.registerPlugin(NetworkPlugin, { useFetchImpl: true });
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthUIPlugin);
   core.registerPlugin(SyncPlugin);

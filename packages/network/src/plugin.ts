@@ -16,6 +16,7 @@
 import type { INetworkConfig } from './controllers/config.schema';
 import { IConfigService, ILogService, Inject, Injector, LookUp, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies } from '@termlnk/core';
 import { defaultPluginConfig, NETWORK_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
+import { DefaultFetchProvider, IFetchProvider } from './services/http/fetch-provider/fetch-provider.service';
 import { HTTPService } from './services/http/http.service';
 import { FetchHTTPImplementation } from './services/http/implementations/fetch';
 import { IHTTPImplementation } from './services/http/implementations/implementation';
@@ -60,6 +61,11 @@ export class NetworkPlugin extends Plugin {
     registerDependencies(this._injector, mergeOverrideWithDependencies([
       [HTTPService],
       [IHTTPImplementation, { useClass: impl }],
+      // DefaultFetchProvider forwards to globalThis.fetch. Node-only deployers
+      // (electron main, web-server) override IFetchProvider via NetworkPlugin's
+      // override config to inject a proxy-aware fetch implementation without
+      // pulling undici / socks into this package.
+      [IFetchProvider, { useClass: DefaultFetchProvider }],
     ], this._config?.override));
   }
 }
