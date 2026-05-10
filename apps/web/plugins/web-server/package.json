@@ -1,0 +1,51 @@
+{
+  "name": "@termlnk/web-server",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Web-private server plugin: Node http/https + tRPC standalone HTTP/WS adapter + static SPA hosting + master password unlock handshake. Not published — consumed only by apps/web/server.",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build": "termlnk-cli build"
+  },
+  "peerDependencies": {
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/rpc": "workspace:*",
+    "@termlnk/rpc-server": "workspace:*",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.2.0",
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/rpc": "workspace:*",
+    "@termlnk/rpc-server": "workspace:*",
+    "@trpc/server": "^11.16.0",
+    "hash-wasm": "^4.12.0",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "@types/ws": "^8.18.1",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10",
+    "vitest": "^4.1.5"
+  }
+}

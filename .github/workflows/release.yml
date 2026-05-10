@@ -87,7 +87,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .turbo/cache
-          key: turbo-build-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'packages/**/package.json', 'apps/desktop/package.json') }}
+          key: turbo-build-${{ hashFiles('pnpm-lock.yaml', 'turbo.json', 'package.json', 'packages/**/package.json', 'apps/desktop/package.json', 'apps/desktop/plugins/**/package.json', 'apps/web/plugins/**/package.json') }}
           restore-keys: |
             turbo-build-
 

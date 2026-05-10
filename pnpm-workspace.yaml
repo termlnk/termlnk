@@ -5,8 +5,10 @@ packages:
   - apps/desktop
   - apps/desktop/main
   - apps/desktop/renderer
+  - apps/desktop/plugins/*
   - apps/web/server
   - apps/web/renderer
+  - apps/web/plugins/*
 
 ignoredBuiltDependencies:
   - javascript-obfuscator
