@@ -64,16 +64,6 @@ const locale: typeof enUS = {
     appearance: {
       'language-settings-title': '言語設定',
       language: '言語',
-      'tray-title': 'システムトレイ',
-      'tray-enable': 'システムトレイを有効化',
-      'tray-enable-description': 'システム通知エリアにアプリアイコンを表示し、クイックアクセスメニューを提供',
-      'close-to-tray': 'トレイに最小化',
-      'close-to-tray-description': '閉じるときにアプリを終了せず、システムトレイに隠す',
-      'startup-title': 'スタートアップ',
-      'auto-launch': 'ログイン時に起動',
-      'auto-launch-description': 'システムログイン時にTermlnkを自動起動',
-      'keep-awake-title': 'ディスプレイをスリープさせない',
-      'keep-awake-description': 'Agent セッション実行中はディスプレイのスリープを防止',
     },
     interface: {
       'settings-title': 'フォント設定',

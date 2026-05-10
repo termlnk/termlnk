@@ -14,11 +14,12 @@
  */
 
 import { IAuthClientService } from '@termlnk/auth';
-import { AuthGate, DeviceListCard } from '@termlnk/auth-ui';
 import { LocaleService, Quantity } from '@termlnk/core';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, cn, useDependency } from '@termlnk/design';
+import { Card, CardContent, CardDescription, CardHeader, useDependency } from '@termlnk/design';
 import { IBackupClientService, ISyncService } from '@termlnk/sync';
 import { BackupCard, SyncStatusPanel } from '@termlnk/sync-ui';
+import { AuthGate } from '../AuthGate';
+import { DeviceListCard } from '../DeviceListCard';
 
 // Account & Sync tab: composes auth-ui's AuthGate with sync-ui's SyncStatusPanel /
 // BackupCard / DeviceListCard. Each section appears only when its underlying service is
@@ -30,64 +31,64 @@ export function AccountTab() {
   const backupClient = useDependency(IBackupClientService, Quantity.OPTIONAL);
 
   return (
-    <div className={cn('tm:flex tm:flex-col tm:gap-4')}>
-      <Card>
-        <CardHeader>
-          <CardTitle className={cn('tm:text-sm')}>
+    <div className="tm:flex tm:flex-col tm:gap-6">
+      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+        <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
+          <h3 className="tm:text-base tm:font-semibold tm:text-white">
             {localeService.t('settings-ui.account.section-account')}
-          </CardTitle>
-          <CardDescription className={cn('tm:text-xs')}>
+          </h3>
+          <CardDescription className="tm:mt-2 tm:text-xs/5">
             {localeService.t('settings-ui.account.section-account-description')}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="tm:py-4">
           <AuthGate />
         </CardContent>
       </Card>
 
       {syncService && authClient && (
-        <Card>
-          <CardHeader>
-            <CardTitle className={cn('tm:text-sm')}>
+        <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+          <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
+            <h3 className="tm:text-base tm:font-semibold tm:text-white">
               {localeService.t('settings-ui.account.section-sync')}
-            </CardTitle>
-            <CardDescription className={cn('tm:text-xs')}>
+            </h3>
+            <CardDescription className="tm:mt-2 tm:text-xs/5">
               {localeService.t('settings-ui.account.section-sync-description')}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="tm:py-4">
             <SyncStatusPanel />
           </CardContent>
         </Card>
       )}
 
       {authClient && (
-        <Card>
-          <CardHeader>
-            <CardTitle className={cn('tm:text-sm')}>
+        <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+          <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
+            <h3 className="tm:text-base tm:font-semibold tm:text-white">
               {localeService.t('settings-ui.account.section-devices')}
-            </CardTitle>
-            <CardDescription className={cn('tm:text-xs')}>
+            </h3>
+            <CardDescription className="tm:mt-2 tm:text-xs/5">
               {localeService.t('settings-ui.account.section-devices-description')}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="tm:py-4">
             <DeviceListCard />
           </CardContent>
         </Card>
       )}
 
       {backupClient && (
-        <Card>
-          <CardHeader>
-            <CardTitle className={cn('tm:text-sm')}>
+        <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+          <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
+            <h3 className="tm:text-base tm:font-semibold tm:text-white">
               {localeService.t('settings-ui.account.section-backup')}
-            </CardTitle>
-            <CardDescription className={cn('tm:text-xs')}>
+            </h3>
+            <CardDescription className="tm:mt-2 tm:text-xs/5">
               {localeService.t('settings-ui.account.section-backup-description')}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="tm:py-4">
             <BackupCard />
           </CardContent>
         </Card>

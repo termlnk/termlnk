@@ -277,7 +277,7 @@ export function AiProviderTab() {
     <div
       className="
         tm:flex tm:h-full tm:min-h-0 tm:flex-col tm:gap-4
-        tm:md:flex-row tm:md:items-stretch
+        tm:md:flex-row! tm:md:items-stretch
       "
     >
       {/* Left: Provider list */}

@@ -64,16 +64,6 @@ const locale: typeof enUS = {
     appearance: {
       'language-settings-title': '語言設定',
       language: '語言',
-      'tray-title': '系統匣',
-      'tray-enable': '啟用系統匣圖示',
-      'tray-enable-description': '在系統通知區域顯示應用程式圖示，提供快速操作選單',
-      'close-to-tray': '最小化至系統匣',
-      'close-to-tray-description': '關閉視窗時隱藏到系統匣，而非結束應用程式',
-      'startup-title': '啟動',
-      'auto-launch': '登入時自動啟動',
-      'auto-launch-description': '系統登入時自動啟動 Termlnk',
-      'keep-awake-title': '保持螢幕常亮',
-      'keep-awake-description': 'Agent 會話執行時防止螢幕關閉',
     },
     interface: {
       'settings-title': '字型設定',

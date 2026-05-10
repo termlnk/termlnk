@@ -64,16 +64,6 @@ const locale: typeof enUS = {
     appearance: {
       'language-settings-title': '언어 설정',
       language: '언어',
-      'tray-title': '시스템 트레이',
-      'tray-enable': '시스템 트레이 활성화',
-      'tray-enable-description': '시스템 알림 영역에 앱 아이콘을 표시하고 빠른 접근 메뉴 제공',
-      'close-to-tray': '트레이로 최소화',
-      'close-to-tray-description': '창을 닫을 때 앱을 종료하지 않고 시스템 트레이로 숨기기',
-      'startup-title': '시작',
-      'auto-launch': '로그인 시 실행',
-      'auto-launch-description': '시스템 로그인 시 Termlnk 자동 시작',
-      'keep-awake-title': '화면 깨우기 유지',
-      'keep-awake-description': 'Agent 세션이 실행 중일 때 화면이 꺼지지 않도록 유지',
     },
     interface: {
       'settings-title': '글꼴 설정',

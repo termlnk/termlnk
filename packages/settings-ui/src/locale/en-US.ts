@@ -62,16 +62,6 @@ const locale = {
     appearance: {
       'language-settings-title': 'Language Settings',
       language: 'Language',
-      'tray-title': 'System Tray',
-      'tray-enable': 'Enable System Tray',
-      'tray-enable-description': 'Show an app icon in the system notification area with quick access menu',
-      'close-to-tray': 'Minimize to Tray',
-      'close-to-tray-description': 'Hide the window to system tray when closing instead of quitting the app',
-      'startup-title': 'Startup',
-      'auto-launch': 'Launch at Login',
-      'auto-launch-description': 'Automatically start termlnk when you log into the system',
-      'keep-awake-title': 'Keep Screen Awake',
-      'keep-awake-description': 'Prevent the display from sleeping while an Agent session is running',
     },
     interface: {
       'settings-title': 'Font Settings',

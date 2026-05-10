@@ -15,8 +15,11 @@
 
 import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
 import { AuthPlugin } from '@termlnk/auth';
-import { DependentOn, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { DependentOn, InjectSelf, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
+import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
+import { UserRoundIcon } from 'lucide-react';
 import { AuthUIController } from './controllers/auth-ui.controller';
+import { AccountTab } from './views/settings/AccountTab';
 
 export const AUTH_UI_PLUGIN_NAME = 'AUTH_UI_PLUGIN';
 
@@ -24,19 +27,6 @@ export interface IAuthUIPluginConfig {
   override?: DependencyOverride;
 }
 
-/**
- * Auth UI 插件——视图组件 + 命令注册中心。
- *
- * Views（LoginForm / RegisterForm / AccountPanel / AuthGate）作为命名导出供调用方按需 mount。
- * Commands（auth.command.*）由 AuthUIController 在 onReady 阶段注册到 ICommandService，
- * 给扩展 / 快捷键 / 脚本使用——架构 §7.3 给出的 ID 契约的兑现方。
- *
- * 选择不挂到 BuiltInUIPart 的原因：
- * - IAuthClientService 主进程实现要等 Phase 3 HTTP 层；强行挂全局 UI 会让
- *   "未配置云"用户立刻看到禁用按钮，体验不友好
- * - 集成路径（设置 tab / 命令对话框）由 settings-ui 或后续 controller 决定，
- *   保持本包的中性视图角色
- */
 @DependentOn(AuthPlugin)
 export class AuthUIPlugin extends Plugin {
   static override pluginName = AUTH_UI_PLUGIN_NAME;
@@ -59,5 +49,25 @@ export class AuthUIPlugin extends Plugin {
     touchDependencies(this._injector, [
       [AuthUIController],
     ]);
+
+    this._registerSettingsTab();
+  }
+
+  private _registerSettingsTab(): void {
+    // OPTIONAL: settings-ui may not be loaded (e.g., island secondary window).
+    const registry = this._injector.get(ISettingsTabRegistryService, Quantity.OPTIONAL);
+    if (!registry) {
+      return;
+    }
+    this.disposeWithMe(
+      registry.register({
+        id: 'account',
+        labelKey: 'settings-ui.tab.account',
+        descriptionKey: 'settings-ui.tab-description.account',
+        icon: UserRoundIcon,
+        component: AccountTab,
+        order: 110,
+      })
+    );
   }
 }

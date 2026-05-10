@@ -15,8 +15,16 @@
 
 import { BehaviorSubject, Subject } from 'rxjs';
 
+/**
+ * Built-in tab ids. Open string union — extensions and plugins may register
+ * tabs with arbitrary namespaced ids (e.g. `my-extension.advanced`) via
+ * ISettingsTabRegistryService. SettingsTab values are kept as a convenience
+ * for the built-in registrations and for the SettingsButton default-tab
+ * routing.
+ */
 export enum SettingsTab {
   APPEARANCE = 'appearance',
+  PLATFORM = 'platform',
   INTERFACE = 'interface',
   TERMINAL = 'terminal',
   COLOR_SCHEME = 'color-scheme',
@@ -33,7 +41,11 @@ export enum SettingsTab {
 
 export interface ISettingsState {
   open: boolean;
-  activeTab: SettingsTab;
+  /**
+   * Currently active tab id. String-typed because plugins/extensions can
+   * register tabs with arbitrary ids; built-in tabs use SettingsTab values.
+   */
+  activeTab: string;
 }
 
 export function createDefaultSettingsState(): ISettingsState {

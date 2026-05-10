@@ -21,4 +21,6 @@ export type { ISettingsUIConfig } from './controllers/config.schema';
 export { SettingsController } from './controllers/settings/settings.controller';
 export { SettingsTab } from './models/settings.state';
 export { SETTINGS_UI_PLUGIN_NAME, SettingsUIPlugin } from './plugin';
+export type { ISettingsTabDescriptor } from './services/settings-tab-registry/settings-tab-registry.service';
+export { ISettingsTabRegistryService, SettingsTabRegistryService } from './services/settings-tab-registry/settings-tab-registry.service';
 export { SettingsService } from './services/settings/settings.service';

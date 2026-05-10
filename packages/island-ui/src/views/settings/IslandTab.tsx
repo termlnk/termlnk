@@ -16,10 +16,10 @@
 import type { IIslandSettings, IIslandSoundConfig, IIslandSoundEventConfig } from './island-settings.types';
 import { LocaleService } from '@termlnk/core';
 import { Card, CardContent, CardDescription, CardHeader, cn, Field, FieldContent, FieldGroup, FieldLabel, Slider, Switch, useDependency } from '@termlnk/design';
-import { SOUND_CONFIG_KEY_TO_URL } from '@termlnk/island-ui';
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { Volume1, Volume2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { SOUND_CONFIG_KEY_TO_URL } from '../../assets/sound-urls';
 import { ISLAND_SETTINGS_CONFIG_KEY, normalizeIslandSettings } from './island-settings.types';
 import { SoundEventRow } from './SoundEventRow';
 

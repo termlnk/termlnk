@@ -22,6 +22,7 @@ import { THEME_MAP } from '@termlnk/themes';
 import { DEFAULT_UI_FONT_SIZE, injectUIFontToDOM, UI_PLUGIN_CONFIG_KEY, UIPlugin } from '@termlnk/ui';
 import { defaultPluginConfig, SETTINGS_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { SettingsController } from './controllers/settings/settings.controller';
+import { ISettingsTabRegistryService, SettingsTabRegistryService } from './services/settings-tab-registry/settings-tab-registry.service';
 import { SettingsService } from './services/settings/settings.service';
 
 export const SETTINGS_UI_PLUGIN_NAME = 'SETTINGS_UI_PLUGIN';
@@ -61,6 +62,7 @@ export class SettingsUIPlugin extends Plugin {
 
   private _initDependencies(): void {
     const dependencies: Dependency[] = [
+      [ISettingsTabRegistryService, { useClass: SettingsTabRegistryService }],
       [SettingsService, { useClass: SettingsService }],
       [SettingsController],
     ];

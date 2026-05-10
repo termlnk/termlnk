@@ -64,16 +64,6 @@ const locale: typeof enUS = {
     appearance: {
       'language-settings-title': '语言设置',
       language: '语言',
-      'tray-title': '系统栏',
-      'tray-enable': '启用系统栏图标',
-      'tray-enable-description': '在系统通知区域显示应用图标，提供快捷操作菜单',
-      'close-to-tray': '最小化到系统栏',
-      'close-to-tray-description': '关闭窗口时隐藏到系统栏，而不是退出应用',
-      'startup-title': '启动',
-      'auto-launch': '开机自动启动',
-      'auto-launch-description': '系统登录时自动启动 Termlnk',
-      'keep-awake-title': '保持屏幕常亮',
-      'keep-awake-description': 'Agent 会话运行时防止屏幕关闭',
     },
     interface: {
       'settings-title': '字体设置',
