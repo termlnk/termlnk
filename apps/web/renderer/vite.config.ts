@@ -13,11 +13,24 @@
  * governing permissions and limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react-swc';
 import { defineConfig } from 'vite';
 import svgr from 'vite-plugin-svgr';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Read the monorepo-root version once at build time so WebUpdaterService can
+// compare against GitHub Releases without the deployer wiring TERMLNK_VERSION
+// manually. apps/web/renderer/package.json itself stays at 0.0.0 (apps don't
+// publish), so the meaningful version lives at the repo root.
+const rootPkg = JSON.parse(
+  readFileSync(resolve(__dirname, '../../../package.json'), 'utf-8'),
+) as { version: string };
 
 // Mirrors apps/desktop/configs/renderer.config.ts plugin chain. Differs only
 // in transport (no Electron preload) and the absolute base path: termlnk-web
@@ -29,6 +42,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     target: 'es2022',
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(rootPkg.version),
   },
   plugins: [
     tailwindcss(),

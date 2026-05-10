@@ -61,6 +61,17 @@ const locale = {
       'open-title': 'Show left sidebar',
       'close-title': 'Hide left sidebar',
     },
+    updater: {
+      'dialog-title': 'New Version Available',
+      'new-version-available': 'New version available',
+      'update-ready': 'Update ready',
+      'release-notes': 'Release Notes',
+      'download-update': 'Download Update',
+      downloading: 'Downloading...',
+      'install-now': 'Install Now',
+      retry: 'Retry',
+      'manual-update-hint': 'A new version is available. Pull the latest docker image or run git pull to update — in-app installation is not supported in browser deployments.',
+    },
   },
 };
 

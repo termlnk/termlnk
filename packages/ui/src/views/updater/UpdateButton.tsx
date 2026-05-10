@@ -13,13 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import { LocaleService } from '@termlnk/core';
+import { IUpdaterService, LocaleService, UpdateStatus } from '@termlnk/core';
 import { Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
-import { IUpdaterService, UpdateStatus } from '@termlnk/electron';
-import { IDialogService } from '@termlnk/ui';
 import { CircleFadingArrowUp } from 'lucide-react';
-import { UPDATE_DIALOG_ID } from '../../controllers/updater.controller';
-import { UPDATE_DIALOG_COMPONENT_NAME } from './UpdateDialog';
+import { IDialogService } from '../../services/dialog/dialog.service';
+import { UPDATE_DIALOG_COMPONENT_NAME, UPDATE_DIALOG_ID } from './updater-constants';
 
 const VISIBLE_STATUSES = new Set([
   UpdateStatus.AVAILABLE,
@@ -47,7 +45,7 @@ export function UpdateButton() {
       width: 480,
       className: 'tm:overflow-hidden',
       disableAutoFocus: true,
-      title: { title: 'electron-renderer.updater.dialog-title' },
+      title: { title: 'ui.updater.dialog-title' },
       children: { componentId: UPDATE_DIALOG_COMPONENT_NAME },
       onClose: () => dialogService.close(UPDATE_DIALOG_ID),
     });
@@ -78,8 +76,8 @@ export function UpdateButton() {
       </TooltipTrigger>
       <TooltipContent side="right">
         {status === UpdateStatus.DOWNLOADED
-          ? localeService.t('electron-renderer.updater.update-ready')
-          : localeService.t('electron-renderer.updater.new-version-available')}
+          ? localeService.t('ui.updater.update-ready')
+          : localeService.t('ui.updater.new-version-available')}
       </TooltipContent>
     </Tooltip>
   );

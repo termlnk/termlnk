@@ -13,21 +13,21 @@
  * governing permissions and limitations under the License.
  */
 
-import { Disposable, Inject, Injector } from '@termlnk/core';
+import { Disposable, ILogService, Inject, Injector, IUpdaterService } from '@termlnk/core';
 import { connectInjector } from '@termlnk/design';
-import { IUpdaterService } from '@termlnk/electron';
-import { BuiltInUIPart, ComponentManagerService, IUIPartsService } from '@termlnk/ui';
-import { UpdateButton } from '../views/updater/UpdateButton';
-import { UPDATE_DIALOG_COMPONENT_NAME, UpdateDialog } from '../views/updater/UpdateDialog';
+import { ComponentManagerService } from '../../services/component/component-manager.service';
+import { BuiltInUIPart, IUIPartsService } from '../../services/parts/parts.service';
+import { UpdateButton } from '../../views/updater/UpdateButton';
+import { UpdateDialog } from '../../views/updater/UpdateDialog';
+import { UPDATE_DIALOG_COMPONENT_NAME } from '../../views/updater/updater-constants';
 
-export const UPDATE_DIALOG_ID = 'electron-renderer.updater.dialog';
-
-export class UpdaterController extends Disposable {
+export class UpdaterUIController extends Disposable {
   constructor(
     @Inject(Injector) private readonly _injector: Injector,
     @Inject(ComponentManagerService) private readonly _componentManagerService: ComponentManagerService,
     @IUIPartsService private readonly _uiPartsService: IUIPartsService,
-    @IUpdaterService private readonly _updaterService: IUpdaterService
+    @IUpdaterService private readonly _updaterService: IUpdaterService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
     this._init();
@@ -42,6 +42,11 @@ export class UpdaterController extends Disposable {
       this._uiPartsService.registerComponent(BuiltInUIPart.SIDE_TAB_BAR, () => connectInjector(UpdateButton, this._injector))
     );
 
-    this._updaterService.checkForUpdates();
+    void this._updaterService.checkForUpdates().catch((err) => {
+      // Web shells throw NOT_SUPPORTED on download/install, but checkForUpdates
+      // should resolve cleanly. Log unexpected failures (network, rate limit)
+      // without crashing — UI surfaces the error via status$ → UpdateDialog.
+      this._logService.warn('[UpdaterUIController] initial checkForUpdates failed:', err);
+    });
   }
 }

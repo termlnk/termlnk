@@ -13,19 +13,23 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IUpdateError, IUpdateInfo, IUpdateProgress } from '@termlnk/electron';
-import { LocaleService } from '@termlnk/core';
+import type { IUpdateError, IUpdateInfo, IUpdateProgress } from '@termlnk/core';
+import { IUpdaterService, LocaleService, Quantity, UpdateStatus } from '@termlnk/core';
 import { Button, useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
-import { IUpdaterService, UpdateStatus } from '@termlnk/electron';
 import { ArrowRight } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { IHostEnvironmentService } from '../../services/host-environment/host-environment.service';
 import { ReleaseNotesMarkdown } from './ReleaseNotesMarkdown';
 
-export const UPDATE_DIALOG_COMPONENT_NAME = 'electron-renderer.update-dialog';
+export { UPDATE_DIALOG_COMPONENT_NAME } from './updater-constants';
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
@@ -36,6 +40,12 @@ function formatSpeed(bytesPerSecond: number): string {
 export function UpdateDialog() {
   const updaterService = useDependency(IUpdaterService);
   const localeService = useDependency(LocaleService);
+  // Optional binding: WebRendererPlugin registers `web`; desktop falls through
+  // to `electron`. Web hosts can't download/install in-app, so the action area
+  // shows release notes and a manual-update hint instead of the install button.
+  const hostEnvironment = useDependency(IHostEnvironmentService, Quantity.OPTIONAL);
+  const host = hostEnvironment?.host ?? 'electron';
+  const supportsInAppInstall = host === 'electron';
   useUpdateBinder(localeService.localeChanged$);
   const status = useObservable(updaterService.status$, UpdateStatus.IDLE);
   const progress = useObservable<IUpdateProgress | undefined>(updaterService.progress$, undefined);
@@ -45,19 +55,19 @@ export function UpdateDialog() {
   const [currentVersion, setCurrentVersion] = useState<string>('');
 
   useEffect(() => {
-    updaterService.getCurrentVersion().then(setCurrentVersion);
-  }, []);
+    void updaterService.getCurrentVersion().then(setCurrentVersion);
+  }, [updaterService]);
 
   const handleDownload = useCallback(() => {
-    updaterService.downloadUpdate();
+    void updaterService.downloadUpdate();
   }, [updaterService]);
 
   const handleInstall = useCallback(() => {
-    updaterService.quitAndInstall();
+    void updaterService.quitAndInstall();
   }, [updaterService]);
 
   const handleRetry = useCallback(() => {
-    updaterService.checkForUpdates();
+    void updaterService.checkForUpdates();
   }, [updaterService]);
 
   return (
@@ -78,7 +88,7 @@ export function UpdateDialog() {
       {/* Release notes */}
       {updateInfo?.releaseNotes && (
         <div className="tm:flex tm:flex-col tm:gap-1">
-          <div className="tm:text-xs tm:font-medium tm:text-white">{localeService.t('electron-renderer.updater.release-notes')}</div>
+          <div className="tm:text-xs tm:font-medium tm:text-white">{localeService.t('ui.updater.release-notes')}</div>
           <div
             className={`
               tm:max-h-[200px] tm:overflow-y-auto tm:rounded-sm tm:border tm:border-line tm:bg-darker-black tm:p-3
@@ -89,7 +99,14 @@ export function UpdateDialog() {
         </div>
       )}
 
-      {/* Progress bar */}
+      {/* Web-only manual-update hint when there's a new version available */}
+      {!supportsInAppInstall && status === UpdateStatus.AVAILABLE && (
+        <div className="tm:rounded-sm tm:border tm:border-line tm:bg-one-bg2/40 tm:p-3 tm:text-xs tm:text-grey-fg">
+          {localeService.t('ui.updater.manual-update-hint')}
+        </div>
+      )}
+
+      {/* Progress bar (electron-only — web shells never enter DOWNLOADING) */}
       {status === UpdateStatus.DOWNLOADING && progress && (
         <div className="tm:flex tm:flex-col tm:gap-1.5">
           <div className="tm:h-2 tm:w-full tm:overflow-hidden tm:rounded-full tm:bg-one-bg2">
@@ -120,26 +137,26 @@ export function UpdateDialog() {
 
       {/* Actions */}
       <div className="tm:flex tm:justify-end tm:gap-2 tm:pt-1">
-        {status === UpdateStatus.AVAILABLE && (
+        {status === UpdateStatus.AVAILABLE && supportsInAppInstall && (
           <Button variant="primary" size="sm" onClick={handleDownload}>
-            {localeService.t('electron-renderer.updater.download-update')}
+            {localeService.t('ui.updater.download-update')}
           </Button>
         )}
         {status === UpdateStatus.DOWNLOADING && (
           <Button variant="secondary" size="sm" disabled>
-            {localeService.t('electron-renderer.updater.downloading')}
+            {localeService.t('ui.updater.downloading')}
             {' '}
             {progress ? `${progress.percent.toFixed(0)}%` : ''}
           </Button>
         )}
         {status === UpdateStatus.DOWNLOADED && (
           <Button variant="primary" size="sm" onClick={handleInstall}>
-            {localeService.t('electron-renderer.updater.install-now')}
+            {localeService.t('ui.updater.install-now')}
           </Button>
         )}
         {status === UpdateStatus.ERROR && (
           <Button variant="primary" size="sm" onClick={handleRetry}>
-            {localeService.t('electron-renderer.updater.retry')}
+            {localeService.t('ui.updater.retry')}
           </Button>
         )}
       </div>

@@ -63,6 +63,17 @@ const locale: typeof enUS = {
       'open-title': '显示左侧边栏',
       'close-title': '隐藏左侧边栏',
     },
+    updater: {
+      'dialog-title': '发现新版本',
+      'new-version-available': '发现新版本可用',
+      'update-ready': '更新已就绪',
+      'release-notes': '更新内容',
+      'download-update': '下载更新',
+      downloading: '下载中...',
+      'install-now': '立即安装',
+      retry: '重试',
+      'manual-update-hint': '发现新版本。请拉取最新 docker 镜像或执行 git pull 进行更新——浏览器部署不支持应用内安装。',
+    },
   },
 };
 

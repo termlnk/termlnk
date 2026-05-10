@@ -20,7 +20,7 @@ import { AuthPlugin } from '@termlnk/auth';
 import { AuthUIPlugin } from '@termlnk/auth-ui';
 import { Core, LocaleType, LogLevel, merge } from '@termlnk/core';
 import { ElectronPlugin } from '@termlnk/electron';
-import { ElectronRendererPlugin, UpdaterUIPlugin } from '@termlnk/electron-renderer';
+import { ElectronRendererPlugin } from '@termlnk/electron-renderer';
 import { ExtensionPlugin } from '@termlnk/extension';
 import { ExtensionUIPlugin } from '@termlnk/extension-ui';
 import { RPCPlugin } from '@termlnk/rpc';
@@ -67,9 +67,8 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   const core = new Core(defaultOptions);
   core.registerPlugin(RPCPlugin);
   core.registerPlugin(RPCClientPlugin);
-  // Auth + Sync 契约 + UI（与主进程对应；架构 §7.1）。Quantity.OPTIONAL 注入
-  // 让 IAuthClientService 未注册时 AuthGate 渲染降级占位——主进程 cloudBaseUrl
-  // 不配置时该路径自然走，组件不会崩溃
+  // Auth/Sync UI mirrors the main process; views inject IAuthClientService with
+  // Quantity.OPTIONAL so AuthGate falls back to a placeholder when cloudBaseUrl is unset.
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthUIPlugin);
   core.registerPlugin(SyncPlugin);
@@ -79,7 +78,6 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   });
   core.registerPlugin(ElectronPlugin);
   core.registerPlugin(ElectronRendererPlugin);
-  core.registerPlugin(UpdaterUIPlugin);
   core.registerPlugin(TerminalPlugin);
   core.registerPlugin(TerminalUIPlugin, terminalUIConfig);
   core.registerPlugin(SFTPUIPlugin);

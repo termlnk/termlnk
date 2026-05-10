@@ -13,32 +13,5 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Nullable } from '@termlnk/core';
-
-export enum UpdateStatus {
-  IDLE = 'IDLE',
-  CHECKING = 'CHECKING',
-  AVAILABLE = 'AVAILABLE',
-  NOT_AVAILABLE = 'NOT_AVAILABLE',
-  DOWNLOADING = 'DOWNLOADING',
-  DOWNLOADED = 'DOWNLOADED',
-  ERROR = 'ERROR',
-}
-
-export interface IUpdateInfo {
-  version: string;
-  releaseDate: string;
-  releaseNotes: Nullable<string>;
-}
-
-export interface IUpdateProgress {
-  bytesPerSecond: number;
-  percent: number;
-  transferred: number;
-  total: number;
-}
-
-export interface IUpdateError {
-  message: string;
-  stack?: string;
-}
+export const UPDATE_DIALOG_ID = 'ui.updater.dialog';
+export const UPDATE_DIALOG_COMPONENT_NAME = 'ui.update-dialog';
