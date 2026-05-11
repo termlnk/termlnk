@@ -60,6 +60,44 @@ const locale: typeof enUS = {
       lock: '锁定为我',
       unlock: '解锁',
     },
+    'recording-policy': {
+      title: '录制策略',
+      description: '新协作会话的默认录制行为。审计员加入时始终强制开启录制。',
+      'default-on': '默认开启录制',
+      'default-on-hint': '每个新协作会话将自动开始录制。',
+    },
+    'outstanding-invites': {
+      title: '有效邀请',
+      description: '仍可兑换的邀请链接。撤销后该链接不再可用。',
+      unavailable: '当前运行环境不支持邀请管理。',
+      empty: '当前没有有效邀请。',
+    },
+    'invite-history': {
+      title: '邀请历史',
+      description: '已兑换、已撤销、已过期的邀请记录。',
+      empty: '暂无历史邀请。',
+    },
+    'invite-row': {
+      'single-use': '单次使用',
+      session: '会话 {0}',
+      'expires-at': '过期时间 {0}',
+      'expired-at': '已于 {0} 过期',
+      'consumed-at': '已于 {0} 兑换',
+      'revoked-at': '已于 {0} 撤销',
+      revoke: '撤销',
+    },
+    'invite-status': {
+      active: '有效',
+      consumed: '已兑换',
+      revoked: '已撤销',
+      expired: '已过期',
+    },
+    'invite-role': {
+      owner: '主控',
+      'co-pilot': '协作者',
+      observer: '旁观者',
+      auditor: '审计员',
+    },
   },
 };
 

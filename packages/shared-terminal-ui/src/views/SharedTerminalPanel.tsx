@@ -20,6 +20,8 @@ import { IPairingService, IPtyMultiplexerService, ISharedSessionRecordingService
 import { CircleDotIcon, CopyIcon, LinkIcon, MonitorUpIcon, SquareIcon, UsersRoundIcon, VideoIcon } from 'lucide-react';
 import { useState } from 'react';
 import { DriverControls } from './DriverControls';
+import { InviteHistoryCard, OutstandingInvitesCard } from './InvitesCard';
+import { RecordingPolicyCard } from './RecordingPolicyCard';
 
 /**
  * Owner-side client identifier. PtyMultiplexer treats it as just another connection id;
@@ -261,6 +263,9 @@ export function SharedTerminalPanel() {
           )}
         </CardContent>
       </Card>
+      <RecordingPolicyCard />
+      <OutstandingInvitesCard />
+      <InviteHistoryCard />
     </div>
   );
 }

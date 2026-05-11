@@ -58,6 +58,44 @@ const locale = {
       lock: 'Lock to me',
       unlock: 'Unlock',
     },
+    'recording-policy': {
+      title: 'Recording policy',
+      description: 'Default behaviour for new collaboration sessions. Auditor attaches always force-enable recording.',
+      'default-on': 'Record by default',
+      'default-on-hint': 'Every new collaboration session starts recording automatically.',
+    },
+    'outstanding-invites': {
+      title: 'Active invites',
+      description: 'Invites that can still be redeemed. Revoke a link to disable future joins.',
+      unavailable: 'Invite management is not available in this runtime.',
+      empty: 'No active invites.',
+    },
+    'invite-history': {
+      title: 'Invite history',
+      description: 'Consumed, revoked, and expired invites.',
+      empty: 'No past invites.',
+    },
+    'invite-row': {
+      'single-use': 'single-use',
+      session: 'session {0}',
+      'expires-at': 'expires {0}',
+      'expired-at': 'expired {0}',
+      'consumed-at': 'consumed {0}',
+      'revoked-at': 'revoked {0}',
+      revoke: 'Revoke',
+    },
+    'invite-status': {
+      active: 'active',
+      consumed: 'consumed',
+      revoked: 'revoked',
+      expired: 'expired',
+    },
+    'invite-role': {
+      owner: 'owner',
+      'co-pilot': 'co-pilot',
+      observer: 'observer',
+      auditor: 'auditor',
+    },
   },
 };
 

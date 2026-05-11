@@ -60,6 +60,44 @@ const locale: typeof enUS = {
       lock: '鎖定為我',
       unlock: '解鎖',
     },
+    'recording-policy': {
+      title: '錄製策略',
+      description: '新協作會話的預設錄製行為。稽核員加入時一律強制開啟錄製。',
+      'default-on': '預設開啟錄製',
+      'default-on-hint': '每個新協作會話會自動開始錄製。',
+    },
+    'outstanding-invites': {
+      title: '有效邀請',
+      description: '仍可使用的邀請連結。撤銷後該連結不再可用。',
+      unavailable: '目前執行環境不支援邀請管理。',
+      empty: '目前沒有有效的邀請。',
+    },
+    'invite-history': {
+      title: '邀請歷史',
+      description: '已兌換、已撤銷、已過期的邀請紀錄。',
+      empty: '尚無歷史邀請。',
+    },
+    'invite-row': {
+      'single-use': '單次使用',
+      session: '會話 {0}',
+      'expires-at': '到期時間 {0}',
+      'expired-at': '已於 {0} 過期',
+      'consumed-at': '已於 {0} 使用',
+      'revoked-at': '已於 {0} 撤銷',
+      revoke: '撤銷',
+    },
+    'invite-status': {
+      active: '有效',
+      consumed: '已使用',
+      revoked: '已撤銷',
+      expired: '已過期',
+    },
+    'invite-role': {
+      owner: '主控',
+      'co-pilot': '協作者',
+      observer: '旁觀者',
+      auditor: '稽核員',
+    },
   },
 };
 

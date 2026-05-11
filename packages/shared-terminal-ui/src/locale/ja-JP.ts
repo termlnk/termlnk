@@ -60,6 +60,44 @@ const locale: typeof enUS = {
       lock: '自分に固定',
       unlock: 'ロック解除',
     },
+    'recording-policy': {
+      title: '録画ポリシー',
+      description: '新しいコラボレーションセッションの録画動作の既定値。監査者が参加した場合は常に強制録画になります。',
+      'default-on': '常に録画する',
+      'default-on-hint': '新しいコラボレーションセッションを自動的に録画します。',
+    },
+    'outstanding-invites': {
+      title: '有効な招待',
+      description: 'まだ使用可能な招待リンク。取り消すと再利用できなくなります。',
+      unavailable: 'この環境では招待管理は利用できません。',
+      empty: '有効な招待はありません。',
+    },
+    'invite-history': {
+      title: '招待履歴',
+      description: '使用済み・取り消し済み・期限切れの招待。',
+      empty: '過去の招待はありません。',
+    },
+    'invite-row': {
+      'single-use': '1 回限り',
+      session: 'セッション {0}',
+      'expires-at': '期限 {0}',
+      'expired-at': '期限切れ {0}',
+      'consumed-at': '使用済み {0}',
+      'revoked-at': '取消 {0}',
+      revoke: '取り消し',
+    },
+    'invite-status': {
+      active: '有効',
+      consumed: '使用済み',
+      revoked: '取り消し',
+      expired: '期限切れ',
+    },
+    'invite-role': {
+      owner: 'オーナー',
+      'co-pilot': '共同作業者',
+      observer: '閲覧者',
+      auditor: '監査者',
+    },
   },
 };
 

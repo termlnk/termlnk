@@ -60,6 +60,44 @@ const locale: typeof enUS = {
       lock: '나로 잠금',
       unlock: '잠금 해제',
     },
+    'recording-policy': {
+      title: '녹화 정책',
+      description: '새 협업 세션의 기본 녹화 동작입니다. 감사자가 참여하면 항상 강제로 녹화됩니다.',
+      'default-on': '기본 녹화 사용',
+      'default-on-hint': '새 협업 세션이 자동으로 녹화됩니다.',
+    },
+    'outstanding-invites': {
+      title: '활성 초대',
+      description: '아직 사용할 수 있는 초대 링크입니다. 폐기하면 더 이상 사용할 수 없습니다.',
+      unavailable: '이 환경에서는 초대 관리를 사용할 수 없습니다.',
+      empty: '활성 초대가 없습니다.',
+    },
+    'invite-history': {
+      title: '초대 기록',
+      description: '사용됨 / 폐기됨 / 만료된 초대 기록입니다.',
+      empty: '과거 초대가 없습니다.',
+    },
+    'invite-row': {
+      'single-use': '일회용',
+      session: '세션 {0}',
+      'expires-at': '만료 {0}',
+      'expired-at': '{0}에 만료',
+      'consumed-at': '{0}에 사용됨',
+      'revoked-at': '{0}에 폐기됨',
+      revoke: '폐기',
+    },
+    'invite-status': {
+      active: '활성',
+      consumed: '사용됨',
+      revoked: '폐기됨',
+      expired: '만료됨',
+    },
+    'invite-role': {
+      owner: '소유자',
+      'co-pilot': '협업자',
+      observer: '관찰자',
+      auditor: '감사자',
+    },
   },
 };
 

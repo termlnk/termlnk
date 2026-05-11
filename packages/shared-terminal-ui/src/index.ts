@@ -16,4 +16,6 @@
 export { SHARED_TERMINAL_UI_PLUGIN_NAME, SharedTerminalUIPlugin } from './plugin';
 export type { ISharedTerminalUIPluginConfig } from './plugin';
 export { DriverControls } from './views/DriverControls';
+export { InviteHistoryCard, OutstandingInvitesCard } from './views/InvitesCard';
+export { RecordingPolicyCard } from './views/RecordingPolicyCard';
 export { SharedTerminalPanel } from './views/SharedTerminalPanel';
