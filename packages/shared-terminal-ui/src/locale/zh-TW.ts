@@ -47,6 +47,17 @@ const locale: typeof enUS = {
       recording: '錄製中',
       closed: '已關閉',
     },
+    driver: {
+      label: '目前操作者：{0}',
+      none: '無',
+      locked: '已鎖定',
+      typing: '輸入中',
+      'other-writers': '另有 {0} 個可寫入參與者',
+      take: '接管鍵盤',
+      release: '釋放鍵盤',
+      lock: '鎖定為我',
+      unlock: '解鎖',
+    },
   },
 };
 

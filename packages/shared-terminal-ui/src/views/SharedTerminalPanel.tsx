@@ -19,6 +19,14 @@ import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitl
 import { IPairingService, IPtyMultiplexerService, ISharedSessionRecordingService, SharedSessionState, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { CircleDotIcon, CopyIcon, LinkIcon, MonitorUpIcon, SquareIcon, UsersRoundIcon, VideoIcon } from 'lucide-react';
 import { useState } from 'react';
+import { DriverControls } from './DriverControls';
+
+/**
+ * Owner-side client identifier. PtyMultiplexer treats it as just another connection id;
+ * using a constant lets the owner explicitly claim/release the driver lock from this UI
+ * without forcing a global "is owner" concept onto the contract layer.
+ */
+const OWNER_CLIENT_ID = '__termlnk-owner__';
 
 export function SharedTerminalPanel() {
   const localeService = useDependency(LocaleService);
@@ -138,10 +146,11 @@ export function SharedTerminalPanel() {
               <div
                 key={session.id}
                 className={cn(`
-                  tm:grid tm:grid-cols-[1fr_auto] tm:items-center tm:gap-3 tm:rounded-md tm:border tm:border-line
+                  tm:flex tm:flex-col tm:gap-3 tm:rounded-md tm:border tm:border-line
                   tm:bg-black tm:px-3 tm:py-2
                 `)}
               >
+                <div className={cn('tm:grid tm:grid-cols-[1fr_auto] tm:items-center tm:gap-3')}>
                 <div className={cn('tm:flex tm:min-w-0 tm:flex-col tm:gap-1')}>
                   <div className={cn('tm:flex tm:min-w-0 tm:items-center tm:gap-2')}>
                     <span className={cn('tm:truncate tm:text-sm tm:text-light-grey')}>{session.title}</span>
@@ -209,7 +218,9 @@ export function SharedTerminalPanel() {
                         {localeService.t('shared-terminal-ui.recording.start')}
                       </Button>
                     )}
+                  </div>
                 </div>
+                <DriverControls session={session} ownerClientId={OWNER_CLIENT_ID} />
               </div>
             );
           })}

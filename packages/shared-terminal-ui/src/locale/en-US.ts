@@ -45,6 +45,17 @@ const locale = {
       recording: 'Recording',
       closed: 'Closed',
     },
+    driver: {
+      label: 'Driver: {0}',
+      none: 'no driver',
+      locked: 'locked',
+      typing: 'typing',
+      'other-writers': '{0} other writer(s) attached',
+      take: 'Take keyboard',
+      release: 'Release keyboard',
+      lock: 'Lock to me',
+      unlock: 'Unlock',
+    },
   },
 };
 

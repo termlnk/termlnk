@@ -47,6 +47,17 @@ const locale: typeof enUS = {
       recording: '録画中',
       closed: '終了',
     },
+    driver: {
+      label: '操作中: {0}',
+      none: 'なし',
+      locked: 'ロック中',
+      typing: '入力中',
+      'other-writers': '他に {0} 人の書き込み参加者',
+      take: 'キーボードを取得',
+      release: 'キーボードを解放',
+      lock: '自分に固定',
+      unlock: 'ロック解除',
+    },
   },
 };
 

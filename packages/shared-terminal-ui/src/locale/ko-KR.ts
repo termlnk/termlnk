@@ -47,6 +47,17 @@ const locale: typeof enUS = {
       recording: '녹화 중',
       closed: '닫힘',
     },
+    driver: {
+      label: '드라이버: {0}',
+      none: '없음',
+      locked: '잠김',
+      typing: '입력 중',
+      'other-writers': '추가로 {0}명의 쓰기 권한 참가자가 연결됨',
+      take: '키보드 가져오기',
+      release: '키보드 놓기',
+      lock: '나로 잠금',
+      unlock: '잠금 해제',
+    },
   },
 };
 
