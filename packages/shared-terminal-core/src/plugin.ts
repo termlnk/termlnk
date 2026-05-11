@@ -14,9 +14,7 @@
  */
 
 import type { Dependency } from '@termlnk/core';
-import type {
-  ISharedTerminalPluginConfig,
-} from '@termlnk/shared-terminal';
+import type { ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IFrameCodecService, IPairingService, IPtyMultiplexerService, ISharedSessionRecordingService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { SHARED_TERMINAL_CORE_PLUGIN_NAME } from './common/constants';
