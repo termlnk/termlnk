@@ -23,14 +23,44 @@ export {
   SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS,
   SHARED_TERMINAL_PLUGIN_CONFIG_KEY,
   SHARED_TERMINAL_PLUGIN_NAME,
-  SHARED_TERMINAL_QR_VERSION,
   SHARED_TERMINAL_RECONNECT_INITIAL_MS,
   SHARED_TERMINAL_RECONNECT_MAX_MS,
   SHARED_TERMINAL_RING_BUFFER_BYTES,
 } from './common/constants';
 export type { ISharedTerminalPluginConfig } from './controllers/config.schema';
 export type { IDriverHandover, IDriverState } from './models/driver';
-export type { ControlMessageType, IFrame, SessionEventType } from './models/frame';
+export type {
+  ControlMessageType,
+  IControlMessage,
+  IControlMessageBase,
+  IDriverHandoverControlMessage,
+  IDriverLockControlMessage,
+  IDriverReleaseControlMessage,
+  IDriverRequestControlMessage,
+  IDriverUnlockControlMessage,
+  IErrorControlMessage,
+  IFrame,
+  IHeartbeatControlMessage,
+  IInviteAcceptControlMessage,
+  IInviteClaimControlMessage,
+  IInviteRejectControlMessage,
+  IInviteSessionEvent,
+  IKickControlMessage,
+  IParticipantJoinedSessionEvent,
+  IParticipantKickedSessionEvent,
+  IParticipantLeftSessionEvent,
+  IRecordingStartedSessionEvent,
+  IRecordingStoppedSessionEvent,
+  IRekeyControlMessage,
+  IRekeySessionEvent,
+  IResizeControlMessage,
+  IRoleChangedSessionEvent,
+  ISessionEvent,
+  ISessionEventBase,
+  ISessionLifecycleEvent,
+  ISnapshotSessionEvent,
+  SessionEventType,
+} from './models/frame';
 export { CONTROL_MESSAGE_TYPES, FrameChannel, FrameFlag, SESSION_EVENT_TYPES } from './models/frame';
 export type {
   ICapability,
@@ -41,11 +71,10 @@ export type {
 } from './models/invite';
 export type { IKeypair, ISharedKey } from './models/keypair';
 export type {
-  IPairAckPayload,
   IPairedDevice,
-  IPairHelloPayload,
-  IPairRejectPayload,
-  IQrPayload,
+  ISessionAcceptPayload,
+  ISessionClaimPayload,
+  ISessionRejectPayload,
 } from './models/pairing';
 export { isWriterRole, requiresMandatoryRecording, SharedTerminalRole } from './models/role';
 export type { IParticipant, ISessionSnapshot, ISharedSession } from './models/session';

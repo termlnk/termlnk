@@ -24,13 +24,7 @@ export const SHARED_TERMINAL_FRAME_VERSION = 1;
 // Full ciphertext: `tmst1:` + version(1) + nonce(24) + ciphertext+poly1305_tag.
 export const SHARED_TERMINAL_FRAME_PREFIX = 'tmst1:';
 
-// QR pairing payload version. The QR carries the daemon long-term public key, the relay
-// endpoint and a one-shot sessionId. Old clients scanning a newer QR must surface
-// "version unsupported".
-export const SHARED_TERMINAL_QR_VERSION = 1;
-
-// Cross-account invite capability version; deliberately decoupled from the QR version
-// because QR is for same-account pairing while capabilities are for cross-account collab.
+// Cross-account invite capability version.
 export const SHARED_TERMINAL_CAPABILITY_VERSION = 1;
 
 // Per-frame payload cap. Larger PTY writes must be chunked. Sized to match typical MTU,

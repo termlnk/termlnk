@@ -14,15 +14,8 @@
  */
 
 /**
- * 多通道帧的逻辑通道。
- *
- * 设计依据：cloud-sync-architecture.md §5.2 二进制多路复用 BinaryMuxFrame。
- *
- * - **Control**：握手 / pairing 完成通知 / driver 切换 / kick / rekey / 心跳
- * - **PtyData**：双向 PTY 字节流（owner→client 是 PTY 输出；client→owner 是 stdin）
- * - **SessionEvent**：参与者加入/离开、status 变更、recording 开始/结束、resize 等结构化事件
- *
- * 三通道独立 seq 计数——保证同通道有序，跨通道不阻塞。
+ * Logical channel for multiplexed frames. Each channel has an independent monotonic seq counter
+ * so ordering is guaranteed within a channel without head-of-line blocking across channels.
  */
 export enum FrameChannel {
   Control = 0,
@@ -31,14 +24,12 @@ export enum FrameChannel {
 }
 
 /**
- * Frame flag 位掩码——预留扩展位避免协议演进时 break。
+ * Frame flag bitmask.
  *
- * | bit | 名称 | 含义 |
- * |-----|------|------|
- * | 0 | AckRequired | 接收端需回 ack 帧（control 帧用）|
- * | 1 | Compressed | payload 是 zstd 压缩字节（PTY 输出降弱网） |
- * | 2 | EndOfStream | 配合分片：连续帧序列的最后一片 |
- * | 3..7 | Reserved | 必须为 0；接收端 MUST 忽略未知位（向后兼容铁律） |
+ * - bit 0: AckRequired — receiver must send an ack frame.
+ * - bit 1: Compressed  — payload is zstd-compressed.
+ * - bit 2: EndOfStream — last fragment of a split sequence.
+ * - bits 3..7: Reserved — receivers MUST ignore unknown bits.
  */
 export enum FrameFlag {
   None = 0,
@@ -47,35 +38,28 @@ export enum FrameFlag {
   EndOfStream = 4,
 }
 
-/**
- * 单个逻辑帧——加密前的明文表示。
- *
- * 加密路径：encode → NaCl box (sharedKey + nonce) → wire bytes。
- * 解密路径反之。详见 IFrameCodecService。
- */
+/** Plaintext logical frame before encryption. See IFrameCodecService for the encode path. */
 export interface IFrame {
-  /** 通道 ID */
   readonly channel: FrameChannel;
-  /** 标志位掩码（FrameFlag 联合） */
   readonly flags: number;
-  /** 该通道内单调递增的 32-bit 序号（uint32） */
+  /** Monotonically-increasing 32-bit seq within this channel. */
   readonly seq: number;
-  /** 帧载荷——按通道语义解释（control/event JSON UTF-8 编码；ptyData 原始字节）*/
   readonly payload: Uint8Array;
 }
 
-/**
- * Control 通道事件类型——payload 是 UTF-8 JSON。
- *
- * 各事件的 schema 定义在 IControlMessage 子类型中；接收端按 type 分发。
- */
+/** Control-channel event types. Payload is UTF-8 JSON; receivers dispatch on type. */
 export const CONTROL_MESSAGE_TYPES = [
-  'pair_hello',
-  'pair_ack',
-  'pair_reject',
+  'session_claim',
+  'session_accept',
+  'session_reject',
+  'invite_claim',
+  'invite_accept',
+  'invite_reject',
   'driver_request',
   'driver_handover',
   'driver_release',
+  'driver_lock',
+  'driver_unlock',
   'rekey',
   'kick',
   'heartbeat',
@@ -84,15 +68,219 @@ export const CONTROL_MESSAGE_TYPES = [
 ] as const;
 export type ControlMessageType = (typeof CONTROL_MESSAGE_TYPES)[number];
 
-/**
- * Session 通道事件类型——payload 是 UTF-8 JSON，UI 用于参与者列表更新等。
- */
+export interface IControlMessageBase {
+  readonly type: ControlMessageType;
+  readonly sessionId?: string;
+}
+
+export interface IInviteClaimControlMessage extends IControlMessageBase {
+  readonly type: 'invite_claim';
+  readonly sessionId: string;
+  readonly inviteId: string;
+  readonly connectionId: string;
+  readonly userPubkey: string;
+  readonly capability: ICapability;
+  readonly displayName?: string;
+}
+
+export interface IInviteAcceptControlMessage extends IControlMessageBase {
+  readonly type: 'invite_accept';
+  readonly sessionId: string;
+  readonly inviteId: string;
+  readonly connectionId: string;
+  readonly role: SharedTerminalRole;
+  readonly wrappedSessionKey: string;
+}
+
+export interface IInviteRejectControlMessage extends IControlMessageBase {
+  readonly type: 'invite_reject';
+  readonly sessionId: string;
+  readonly inviteId: string;
+  readonly reason: 'expired' | 'consumed' | 'revoked' | 'invalid' | 'not_owner';
+}
+
+export interface IDriverRequestControlMessage extends IControlMessageBase {
+  readonly type: 'driver_request';
+  readonly sessionId?: string;
+}
+
+export interface IDriverHandoverControlMessage extends IControlMessageBase {
+  readonly type: 'driver_handover';
+  readonly sessionId: string;
+  readonly fromClientId: string | null;
+  readonly toClientId: string | null;
+}
+
+export interface IDriverReleaseControlMessage extends IControlMessageBase {
+  readonly type: 'driver_release';
+  readonly sessionId?: string;
+}
+
+export interface IDriverLockControlMessage extends IControlMessageBase {
+  readonly type: 'driver_lock';
+  readonly sessionId: string;
+  readonly clientId: string;
+}
+
+export interface IDriverUnlockControlMessage extends IControlMessageBase {
+  readonly type: 'driver_unlock';
+  readonly sessionId: string;
+}
+
+export interface IRekeyControlMessage extends IControlMessageBase {
+  readonly type: 'rekey';
+  readonly sessionId: string;
+  readonly epoch: number;
+  readonly wrappedKeys: readonly {
+    readonly connectionId: string;
+    readonly wrappedSessionKey: string;
+  }[];
+}
+
+export interface IKickControlMessage extends IControlMessageBase {
+  readonly type: 'kick';
+  readonly sessionId?: string;
+  readonly connectionId?: string;
+  readonly reason?: string;
+}
+
+export interface IHeartbeatControlMessage extends IControlMessageBase {
+  readonly type: 'heartbeat';
+  readonly sessionId?: string;
+  readonly at?: number;
+}
+
+export interface IResizeControlMessage extends IControlMessageBase {
+  readonly type: 'resize';
+  readonly sessionId?: string;
+  readonly cols: number;
+  readonly rows: number;
+}
+
+export interface IErrorControlMessage extends IControlMessageBase {
+  readonly type: 'error';
+  readonly sessionId?: string;
+  readonly code: string;
+  readonly message: string;
+}
+
+export type IControlMessage =
+  | IInviteClaimControlMessage
+  | IInviteAcceptControlMessage
+  | IInviteRejectControlMessage
+  | IDriverRequestControlMessage
+  | IDriverHandoverControlMessage
+  | IDriverReleaseControlMessage
+  | IDriverLockControlMessage
+  | IDriverUnlockControlMessage
+  | IRekeyControlMessage
+  | IKickControlMessage
+  | IHeartbeatControlMessage
+  | IResizeControlMessage
+  | IErrorControlMessage
+  | (IControlMessageBase & {
+    readonly type: 'session_claim' | 'session_accept' | 'session_reject';
+    readonly [key: string]: unknown;
+  });
+
+/** Session-channel event types. Payload is UTF-8 JSON consumed by the UI. */
 export const SESSION_EVENT_TYPES = [
+  'invite_created',
+  'invite_consumed',
+  'invite_revoked',
   'participant_joined',
   'participant_left',
+  'participant_kicked',
   'role_changed',
+  'driver_handover',
+  'rekey',
   'recording_started',
   'recording_stopped',
+  'session_started',
+  'session_closed',
   'snapshot',
 ] as const;
 export type SessionEventType = (typeof SESSION_EVENT_TYPES)[number];
+
+export interface ISessionEventBase {
+  readonly type: SessionEventType;
+  readonly sessionId: string;
+}
+
+export interface IParticipantJoinedSessionEvent extends ISessionEventBase {
+  readonly type: 'participant_joined';
+  readonly clientId: string;
+  readonly role: SharedTerminalRole;
+  readonly displayName?: string;
+}
+
+export interface IParticipantLeftSessionEvent extends ISessionEventBase {
+  readonly type: 'participant_left';
+  readonly clientId: string;
+}
+
+export interface IParticipantKickedSessionEvent extends ISessionEventBase {
+  readonly type: 'participant_kicked';
+  readonly clientId: string;
+  readonly reason?: string;
+}
+
+export interface IRoleChangedSessionEvent extends ISessionEventBase {
+  readonly type: 'role_changed';
+  readonly clientId: string;
+  readonly fromRole: SharedTerminalRole;
+  readonly toRole: SharedTerminalRole;
+}
+
+export interface IDriverHandoverSessionEvent extends ISessionEventBase {
+  readonly type: 'driver_handover';
+  readonly fromClientId: string | null;
+  readonly toClientId: string | null;
+}
+
+export interface IRecordingStartedSessionEvent extends ISessionEventBase {
+  readonly type: 'recording_started';
+  readonly recordingId: string;
+  readonly mandatory: boolean;
+}
+
+export interface IRecordingStoppedSessionEvent extends ISessionEventBase {
+  readonly type: 'recording_stopped';
+  readonly recordingId: string;
+}
+
+export interface IInviteSessionEvent extends ISessionEventBase {
+  readonly type: 'invite_created' | 'invite_consumed' | 'invite_revoked';
+  readonly inviteId: string;
+  readonly role: SharedTerminalRole;
+}
+
+export interface IRekeySessionEvent extends ISessionEventBase {
+  readonly type: 'rekey';
+  readonly epoch: number;
+  readonly reason: 'kick' | 'role_changed' | 'manual' | 'rotate';
+}
+
+export interface ISessionLifecycleEvent extends ISessionEventBase {
+  readonly type: 'session_started' | 'session_closed';
+}
+
+export interface ISnapshotSessionEvent extends ISessionEventBase, ISessionSnapshot {
+  readonly type: 'snapshot';
+}
+
+export type ISessionEvent =
+  | IParticipantJoinedSessionEvent
+  | IParticipantLeftSessionEvent
+  | IParticipantKickedSessionEvent
+  | IRoleChangedSessionEvent
+  | IDriverHandoverSessionEvent
+  | IRecordingStartedSessionEvent
+  | IRecordingStoppedSessionEvent
+  | IInviteSessionEvent
+  | IRekeySessionEvent
+  | ISessionLifecycleEvent
+  | ISnapshotSessionEvent;
+import type { ICapability } from './invite';
+import type { SharedTerminalRole } from './role';
+import type { ISessionSnapshot } from './session';
