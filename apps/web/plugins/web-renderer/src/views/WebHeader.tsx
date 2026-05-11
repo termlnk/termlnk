@@ -62,6 +62,7 @@ export function WebHeader() {
     if (!isPanelOpen) {
       return;
     }
+
     const onMouseDown = (event: MouseEvent) => {
       const target = event.target;
       if (!target || !(target instanceof Node)) {
@@ -75,6 +76,7 @@ export function WebHeader() {
       }
       notificationService.closePanel();
     };
+
     document.addEventListener('mousedown', onMouseDown);
     return () => {
       document.removeEventListener('mousedown', onMouseDown);
@@ -123,12 +125,10 @@ export function WebHeader() {
     <div ref={headerRef} className="tm:relative">
       <div
         className={`
-          tm:flex tm:h-8.75 tm:min-h-8.75 tm:w-full tm:border-b tm:border-line tm:bg-darker-black
-          tm:select-none
+          tm:flex tm:h-8.75 tm:min-h-8.75 tm:w-full tm:border-b tm:border-line tm:bg-darker-black tm:select-none
         `}
       >
-        {/* Left area: header-action slot (e.g. SFTP toggle). No traffic
-            lights, no electron drag region. */}
+        {/* Left area: header-action slot (e.g. SFTP toggle). No traffic lights, no electron drag region. */}
         <div
           className="tm:relative tm:flex tm:shrink-0 tm:items-stretch"
           style={{
@@ -146,8 +146,7 @@ export function WebHeader() {
           <div className="tm:absolute tm:top-[25%] tm:right-0 tm:h-[50%] tm:w-px tm:bg-line" />
         </div>
 
-        {/* Right area: terminal tab bar + notification + header trailing
-            slot + logout button. */}
+        {/* Right area: terminal tab bar + notification + header trailing slot + logout button. */}
         <div className="tm:flex tm:h-full tm:min-w-0 tm:flex-1 tm:overflow-hidden">
           <div className="tm:min-w-0 tm:flex-1">
             <ComponentContainer components={tabBarComponents} />

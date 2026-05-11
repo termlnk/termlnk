@@ -13,11 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-export {
-  TRPC_HTTP_PATH,
-  TRPC_WS_PATH,
-  WEB_RENDERER_PLUGIN_CONFIG_KEY,
-} from './controllers/config.schema';
+import './global.css';
+
+export { TRPC_HTTP_PATH, TRPC_WS_PATH, WEB_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IWebRendererConfig, IWebUpdaterConfig } from './controllers/config.schema';
 export { WEB_RENDERER_PLUGIN_NAME, WebRendererPlugin } from './plugin';
 export { WebRPCClientService } from './services/rpc/web-rpc-client.service';

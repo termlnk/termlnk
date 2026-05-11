@@ -1,0 +1,2 @@
+@import 'tailwindcss/utilities' prefix(tm);
+@import '@termlnk/shared/tailwind/theme.css';
