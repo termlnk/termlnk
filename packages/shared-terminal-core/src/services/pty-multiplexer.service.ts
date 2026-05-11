@@ -13,39 +13,18 @@
  * governing permissions and limitations under the License.
  */
 
-import type {
-  IDriverState,
-  IFrame,
-  IOutboundFrame,
-  IParticipant,
-  IPtyMultiplexerService,
-  IPtySource,
-  IRegisteredPty,
-  ISessionSnapshot,
-  ISharedSession,
-
-  SharedTerminalRole,
-} from '@termlnk/shared-terminal';
+import type { IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRecordingHandle, IRegisteredPty, ISessionSnapshot, ISharedSession, ISharedSessionRecordingService, SharedTerminalRole } from '@termlnk/shared-terminal';
 import type { Subscription } from 'rxjs';
-import { Disposable, ILogService } from '@termlnk/core';
-import {
-  FrameChannel,
-  FrameFlag,
-  isWriterRole,
-  SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS,
-  SHARED_TERMINAL_RING_BUFFER_BYTES,
-  SharedSessionState,
-} from '@termlnk/shared-terminal';
+import { Disposable, ILogService, Optional } from '@termlnk/core';
+import { FrameChannel, FrameFlag, ISharedSessionRecordingService as ISharedSessionRecordingServiceId, isWriterRole, requiresMandatoryRecording, SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS, SHARED_TERMINAL_RING_BUFFER_BYTES, SharedSessionState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { HeadlessSession } from '../utils/headless-session';
 import { RingBuffer } from '../utils/ring-buffer';
 
-/** 默认 snapshot 包含的 scrollback 行数——平衡保真度与帧体积。 */
+/** Lines of scrollback to include in a snapshot. */
 const DEFAULT_SNAPSHOT_SCROLLBACK_LINES = 1000;
 
-/**
- * 单个 session 的运行时状态。
- */
+/** Per-session runtime state. */
 interface ISessionRuntime {
   readonly source: IPtySource;
   readonly ringBuffer: RingBuffer;
@@ -61,7 +40,7 @@ interface ISessionRuntime {
   cols: number;
   rows: number;
   readonly seqCounters: Record<FrameChannel, number>;
-  recording: boolean;
+  recordingHandle: IRecordingHandle | null;
 }
 
 interface IClientEntry {
@@ -72,21 +51,16 @@ interface IClientEntry {
 }
 
 /**
- * PTY 多路复用器主进程实现。
+ * PTY multiplexer — fans out a single PTY to multiple attached clients.
  *
- * 设计依据：cloud-sync-architecture.md §5.3 + §5.7（多用户协作扩展）。
+ * Key invariants:
+ * - PTY output fans out to all attached clients (PtyData channel, target='broadcast').
+ * - PTY output is also written to a ring buffer so late-attaching clients catch up.
+ * - Only the driver client's inbound PtyData frames reach the underlying PTY.
+ * - Driver heartbeat timeout (5s) auto-clears the driver so another writer can take over.
+ * - Frame seq is a per-channel monotonically-increasing uint32.
  *
- * 关键不变量：
- * - PTY 输出 fan-out 给所有 attached client（PtyData 通道，target='broadcast'）
- * - PTY 输出同时写 ring buffer——client attach 时一次性补齐 raw scrollback
- * - 仅 driver clientId 的入站 PtyData 帧会写到底层 PTY；其他被静默忽略
- * - Driver 心跳超时（5s）自动 setDriver(null)，UI 上其他 writer 可抢占
- * - Frame seq 在每个通道独立单调递增（uint32 wrap-around 走 modulo）
- *
- * **xterm-headless 集成（P5.2c 落地）**：每 session 维护一个 @xterm/headless Terminal
- * 实例和 SerializeAddon；PTY 输出同时喂给 ring buffer（raw 字节）和 headless（语义 state）。
- * snapshot() 通过 SerializeAddon 输出 ANSI 重放序列，客户端 xterm.js 直接 write 即可
- * 复原完整状态（光标 / SGR / alt-buffer / scrollback）。
+ * Each session maintains an xterm-headless instance for serialized state snapshots.
  */
 export class PtyMultiplexerService extends Disposable implements IPtyMultiplexerService {
   private readonly _sessions = new Map<string, ISessionRuntime>();
@@ -97,15 +71,24 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   readonly outbound$ = this._outboundSubject.asObservable();
 
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private _activeRecordingHandles: readonly IRecordingHandle[] = [];
 
   constructor(
-    @ILogService private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @Optional(ISharedSessionRecordingServiceId)
+    private readonly _recordingService: ISharedSessionRecordingService | null = null
   ) {
     super();
-    // Driver heartbeat 监控——每秒扫描一次，超时清空 driver。
+    // Scan for stale drivers every second.
     this._heartbeatTimer = setInterval(() => this._reapStaleDrivers(), 1000);
     if (typeof this._heartbeatTimer === 'object' && this._heartbeatTimer !== null && 'unref' in this._heartbeatTimer) {
       (this._heartbeatTimer as { unref: () => void }).unref();
+    }
+    if (this._recordingService) {
+      this.disposeWithMe(this._recordingService.activeRecordings$.subscribe((handles) => {
+        this._activeRecordingHandles = handles;
+        this._syncRecordingHandles(handles);
+      }));
     }
   }
 
@@ -171,9 +154,10 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         [FrameChannel.PtyData]: 0,
         [FrameChannel.SessionEvent]: 0,
       },
-      recording: false,
+      recordingHandle: null,
     };
     this._sessions.set(source.id, runtime);
+    this._syncRuntimeRecordingHandle(runtime);
     this._publishSessions();
 
     return {
@@ -252,8 +236,32 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     displayName?: string
   ): void {
     const runtime = this._requireSession(sessionId);
+    if (this._requiresRecordingBeforeAttach(runtime, role)) {
+      this._recordingService!.start({
+        sessionId: runtime.source.id,
+        title: runtime.source.title,
+        mandatory: true,
+      }).then(() => {
+        const current = this._sessions.get(sessionId);
+        if (current) {
+          this._attachClientRuntime(current, clientId, role, displayName);
+        }
+      }).catch((err) => {
+        this._logService.error(`[PtyMultiplexerService] mandatory recording start failed for ${runtime.source.id}:`, err);
+      });
+      return;
+    }
+    this._attachClientRuntime(runtime, clientId, role, displayName);
+  }
+
+  private _attachClientRuntime(
+    runtime: ISessionRuntime,
+    clientId: string,
+    role: SharedTerminalRole,
+    displayName?: string
+  ): void {
     if (runtime.clients.has(clientId)) {
-      // idempotent — refresh role + heartbeat
+      // Re-attach: refresh role and heartbeat.
       const existing = runtime.clients.get(clientId)!;
       runtime.clients.set(clientId, {
         role,
@@ -273,18 +281,17 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       lastHeartbeatAt: now,
     });
 
-    if (runtime.state === SharedSessionState.Idle) {
-      runtime.state = SharedSessionState.Active;
-      this._publishSessions();
-    }
+    this._refreshRuntimeState(runtime);
 
-    // 1) snapshot 单播给新加入者
+    const sessionId = runtime.source.id;
+    // Unicast snapshot to the new client.
     this._sendSnapshot(sessionId, clientId).catch((err) => {
       this._logService.error(`[PtyMultiplexerService] snapshot to ${clientId} failed:`, err);
     });
-    // 2) participant_joined 广播给全员（含新加入者，让他知道自己已加入）
+    // Broadcast participant_joined to all (including the new client).
     this._broadcastSessionEvent(sessionId, {
       type: 'participant_joined',
+      sessionId,
       clientId,
       role,
       displayName,
@@ -307,13 +314,11 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       this._publishDriver(runtime);
     }
 
-    if (runtime.clients.size === 0 && runtime.state === SharedSessionState.Active) {
-      runtime.state = SharedSessionState.Idle;
-      this._publishSessions();
-    }
+    this._refreshRuntimeState(runtime);
 
     this._broadcastSessionEvent(sessionId, {
       type: 'participant_left',
+      sessionId,
       clientId,
     });
     this._publishParticipants(runtime);
@@ -335,7 +340,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         this._handleControlFrame(runtime, clientId, frame);
         break;
       case FrameChannel.SessionEvent:
-        // client → owner 不应发 session event；忽略防伪造
+        // Clients must not emit session events; ignore to prevent spoofing.
         break;
     }
   }
@@ -353,8 +358,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     }
   }
 
-  // ---------- internal helpers ----------
-
   private _requireSession(sessionId: string): ISessionRuntime {
     const runtime = this._sessions.get(sessionId);
     if (!runtime) {
@@ -370,6 +373,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     }
     runtime.ringBuffer.write(chunk);
     runtime.headless.write(chunk);
+    this._appendRecordingOutput(runtime, chunk);
     if (runtime.clients.size === 0) {
       return;
     }
@@ -377,8 +381,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   }
 
   private _handleInputFrame(runtime: ISessionRuntime, clientId: string, frame: IFrame): void {
-    // 协议层接受所有 writer 字节；UI 层在 client 端按 driver 标记决定是否实际发送。
-    // 但 daemon 这一道关：必须是 writer + 必须是 driver（防止 UI bug 误发）。
+    // Only the current driver may write to the PTY.
     const client = runtime.clients.get(clientId)!;
     if (!isWriterRole(client.role)) {
       return;
@@ -409,7 +412,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         this._handleDriverRelease(runtime, clientId);
         break;
       case 'heartbeat':
-        // already updated lastHeartbeatAt above
+        // Timestamp already updated above.
         break;
       case 'resize': {
         const r = parsed as { type: 'resize'; cols?: number; rows?: number };
@@ -429,7 +432,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         break;
       }
       default:
-        // 未知 type 忽略——向后兼容铁律
+        // Unknown types are ignored for forward compatibility.
         break;
     }
   }
@@ -480,6 +483,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   private _broadcastSessionEvent(sessionId: string, event: object): void {
     const payload = new TextEncoder().encode(JSON.stringify(event));
     this._broadcast(sessionId, FrameChannel.SessionEvent, FrameFlag.None, payload);
+    this._appendAuditEvent(sessionId, event);
   }
 
   private _sendControlToClient(sessionId: string, clientId: string, message: object): void {
@@ -525,7 +529,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         createdAt: runtime.participantsSubject.getValue()[0]?.joinedAt ?? Date.now(),
         participantIds: [...runtime.clients.keys()],
         driverId: runtime.driverId,
-        recording: runtime.recording,
+        recording: runtime.recordingHandle !== null,
       });
     }
     this._sessionsSubject.next(out);
@@ -549,7 +553,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         displayName: entry.displayName,
         role: entry.role,
         joinedAt: entry.joinedAt,
-        isCurrent: false, // daemon 视角下没有"当前"概念；客户端 UI 自己判定
+        isCurrent: false, // The daemon has no notion of "current"; client UI determines this.
       });
     }
     runtime.participantsSubject.next(list);
@@ -562,14 +566,91 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       return;
     }
     runtime.outputSub.unsubscribe();
-    // 通知所有 attached clients 会话已关闭
-    this._broadcastSessionEvent(sessionId, { type: 'session_closed' });
+    // Notify all attached clients.
+    this._broadcastSessionEvent(sessionId, { type: 'session_closed', sessionId });
     runtime.state = SharedSessionState.Closed;
     runtime.headless.dispose();
     runtime.participantsSubject.complete();
     runtime.driverSubject.complete();
     this._sessions.delete(sessionId);
     this._publishSessions();
+  }
+
+  private _syncRecordingHandles(handles: readonly IRecordingHandle[]): void {
+    let changed = false;
+    for (const runtime of this._sessions.values()) {
+      const previous = runtime.recordingHandle;
+      const next = handles.find((handle) => handle.sessionId === runtime.source.id) ?? null;
+      if (previous?.id !== next?.id) {
+        runtime.recordingHandle = next;
+        this._refreshRuntimeState(runtime, false);
+        if (!previous && next) {
+          this._broadcastSessionEvent(runtime.source.id, {
+            type: 'recording_started',
+            sessionId: runtime.source.id,
+            recordingId: next.id,
+            mandatory: next.mandatory,
+          });
+        } else if (previous && !next) {
+          this._broadcastSessionEvent(runtime.source.id, {
+            type: 'recording_stopped',
+            sessionId: runtime.source.id,
+            recordingId: previous.id,
+          });
+        }
+        changed = true;
+      }
+    }
+    if (changed) {
+      this._publishSessions();
+    }
+  }
+
+  private _syncRuntimeRecordingHandle(runtime: ISessionRuntime): void {
+    runtime.recordingHandle = this._activeRecordingHandles.find(
+      (handle) => handle.sessionId === runtime.source.id
+    ) ?? null;
+    this._refreshRuntimeState(runtime, false);
+  }
+
+  private _refreshRuntimeState(runtime: ISessionRuntime, publish = true): void {
+    if (runtime.recordingHandle) {
+      runtime.state = SharedSessionState.Recording;
+    } else if (runtime.clients.size > 0) {
+      runtime.state = SharedSessionState.Active;
+    } else {
+      runtime.state = SharedSessionState.Idle;
+    }
+    if (publish) {
+      this._publishSessions();
+    }
+  }
+
+  private _appendRecordingOutput(runtime: ISessionRuntime, chunk: Uint8Array): void {
+    if (!this._recordingService || !runtime.recordingHandle) {
+      return;
+    }
+    this._recordingService.appendOutput(runtime.recordingHandle, chunk).catch((err) => {
+      this._logService.error(`[PtyMultiplexerService] recording append output failed for ${runtime.source.id}:`, err);
+    });
+  }
+
+  private _appendAuditEvent(sessionId: string, event: object): void {
+    const runtime = this._sessions.get(sessionId);
+    if (!this._recordingService || !runtime?.recordingHandle) {
+      return;
+    }
+    this._recordingService.appendAuditEvent(runtime.recordingHandle, event as Record<string, unknown>).catch((err) => {
+      this._logService.error(`[PtyMultiplexerService] recording audit append failed for ${sessionId}:`, err);
+    });
+  }
+
+  private _requiresRecordingBeforeAttach(runtime: ISessionRuntime, role: SharedTerminalRole): boolean {
+    return Boolean(
+      this._recordingService
+      && requiresMandatoryRecording(role)
+      && (!runtime.recordingHandle || !runtime.recordingHandle.mandatory)
+    );
   }
 
   private _reapStaleDrivers(): void {

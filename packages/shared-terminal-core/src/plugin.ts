@@ -17,38 +17,16 @@ import type { Dependency } from '@termlnk/core';
 import type {
   ISharedTerminalPluginConfig,
 } from '@termlnk/shared-terminal';
-import {
-  DependentOn,
-  IConfigService,
-  Inject,
-  Injector,
-  merge,
-  mergeOverrideWithDependencies,
-  Plugin,
-  registerDependencies,
-  touchDependencies,
-} from '@termlnk/core';
-import {
-  IFrameCodecService,
-  IPtyMultiplexerService,
-  ISharedTerminalCryptoService,
-  SHARED_TERMINAL_PLUGIN_CONFIG_KEY,
-  SharedTerminalPlugin,
-} from '@termlnk/shared-terminal';
+import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { IFrameCodecService, IPairingService, IPtyMultiplexerService, ISharedSessionRecordingService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { SHARED_TERMINAL_CORE_PLUGIN_NAME } from './common/constants';
 import { SharedTerminalCryptoService } from './services/crypto.service';
 import { FrameCodecService } from './services/frame-codec.service';
+import { PairingService } from './services/pairing.service';
 import { PtyMultiplexerService } from './services/pty-multiplexer.service';
+import { SharedSessionRecordingService } from './services/recording.service';
+import { RelayTransportService } from './services/relay-transport.service';
 
-/**
- * 共享终端实现层插件——绑定主进程的 NaCl 加密 / 帧编解码 / PTY 多路复用 / 配对
- * 等服务到 @termlnk/shared-terminal 的契约标识符。
- *
- * 依赖：SharedTerminalPlugin（契约 + config）
- *
- * 当前阶段（P5.2）：仅注册 Crypto + FrameCodec；后续 P5.2b 加 PtyMultiplexer，
- * P5.3 加 Pairing + Transport，P5.4 加 Recording。
- */
 @DependentOn(SharedTerminalPlugin)
 export class SharedTerminalCorePlugin extends Plugin {
   static override pluginName = SHARED_TERMINAL_CORE_PLUGIN_NAME;
@@ -70,6 +48,9 @@ export class SharedTerminalCorePlugin extends Plugin {
       [ISharedTerminalCryptoService, { useClass: SharedTerminalCryptoService }],
       [IFrameCodecService, { useClass: FrameCodecService }],
       [IPtyMultiplexerService, { useClass: PtyMultiplexerService }],
+      [IPairingService, { useClass: PairingService }],
+      [ISharedTerminalTransportService, { useClass: RelayTransportService }],
+      [ISharedSessionRecordingService, { useClass: SharedSessionRecordingService }],
     ];
 
     const merged = mergeOverrideWithDependencies(dependencies, this._mergedConfig().override);
@@ -78,6 +59,9 @@ export class SharedTerminalCorePlugin extends Plugin {
       [ISharedTerminalCryptoService],
       [IFrameCodecService],
       [IPtyMultiplexerService],
+      [IPairingService],
+      [ISharedTerminalTransportService],
+      [ISharedSessionRecordingService],
     ]);
   }
 

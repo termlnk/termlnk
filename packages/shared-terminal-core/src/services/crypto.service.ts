@@ -16,17 +16,7 @@
 import type { IKeypair, ISharedKey, ISharedTerminalCryptoService } from '@termlnk/shared-terminal';
 import nacl from 'tweetnacl';
 
-/**
- * NaCl box / secretbox 实现——基于 tweetnacl-js（paseo 实证库）。
- *
- * 安全语义：
- * - 公钥编码：32 bytes 原始字节；wire / QR 上序列化为 base64url
- * - 私钥：永不出主进程内存（OS keychain 持久化由 PairingService 处理）
- * - nonce：每次加密 randomBytes(24)；NaCl 24-byte nonce 抗碰撞
- *
- * **库选型**：与 paseo 一致，避免与 @noble/ciphers（同步层用）的密钥派生路径混淆——
- * 加密路径独立、bug 影响面独立。
- */
+/** NaCl box / secretbox backed by tweetnacl-js. Separate from @noble/ciphers (sync layer) to isolate key derivation paths. */
 export class SharedTerminalCryptoService implements ISharedTerminalCryptoService {
   generateKeypair(): IKeypair {
     const kp = nacl.box.keyPair();
