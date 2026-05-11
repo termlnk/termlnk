@@ -63,11 +63,13 @@ export type {
 } from './models/frame';
 export { CONTROL_MESSAGE_TYPES, FrameChannel, FrameFlag, SESSION_EVENT_TYPES } from './models/frame';
 export type {
+  CollabInviteStatus,
   ICapability,
   ICollabInvite,
   IInviteClaimPayload,
   IInviteClaimResult,
   IInviteCreateOptions,
+  IInviteTokenState,
 } from './models/invite';
 export type { IKeypair, ISharedKey } from './models/keypair';
 export type {
@@ -80,6 +82,11 @@ export { isWriterRole, requiresMandatoryRecording, SharedTerminalRole } from './
 export type { IParticipant, ISessionSnapshot, ISharedSession } from './models/session';
 export { ClientConnectionState, DaemonState, SharedSessionState } from './models/session';
 export { SharedTerminalPlugin } from './plugin';
+export type {
+  ICollabInviteCreateInput,
+  ICollabInviteServerView,
+} from './services/collab-invite-transport.service';
+export { ICollabInviteTransportService } from './services/collab-invite-transport.service';
 export { ISharedTerminalCryptoService } from './services/crypto.service';
 export { IFrameCodecService } from './services/frame-codec.service';
 export { IPairingService } from './services/pairing.service';

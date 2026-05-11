@@ -26,6 +26,15 @@ export interface ISharedTerminalPluginConfig {
   relayBaseUrl?: string;
 
   /**
+   * HTTPS root for owner-side collaboration management endpoints (P5.5.2:
+   * `/v1/collab/invite/{create,revoke,list}`). When configured PairingService
+   * mirrors invite lifecycle to the server so distant devices (or the same
+   * machine after re-install) can reconcile. Leave undefined to keep all
+   * invite state local — relay still works because invites are signed offline.
+   */
+  cloudBaseUrl?: string;
+
+  /**
    * 是否在用户登录后自动启动 daemon——架构 §5.x"应用启动→ daemon ready"路径。
    * false 时 daemon 仅在用户主动点"添加设备"或"开始协作"时启动。
    */

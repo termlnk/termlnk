@@ -15,11 +15,16 @@
 
 import type { Dependency } from '@termlnk/core';
 import type { ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
-import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
-import { IFrameCodecService, IPairingService, IPtyMultiplexerService, ISharedSessionRecordingService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalPlugin } from '@termlnk/shared-terminal';
+// Deep import: avoid dragging the AuthCorePlugin transitive graph (which pulls
+// better-sqlite3) into renderer / web bundles. TokenManager is what the HTTP
+// transports need at runtime — same singleton SyncCorePlugin already binds.
+import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
+import { DependentOn, IConfigService, ILogService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { ICollabInviteTransportService, IFrameCodecService, IPairingService, IPtyMultiplexerService, ISharedSessionRecordingService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { SHARED_TERMINAL_CORE_PLUGIN_NAME } from './common/constants';
 import { SharedTerminalCryptoService } from './services/crypto.service';
 import { FrameCodecService } from './services/frame-codec.service';
+import { HttpCollabInviteTransportService } from './services/http-collab-invite-transport.service';
 import { PairingService } from './services/pairing.service';
 import { PtyMultiplexerService } from './services/pty-multiplexer.service';
 import { SharedSessionRecordingService } from './services/recording.service';
@@ -42,6 +47,7 @@ export class SharedTerminalCorePlugin extends Plugin {
 
   override onStarting(): void {
     super.onStarting();
+    const config = this._mergedConfig();
     const dependencies: Dependency[] = [
       [ISharedTerminalCryptoService, { useClass: SharedTerminalCryptoService }],
       [IFrameCodecService, { useClass: FrameCodecService }],
@@ -51,7 +57,18 @@ export class SharedTerminalCorePlugin extends Plugin {
       [ISharedSessionRecordingService, { useClass: SharedSessionRecordingService }],
     ];
 
-    const merged = mergeOverrideWithDependencies(dependencies, this._mergedConfig().override);
+    // Conditional HTTP transport for owner-side invite lifecycle mirroring (P5.5.2).
+    // Uses the same TokenManager singleton that SyncCorePlugin binds (AuthCorePlugin).
+    if (config.cloudBaseUrl) {
+      const cloudBaseUrl = config.cloudBaseUrl;
+      dependencies.push([ICollabInviteTransportService, {
+        useFactory: (tokenManager: TokenManager, logService: ILogService) =>
+          new HttpCollabInviteTransportService({ baseUrl: cloudBaseUrl }, tokenManager, logService),
+        deps: [TokenManager, ILogService],
+      }]);
+    }
+
+    const merged = mergeOverrideWithDependencies(dependencies, config.override);
     registerDependencies(this._injector, merged);
     touchDependencies(this._injector, [
       [ISharedTerminalCryptoService],

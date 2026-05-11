@@ -23,6 +23,7 @@ import { DATABASE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/c
 import { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
 import { BackupRepository } from './repositories/backup';
 import { ChatRepository } from './repositories/chat';
+import { CollabInviteTokenRepository } from './repositories/collab-invite-token';
 import { ConfigRepository } from './repositories/config';
 import { HostRepository } from './repositories/host';
 import { McpOAuthTokenRepository } from './repositories/mcp-oauth-token';
@@ -84,6 +85,7 @@ export class DatabasePlugin extends Plugin {
       [BackupRepository, { useClass: BackupRepository }],
       [ConfigRepository, { useClass: ConfigRepository }],
       [ChatRepository, { useClass: ChatRepository }],
+      [CollabInviteTokenRepository, { useClass: CollabInviteTokenRepository }],
       [HostRepository, { useClass: HostRepository }],
       [McpServerRepository, { useClass: McpServerRepository }],
       [McpOAuthTokenRepository, { useClass: McpOAuthTokenRepository }],

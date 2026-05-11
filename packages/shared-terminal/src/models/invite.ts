@@ -82,6 +82,8 @@ export interface IInviteTokenState {
   readonly createdAt: number;
   readonly consumedAt?: number;
   readonly revokedAt?: number;
+  /** Owner-supplied label for the invite (optional). */
+  readonly note?: string;
 }
 
 /** Invite creation parameters. */

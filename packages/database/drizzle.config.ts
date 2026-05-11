@@ -27,6 +27,7 @@ export default defineConfig({
   },
   schema: [
     './src/entities/chat.ts',
+    './src/entities/collab-invite-token.ts',
     './src/entities/config.ts',
     './src/entities/host.ts',
     './src/entities/mcp-oauth-token.ts',

@@ -14,6 +14,7 @@
  */
 
 export * from './chat';
+export * from './collab-invite-token';
 export * from './config';
 export * from './host';
 export * from './mcp-oauth-token';
