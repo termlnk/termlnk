@@ -156,9 +156,17 @@ export function SharedTerminalPanel() {
                     <span className={cn('tm:truncate tm:text-sm tm:text-light-grey')}>{session.title}</span>
                     {renderSessionBadge(session.state, localeService)}
                     {handle && (
-                      <Badge variant="secondary" className={cn('tm:gap-1 tm:bg-red/10 tm:text-red')}>
+                      <Badge
+                        variant="secondary"
+                        className={cn('tm:gap-1', {
+                          'tm:bg-yellow/10 tm:text-yellow': handle.mandatory,
+                          'tm:bg-red/10 tm:text-red': !handle.mandatory,
+                        })}
+                      >
                         <CircleDotIcon className={cn('tm:size-3 tm:fill-current')} />
-                        {localeService.t('shared-terminal-ui.recording.active')}
+                        {handle.mandatory
+                          ? localeService.t('shared-terminal-ui.recording.mandatory')
+                          : localeService.t('shared-terminal-ui.recording.active')}
                       </Badge>
                     )}
                   </div>
@@ -194,11 +202,17 @@ export function SharedTerminalPanel() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={busy}
+                        // Mandatory recordings are write-locked: the auditor role contract
+                        // requires the recording to outlive the auditor's attach. Owner can
+                        // still kick the auditor first, which clears mandatory then allows stop.
+                        disabled={busy || handle.mandatory}
                         onClick={() => {
                           void handleStopRecording(handle);
                         }}
                         className={cn('tm:gap-1.5')}
+                        title={handle.mandatory
+                          ? localeService.t('shared-terminal-ui.recording.mandatory-hint')
+                          : undefined}
                       >
                         <SquareIcon className={cn('tm:size-3.5')} />
                         {localeService.t('shared-terminal-ui.recording.stop')}

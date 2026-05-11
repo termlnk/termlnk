@@ -38,6 +38,8 @@ const locale: typeof enUS = {
     },
     recording: {
       active: '录制中',
+      mandatory: '强制录制中',
+      'mandatory-hint': '审计员在线时录制为强制状态，需先移除审计员才能停止。',
       start: '录制',
       stop: '停止',
     },

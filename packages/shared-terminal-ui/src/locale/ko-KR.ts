@@ -38,6 +38,8 @@ const locale: typeof enUS = {
     },
     recording: {
       active: '녹화 중',
+      mandatory: '녹화 (필수)',
+      'mandatory-hint': '감사자가 연결 중에는 녹화를 중지할 수 없습니다. 먼저 감사자를 분리하세요.',
       start: '녹화',
       stop: '중지',
     },

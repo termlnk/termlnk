@@ -36,6 +36,8 @@ const locale = {
     },
     recording: {
       active: 'Recording',
+      mandatory: 'Recording (mandatory)',
+      'mandatory-hint': 'This recording is mandatory while an auditor is attached. Kick the auditor first to stop.',
       start: 'Record',
       stop: 'Stop',
     },

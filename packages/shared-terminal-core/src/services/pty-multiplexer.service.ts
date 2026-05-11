@@ -235,6 +235,15 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       return;
     }
     this._sendControlToClient(sessionId, clientId, { type: 'kick', reason });
+    // Audit: kick is distinct from a voluntary leave — record before detach so the
+    // participant_left event below carries no ambiguity for offline log analysis.
+    this._appendAuditEvent(sessionId, {
+      type: 'participant_kicked',
+      sessionId,
+      clientId,
+      reason: reason ?? null,
+      at: Date.now(),
+    });
     this._detachClientInternal(runtime, clientId, 'kick');
   }
 
@@ -292,6 +301,17 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       });
       recipientCount += 1;
     }
+    // Audit (only effective when a recording is active): single source for every wrap +
+    // broadcast, regardless of which caller (manual rekey / attach / detach / kick)
+    // triggered it. The IRekeyResult below carries the same fields for callers.
+    this._appendAuditEvent(runtime.source.id, {
+      type: 'rekey',
+      sessionId: runtime.source.id,
+      reason,
+      recipientCount,
+      unwrappedClientIds,
+      at: Date.now(),
+    });
     return {
       sessionId: runtime.source.id,
       reason,

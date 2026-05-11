@@ -38,6 +38,8 @@ const locale: typeof enUS = {
     },
     recording: {
       active: '錄製中',
+      mandatory: '強制錄製中',
+      'mandatory-hint': '稽核員在線時錄製為強制狀態，需先移除稽核員才能停止。',
       start: '錄製',
       stop: '停止',
     },

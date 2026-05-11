@@ -38,6 +38,8 @@ const locale: typeof enUS = {
     },
     recording: {
       active: '録画中',
+      mandatory: '録画 (必須)',
+      'mandatory-hint': '監査者が接続中は録画を停止できません。先に監査者を切断してください。',
       start: '録画',
       stop: '停止',
     },

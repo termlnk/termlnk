@@ -431,4 +431,22 @@ describe('PtyMultiplexerService recording integration', () => {
     await expect(recording.stop(active)).rejects.toThrow(/mandatory/);
     expect(list[0]!.endedAt).toBeNull();
   });
+
+  it('records a participant_kicked audit event distinct from a voluntary leave', async () => {
+    const ts = createSource('s1');
+    mux.register(ts.source);
+    const handle = await recording.start({ sessionId: 's1', title: 'kick-test', mandatory: false });
+    mux.attachClient('s1', 'clientA', SharedTerminalRole.CoPilot, 'Alice');
+    mux.kick('s1', 'clientA', 'policy violation');
+
+    const auditLogPath = handle.path.replace(/\.cast$/, '.audit.jsonl');
+    const audit = await waitFor(async () => {
+      const text = await readFile(auditLogPath, 'utf-8');
+      return text.includes('participant_kicked') ? text : undefined;
+    });
+    expect(audit).toContain('participant_kicked');
+    expect(audit).toContain('policy violation');
+    // Followed by the implicit participant_left.
+    expect(audit).toContain('participant_left');
+  });
 });
