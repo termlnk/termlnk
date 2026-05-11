@@ -128,6 +128,7 @@ export class SettingsTabRegistryService extends Disposable implements ISettingsT
       );
       return toDisposable(() => { /* no-op for rejected registration */ });
     }
+
     const next = new Map(current);
     next.set(descriptor.id, descriptor);
     this._descriptors$.next(next);
