@@ -21,6 +21,7 @@ import { join } from 'node:path';
 import { FrameChannel, FrameFlag, SharedSessionState, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SharedTerminalCryptoService } from '../services/crypto.service';
 import { PtyMultiplexerService } from '../services/pty-multiplexer.service';
 import { SharedSessionRecordingService } from '../services/recording.service';
 
@@ -87,7 +88,7 @@ describe('PtyMultiplexerService', () => {
   let outbound: IOutboundFrame[];
 
   beforeEach(() => {
-    mux = new PtyMultiplexerService(new FakeLogService());
+    mux = new PtyMultiplexerService(new FakeLogService(), new SharedTerminalCryptoService());
     outbound = [];
     mux.outbound$.subscribe((f) => outbound.push(f));
   });
@@ -355,7 +356,7 @@ describe('PtyMultiplexerService recording integration', () => {
       recordingsDir: dir,
       now: () => now,
     });
-    mux = new PtyMultiplexerService(new FakeLogService(), recording);
+    mux = new PtyMultiplexerService(new FakeLogService(), new SharedTerminalCryptoService(), null, recording);
   });
 
   afterEach(async () => {

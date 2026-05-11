@@ -16,6 +16,7 @@
 export { SHARED_TERMINAL_CORE_PLUGIN_NAME } from './common/constants';
 export { SharedTerminalCorePlugin } from './plugin';
 export { SharedTerminalCryptoService } from './services/crypto.service';
+export { DaemonKeypairService } from './services/daemon-keypair.service';
 export { FrameCodecService } from './services/frame-codec.service';
 export { HttpCollabInviteTransportService } from './services/http-collab-invite-transport.service';
 export type { CollabHttpFetchFn, IHttpCollabInviteTransportConfig } from './services/http-collab-invite-transport.service';

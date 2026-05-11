@@ -59,7 +59,12 @@ export interface IPtyMultiplexerService {
   unlockDriver(sessionId: string): void;
   kick(sessionId: string, clientId: string, reason?: string): void;
 
-  attachClient(sessionId: string, clientId: string, role: SharedTerminalRole, displayName?: string): void;
+  /**
+   * Attach a participant. Optional `publicKey` (P5.5.3) registers the client's X25519
+   * public key so the daemon can wrap the per-session symmetric key for them on
+   * subsequent rekeys. Omit for legacy paired-device flows (no rekey participation).
+   */
+  attachClient(sessionId: string, clientId: string, role: SharedTerminalRole, displayName?: string, publicKey?: Uint8Array): void;
   detachClient(sessionId: string, clientId: string): void;
 
   /**
@@ -69,6 +74,33 @@ export interface IPtyMultiplexerService {
   handleInbound(sessionId: string, clientId: string, frame: IFrame): void;
 
   clientHeartbeat(sessionId: string, clientId: string): void;
+
+  /**
+   * Current per-session symmetric key (32 bytes) used to encrypt PTY frames (P5.5.3).
+   * Generated lazily on the first attach with a registered publicKey; null when no
+   * keyed participant has joined yet.
+   */
+  getSessionKey(sessionId: string): Uint8Array | null;
+
+  /**
+   * Rotate the session key, broadcasting the new key wrapped per-recipient via NaCl box
+   * (daemon long-term private + recipient public key). Returns the count of recipients
+   * we successfully wrapped for; clients without a registered pubkey are skipped.
+   *
+   * Triggered automatically on kick and on the detach of any participant. Caller may
+   * also invoke manually (settings UI "rotate key now").
+   */
+  rekey(sessionId: string, reason: RekeyReason): Promise<IRekeyResult>;
+}
+
+export type RekeyReason = 'manual' | 'kick' | 'detach';
+
+export interface IRekeyResult {
+  readonly sessionId: string;
+  readonly reason: RekeyReason;
+  readonly recipientCount: number;
+  /** Skipped because no publicKey was registered at attach time. */
+  readonly unwrappedClientIds: readonly string[];
 }
 
 export interface IRegisteredPty {

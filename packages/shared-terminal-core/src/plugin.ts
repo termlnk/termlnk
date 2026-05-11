@@ -20,9 +20,10 @@ import type { ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
 // transports need at runtime — same singleton SyncCorePlugin already binds.
 import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
 import { DependentOn, IConfigService, ILogService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
-import { ICollabInviteTransportService, IFrameCodecService, IPairingService, IPtyMultiplexerService, ISharedSessionRecordingService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { ICollabInviteTransportService, IDaemonKeypairService, IFrameCodecService, IPairingService, IPtyMultiplexerService, ISharedSessionRecordingService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { SHARED_TERMINAL_CORE_PLUGIN_NAME } from './common/constants';
 import { SharedTerminalCryptoService } from './services/crypto.service';
+import { DaemonKeypairService } from './services/daemon-keypair.service';
 import { FrameCodecService } from './services/frame-codec.service';
 import { HttpCollabInviteTransportService } from './services/http-collab-invite-transport.service';
 import { PairingService } from './services/pairing.service';
@@ -51,6 +52,7 @@ export class SharedTerminalCorePlugin extends Plugin {
     const dependencies: Dependency[] = [
       [ISharedTerminalCryptoService, { useClass: SharedTerminalCryptoService }],
       [IFrameCodecService, { useClass: FrameCodecService }],
+      [IDaemonKeypairService, { useClass: DaemonKeypairService }],
       [IPtyMultiplexerService, { useClass: PtyMultiplexerService }],
       [IPairingService, { useClass: PairingService }],
       [ISharedTerminalTransportService, { useClass: RelayTransportService }],
@@ -73,6 +75,7 @@ export class SharedTerminalCorePlugin extends Plugin {
     touchDependencies(this._injector, [
       [ISharedTerminalCryptoService],
       [IFrameCodecService],
+      [IDaemonKeypairService],
       [IPtyMultiplexerService],
       [IPairingService],
       [ISharedTerminalTransportService],

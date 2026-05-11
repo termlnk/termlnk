@@ -81,6 +81,21 @@ export class SharedTerminalCryptoService implements ISharedTerminalCryptoService
     return nacl.randomBytes(nacl.secretbox.keyLength);
   }
 
+  wrapSessionKey(sessionKey: Uint8Array, recipientPublicKey: Uint8Array, mySecretKey: Uint8Array): Uint8Array {
+    if (sessionKey.length !== nacl.secretbox.keyLength) {
+      throw new Error(`[SharedTerminalCryptoService] sessionKey must be ${nacl.secretbox.keyLength} bytes, got ${sessionKey.length}`);
+    }
+    return this.box(sessionKey, recipientPublicKey, mySecretKey);
+  }
+
+  unwrapSessionKey(payload: Uint8Array, senderPublicKey: Uint8Array, mySecretKey: Uint8Array): Uint8Array {
+    const plain = this.boxOpen(payload, senderPublicKey, mySecretKey);
+    if (plain.length !== nacl.secretbox.keyLength) {
+      throw new Error(`[SharedTerminalCryptoService] unwrapped sessionKey is not ${nacl.secretbox.keyLength} bytes (got ${plain.length}); refusing to use`);
+    }
+    return plain;
+  }
+
   randomNonce(): Uint8Array {
     return nacl.randomBytes(nacl.box.nonceLength);
   }

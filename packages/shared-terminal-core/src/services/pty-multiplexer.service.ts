@@ -13,11 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRecordingHandle, IRegisteredPty, ISessionSnapshot, ISharedSession, ISharedSessionRecordingService, SharedTerminalRole } from '@termlnk/shared-terminal';
+import type { IDaemonKeypairService, IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRecordingHandle, IRegisteredPty, IRekeyResult, ISessionSnapshot, ISharedSession, ISharedSessionRecordingService, ISharedTerminalCryptoService, RekeyReason, SharedTerminalRole } from '@termlnk/shared-terminal';
 import type { Subscription } from 'rxjs';
-import { Disposable, ILogService, Optional } from '@termlnk/core';
-import { FrameChannel, FrameFlag, ISharedSessionRecordingService as ISharedSessionRecordingServiceId, isWriterRole, requiresMandatoryRecording, SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS, SHARED_TERMINAL_RING_BUFFER_BYTES, SharedSessionState } from '@termlnk/shared-terminal';
+import { Disposable, ILogService, Inject, Optional } from '@termlnk/core';
+import { FrameChannel, FrameFlag, IDaemonKeypairService as IDaemonKeypairServiceId, ISharedSessionRecordingService as ISharedSessionRecordingServiceId, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, isWriterRole, requiresMandatoryRecording, SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS, SHARED_TERMINAL_RING_BUFFER_BYTES, SharedSessionState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
+import { bytesToBase64Url } from '../utils/encoding';
 import { HeadlessSession } from '../utils/headless-session';
 import { RingBuffer } from '../utils/ring-buffer';
 
@@ -41,6 +42,8 @@ interface ISessionRuntime {
   rows: number;
   readonly seqCounters: Record<FrameChannel, number>;
   recordingHandle: IRecordingHandle | null;
+  /** Current 32-byte symmetric session key used to encrypt PTY frames (P5.5.3). */
+  sessionKey: Uint8Array | null;
 }
 
 interface IClientEntry {
@@ -48,6 +51,8 @@ interface IClientEntry {
   readonly displayName: string;
   readonly joinedAt: number;
   lastHeartbeatAt: number;
+  /** Recipient's X25519 public key for session-key wrapping; null = legacy paired-device flow. */
+  publicKey: Uint8Array | null;
 }
 
 /**
@@ -75,6 +80,9 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
 
   constructor(
     @ILogService private readonly _logService: ILogService,
+    @Inject(ISharedTerminalCryptoServiceId) private readonly _crypto: ISharedTerminalCryptoService,
+    @Optional(IDaemonKeypairServiceId)
+    private readonly _daemonKeypair: IDaemonKeypairService | null = null,
     @Optional(ISharedSessionRecordingServiceId)
     private readonly _recordingService: ISharedSessionRecordingService | null = null
   ) {
@@ -155,6 +163,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         [FrameChannel.SessionEvent]: 0,
       },
       recordingHandle: null,
+      sessionKey: null,
     };
     this._sessions.set(source.id, runtime);
     this._syncRuntimeRecordingHandle(runtime);
@@ -226,14 +235,77 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       return;
     }
     this._sendControlToClient(sessionId, clientId, { type: 'kick', reason });
-    this.detachClient(sessionId, clientId);
+    this._detachClientInternal(runtime, clientId, 'kick');
+  }
+
+  getSessionKey(sessionId: string): Uint8Array | null {
+    const runtime = this._sessions.get(sessionId);
+    return runtime?.sessionKey ?? null;
+  }
+
+  async rekey(sessionId: string, reason: RekeyReason): Promise<IRekeyResult> {
+    const runtime = this._requireSession(sessionId);
+    runtime.sessionKey = this._crypto.generateSessionKey();
+    return this._wrapAndBroadcastSessionKey(runtime, reason);
+  }
+
+  /**
+   * Generate per-recipient wrapped keys + broadcast 'rekey' control frames. Returns the
+   * result envelope. Skips clients with no registered pubkey (legacy paired-device path).
+   */
+  private async _wrapAndBroadcastSessionKey(
+    runtime: ISessionRuntime,
+    reason: RekeyReason
+  ): Promise<IRekeyResult> {
+    const sessionKey = runtime.sessionKey;
+    if (!sessionKey) {
+      return {
+        sessionId: runtime.source.id,
+        reason,
+        recipientCount: 0,
+        unwrappedClientIds: [...runtime.clients.keys()],
+      };
+    }
+    if (!this._daemonKeypair) {
+      // Daemon keypair service was not registered (e.g. test harness). Nothing to broadcast.
+      return {
+        sessionId: runtime.source.id,
+        reason,
+        recipientCount: 0,
+        unwrappedClientIds: [...runtime.clients.keys()],
+      };
+    }
+    const daemon = await this._daemonKeypair.getOrCreate();
+    const unwrappedClientIds: string[] = [];
+    let recipientCount = 0;
+    for (const [clientId, entry] of runtime.clients) {
+      if (!entry.publicKey) {
+        unwrappedClientIds.push(clientId);
+        continue;
+      }
+      const wrapped = this._crypto.wrapSessionKey(sessionKey, entry.publicKey, daemon.secretKey);
+      this._sendControlToClient(runtime.source.id, clientId, {
+        type: 'rekey',
+        wrappedKey: bytesToBase64Url(wrapped),
+        senderPublicKey: bytesToBase64Url(daemon.publicKey),
+        reason,
+      });
+      recipientCount += 1;
+    }
+    return {
+      sessionId: runtime.source.id,
+      reason,
+      recipientCount,
+      unwrappedClientIds,
+    };
   }
 
   attachClient(
     sessionId: string,
     clientId: string,
     role: SharedTerminalRole,
-    displayName?: string
+    displayName?: string,
+    publicKey?: Uint8Array
   ): void {
     const runtime = this._requireSession(sessionId);
     if (this._requiresRecordingBeforeAttach(runtime, role)) {
@@ -244,30 +316,32 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       }).then(() => {
         const current = this._sessions.get(sessionId);
         if (current) {
-          this._attachClientRuntime(current, clientId, role, displayName);
+          this._attachClientRuntime(current, clientId, role, displayName, publicKey);
         }
       }).catch((err) => {
         this._logService.error(`[PtyMultiplexerService] mandatory recording start failed for ${runtime.source.id}:`, err);
       });
       return;
     }
-    this._attachClientRuntime(runtime, clientId, role, displayName);
+    this._attachClientRuntime(runtime, clientId, role, displayName, publicKey);
   }
 
   private _attachClientRuntime(
     runtime: ISessionRuntime,
     clientId: string,
     role: SharedTerminalRole,
-    displayName?: string
+    displayName?: string,
+    publicKey?: Uint8Array
   ): void {
     if (runtime.clients.has(clientId)) {
-      // Re-attach: refresh role and heartbeat.
+      // Re-attach: refresh role and heartbeat; keep prior pubkey unless caller supplies one.
       const existing = runtime.clients.get(clientId)!;
       runtime.clients.set(clientId, {
         role,
         displayName: displayName ?? existing.displayName,
         joinedAt: existing.joinedAt,
         lastHeartbeatAt: Date.now(),
+        publicKey: publicKey ?? existing.publicKey,
       });
       this._publishParticipants(runtime);
       return;
@@ -279,7 +353,16 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       displayName: displayName ?? clientId,
       joinedAt: now,
       lastHeartbeatAt: now,
+      publicKey: publicKey ?? null,
     });
+
+    // First keyed participant: generate the per-session symmetric key + wrap it for them.
+    if (publicKey && runtime.sessionKey === null && this._daemonKeypair) {
+      runtime.sessionKey = this._crypto.generateSessionKey();
+      // Fire-and-forget: wrap+broadcast happens via rekey() so the new client receives
+      // the wrapped K via the same control-frame path as future rotations.
+      void this._wrapAndBroadcastSessionKey(runtime, 'manual');
+    }
 
     this._refreshRuntimeState(runtime);
 
@@ -305,6 +388,21 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     if (!runtime || !runtime.clients.has(clientId)) {
       return;
     }
+    this._detachClientInternal(runtime, clientId, 'detach');
+  }
+
+  /**
+   * Common detach path. P5.5.3: forward secrecy — if the departing client had a
+   * registered pubkey (i.e. it participated in sessionKey wrapping) we rotate the key
+   * so the kicked/disconnected participant cannot continue to decrypt new traffic via a
+   * stale relay buffer.
+   */
+  private _detachClientInternal(
+    runtime: ISessionRuntime,
+    clientId: string,
+    reason: RekeyReason
+  ): void {
+    const wasKeyed = Boolean(runtime.clients.get(clientId)?.publicKey);
     runtime.clients.delete(clientId);
 
     if (runtime.driverId === clientId) {
@@ -316,12 +414,25 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
 
     this._refreshRuntimeState(runtime);
 
-    this._broadcastSessionEvent(sessionId, {
+    this._broadcastSessionEvent(runtime.source.id, {
       type: 'participant_left',
-      sessionId,
+      sessionId: runtime.source.id,
       clientId,
     });
     this._publishParticipants(runtime);
+
+    // Rotate session key only when (a) the leaving participant actually held a wrapped
+    // copy of it AND (b) there are still keyed participants to wrap the new K for.
+    if (wasKeyed && runtime.sessionKey !== null) {
+      const hasRemainingKeyed = [...runtime.clients.values()].some((entry) => entry.publicKey);
+      if (hasRemainingKeyed) {
+        runtime.sessionKey = this._crypto.generateSessionKey();
+        void this._wrapAndBroadcastSessionKey(runtime, reason);
+      } else {
+        // Last keyed participant left — drop the key so the next attach generates a fresh one.
+        runtime.sessionKey = null;
+      }
+    }
   }
 
   handleInbound(sessionId: string, clientId: string, frame: IFrame): void {

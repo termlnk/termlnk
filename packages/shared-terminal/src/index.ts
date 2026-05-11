@@ -88,9 +88,11 @@ export type {
 } from './services/collab-invite-transport.service';
 export { ICollabInviteTransportService } from './services/collab-invite-transport.service';
 export { ISharedTerminalCryptoService } from './services/crypto.service';
+export type { IPersistedDaemonKeypair } from './services/daemon-keypair.service';
+export { DAEMON_KEYPAIR_CONFIG_SUBKEY, IDaemonKeypairService } from './services/daemon-keypair.service';
 export { IFrameCodecService } from './services/frame-codec.service';
 export { IPairingService } from './services/pairing.service';
-export type { IOutboundFrame, IPtySource, IRegisteredPty } from './services/pty-multiplexer.service';
+export type { IOutboundFrame, IPtySource, IRegisteredPty, IRekeyResult, RekeyReason } from './services/pty-multiplexer.service';
 export { IPtyMultiplexerService } from './services/pty-multiplexer.service';
 export type { IRecordingHandle, IRecordingMetadata } from './services/recording.service';
 export { ISharedSessionRecordingService } from './services/recording.service';

@@ -95,4 +95,36 @@ describe('sharedTerminalCryptoService', () => {
     expect(() => crypto.deriveSharedKey(new Uint8Array(16), alice.secretKey)).toThrow();
     expect(() => crypto.deriveSharedKey(alice.publicKey, new Uint8Array(16))).toThrow();
   });
+
+  it('wrapSessionKey + unwrapSessionKey round-trip with the correct keypair pair', () => {
+    const alice = crypto.generateKeypair();
+    const bob = crypto.generateKeypair();
+    const sessionKey = crypto.generateSessionKey();
+    const wrapped = crypto.wrapSessionKey(sessionKey, bob.publicKey, alice.secretKey);
+    const unwrapped = crypto.unwrapSessionKey(wrapped, alice.publicKey, bob.secretKey);
+    expect(Array.from(unwrapped)).toEqual(Array.from(sessionKey));
+  });
+
+  it('wrapSessionKey rejects non-32-byte session keys', () => {
+    const alice = crypto.generateKeypair();
+    const bob = crypto.generateKeypair();
+    expect(() => crypto.wrapSessionKey(new Uint8Array(16), bob.publicKey, alice.secretKey)).toThrow(/32 bytes/);
+  });
+
+  it('unwrapSessionKey rejects payloads that decrypt to non-32-byte plaintext', () => {
+    const alice = crypto.generateKeypair();
+    const bob = crypto.generateKeypair();
+    // Wrap a short blob using raw box() — bypassing the wrapSessionKey length guard.
+    const shortPayload = crypto.box(new Uint8Array([1, 2, 3]), bob.publicKey, alice.secretKey);
+    expect(() => crypto.unwrapSessionKey(shortPayload, alice.publicKey, bob.secretKey)).toThrow(/not 32 bytes/);
+  });
+
+  it('unwrapSessionKey rejects mismatched recipient keys', () => {
+    const alice = crypto.generateKeypair();
+    const bob = crypto.generateKeypair();
+    const mallory = crypto.generateKeypair();
+    const sessionKey = crypto.generateSessionKey();
+    const wrapped = crypto.wrapSessionKey(sessionKey, bob.publicKey, alice.secretKey);
+    expect(() => crypto.unwrapSessionKey(wrapped, alice.publicKey, mallory.secretKey)).toThrow(/decryption failed/);
+  });
 });
