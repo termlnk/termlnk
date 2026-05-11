@@ -26,6 +26,8 @@ import { RPCPlugin } from '@termlnk/rpc';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { SettingsUIPlugin } from '@termlnk/settings-ui';
 import { SFTPUIPlugin } from '@termlnk/sftp-ui';
+import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { SharedTerminalUIPlugin } from '@termlnk/shared-terminal-ui';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
@@ -44,6 +46,7 @@ import '@termlnk/sftp-ui/global.css';
 import '@termlnk/settings-ui/global.css';
 import '@termlnk/extension-ui/global.css';
 import '@termlnk/agent-ui/global.css';
+import '@termlnk/web-renderer/global.css';
 
 export interface ICreateTermlnkConfig extends ICoreConfig {
   terminalUIConfig?: ITerminalUIConfig;
@@ -90,6 +93,8 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   core.registerPlugin(AuthUIPlugin);
   core.registerPlugin(SyncPlugin);
   core.registerPlugin(SyncUIPlugin);
+  core.registerPlugin(SharedTerminalPlugin);
+  core.registerPlugin(SharedTerminalUIPlugin);
   core.registerPlugin(UIPlugin, {
     container: ref!,
   });

@@ -31,6 +31,8 @@
     "@termlnk/rpc-client": "workspace:*",
     "@termlnk/settings-ui": "workspace:*",
     "@termlnk/sftp-ui": "workspace:*",
+    "@termlnk/shared-terminal": "workspace:*",
+    "@termlnk/shared-terminal-ui": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/sync-ui": "workspace:*",
     "@termlnk/terminal": "workspace:*",

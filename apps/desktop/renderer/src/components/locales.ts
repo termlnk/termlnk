@@ -55,6 +55,11 @@ import sftpuijaJP from '@termlnk/sftp-ui/locale/ja-JP';
 import sftpuikoKR from '@termlnk/sftp-ui/locale/ko-KR';
 import sftpuizhCN from '@termlnk/sftp-ui/locale/zh-CN';
 import sftpuizhTW from '@termlnk/sftp-ui/locale/zh-TW';
+import sharedterminaluienUS from '@termlnk/shared-terminal-ui/locale/en-US';
+import sharedterminaluijaJP from '@termlnk/shared-terminal-ui/locale/ja-JP';
+import sharedterminaluikoKR from '@termlnk/shared-terminal-ui/locale/ko-KR';
+import sharedterminaluizhCN from '@termlnk/shared-terminal-ui/locale/zh-CN';
+import sharedterminaluizhTW from '@termlnk/shared-terminal-ui/locale/zh-TW';
 import syncuienUS from '@termlnk/sync-ui/locale/en-US';
 import syncuijaJP from '@termlnk/sync-ui/locale/ja-JP';
 import syncuikoKR from '@termlnk/sync-ui/locale/ko-KR';
@@ -81,6 +86,7 @@ export const enUS = merge(
   islanduienUS,
   settingsuienUS,
   sftpuienUS,
+  sharedterminaluienUS,
   syncuienUS,
   terminaluienUS,
   uienUS
@@ -95,6 +101,7 @@ export const zhCN = merge(
   islanduizhCN,
   settingsuizhCN,
   sftpuizhCN,
+  sharedterminaluizhCN,
   syncuizhCN,
   terminaluizhCN,
   uizhCN
@@ -109,6 +116,7 @@ export const jaJP = merge(
   islanduijaJP,
   settingsuijaJP,
   sftpuijaJP,
+  sharedterminaluijaJP,
   syncuijaJP,
   terminaluijaJP,
   uijaJP
@@ -123,6 +131,7 @@ export const koKR = merge(
   islanduikoKR,
   settingsuikoKR,
   sftpuikoKR,
+  sharedterminaluikoKR,
   syncuikoKR,
   terminaluikoKR,
   uikoKR
@@ -137,6 +146,7 @@ export const zhTW = merge(
   islanduizhTW,
   settingsuizhTW,
   sftpuizhTW,
+  sharedterminaluizhTW,
   syncuizhTW,
   terminaluizhTW,
   uizhTW

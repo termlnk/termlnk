@@ -250,6 +250,9 @@ importers:
       '@termlnk/island-core':
         specifier: workspace:*
         version: link:../../../packages/island-core
+      '@termlnk/network':
+        specifier: workspace:*
+        version: link:../../../packages/network
       '@termlnk/rpc':
         specifier: workspace:*
         version: link:../../../packages/rpc
@@ -482,6 +485,12 @@ importers:
       '@termlnk/sftp-ui':
         specifier: workspace:*
         version: link:../../../packages/sftp-ui
+      '@termlnk/shared-terminal':
+        specifier: workspace:*
+        version: link:../../../packages/shared-terminal
+      '@termlnk/shared-terminal-ui':
+        specifier: workspace:*
+        version: link:../../../packages/shared-terminal-ui
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../../../packages/sync
@@ -677,6 +686,12 @@ importers:
       '@termlnk/sftp-ui':
         specifier: workspace:*
         version: link:../../../packages/sftp-ui
+      '@termlnk/shared-terminal':
+        specifier: workspace:*
+        version: link:../../../packages/shared-terminal
+      '@termlnk/shared-terminal-ui':
+        specifier: workspace:*
+        version: link:../../../packages/shared-terminal-ui
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../../../packages/sync
@@ -1891,6 +1906,43 @@ importers:
       tweetnacl:
         specifier: ^1.0.3
         version: 1.0.3
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  packages/shared-terminal-ui:
+    dependencies:
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../core
+      '@termlnk/design':
+        specifier: workspace:*
+        version: link:../design
+      '@termlnk/settings-ui':
+        specifier: workspace:*
+        version: link:../settings-ui
+      '@termlnk/shared-terminal':
+        specifier: workspace:*
+        version: link:../shared-terminal
+      lucide-react:
+        specifier: ^1.14.0
+        version: 1.14.0(react@19.2.5)
+      react:
+        specifier: ^19.2.5
+        version: 19.2.5
     devDependencies:
       '@termlnk/shared':
         specifier: workspace:*

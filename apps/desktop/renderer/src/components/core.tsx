@@ -27,6 +27,8 @@ import { RPCPlugin } from '@termlnk/rpc';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { SettingsUIPlugin } from '@termlnk/settings-ui';
 import { SFTPUIPlugin } from '@termlnk/sftp-ui';
+import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { SharedTerminalUIPlugin } from '@termlnk/shared-terminal-ui';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
@@ -73,6 +75,8 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   core.registerPlugin(AuthUIPlugin);
   core.registerPlugin(SyncPlugin);
   core.registerPlugin(SyncUIPlugin);
+  core.registerPlugin(SharedTerminalPlugin);
+  core.registerPlugin(SharedTerminalUIPlugin);
   core.registerPlugin(UIPlugin, {
     container: ref!,
   });
