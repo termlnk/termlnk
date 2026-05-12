@@ -14,36 +14,15 @@
  */
 
 import type { IMobileHost } from '../src/sync/mobile-sync-pull.service';
-import { IMasterKeyService, ITokenStorageService } from '@termlnk/auth';
-import { ILogService } from '@termlnk/core';
 import { Stack, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { useAuthService, useCoreContext } from '../src/core/core-context';
-import { MobileSyncPullService } from '../src/sync/mobile-sync-pull.service';
-
-const CLIENT_ID = 'mobile-app';
+import { useAuthService, useSyncPullService } from '../src/core/core-context';
 
 export default function Hosts() {
-  const { core } = useCoreContext();
   const auth = useAuthService();
   const router = useRouter();
-
-  const pullService = useMemo(() => {
-    const injector = core.getInjector();
-    const masterKey = injector.get(IMasterKeyService);
-    const tokenStorage = injector.get(ITokenStorageService);
-    const logService = injector.get(ILogService);
-    const cloudBaseUrl = typeof process.env.EXPO_PUBLIC_CLOUD_BASE_URL === 'string'
-      ? process.env.EXPO_PUBLIC_CLOUD_BASE_URL
-      : undefined;
-    return new MobileSyncPullService(
-      { cloudBaseUrl, clientId: CLIENT_ID },
-      masterKey,
-      tokenStorage,
-      logService
-    );
-  }, [core]);
+  const pullService = useSyncPullService();
 
   const [hosts, setHosts] = useState<readonly IMobileHost[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,9 +43,10 @@ export default function Hosts() {
   useEffect(() => {
     const sub = pullService.snapshot$.subscribe((snap) => setHosts(snap.hosts));
     onRefresh();
+    // Pull service is a singleton inside CoreContext — do NOT dispose here, other
+    // screens (host detail, settings) share the same snapshot stream.
     return () => {
       sub.unsubscribe();
-      pullService.dispose();
     };
   }, [pullService, onRefresh]);
 
@@ -81,7 +61,18 @@ export default function Hosts() {
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ title: 'Hosts', headerRight: () => (
-        <Pressable onPress={onSignOut} hitSlop={8}><Text style={styles.signOut}>Sign out</Text></Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => router.push('/settings')}
+            hitSlop={8}
+            style={({ pressed }) => pressed && { opacity: 0.7 }}
+          >
+            <Text style={styles.headerLink}>Settings</Text>
+          </Pressable>
+          <Pressable onPress={onSignOut} hitSlop={8}>
+            <Text style={styles.signOut}>Sign out</Text>
+          </Pressable>
+        </View>
       ) }} />
       {error && <Text style={styles.error}>{error}</Text>}
       <FlatList
@@ -90,12 +81,15 @@ export default function Hosts() {
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor="#e5e7eb" />}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <Pressable
+            onPress={() => router.push({ pathname: '/host/[id]', params: { id: item.id } })}
+            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+          >
             <Text style={styles.rowLabel}>{item.label}</Text>
             <Text style={styles.rowMeta}>
               {item.type === 'group' ? 'Group' : `${item.addr ?? '?'}:${item.port ?? 22}`}
             </Text>
-          </View>
+          </Pressable>
         )}
         ListEmptyComponent={
           loading
@@ -111,9 +105,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0a0a0a' },
   list: { paddingVertical: 8 },
   row: { paddingHorizontal: 16, paddingVertical: 14, borderBottomColor: '#1f1f1f', borderBottomWidth: StyleSheet.hairlineWidth },
+  rowPressed: { backgroundColor: '#171717' },
   rowLabel: { color: '#e5e7eb', fontSize: 15, fontWeight: '500' },
   rowMeta: { color: '#9ca3af', fontSize: 12, marginTop: 4 },
   empty: { color: '#9ca3af', textAlign: 'center', marginTop: 48, fontSize: 13 },
   signOut: { color: '#3b82f6', fontSize: 14, fontWeight: '500', paddingHorizontal: 12 },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  headerLink: { color: '#9ca3af', fontSize: 14, fontWeight: '500', paddingHorizontal: 12 },
   error: { color: '#f87171', textAlign: 'center', padding: 12, backgroundColor: '#1f0a0a' },
 });
