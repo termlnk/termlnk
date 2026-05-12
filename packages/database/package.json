@@ -51,6 +51,7 @@
     "drizzle:studio": "ELECTRON_RUN_AS_NODE=1 ../../node_modules/.bin/electron ../../node_modules/drizzle-kit/bin.cjs studio --config drizzle.config.ts"
   },
   "peerDependencies": {
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "better-sqlite3": "^12.9.0",
@@ -58,6 +59,7 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "better-sqlite3": "^12.9.0",

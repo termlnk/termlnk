@@ -26,6 +26,7 @@ export { IAuthClientService } from './services/auth-client.service';
 export { IAuthService } from './services/auth.service';
 export { IDeviceNameProvider } from './services/device-name-provider.service';
 export { IIdleProbe } from './services/idle-probe.service';
+export { IAuthKeyValueStorage } from './services/key-value-storage.service';
 export { IMasterKeyService } from './services/master-key.service';
 export { ISrpClientService } from './services/srp-client.service';
 export type { ISrpClientSession, ISrpEnrollment, ISrpEphemeral } from './services/srp-client.service';

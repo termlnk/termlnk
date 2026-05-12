@@ -17,6 +17,7 @@ import type { Dependency, Injector } from '@termlnk/core';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { IDatabaseConfig } from './controllers/config.schema';
 import type * as entities from './entities';
+import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
 import { DEFAULT_DB_ADAPTOR } from './config/config';
 import { DATABASE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
@@ -35,6 +36,7 @@ import { SyncFieldMetaRepository } from './repositories/sync-field-meta';
 import { SyncOutboxRepository } from './repositories/sync-outbox';
 import { SyncRowMetaRepository } from './repositories/sync-row-meta';
 import { TerminalSessionBackupRepository } from './repositories/terminal-session-backup';
+import { ConfigRepoAuthKeyValueStorage } from './services/config-repo-auth-key-value-storage.service';
 import { IDBAdaptorService } from './services/db-adaptor.service';
 import { ISecretCipherService } from './services/secret-cipher.service';
 import { LocalDerivedSecretCipher } from './services/secret-cipher/local-derived.cipher';
@@ -82,6 +84,11 @@ export class DatabasePlugin extends Plugin {
       // Default to the cross-platform fallback; apps/desktop/main overrides this with
       // SafeStorageCipher via plugin config.
       [ISecretCipherService, { useClass: LocalDerivedSecretCipher }],
+      // Auth-core's TokenStorageService persists tokens via IAuthKeyValueStorage. The
+      // database plugin owns this binding on Electron main / web server because we have
+      // ConfigRepository + SecretCipher already wired here. React Native binds an
+      // expo-secure-store adapter inside its own plugin chain.
+      [IAuthKeyValueStorage, { useClass: ConfigRepoAuthKeyValueStorage }],
       [BackupRepository, { useClass: BackupRepository }],
       [ConfigRepository, { useClass: ConfigRepository }],
       [ChatRepository, { useClass: ChatRepository }],

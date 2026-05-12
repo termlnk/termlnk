@@ -1,0 +1,61 @@
+{
+  "name": "@termlnk/mobile-app",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "description": "termlnk-mobile — Expo SDK 55 fat client (P6.1)",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "prebuild": "expo prebuild --clean",
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/auth-core": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "@wendellhu/redi": "1.1.1",
+    "expo": "~55.0.23",
+    "expo-constants": "~55.0.16",
+    "expo-dev-client": "~55.0.32",
+    "expo-device": "~55.0.16",
+    "expo-linking": "~55.0.15",
+    "expo-router": "~55.0.14",
+    "expo-secure-store": "~55.0.13",
+    "expo-splash-screen": "~55.0.20",
+    "expo-status-bar": "~55.0.6",
+    "hash-wasm": "^4.12.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-native": "0.83.9",
+    "react-native-gesture-handler": "~2.31.2",
+    "react-native-get-random-values": "^2.0.0",
+    "react-native-libsodium": "^1.7.0",
+    "react-native-reanimated": "~4.3.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.25.0",
+    "rxjs": "^7.8.2",
+    "secure-remote-password": "^0.3.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.5",
+    "@termlnk/shared": "workspace:*",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "babel-preset-expo": "~55.0.21",
+    "typescript": "^6.0.3"
+  }
+}

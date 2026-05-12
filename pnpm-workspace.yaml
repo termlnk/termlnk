@@ -9,6 +9,8 @@ packages:
   - apps/web/server
   - apps/web/renderer
   - apps/web/plugins/*
+  - apps/mobile
+  - apps/mobile/plugins/*
 
 ignoredBuiltDependencies:
   - javascript-obfuscator
@@ -21,6 +23,7 @@ onlyBuiltDependencies:
   - fs-xattr
   - macos-alias
   - protobufjs
+  - react-native-libsodium
   - sharp
 
 overrides:

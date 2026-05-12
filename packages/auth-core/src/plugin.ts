@@ -17,13 +17,12 @@ import type { IDeviceNameProvider as IDeviceNameProviderType, IMasterKeyService 
 import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
 import { AuthPlugin, IAuthService, IDeviceNameProvider, IIdleProbe, IMasterKeyService, ISrpClientService, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
 import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
-import { DatabasePlugin } from '@termlnk/database';
 import { IdleLockController } from './controllers/idle-lock.controller';
+import { DefaultDeviceNameProvider } from './services/default-device-name-provider.service';
 import { HttpAuthService } from './services/http-auth.service';
 import { HttpTokenRefresher } from './services/http-token-refresher.service';
 import { NoopIdleProbe } from './services/idle-probe.service';
 import { MasterKeyService } from './services/master-key.service';
-import { OsHostnameDeviceNameProvider } from './services/os-hostname-device-name-provider.service';
 import { SrpClientService } from './services/srp-client.service';
 import { TokenManager } from './services/token-manager.service';
 import { TokenStorageService } from './services/token-storage.service';
@@ -39,7 +38,11 @@ export interface IAuthCorePluginConfig {
   override?: DependencyOverride;
 }
 
-@DependentOn(DatabasePlugin, AuthPlugin)
+// IAuthKeyValueStorage is the only host-platform contract this plugin requires the
+// caller to bind in advance (Electron main / web server bind a SQLite-backed adapter
+// via DatabasePlugin; React Native binds an expo-secure-store adapter). Auth-core does
+// not @DependentOn DatabasePlugin so the package stays free of native-binding deps.
+@DependentOn(AuthPlugin)
 export class AuthCorePlugin extends Plugin {
   static override pluginName = AUTH_CORE_PLUGIN_NAME;
 
@@ -56,8 +59,9 @@ export class AuthCorePlugin extends Plugin {
       [ISrpClientService, { useClass: SrpClientService }],
       [ITokenStorageService, { useClass: TokenStorageService }],
       [TokenManager, { useClass: TokenManager }],
-      // Defaults for Node main; browser SPA / RN apps must override via plugin config.
-      [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
+      // Platform-agnostic fallback (returns 'Unknown device'). Electron main injects
+      // OsHostnameDeviceNameProvider via override; mobile injects ExpoDeviceNameProvider.
+      [IDeviceNameProvider, { useClass: DefaultDeviceNameProvider }],
       // Safe default for non-Electron contexts; ElectronMainPlugin overrides with a
       // powerMonitor-backed implementation.
       [IIdleProbe, { useClass: NoopIdleProbe }],

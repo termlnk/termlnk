@@ -14,41 +14,37 @@
  */
 
 import type { ITokenPair, ITokenStorageService } from '@termlnk/auth';
-import { AUTH_PLUGIN_CONFIG_KEY } from '@termlnk/auth';
+import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
-import { ConfigRepository, ISecretCipherService } from '@termlnk/database';
 
-const TOKENS_FIELD = 'tokens';
+const TOKENS_KEY = 'tokens';
 
-// Persists the ITokenPair as a single SecretCipher-encrypted JSON blob under the
-// `auth.config.tokens` subKey. Storing one ciphertext (not separate access/refresh fields)
-// keeps the schema flat. Decrypt failures (cipher rotation, corruption) treat the user as
-// logged out and surface a warning — better UX than crashing on stale ciphertext.
+// Serializes the ITokenPair as a single JSON blob under the `tokens` key in whatever
+// IAuthKeyValueStorage the host platform binds — desktop/web wrap ConfigRepository +
+// SecretCipher; React Native uses expo-secure-store. Parsing failures (corruption,
+// schema drift) treat the user as logged out instead of crashing.
 export class TokenStorageService extends Disposable implements ITokenStorageService {
   constructor(
-    @Inject(ISecretCipherService) private readonly _cipher: ISecretCipherService,
-    @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
+    @Inject(IAuthKeyValueStorage) private readonly _storage: IAuthKeyValueStorage,
     @Inject(ILogService) private readonly _logService: ILogService
   ) {
     super();
   }
 
   async save(tokens: ITokenPair): Promise<void> {
-    const encrypted = this._cipher.encrypt(JSON.stringify(tokens));
-    await this._configRepo.setField(AUTH_PLUGIN_CONFIG_KEY, TOKENS_FIELD, encrypted);
+    await this._storage.setString(TOKENS_KEY, JSON.stringify(tokens));
   }
 
   async load(): Promise<ITokenPair | null> {
-    const encrypted = await this._configRepo.getField<string>(AUTH_PLUGIN_CONFIG_KEY, TOKENS_FIELD);
-    if (!encrypted) {
+    const raw = await this._storage.getString(TOKENS_KEY);
+    if (!raw) {
       return null;
     }
     try {
-      const json = this._cipher.decrypt(encrypted);
-      return JSON.parse(json) as ITokenPair;
+      return JSON.parse(raw) as ITokenPair;
     } catch (err) {
       this._logService.warn(
-        '[TokenStorageService] failed to decrypt persisted tokens; treating as logged out:',
+        '[TokenStorageService] failed to parse persisted tokens; treating as logged out:',
         err
       );
       return null;
@@ -56,6 +52,6 @@ export class TokenStorageService extends Disposable implements ITokenStorageServ
   }
 
   async clear(): Promise<void> {
-    await this._configRepo.deleteField(AUTH_PLUGIN_CONFIG_KEY, TOKENS_FIELD);
+    await this._storage.deleteKey(TOKENS_KEY);
   }
 }

@@ -20,8 +20,8 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
 import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
-import { AuthPlugin, IIdleProbe } from '@termlnk/auth';
-import { AuthCorePlugin } from '@termlnk/auth-core';
+import { AuthPlugin, IDeviceNameProvider, IIdleProbe } from '@termlnk/auth';
+import { AuthCorePlugin, OsHostnameDeviceNameProvider } from '@termlnk/auth-core';
 import { Core, IUpdaterService, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
 import { ElectronPlugin } from '@termlnk/electron';
@@ -233,8 +233,12 @@ app.whenReady().then(async () => {
   core.registerPlugin(AuthCorePlugin, {
     // powerMonitor-backed probe makes autoLockIdleMinutes effective on Electron;
     // auth-core's NoopIdleProbe stays the default for pure Node hosts.
+    // OsHostnameDeviceNameProvider lifts hostname() from node:os for device list
+    // entries — auth-core itself defaults to a platform-agnostic 'Unknown device' so
+    // the package stays free of node:os imports (mobile would crash in Metro).
     override: [
       [IIdleProbe, { useClass: ElectronIdleProbe }],
+      [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
     ],
   });
   core.registerPlugin(SyncPlugin);

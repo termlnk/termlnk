@@ -64,8 +64,8 @@ import { join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
-import { AuthPlugin } from '@termlnk/auth';
-import { AuthCorePlugin } from '@termlnk/auth-core';
+import { AuthPlugin, IDeviceNameProvider } from '@termlnk/auth';
+import { AuthCorePlugin, OsHostnameDeviceNameProvider } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, LocalDerivedSecretCipher, SQLiteAdaptor } from '@termlnk/database';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
@@ -130,6 +130,12 @@ async function bootstrap(): Promise<void> {
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl: process.env.TERMLNK_CLOUD_BASE_URL,
+    // OsHostnameDeviceNameProvider lifts hostname() from node:os for device list
+    // entries — auth-core defaults to a platform-agnostic 'Unknown device' so the
+    // package itself stays free of node:os imports.
+    override: [
+      [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
+    ],
   });
   core.registerPlugin(SyncPlugin);
   core.registerPlugin(SyncCorePlugin, {
