@@ -546,6 +546,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@dylankenneally/react-native-ssh-sftp':
+        specifier: ^1.7.0
+        version: 1.7.0(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.5))
       '@noble/ciphers':
         specifier: ^2.2.0
         version: 2.2.0
@@ -3454,6 +3457,12 @@ packages:
 
   '@drizzle-team/brocli@0.11.0':
     resolution: {integrity: sha512-hD3pekGiPg0WPCCGAZmusBBJsDqGUR66Y452YgQsZOnkdQ7ViEPKuyP4huUGEZQefp8g34RRodXYmJ2TbCH+tg==}
+
+  '@dylankenneally/react-native-ssh-sftp@1.7.0':
+    resolution: {integrity: sha512-gk7sBBJa+0QBlRP+ZmJbdBr0QJz+/JARbAIopky5ffjGKCmOlN5iG2f3x3jHmlKQNa0U9zs3XmYx0WcLt7pmYw==}
+    engines: {node: '>=18.16.0 <=24', npm: '>=9.5.0 <=11'}
+    peerDependencies:
+      react-native: '*'
 
   '@e18e/eslint-plugin@0.3.0':
     resolution: {integrity: sha512-hHgfpxsrZ2UYHcicA+tGZnmk19uJTaye9VH79O+XS8R4ona2Hx3xjhXghclNW58uXMk3xXlbYEOMr8thsoBmWg==}
@@ -17091,6 +17100,10 @@ snapshots:
   '@dprint/toml@0.7.0': {}
 
   '@drizzle-team/brocli@0.11.0': {}
+
+  '@dylankenneally/react-native-ssh-sftp@1.7.0(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.5))':
+    dependencies:
+      react-native: 0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.5)
 
   '@e18e/eslint-plugin@0.3.0(eslint@10.3.0(jiti@2.6.1))':
     dependencies:
