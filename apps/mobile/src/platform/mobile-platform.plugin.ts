@@ -14,8 +14,9 @@
  */
 
 import type { Dependency, Injector } from '@termlnk/core';
-import { IAuthKeyValueStorage, IDeviceNameProvider } from '@termlnk/auth';
+import { IAuthKeyValueStorage, IDeviceNameProvider, IIdleProbe } from '@termlnk/auth';
 import { InjectSelf, Plugin, registerDependencies } from '@termlnk/core';
+import { ExpoAppStateIdleProbe } from './expo-app-state-idle-probe.service';
 import { ExpoDeviceNameProvider } from './expo-device-name-provider.service';
 import { ExpoSecureStoreAuthKeyValueStorage } from './expo-secure-store-auth-key-value-storage.service';
 
@@ -40,6 +41,9 @@ export class MobilePlatformPlugin extends Plugin {
     const dependencies: Dependency[] = [
       [IAuthKeyValueStorage, { useClass: ExpoSecureStoreAuthKeyValueStorage }],
       [IDeviceNameProvider, { useClass: ExpoDeviceNameProvider }],
+      // AppState-derived idle probe: time-in-background → IdleLockController auto-locks
+      // master key after IAuthPluginConfig.autoLockIdleMinutes minutes.
+      [IIdleProbe, { useClass: ExpoAppStateIdleProbe }],
     ];
     registerDependencies(this._injector, dependencies);
   }

@@ -52,7 +52,10 @@ export function createMobileCore(): Core {
   });
 
   core.registerPlugin(MobilePlatformPlugin);
-  core.registerPlugin(AuthPlugin);
+  // 5-minute auto-lock matches §7.3.2: master key drops out of memory after the app has
+  // been backgrounded for 5 minutes idle. ExpoAppStateIdleProbe drives the counter via
+  // AppState.addEventListener; IdleLockController in @termlnk/auth-core polls and locks.
+  core.registerPlugin(AuthPlugin, { autoLockIdleMinutes: 5 });
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl: env.cloudBaseUrl,
   });

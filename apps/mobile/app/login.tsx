@@ -13,10 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IBiometricAvailability } from '../src/platform/biometric.service';
 import { Stack, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuthService } from '../src/core/core-context';
+import { BiometricService } from '../src/platform/biometric.service';
 
 export default function Login() {
   const auth = useAuthService();
@@ -26,6 +28,12 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [biometric, setBiometric] = useState<IBiometricAvailability | null>(null);
+
+  useEffect(() => {
+    const service = new BiometricService();
+    service.getAvailability().then(setBiometric).catch(() => setBiometric(null));
+  }, []);
 
   const onSubmit = async () => {
     if (!auth || busy) {
@@ -84,6 +92,14 @@ export default function Login() {
 
         {error && <Text style={styles.error}>{error}</Text>}
 
+        {biometric?.capability === 'available' && (
+          <Text style={styles.biometricHint}>
+            {biometric.displayName}
+            {' '}
+            unlock will be available after first sign-in. (v1.1)
+          </Text>
+        )}
+
         <Pressable
           onPress={onSubmit}
           disabled={busy || !email || !password}
@@ -104,6 +120,7 @@ const styles = StyleSheet.create({
   label: { color: '#9ca3af', fontSize: 12, marginBottom: 6, marginTop: 12 },
   input: { backgroundColor: '#262626', color: '#e5e7eb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   error: { color: '#f87171', fontSize: 13, marginTop: 12 },
+  biometricHint: { color: '#3b82f6', fontSize: 12, marginTop: 12 },
   button: { backgroundColor: '#3b82f6', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 20 },
   buttonDisabled: { opacity: 0.5 },
   buttonPressed: { opacity: 0.8 },
