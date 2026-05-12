@@ -33,6 +33,8 @@
       "expo-router",
       "expo-secure-store",
       "expo-local-authentication",
+      "expo-document-picker",
+      "expo-file-system",
       "react-native-libsodium"
     ],
     "experiments": {
