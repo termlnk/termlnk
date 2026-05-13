@@ -61,8 +61,10 @@ export default function InviteScreen() {
         <View style={styles.card}>
           <Text style={styles.title}>Invalid invitation</Text>
           <Text style={styles.body}>
-            This screen expects an invitation URL of the form{' '}
-            <Text style={styles.code}>termlnk://invite/&lt;id&gt;#&lt;key&gt;</Text>.
+            This screen expects an invitation URL of the form
+            {' '}
+            <Text style={styles.code}>termlnk://invite/&lt;id&gt;#&lt;key&gt;</Text>
+            .
             The link you opened did not carry a valid session identifier.
           </Text>
           <Pressable onPress={() => router.replace('/hosts')} style={styles.button}>
@@ -75,8 +77,14 @@ export default function InviteScreen() {
         <View style={styles.card}>
           <Text style={styles.title}>Collaborative session</Text>
           <Text style={styles.body}>
-            You have been invited to join session{' '}
-            <Text style={styles.code}>{invite.inviteId.slice(0, 8)}…</Text> as a peer of
+            You have been invited to join session
+            {' '}
+            <Text style={styles.code}>
+              {invite.inviteId.slice(0, 8)}
+              …
+            </Text>
+            {' '}
+            as a peer of
             the inviter's terminal.
           </Text>
           <Text style={styles.note}>

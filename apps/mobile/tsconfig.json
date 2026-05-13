@@ -4,17 +4,17 @@
     "jsx": "react-native",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
     "types": [
       "node",
       "react",
       "react-native"
     ],
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    }
+    "allowImportingTsExtensions": true
   },
   "include": [
     "src/**/*",

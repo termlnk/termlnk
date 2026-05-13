@@ -13,8 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMobileHost } from '../../../src/sync/mobile-sync-pull.service';
 import type { ISftpEntry } from '../../../src/sftp/mobile-sftp-client.service';
+import type { IMobileHost } from '../../../src/sync/mobile-sync-pull.service';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -100,7 +100,10 @@ export default function SftpScreen() {
           keyExtractor={(item) => `${path}/${item.filename}`}
           renderItem={({ item }) => (
             <View style={styles.row}>
-              <Text style={styles.rowLabel}>{item.isDirectory ? '📁 ' : '📄 '}{item.filename}</Text>
+              <Text style={styles.rowLabel}>
+                {item.isDirectory ? '📁 ' : '📄 '}
+                {item.filename}
+              </Text>
               <Text style={styles.rowMeta}>
                 {item.isDirectory ? 'Directory' : `${item.fileSize.toLocaleString()} B`}
               </Text>

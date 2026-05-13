@@ -13,15 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMobileHost } from '../../../src/sync/mobile-sync-pull.service';
 import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.service';
+import type { IMobileHost } from '../../../src/sync/mobile-sync-pull.service';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSyncPullService } from '../../../src/core/core-context';
-import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
 import { buildShellResumptionCommand } from '../../../src/ssh/mobile-shell-resumption';
+import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
 import { buildXtermHtml, xtermBridge } from '../../../src/ssh/xterm-webview-html';
 
 type ConnectState = 'awaiting-credentials' | 'connecting' | 'connected' | 'error';
