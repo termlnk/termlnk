@@ -80,8 +80,8 @@
   "devDependencies": {
     "@termlnk/core": "workspace:*",
     "@termlnk/shared": "workspace:*",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.10",

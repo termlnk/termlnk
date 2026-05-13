@@ -29,8 +29,8 @@ onlyBuiltDependencies:
 overrides:
   '@types/react': ^19.2.14
   '@types/react-dom': ^19.2.3
-  react: ^19.2.5
-  react-dom: ^19.2.5
+  react: ^19.2.6
+  react-dom: ^19.2.6
   electron: 41.5.0
   tar: ^7.5.13
   undici: ^8.2.0
