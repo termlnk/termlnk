@@ -37,7 +37,25 @@
       "expo-document-picker",
       "expo-file-system",
       "expo-notifications",
-      "react-native-libsodium"
+      "react-native-libsodium",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              {
+                "name": "CSSH-Binary",
+                "podspec": "https://raw.githubusercontent.com/termlnk/react-native-ssh-sftp/main/CSSH-Binary.podspec"
+              },
+              {
+                "name": "NMSSH",
+                "git": "https://github.com/termlnk/NMSSH.git",
+                "branch": "master"
+              }
+            ]
+          }
+        }
+      ]
     ],
     "autolinking": {
       "searchPaths": [

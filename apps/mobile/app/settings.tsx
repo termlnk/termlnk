@@ -59,7 +59,7 @@ export default function Settings() {
       <Section title="About">
         <Row label="Client" value="termlnk-mobile" />
         <Row label="Version" value="0.0.1" />
-        <Row label="SSH backend" value="@dylankenneally/react-native-ssh-sftp 1.7.x" />
+        <Row label="SSH backend" value="@termlnk/react-native-ssh-sftp 1.7.x (NMSSH + CSSH.xcframework)" />
       </Section>
     </ScrollView>
   );

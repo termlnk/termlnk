@@ -13,17 +13,17 @@
  * governing permissions and limitations under the License.
  */
 
-import type SSHClient from '@dylankenneally/react-native-ssh-sftp';
-import type { LsResult } from '@dylankenneally/react-native-ssh-sftp';
+import type SSHClient from '@termlnk/react-native-ssh-sftp';
+import type { LsResult } from '@termlnk/react-native-ssh-sftp';
 import { Disposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 
 // SFTP wrapper over the same underlying NMSSH/JSch client as MobileSshClientService.
-// dylankenneally's binding gives us SFTP through the *same* SSHClient instance — we
-// share the channel rather than spawning a second SSH session per host. The lib lazily
-// opens the SFTP sub-channel on the first sftp* call; checkSFTP() inside the lib
-// guarantees it. We expose connectSFTP() too because the iOS bridge surfaces clearer
-// error messages when the SFTP handshake fails up front.
+// The binding (termlnk's fork of dylankenneally's) gives us SFTP through the *same*
+// SSHClient instance — we share the channel rather than spawning a second SSH session
+// per host. The lib lazily opens the SFTP sub-channel on the first sftp* call;
+// checkSFTP() inside the lib guarantees it. We expose connectSFTP() too because the
+// iOS bridge surfaces clearer error messages when the SFTP handshake fails up front.
 //
 // Why a thin wrapper at all (vs. UI calling SSHClient directly):
 //   - Single point to translate native `any` errors into typed exceptions.

@@ -13,22 +13,23 @@
  * governing permissions and limitations under the License.
  */
 
-import SSHClient, { PtyType } from '@dylankenneally/react-native-ssh-sftp';
+import SSHClient, { PtyType } from '@termlnk/react-native-ssh-sftp';
 import { Disposable } from '@termlnk/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 
-// React Native side fat-client SSH abstraction. Wraps @dylankenneally/react-native-ssh-sftp
-// (NMSSH on iOS / JSch on Android, vendored fork of the original react-native-ssh-sftp).
+// React Native side fat-client SSH abstraction. Wraps @termlnk/react-native-ssh-sftp
+// (NMSSH on iOS / JSch on Android), our fork of @dylankenneally/react-native-ssh-sftp
+// patched for Gradle 9 / AGP 8 and iOS Simulator support on Apple Silicon.
 //
 // Why this lib in v1:
 //   - @fressh/react-native-uniffi-russh (Rust russh + uniffi-bindgen-rn) — preferred per
 //     §7.3.1 — currently fails to install: its transitive `uniffi-bindgen-react-native#build-ts`
 //     dependency points at a non-existent branch (last release 2025-10-08, abandoned).
-//   - @dylankenneally maintains the most active NMSSH/JSch fork, ships SSH + SFTP, declares
-//     `react-native: *` as the only peer, and is updated as recently as 2026-03-26.
-//   - Tradeoff: NMSSH/JSch families are pre-New-Arch — runtime relies on RN 0.83's legacy
-//     bridge interop layer. Required real-device smoke-test in P6.3. v2+ replaces this
-//     with the Expo Module from §P6.9 once it ships.
+//   - The dylankenneally NMSSH/JSch fork is the only RN library with active SFTP support.
+//     We vendor it under the termlnk/react-native-ssh-sftp fork to fix Gradle 9 and pick
+//     up DimaRU/Libssh2Prebuild's XCFramework so the Simulator links cleanly.
+//   - Tradeoff: NMSSH/JSch families are pre-New-Arch — runtime relies on RN 0.85's legacy
+//     bridge interop layer. v2+ replaces this with the Expo Module from §P6.9 once it ships.
 //
 // Contract surface intentionally narrow: connect/exec/disconnect plus a shell with an
 // output Observable. SFTP is wired up by P6.5; pty resize is a P6.6 concern.
