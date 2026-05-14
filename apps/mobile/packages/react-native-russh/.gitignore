@@ -1,9 +1,18 @@
-# ubrn-generated native artefacts (regenerated on each build:native)
-android/
-ios/
-cpp/
+# ubrn-generated native artefacts:
+#   * src/generated/, src/index.tsx, src/NativeReactNativeRussh.ts,
+#     ios/, cpp/, ReactNativeRussh.podspec — all committed so mobile-app
+#     metro/cocoapods/gradle can resolve the module without needing the
+#     Rust toolchain on every machine.
+#   * *.xcframework / android/jniLibs/*.so — large compiled artefacts;
+#     gitignored. Regenerate locally with `pnpm build:ios` / `build:android`
+#     or let the EAS Build pipeline's prebuild step rebuild them.
+
+# Compiled native libraries (large; rebuild from source)
 *.xcframework
 *.xcframework.zip
+android/build/
+android/.cxx/
+android/src/main/jniLibs/
 
 # Rust build outputs
 rust/target/
@@ -13,3 +22,6 @@ lib/
 
 # Node
 node_modules/
+
+# Turbo
+.turbo/

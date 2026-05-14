@@ -104,18 +104,18 @@ export interface IBufferReadResult {
 }
 
 export interface IBufferStats {
+  readonly ringBytesCount: bigint;
   readonly usedBytes: bigint;
-  readonly capacityBytes: bigint;
   readonly headSeq: bigint;
   readonly tailSeq: bigint;
   readonly droppedBytesTotal: bigint;
+  readonly chunksCount: bigint;
 }
 
 // SFTP types — additive over the fressh API surface.
 
 export interface ISftpEntry {
   readonly filename: string;
-  readonly path: string;
   readonly isDirectory: boolean;
   readonly isSymlink: boolean;
   readonly size: bigint;
