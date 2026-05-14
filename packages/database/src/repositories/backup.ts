@@ -23,18 +23,21 @@ import { ISecretCipherService } from '../services/secret-cipher.service';
 import { decryptCredential, decryptIfNeeded, decryptMcpConfig, decryptProxy, encryptCredential, encryptIfNeeded, encryptMcpConfig, encryptProxy } from '../services/secret-cipher/credential-masker';
 
 /**
- * 跨设备备份的资源快照——所有可同步资源在一个对象里。
+ * Cross-device backup snapshot — all syncable resources in one object.
  *
- * 字段命名采用 snake_case 与表名对齐，便于人工阅读 JSON dump 时直接定位 SQL。
+ * Field names are snake_case to mirror table names so a human reading the JSON
+ * dump can locate the SQL directly.
  *
- * 敏感字段（host.credential, host.proxy, ai_provider.apiKey, mcp_server.config）
- * 在快照里**已用本地 SecretCipher 解密为明文**——这一层明文仅在内存中存在，
- * 调用方（BackupService）会立刻用 sync E2EE master key 重新加密成跨设备可移植的密文。
+ * Sensitive fields (host.credential, host.proxy, ai_provider.apiKey,
+ * mcp_server.config) are **decrypted to plaintext using the local
+ * SecretCipher** inside the snapshot. That plaintext only lives in memory; the
+ * caller (BackupService) immediately re-encrypts it with the sync E2EE master
+ * key for transport.
  *
- * 不包含的表（cloud-sync-architecture.md §4.4 决策）：
- * - `chat_session` / `chat_message`：用户决策不同步
- * - `terminal_session_backup`：设备特定 PTY 状态
- * - `mcp_oauth_token`：设备绑定的 OAuth 凭据
+ * Excluded by design (cloud-sync-architecture.md §4.4):
+ * - `chat_session` / `chat_message` — product decision: not synced
+ * - `terminal_session_backup` — device-specific PTY state
+ * - `mcp_oauth_token` — device-bound OAuth credentials
  */
 export interface IBackupSnapshot {
   readonly version: 1;
@@ -55,15 +58,19 @@ export type BackupImportMode = 'replace' | 'merge';
 const BACKUP_VERSION = 1 as const;
 
 /**
- * 备份导出/导入仓库——SQL 直读直写 + 凭据双向加解密。
+ * Backup export/import repository — direct SQL with two-way credential
+ * cipher.
  *
- * 设计要点：
- * - 不复用各业务 Repository 的 changed$ Subject（避免在 wipe-then-bulk-insert 期间触发千次 UI 刷新）；
- *   导入完成后由调用方自行决定是否重启 / 全量刷新。
- * - 导出路径：从表读密文 → SecretCipher.decrypt → 入快照（明文）
- * - 导入路径：从快照取明文 → SecretCipher.encrypt（本设备 key） → 写表（密文）
+ * Bypasses each business repository's `changed$` Subject so a wipe-then-bulk
+ * import does not fire thousands of UI refresh events; the caller decides
+ * whether to restart or full-reload afterwards.
  *
- * 调用方（BackupService）负责把 IBackupSnapshot 序列化为 JSON 后用 sync E2EE 加密成传输 payload。
+ * - Export: read encrypted row → SecretCipher.decrypt → plaintext into snapshot
+ * - Import: plaintext from snapshot → SecretCipher.encrypt (this device's key)
+ *   → encrypted row into table
+ *
+ * The caller (BackupService) serializes `IBackupSnapshot` to JSON and wraps it
+ * with sync E2EE for transport.
  */
 export class BackupRepository extends Disposable {
   constructor(
@@ -77,7 +84,7 @@ export class BackupRepository extends Disposable {
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
-  /** 全量导出可同步资源（已解密敏感字段，明文仅在内存中存在）。 */
+  /** Export every syncable resource; sensitive fields are decrypted in-memory. */
   async exportSnapshot(): Promise<IBackupSnapshot> {
     const [host, config, aiProvider, aiProviderModel, aiCustomModel, mcpServer, skill] = await Promise.all([
       this._db.select().from(hostEntity),
@@ -105,15 +112,16 @@ export class BackupRepository extends Disposable {
   }
 
   /**
-   * 把快照写回 DB。当前仅支持 `replace`：先清空 7 张表，再逐张批量插入。
-   * 整个操作在事务里，失败回滚——避免半成品状态。
+   * Restore a snapshot into the DB. Only `replace` is supported today: wipe
+   * the seven tables and bulk-insert. The whole thing runs in one transaction
+   * so a failure rolls back to a clean state.
    */
   async importSnapshot(snapshot: IBackupSnapshot, mode: BackupImportMode): Promise<void> {
     if (snapshot.version !== BACKUP_VERSION) {
       throw new Error(`[BackupRepository] unsupported snapshot version: ${snapshot.version}`);
     }
     if (mode !== 'replace') {
-      // merge 留给后续 ticket（需要 LWW 比对，目前先不做）
+      // merge mode needs LWW reconciliation; deferred.
       throw new Error(`[BackupRepository] mode '${mode}' not yet supported; only 'replace'`);
     }
 

@@ -22,7 +22,7 @@ import { eq } from 'drizzle-orm';
 import { syncCursorEntity } from '../entities/sync-cursor';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 
-/** 服务端 opaque 拉取游标——每资源类型一行。 */
+/** Opaque server pull cursor — one row per resource type. */
 export class SyncCursorRepository extends Disposable {
   constructor(
     @IDBAdaptorService private readonly _dbService: IDBAdaptorService
@@ -53,7 +53,7 @@ export class SyncCursorRepository extends Disposable {
       });
   }
 
-  /** forceFullResync 用——删除游标后下次 pull 等价于"从头开始"。 */
+  /** Used by forceFullResync — clearing the cursor restarts pulling from scratch. */
   async delete(resource: SyncResourceId): Promise<void> {
     await this._db
       .delete(syncCursorEntity)

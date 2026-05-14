@@ -18,15 +18,14 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * 字段级 LWW 元数据（仅 config 资源使用）。
+ * Field-level LWW metadata (config resource only).
  *
- * 设计依据：cloud-sync-architecture.md §4.5。`config.value` 是嵌套 JSON——
- * 整行 LWW 会让两台设备互相覆盖未变更的字段，所以 config 走字段（subKey）级 LWW，
- * 其他规范化资源走 sync_row_meta。
+ * `config.value` is nested JSON, so row-level LWW would let two devices
+ * clobber each other's unrelated subKeys. Config uses per-subKey LWW; other
+ * normalized resources stay on sync_row_meta. See cloud-sync-architecture.md §4.5.
  *
- * 字段：
- * - `field` — 业务上的 subKey（如 `electron-main.config` 下的 `mainWindowState`）
- * - `updatedAt` — 本地最近一次写入该字段的 epoch ms
+ * `field` is the business subKey (e.g. `mainWindowState` under
+ * `electron-main.config`); `updatedAt` is local epoch ms of the last write.
  */
 export const syncFieldMetaEntity = sqliteTable('sync_field_meta', {
   resource: text('resource').notNull().$type<SyncResourceId>(),

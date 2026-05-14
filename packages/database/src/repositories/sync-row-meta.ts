@@ -23,10 +23,11 @@ import { syncRowMetaEntity } from '../entities/sync-row-meta';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 
 /**
- * 行级同步元数据仓库——纯 CRUD。
+ * Per-row sync metadata — pure CRUD.
  *
- * 业务编排（"baseVersion 取自这里、应用 patch 时写回"）由 Synchroniser 负责。
- * 仓库本身只暴露读、upsert、删除操作。
+ * Business orchestration ("read `baseVersion` here, write it back after
+ * applying a patch") belongs to the synchronisers; this repository just
+ * exposes read / upsert / delete.
  */
 export class SyncRowMetaRepository extends Disposable {
   constructor(

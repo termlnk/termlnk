@@ -18,15 +18,15 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * 行级同步元数据。
+ * Per-row sync metadata.
  *
- * 每个被同步的业务表行（host / ai_provider / mcp_server / skill / config）
- * 对应一行——记录服务端为该行分配的 monotonic version，让客户端写入时能携带 baseVersion
- * 给服务端做乐观并发检查。
+ * One row per synced business row (host / ai_provider / mcp_server / skill /
+ * config). Records the monotonic version the server assigned, so the client
+ * can attach `baseVersion` on writes for server-side optimistic concurrency.
  *
- * - 不存 entity 数据本身（业务表已有），只存"我现在认为服务端的版本号是多少"
- * - 列 `version` 是服务端权威值；本地仅做乐观读取
- * - 列 `updated_at` 是 epoch ms，记录本地最近一次本地写入时间（区别于业务表的 ISO updated_at）
+ * No entity payload here — that lives in the business table. `version` is the
+ * server-authoritative value cached locally; `updated_at` is local epoch ms of
+ * the last local write (distinct from the business table's ISO `updated_at`).
  */
 export const syncRowMetaEntity = sqliteTable('sync_row_meta', {
   resource: text('resource').notNull().$type<SyncResourceId>(),

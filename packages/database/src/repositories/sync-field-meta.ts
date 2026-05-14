@@ -23,10 +23,11 @@ import { syncFieldMetaEntity } from '../entities/sync-field-meta';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 
 /**
- * 字段级同步元数据仓库（仅 config 资源使用）。
+ * Field-level sync metadata (config resource only).
  *
- * config.value 是嵌套 JSON——按行 LWW 会让两台设备相互覆写未变更的字段。
- * 因此 ConfigSynchroniser 给每个 (key, subKey) 单独维护 updatedAt 时间戳。
+ * `config.value` is nested JSON, so row-level LWW would let devices clobber
+ * each other's unrelated subKeys. `ConfigSynchroniser` keeps an `updatedAt`
+ * timestamp per `(key, subKey)` instead.
  */
 export class SyncFieldMetaRepository extends Disposable {
   constructor(

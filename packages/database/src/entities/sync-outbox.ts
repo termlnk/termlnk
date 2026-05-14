@@ -18,22 +18,19 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { blob, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * 待推送 mutation 队列（offline-first 持久化）。
+ * Persistent pending-mutation queue (offline-first).
  *
- * 设计依据：cloud-sync-architecture.md §4.5 + Replicache pendingMutations。
+ * See cloud-sync-architecture.md §4.5; modeled after Replicache pendingMutations.
  *
- * 字段说明：
- * - `id` — 本地随机 ID（与业务表无关；仅为 PK）
- * - `clientMutId` — per-device 单调递增（服务端按 (clientId, clientMutId) 去重）
- * - `op` — `'upsert'` 或 `'delete'`
- * - `entityId` — 业务表的 id（config 资源下为 `key`）
- * - `payload` — 已用 SyncCryptoService 加密的字节流；delete 时为 null
- * - `baseVersion` — 写入时的本地观察版本（来自 sync_row_meta），首次创建为 null
- * - `createdAt` — epoch ms，FIFO 排序依据
- * - `retryCount` — 拒绝后重试次数
+ * - `id` — local random PK, unrelated to the business row
+ * - `clientMutId` — per-device monotonic counter; server dedupes by `(clientId, clientMutId)`
+ * - `entityId` — business row id (the `key` for config)
+ * - `payload` — bytes encrypted by SyncCryptoService; null for deletes
+ * - `baseVersion` — locally observed row version (from sync_row_meta), null on first create
+ * - `createdAt` — epoch ms, used as the FIFO key
  *
- * 注意：payload 走 BLOB；其内部已含 `tmsync1:` 前缀 + nonce + ciphertext+tag——
- * 服务端拿到也解不开（零知识）。
+ * Payload is stored as BLOB and already carries the `tmsync1:` prefix + nonce
+ * + ciphertext+tag — the server cannot decrypt it (zero-knowledge).
  */
 export const syncOutboxEntity = sqliteTable('sync_outbox', {
   id: text('id').primaryKey().notNull(),

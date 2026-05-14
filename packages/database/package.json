@@ -55,7 +55,7 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "better-sqlite3": "^12.9.0",
-    "nanoid": "^5.1.11",
+    "nanoid": "^5.1.9",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {

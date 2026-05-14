@@ -18,12 +18,14 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
- * 每个资源类型一行的服务端拉取游标。
+ * Server-issued pull cursor, one row per resource type.
  *
- * `cursor` 是服务端 opaque 字符串（base64）——客户端不解析其内容，仅照搬回去用于增量拉取。
- * `lastPulledAt` 是本地 epoch ms，方便 UI 展示"最近同步时间"，也用作离线超时判断。
+ * `cursor` is an opaque server token (base64) the client echoes back for
+ * incremental pulls; it is never parsed. `lastPulledAt` is local epoch ms,
+ * used for UI display and stale-detection.
  *
- * 一台设备的 forceFullResync 操作 = 本表对应 row 删除（cursor 视作 null = 重头拉）。
+ * Force-full-resync = delete the row for that resource (missing cursor = pull
+ * from scratch).
  */
 export const syncCursorEntity = sqliteTable('sync_cursor', {
   resource: text('resource').primaryKey().notNull().$type<SyncResourceId>(),

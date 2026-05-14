@@ -18,16 +18,17 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { ISyncOutboxEntity, ISyncOutboxEntityInsert } from '../entities/sync-outbox';
 import { Disposable } from '@termlnk/core';
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import { generateId } from '../entities/base';
 import { syncOutboxEntity } from '../entities/sync-outbox';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 
 /**
- * sync_outbox 表数据访问层。
+ * Data access for the `sync_outbox` table.
  *
- * 纯 CRUD——不做任何业务编排（不做 clientMutId 分配、不做 changed$ 通知 / 重试节奏）。
- * 那些职责在 SyncOutboxService（@termlnk/sync-core）。
+ * Pure CRUD — no business orchestration (no `clientMutId` allocation, no
+ * `changed$` notifications, no retry scheduling). Those live in
+ * `SyncOutboxService` (`@termlnk/sync-core`).
  */
 export class SyncOutboxRepository extends Disposable {
   constructor(
@@ -41,8 +42,8 @@ export class SyncOutboxRepository extends Disposable {
   }
 
   /**
-   * 持久化一条 mutation。`id` 由仓库分配（业务无关的 PK）；调用方传 clientMutId / 其他字段。
-   * 返回完整持久化记录。
+   * Persist one mutation. The repository assigns `id` (a business-agnostic
+   * PK) when the caller omits it. Returns the row as stored.
    */
   async insert(record: Omit<ISyncOutboxEntityInsert, 'id'> & { id?: string }): Promise<ISyncOutboxEntity> {
     const id = record.id ?? generateId();
@@ -54,8 +55,8 @@ export class SyncOutboxRepository extends Disposable {
   }
 
   /**
-   * FIFO 取出待推送 mutation：按 createdAt 升序、tie-break by clientMutId。
-   * 不删除（必须等待 ack 后才能删）。
+   * Read pending mutations FIFO: `createdAt` asc, tie-break by `clientMutId`.
+   * Does not delete — rows stay until the server acks them.
    */
   async selectFifo(limit?: number): Promise<ISyncOutboxEntity[]> {
     const query = this._db
@@ -65,7 +66,7 @@ export class SyncOutboxRepository extends Disposable {
     return limit && limit > 0 ? query.limit(limit) : query;
   }
 
-  /** 服务端确认接收后删除——按 clientMutId 列表批量删。 */
+  /** Drop rows acknowledged by the server, by `clientMutId`. */
   async deleteByClientMutIds(clientMutIds: number[]): Promise<void> {
     if (clientMutIds.length === 0) {
       return;
@@ -75,7 +76,7 @@ export class SyncOutboxRepository extends Disposable {
       .where(inArray(syncOutboxEntity.clientMutId, clientMutIds));
   }
 
-  /** 服务端拒绝时累加 retry_count（不删除）。 */
+  /** Bump `retry_count` when the server rejects rows; the rows stay. */
   async incrementRetry(clientMutIds: number[]): Promise<void> {
     if (clientMutIds.length === 0) {
       return;
@@ -108,8 +109,35 @@ export class SyncOutboxRepository extends Disposable {
   }
 
   /**
-   * 取出最大的 client_mut_id；启动恢复时辅助 SyncOutboxService 校准 in-memory 计数器。
-   * 表空时返回 0。
+   * Delete outbox rows whose `resource` matches and `entityId` starts with any of the given
+   * prefixes. Used to evict garbage written by historical bugs (e.g. self-referential
+   * `config` enqueue loops) without touching legitimate user data. Returns the number of
+   * deleted rows so callers can log the cleanup.
+   */
+  async deleteByResourceAndEntityIdPrefixes(
+    resource: SyncResourceId,
+    prefixes: readonly string[]
+  ): Promise<number> {
+    if (prefixes.length === 0) {
+      return 0;
+    }
+    // LIKE-escape `%` and `_` so a prefix containing them stays literal. Drizzle interpolates
+    // the bound value verbatim; the SQLite engine handles the escape character we declare.
+    const escapeLike = (input: string): string => input.replace(/[\\%_]/g, '\\$&');
+    const conditions = prefixes.map((prefix) =>
+      like(syncOutboxEntity.entityId, `${escapeLike(prefix)}%`)
+    );
+    const predicate = conditions.length === 1 ? conditions[0] : or(...conditions);
+    const result = await this._db
+      .delete(syncOutboxEntity)
+      .where(and(eq(syncOutboxEntity.resource, resource), predicate))
+      .returning({ clientMutId: syncOutboxEntity.clientMutId });
+    return result.length;
+  }
+
+  /**
+   * Largest stored `client_mut_id`; used by `SyncOutboxService` on startup to
+   * realign its in-memory counter. Returns 0 when the table is empty.
    */
   async maxClientMutId(): Promise<number> {
     const rows = await this._db
