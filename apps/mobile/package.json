@@ -25,7 +25,6 @@
     "@termlnk/auth": "workspace:*",
     "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
-    "@termlnk/react-native-ssh-sftp": "file:../../../react-native-ssh-sftp",
     "@termlnk/sync": "workspace:*",
     "@wendellhu/redi": "1.1.1",
     "expo": "^55.0.23",

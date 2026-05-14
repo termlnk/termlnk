@@ -13,25 +13,22 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ISftpEntry } from '../../../src/sftp/mobile-sftp-client.service';
+// P6.9-1 placeholder. SFTP browser will be rebuilt on top of
+// @termlnk/react-native-russh in P6.9-7, sharing the SSH connection's channel
+// via `connection.startSftp()` — no more dual-handshake against the legacy
+// bridge. See docs/agent/cloud-sync-architecture.md §8.0 Phase 6 P6.9.
+
 import type { IMobileHost } from '../../../src/sync/mobile-sync-pull.service';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSyncPullService } from '../../../src/core/core-context';
-
-type Stage = 'awaiting-credentials' | 'connecting' | 'ready' | 'error';
 
 export default function SftpScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const pull = useSyncPullService();
 
   const [host, setHost] = useState<IMobileHost | null>(null);
-  const [stage, setStage] = useState<Stage>('awaiting-credentials');
-  const [error, setError] = useState<string | null>(null);
-  const [password, setPassword] = useState('');
-  const [path, setPath] = useState('.');
-  const [entries, setEntries] = useState<readonly ISftpEntry[]>([]);
 
   useEffect(() => {
     const sub = pull.snapshot$.subscribe((snap) => {
@@ -40,94 +37,24 @@ export default function SftpScreen() {
     return () => sub.unsubscribe();
   }, [pull, id]);
 
-  // P6.6 deliberately leaves the live SFTP wiring as a placeholder: connecting requires
-  // re-using the SSHClient that owns the SFTP channel (§MobileSftpClientService).
-  // Spinning up an SSH + SFTP session per file-browser tab without sharing the channel
-  // wastes a TCP roundtrip; the proper integration arrives once the terminal screen
-  // exposes its underlying SSHClient via context (v1.1).
-
-  const onConnect = () => {
-    if (!host) {
-      return;
-    }
-    setStage('connecting');
-    setError('SFTP browsing inside the v1 UI is awaiting the terminal-session reuse plumbing — connect through the terminal screen first.');
-    setEntries([]);
-    setPath('.');
-    setStage('error');
-  };
-
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ title: host ? `${host.label} • SFTP` : 'SFTP' }} />
-      {stage !== 'ready' && (
-        <View style={styles.credentials}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            placeholder="••••••••"
-            placeholderTextColor="#6b7280"
-            style={styles.input}
-            editable={stage === 'awaiting-credentials' || stage === 'error'}
-          />
-          {error && <Text style={styles.error}>{error}</Text>}
-          <Pressable
-            onPress={onConnect}
-            disabled={stage === 'connecting' || password.length === 0}
-            style={({ pressed }) => [
-              styles.button,
-              (stage === 'connecting' || password.length === 0) && styles.buttonDisabled,
-              pressed && { opacity: 0.85 },
-            ]}
-          >
-            {stage === 'connecting'
-              ? <ActivityIndicator color="#0a0a0a" />
-              : <Text style={styles.buttonLabel}>Open SFTP browser</Text>}
-          </Pressable>
-          <Text style={styles.note}>
-            v1 SFTP browser surfaces directory listings and basic transfer via the system
-            file picker (expo-document-picker). UI parity with the desktop dual-pane view
-            lands once mobile gets the shared SSH session bus.
-          </Text>
-        </View>
-      )}
-      {stage === 'ready' && (
-        <FlatList
-          data={entries}
-          keyExtractor={(item) => `${path}/${item.filename}`}
-          renderItem={({ item }) => (
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>
-                {item.isDirectory ? '📁 ' : '📄 '}
-                {item.filename}
-              </Text>
-              <Text style={styles.rowMeta}>
-                {item.isDirectory ? 'Directory' : `${item.fileSize.toLocaleString()} B`}
-              </Text>
-            </View>
-          )}
-          ListEmptyComponent={<Text style={styles.empty}>Directory is empty.</Text>}
-        />
-      )}
+      <Text style={styles.title}>SFTP browser temporarily unavailable</Text>
+      <Text style={styles.body}>
+        The SFTP file browser is being rebuilt on top of
+        `@termlnk/react-native-russh` (Rust russh + russh-sftp). Reconnecting
+        in P6.9-7 lets the browser share the same SSH session as the terminal
+        screen — one handshake, two channels.
+      </Text>
+      <Text style={styles.meta}>Host {host?.label ?? '—'} · {host?.addr ?? '—'}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0a0a0a' },
-  credentials: { padding: 16, gap: 8 },
-  label: { color: '#9ca3af', fontSize: 12 },
-  input: { backgroundColor: '#262626', color: '#e5e7eb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
-  button: { backgroundColor: '#3b82f6', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 8 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonLabel: { color: '#0a0a0a', fontSize: 15, fontWeight: '600' },
-  error: { color: '#f87171', fontSize: 13 },
-  note: { color: '#6b7280', fontSize: 12, marginTop: 8, lineHeight: 17 },
-  row: { paddingHorizontal: 16, paddingVertical: 12, borderBottomColor: '#1f1f1f', borderBottomWidth: StyleSheet.hairlineWidth },
-  rowLabel: { color: '#e5e7eb', fontSize: 14 },
-  rowMeta: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
-  empty: { color: '#9ca3af', textAlign: 'center', padding: 32 },
+  root: { flex: 1, backgroundColor: '#0a0a0a', padding: 24, gap: 12 },
+  title: { color: '#e5e7eb', fontSize: 18, fontWeight: '600' },
+  body: { color: '#9ca3af', fontSize: 14, lineHeight: 20 },
+  meta: { color: '#6b7280', fontSize: 12, marginTop: 4 },
 });

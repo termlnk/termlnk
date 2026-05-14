@@ -561,9 +561,6 @@ importers:
       '@termlnk/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@termlnk/react-native-ssh-sftp':
-        specifier: file:../../../react-native-ssh-sftp
-        version: file:../react-native-ssh-sftp(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -7250,12 +7247,6 @@ packages:
 
   '@tediousjs/connection-string@0.5.0':
     resolution: {integrity: sha512-7qSgZbincDDDFyRweCIEvZULFAw5iz/DeunhvuxpL31nfntX3P4Yd4HkHBRg9H8CdqY1e5WFN1PZIz/REL9MVQ==}
-
-  '@termlnk/react-native-ssh-sftp@file:../react-native-ssh-sftp':
-    resolution: {directory: ../react-native-ssh-sftp, type: directory}
-    engines: {node: '>=18.16.0 <=24', npm: '>=9.5.0 <=11'}
-    peerDependencies:
-      react-native: '*'
 
   '@tokenizer/inflate@0.4.1':
     resolution: {integrity: sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA==}
@@ -21399,10 +21390,6 @@ snapshots:
 
   '@tediousjs/connection-string@0.5.0':
     optional: true
-
-  '@termlnk/react-native-ssh-sftp@file:../react-native-ssh-sftp(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))':
-    dependencies:
-      react-native: 0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6)
 
   '@tokenizer/inflate@0.4.1':
     dependencies:
