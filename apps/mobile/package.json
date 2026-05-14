@@ -17,7 +17,8 @@
     "prebuild": "expo prebuild --clean",
     "typecheck": "tsgo --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "eas-build-post-install": "bash scripts/eas-prepare-rust.sh"
   },
   "dependencies": {
     "@noble/ciphers": "^2.2.0",
