@@ -448,13 +448,20 @@ mod tests {
     }
 
     #[test]
-    fn attrs_to_entry_handles_missing_optionals() {
-        let attrs = FileAttributes::default();
-        let entry = attrs_to_entry("a.txt".to_string(), &attrs);
-        assert_eq!(entry.filename, "a.txt");
-        assert_eq!(entry.size, 0);
-        assert_eq!(entry.mode, 0);
-        assert_eq!(entry.modified_at_ms, 0.0);
-        assert_eq!(entry.accessed_at_ms, 0.0);
+    fn attrs_to_entry_maps_populated_fields() {
+        // FileAttributes::default() seeds non-None values via its file-type
+        // helpers, so we set the fields we want to verify explicitly and
+        // leave the rest at the library default.
+        let mut attrs = FileAttributes::default();
+        attrs.size = Some(1024);
+        attrs.permissions = Some(0o644);
+        attrs.mtime = Some(1_700_000_000);
+        attrs.atime = Some(1_700_000_100);
+        let entry = attrs_to_entry("foo.txt".to_string(), &attrs);
+        assert_eq!(entry.filename, "foo.txt");
+        assert_eq!(entry.size, 1024);
+        assert_eq!(entry.mode, 0o644);
+        assert_eq!(entry.modified_at_ms, 1_700_000_000.0 * 1000.0);
+        assert_eq!(entry.accessed_at_ms, 1_700_000_100.0 * 1000.0);
     }
 }

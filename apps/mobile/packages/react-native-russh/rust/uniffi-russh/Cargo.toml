@@ -11,8 +11,9 @@ uniffi = { workspace = true, features = ["tokio"] }
 # FFI-safe error enum derive.
 thiserror = "1.0.64"
 
-# Tokio runtime + IO bits used by russh + the shell ring buffer.
-tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros", "time", "net", "sync", "io-util"] }
+# Tokio runtime + IO bits used by russh + the shell ring buffer + SFTP transfers.
+# `fs` enables tokio::fs::File for local read/write in upload/download paths.
+tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros", "time", "net", "sync", "io-util", "fs"] }
 
 # Async ecosystem utilities pulled in transitively; kept explicit so version
 # bumps land in this file rather than via russh.
