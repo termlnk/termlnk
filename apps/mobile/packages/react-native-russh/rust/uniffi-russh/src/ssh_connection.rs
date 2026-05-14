@@ -159,6 +159,10 @@ pub struct SshConnection {
 
     pub(crate) shells: AsyncMutex<HashMap<u32, Arc<ShellSession>>>,
 
+    // SFTP sessions keyed by session_id. Closed during disconnect().
+    pub(crate) sftps: AsyncMutex<HashMap<String, Arc<crate::ssh_sftp::SftpSession>>>,
+    pub(crate) next_sftp_id: std::sync::atomic::AtomicU64,
+
     // Weak self for child sessions to refer back without cycles.
     pub(crate) self_weak: AsyncMutex<Weak<SshConnection>>,
 }
@@ -345,14 +349,52 @@ impl SshConnection {
         Ok(session)
     }
 
+    pub async fn start_sftp(
+        &self,
+    ) -> Result<Arc<crate::ssh_sftp::SftpSession>, SshError> {
+        let client_handle = self.client_handle.lock().await;
+        let channel = client_handle.channel_open_session().await?;
+        channel.request_subsystem(true, "sftp").await?;
+        drop(client_handle);
+
+        let inner = russh_sftp::client::SftpSession::new(channel.into_stream())
+            .await
+            .map_err(|e| SshError::Russh(format!("sftp init: {e}")))?;
+
+        let seq = self
+            .next_sftp_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let session_id = format!("sftp-{}-{}", self.info.connection_id, seq);
+        let session = Arc::new(crate::ssh_sftp::SftpSession::new(
+            session_id.clone(),
+            self.info.connection_id.clone(),
+            inner,
+        ));
+        self.sftps.lock().await.insert(session_id, session.clone());
+        Ok(session)
+    }
+
     pub async fn disconnect(&self) -> Result<(), SshError> {
-        // TODO: Check if we need to close all these if we are about to disconnect?
-        let sessions: Vec<Arc<ShellSession>> = {
+        // Close shells first, then SFTP sessions, then the transport — order
+        // matters because each layer holds a channel against the underlying
+        // ClientHandle, and we want a clean per-channel close path before the
+        // transport-level Disconnect frame.
+        let shells: Vec<Arc<ShellSession>> = {
             let map = self.shells.lock().await;
             map.values().cloned().collect()
         };
-        for s in sessions {
+        for s in shells {
             s.close().await?;
+        }
+
+        let sftps: Vec<Arc<crate::ssh_sftp::SftpSession>> = {
+            let map = self.sftps.lock().await;
+            map.values().cloned().collect()
+        };
+        for s in sftps {
+            // Best-effort: an already-broken sftp session shouldn't block the
+            // overall disconnect.
+            let _ = s.close().await;
         }
 
         let h = self.client_handle.lock().await;
@@ -440,6 +482,8 @@ pub async fn connect(options: ConnectOptions) -> Result<Arc<SshConnection>, SshE
         },
         client_handle: AsyncMutex::new(handle),
         shells: AsyncMutex::new(HashMap::new()),
+        sftps: AsyncMutex::new(HashMap::new()),
+        next_sftp_id: std::sync::atomic::AtomicU64::new(1),
         self_weak: AsyncMutex::new(Weak::new()),
         on_disconnected_callback: options.on_disconnected_callback.clone(),
     });

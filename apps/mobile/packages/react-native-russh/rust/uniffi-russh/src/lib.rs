@@ -7,6 +7,7 @@
 
 pub mod private_key;
 pub mod ssh_connection;
+pub mod ssh_sftp;
 pub mod ssh_shell;
 pub mod utils;
 
