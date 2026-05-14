@@ -25,18 +25,19 @@ import { publicProcedure, router } from '../trpc';
 const DEFAULT_EXPORT_FILENAME_PREFIX = 'termlnk-backup';
 
 /**
- * 加密备份导出/导入路由（**仅主进程**）。
+ * Encrypted backup export/import router (**main process only**).
  *
- * 字节流不跨 IPC：用户在渲染端点击"导出"时，主进程
- * 1. 调 IFileDialogService.showSaveDialog 让用户选目标路径
- * 2. 调 IBackupService.exportEncryptedBackup 拿加密 payload
- * 3. fs.writeFile 落盘
- * 4. 把 summary（含路径、计数）回传渲染端
+ * Bytes never cross IPC. When the user clicks "Export" in the renderer:
+ * 1. `IFileDialogService.showSaveDialog` asks the user for a destination
+ * 2. `IBackupService.exportEncryptedBackup` produces the encrypted payload
+ * 3. `fs.writeFile` writes it to disk
+ * 4. The summary (path + counts) goes back to the renderer
  *
- * 导入反向：dialog → fs.readFile → IBackupService.importEncryptedBackup → summary。
+ * Import is the reverse: dialog → `fs.readFile` →
+ * `IBackupService.importEncryptedBackup` → summary.
  *
- * 取消语义：用户在 dialog 取消 → 返回 null（区别于 throw "已取消"）；
- * 错误语义：fs / decrypt 失败 → throw（渲染端 toast 弹出错误）。
+ * Cancellation: dialog cancel returns null (not a thrown "canceled" error).
+ * Errors: fs / decrypt failures throw so the renderer can toast them.
  */
 export const backupRouter = router({
   exportToFile: publicProcedure
@@ -105,8 +106,9 @@ export const backupRouter = router({
     }),
 
   /**
-   * 主密钥状态查询——渲染端在弹出"导出"按钮前用来禁用未解锁的入口。
-   * IBackupService 用 Quantity.OPTIONAL 注入：未注册（云未配置）也走这条路返回 false。
+   * Master-key availability — the renderer uses this to disable the
+   * "Export" entry point when locked. `IBackupService` is injected with
+   * `Quantity.OPTIONAL`, so cloud-not-configured also surfaces as `false`.
    */
   isAvailable: publicProcedure.query(({ ctx }): boolean => {
     const service = ctx.injector.get(IBackupService, Quantity.OPTIONAL);
@@ -116,7 +118,7 @@ export const backupRouter = router({
 
 export type BackupRouter = typeof backupRouter;
 
-/** YYYYMMDD-HHmmss 形式的时间戳，便于在文件名中区分多次备份。 */
+/** `YYYYMMDD-HHmmss` timestamp; lets filenames distinguish multiple backups. */
 function formatBackupTimestamp(epochMs: number): string {
   const d = new Date(epochMs);
   const pad = (n: number): string => String(n).padStart(2, '0');

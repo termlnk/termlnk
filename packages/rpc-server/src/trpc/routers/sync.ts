@@ -22,8 +22,9 @@ import { firstValueFrom } from 'rxjs';
 import { publicProcedure, router } from '../trpc';
 
 /**
- * 取主进程 ISyncService。SyncCorePlugin 总是注册——但若未来某种 build 没有 sync-core，
- * Quantity.OPTIONAL 让 RPC 调用方拿到明确的"sync 未配置"信号。
+ * Resolve the main-process `ISyncService`. `SyncCorePlugin` is always bound
+ * today, but `Quantity.OPTIONAL` keeps room for builds that ship without it
+ * and lets RPC callers get an explicit "sync not configured" signal.
  */
 function requireSyncService(injector: Injector): ISyncService {
   const service = injector.get(ISyncServiceId, Quantity.OPTIONAL);
@@ -34,27 +35,30 @@ function requireSyncService(injector: Injector): ISyncService {
 }
 
 /**
- * 同步引擎渲染端入口。
+ * Renderer-facing entry point for the sync engine.
  *
- * 主进程拥有真正的 SyncService 实例；渲染端的 SyncClientService 通过本路由
- * 镜像状态流（state$ / stats$ / lastError$ / enabled$）+ 转发命令（enable / disable
- * / syncNow / forceFullResync）。
+ * The real `SyncService` lives in the main process; the renderer's
+ * `SyncClientService` mirrors state streams (`state$` / `stats$` /
+ * `lastError$` / `enabled$`) and forwards commands (`enable` / `disable` /
+ * `syncNow` / `forceFullResync`) through this router.
  *
- * **不暴露**：
- * - register / dispose / 内部触发器——这些是 SyncService 内部接口
- * - clientId / cursor / outbox payload——这些是同步引擎细节，渲染端 UI 不需要
+ * Not exposed:
+ * - `register` / `dispose` / internal triggers — `SyncService`'s private API.
+ * - `clientId` / `cursor` / outbox payloads — engine internals the UI does
+ *   not need.
  *
- * 初始 snapshot：渲染端启动时调 `getSnapshot` 拿一份当前快照，避免等待 subscription
- * 首次推送的轻微延迟（与 auth.getCurrentUser 同思路）。
+ * Initial snapshot: on startup the renderer calls `getSnapshot` to grab the
+ * current state and avoid the small delay before the first subscription push
+ * (same approach as `auth.getCurrentUser`).
  */
 export const syncRouter = router({
-  /** 渲染端启动时的初始 snapshot；subscription 后续会推送变更。 */
+  /** Initial snapshot returned to the renderer on startup; subscriptions push subsequent changes. */
   getSnapshot: publicProcedure.query(async ({ ctx }): Promise<ISyncSnapshot> => {
     const service = ctx.injector.get(ISyncServiceId, Quantity.OPTIONAL);
     if (!service) {
       return null;
     }
-    // BehaviorSubject 持有当前值——firstValueFrom 取一次即可
+    // The BehaviorSubject already holds the current value — a single `firstValueFrom` is enough.
     const state = await firstValueFrom(service.state$);
     const stats = await firstValueFrom(service.stats$);
     const lastError = await firstValueFrom(service.lastError$);

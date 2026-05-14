@@ -22,9 +22,11 @@ import { z } from 'zod';
 import { publicProcedure, router } from '../trpc';
 
 /**
- * 取主进程 IAuthService；未配置 cloudBaseUrl 时未注册——抛错而不是返回 null，
- * 让 tRPC 调用方收到明确的"云未配置"信号（与 IAuthClientService 的 Quantity.OPTIONAL
- * 注入降级互补：UI 层用 OPTIONAL 优雅退化，RPC 层在真要调用时硬失败）。
+ * Resolve the main-process `IAuthService`. Without `cloudBaseUrl` configured
+ * the service is unbound — we throw rather than return null so tRPC callers
+ * get an explicit "cloud not configured" signal. This complements
+ * `IAuthClientService`'s `Quantity.OPTIONAL` injection: the UI degrades
+ * gracefully, the RPC layer fails hard when actually invoked.
  */
 function requireAuthService(injector: Injector): IAuthService {
   const service = injector.get(IAuthServiceId, Quantity.OPTIONAL);
@@ -36,7 +38,7 @@ function requireAuthService(injector: Injector): IAuthService {
 
 const registerInputSchema = z.object({
   email: z.string().min(1),
-  /** 用户主密码——瞬时跨 IPC，主进程派生 verifier 后即丢弃。 */
+  /** User master password — transient over IPC; the main process derives the verifier and immediately drops the plaintext reference. */
   password: z.string().min(1),
   displayName: z.string().optional(),
 });
@@ -48,21 +50,24 @@ const loginInputSchema = z.object({
 });
 
 /**
- * 渲染端认证入口。
+ * Renderer-facing auth entry point.
  *
- * **不暴露** getAccessToken / getCurrentUser 同步方法——
- * - access/refresh token **永不跨 IPC**（架构 §0 安全边界）
- * - currentUser 通过 currentUser$ 订阅推送（避免渲染端拉式查询）
+ * We **do not** expose synchronous `getAccessToken` / `getCurrentUser`:
+ * - Access and refresh tokens **never cross IPC** (architecture §0 security
+ *   boundary).
+ * - `currentUser` is pushed via the `currentUser$` subscription instead of
+ *   exposing a pull query.
  *
- * register/login 的 password 是唯一允许瞬时上行的敏感字段；主进程派生 SRP verifier
- * 后即丢弃明文引用。
+ * The `password` field on `register` / `login` is the only sensitive value
+ * allowed to travel up-stream, and only transiently — the main process
+ * derives the SRP verifier and drops the plaintext immediately.
  */
 export const authRouter = router({
   register: publicProcedure
     .input(registerInputSchema)
     .mutation(async ({ input, ctx }) => {
       const authService = requireAuthService(ctx.injector);
-      // 不返回 user——currentUser$ 订阅会推送给渲染端；mutation 仅负责触发动作
+      // No user returned — `currentUser$` pushes it to the renderer; the mutation only fires the action.
       await authService.register(input);
     }),
 
@@ -79,7 +84,7 @@ export const authRouter = router({
       await authService.logout();
     }),
 
-  /** 渲染端启动时拉取一次当前已知状态，避免等待第一次 subscription 推送。 */
+  /** One-shot fetch the renderer uses on startup so it doesn't wait for the first subscription push. */
   getCurrentUser: publicProcedure
     .query(({ ctx }) => {
       const service = ctx.injector.get(IAuthServiceId, Quantity.OPTIONAL);
@@ -101,15 +106,15 @@ export const authRouter = router({
     yield* observableToAsyncGenerator(authService.lastError$);
   }),
 
-  /** 拉取当前账号下所有 active 设备（refresh-token jti 视图）。 */
+  /** List active devices for the current account (refresh-token jti view). */
   listDevices: publicProcedure
     .query(async ({ ctx }) => {
       const authService = requireAuthService(ctx.injector);
-      // tRPC 序列化 readonly array → 普通 array
+      // tRPC serializer needs a plain array, not a readonly one.
       return [...await authService.listDevices()];
     }),
 
-  /** 撤销指定设备；deviceId = IDevice.id（refresh-token jti）。 */
+  /** Revoke a device by `deviceId` (= `IDevice.id`, the refresh-token jti). */
   revokeDevice: publicProcedure
     .input(z.object({ deviceId: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
