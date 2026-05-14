@@ -1,0 +1,153 @@
+/**
+ * Copyright 2026-present Termlnk
+ *
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ */
+
+// SFTP service on top of @termlnk/react-native-russh. P6.9-7 re-build.
+//
+// The SFTP subsystem is opened on the *same* SSH connection via
+// IMobileSshSession.openSftp() — no second TCP handshake. Compared to the
+// P6.3 NMSSH wrapper, the surface gains: per-transfer progress callbacks,
+// mid-flight cancel through a synchronous handle, and entry metadata that
+// includes uid/gid bytes (we project them as filename + mode + size for
+// the UI; the underlying ISftpEntry has the raw fields if v1.1 needs them).
+
+import type {
+  ISftpEntry,
+  ISftpSession,
+  ISftpTransferHandle,
+} from '@termlnk/react-native-russh';
+import type { IMobileSshSession } from '../ssh/mobile-ssh-client.service';
+import { Disposable } from '@termlnk/core';
+import { BehaviorSubject } from 'rxjs';
+
+export type SftpState = 'idle' | 'connecting' | 'ready' | 'transferring' | 'error';
+
+export type { ISftpEntry, ISftpTransferHandle };
+
+export class MobileSftpClientService extends Disposable {
+  readonly state$ = new BehaviorSubject<SftpState>('idle');
+  readonly lastError$ = new BehaviorSubject<string | null>(null);
+
+  private _session: ISftpSession | null = null;
+
+  constructor(private readonly _ssh: IMobileSshSession) {
+    super();
+  }
+
+  override dispose(): void {
+    const session = this._session;
+    this._session = null;
+    if (session) {
+      void session.close().catch(() => {
+        // Best-effort.
+      });
+    }
+    this.state$.next('idle');
+    this.state$.complete();
+    this.lastError$.complete();
+    super.dispose();
+  }
+
+  async connect(): Promise<void> {
+    if (this._session) {
+      return;
+    }
+    this.state$.next('connecting');
+    try {
+      this._session = await this._ssh.openSftp();
+      this.state$.next('ready');
+    } catch (err) {
+      this._failWith(err);
+      throw err;
+    }
+  }
+
+  async list(path: string): Promise<readonly ISftpEntry[]> {
+    return this._call((s) => s.list(path));
+  }
+
+  async stat(path: string) {
+    return this._call((s) => s.stat(path));
+  }
+
+  async mkdir(path: string, mode?: number): Promise<void> {
+    await this._call((s) => s.mkdir(path, mode));
+  }
+
+  async rename(oldPath: string, newPath: string): Promise<void> {
+    await this._call((s) => s.rename(oldPath, newPath));
+  }
+
+  async remove(path: string): Promise<void> {
+    await this._call((s) => s.remove(path));
+  }
+
+  async removeDirectory(path: string): Promise<void> {
+    await this._call((s) => s.rmdir(path));
+  }
+
+  async chmod(path: string, permissions: number): Promise<void> {
+    await this._call((s) => s.chmod(path, permissions));
+  }
+
+  upload(
+    localFilePath: string,
+    remoteFilePath: string,
+    opts?: { onProgress?: (bytesDone: bigint, total?: bigint) => void },
+  ): ISftpTransferHandle {
+    const session = this._requireSession();
+    this.state$.next('transferring');
+    const handle = session.upload(localFilePath, remoteFilePath, {
+      onProgress: opts?.onProgress
+        ? (p) => opts.onProgress!(p.bytesDone, p.total)
+        : undefined,
+    });
+    handle.done
+      .then(() => this.state$.next('ready'))
+      .catch((err) => this._failWith(err));
+    return handle;
+  }
+
+  download(
+    remoteFilePath: string,
+    localFilePath: string,
+    opts?: { onProgress?: (bytesDone: bigint, total?: bigint) => void },
+  ): ISftpTransferHandle {
+    const session = this._requireSession();
+    this.state$.next('transferring');
+    const handle = session.download(remoteFilePath, localFilePath, {
+      onProgress: opts?.onProgress
+        ? (p) => opts.onProgress!(p.bytesDone, p.total)
+        : undefined,
+    });
+    handle.done
+      .then(() => this.state$.next('ready'))
+      .catch((err) => this._failWith(err));
+    return handle;
+  }
+
+  private async _call<T>(fn: (s: ISftpSession) => Promise<T>): Promise<T> {
+    const session = this._requireSession();
+    try {
+      return await fn(session);
+    } catch (err) {
+      this._failWith(err);
+      throw err;
+    }
+  }
+
+  private _requireSession(): ISftpSession {
+    if (!this._session) {
+      throw new Error('SFTP session not connected — call connect() first.');
+    }
+    return this._session;
+  }
+
+  private _failWith(err: unknown): void {
+    this.lastError$.next(err instanceof Error ? err.message : String(err));
+    this.state$.next('error');
+  }
+}

@@ -59,7 +59,7 @@ export default function Settings() {
       <Section title="About">
         <Row label="Client" value="termlnk-mobile" />
         <Row label="Version" value="0.0.1" />
-        <Row label="SSH backend" value="rebuilding on Rust russh (P6.9 in progress)" />
+        <Row label="SSH backend" value="Rust russh 0.54 + russh-sftp 2 (uniffi-bindgen-react-native)" />
       </Section>
     </ScrollView>
   );

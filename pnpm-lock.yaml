@@ -561,6 +561,9 @@ importers:
       '@termlnk/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@termlnk/react-native-russh':
+        specifier: workspace:*
+        version: link:packages/react-native-russh
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../../packages/sync

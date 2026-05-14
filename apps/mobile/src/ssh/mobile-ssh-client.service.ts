@@ -1,0 +1,212 @@
+/**
+ * Copyright 2026-present Termlnk
+ *
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ */
+
+// React Native side fat-client SSH abstraction, P6.9-7 re-implementation.
+// Wraps @termlnk/react-native-russh (Rust russh + russh-sftp via
+// uniffi-bindgen-react-native). Replaces the P6.3 NMSSH/JSch bridge that
+// P6.9-1 deleted.
+//
+// Contract surface deliberately mirrors the original IMobileSshSession so
+// MobileSshSessionManager / terminal.tsx / sftp.tsx reconnect without
+// touching their state-machine logic. The visible deltas are:
+//   * server-key TOFU runs as part of connect() (rejects on mismatch).
+//   * SFTP is opened via connection.startSftp() on the same SSH session,
+//     so MobileSftpClientService can take an ISshConnection rather than a
+//     separate SSHClient — no second TCP handshake.
+//   * exec() throws — russh's high-level surface only exposes start_shell;
+//     callers should run `cmd; exit` inside the shell when they need
+//     one-shot output. v1 mobile UI doesn't call exec(); v1.1 can add an
+//     ad-hoc shell channel for it if needed.
+
+import type {
+  ISftpSession,
+  ISshConnection,
+  ISshShell,
+  ITerminalChunk,
+  ShellListenerEvent,
+} from '@termlnk/react-native-russh';
+import { Disposable } from '@termlnk/core';
+import { RnRussh } from '@termlnk/react-native-russh';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { evaluateServerKey } from './server-key-tofu';
+
+export type SshConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+export interface IMobileSshConnectOptions {
+  readonly host: string;
+  readonly port: number;
+  readonly username: string;
+  readonly password?: string;
+  readonly privateKey?: string;
+  readonly hostId?: string; // optional — when provided drives the TOFU store
+}
+
+export interface IMobileSshSession {
+  readonly host: string;
+  readonly state: SshConnectionState;
+  readonly state$: BehaviorSubject<SshConnectionState>;
+  readonly shellOutput$: Subject<string>;
+
+  exec: (command: string) => Promise<string>;
+  startShell: () => Promise<void>;
+  writeToShell: (data: string) => Promise<void>;
+  closeShell: () => void;
+  disconnect: () => void;
+  openSftp: () => Promise<ISftpSession>;
+}
+
+const utf8Decoder = new TextDecoder('utf-8');
+const utf8Encoder = new TextEncoder();
+
+class MobileSshSession extends Disposable implements IMobileSshSession {
+  readonly state$ = new BehaviorSubject<SshConnectionState>('connected');
+  readonly shellOutput$ = new Subject<string>();
+
+  private _shell: ISshShell | null = null;
+  private _listenerId: bigint | null = null;
+
+  constructor(
+    readonly host: string,
+    private readonly _connection: ISshConnection,
+  ) {
+    super();
+  }
+
+  override dispose(): void {
+    this.disconnect();
+    this.state$.complete();
+    this.shellOutput$.complete();
+    super.dispose();
+  }
+
+  get state(): SshConnectionState {
+    return this.state$.getValue();
+  }
+
+  async exec(_command: string): Promise<string> {
+    throw new Error(
+      'MobileSshSession.exec() is not supported by the russh backend — use startShell() + writeToShell() and parse the output stream.',
+    );
+  }
+
+  async startShell(): Promise<void> {
+    if (this._shell) {
+      return;
+    }
+    const shell = await this._connection.startShell({
+      term: 'Xterm256',
+      onClosed: () => {
+        this._shell = null;
+        this._listenerId = null;
+      },
+    });
+    this._shell = shell;
+    this._listenerId = shell.addListener(this._onShellEvent, { cursor: { mode: 'live' } });
+  }
+
+  async writeToShell(data: string): Promise<void> {
+    const shell = this._requireShell();
+    const bytes = utf8Encoder.encode(data);
+    // Copy the underlying buffer so the FFI layer doesn't see a view shared
+    // with another writer — the russh bridge takes ownership.
+    const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    await shell.sendData(buf);
+  }
+
+  closeShell(): void {
+    if (!this._shell) {
+      return;
+    }
+    if (this._listenerId !== null) {
+      try {
+        this._shell.removeListener(this._listenerId);
+      } catch {
+        // Best-effort — listener may have died with the channel.
+      }
+      this._listenerId = null;
+    }
+    void this._shell.close().catch(() => {
+      // Closing an already-dead channel is fine.
+    });
+    this._shell = null;
+  }
+
+  disconnect(): void {
+    this.closeShell();
+    if (this.state === 'disconnected') {
+      return;
+    }
+    void this._connection.disconnect().catch(() => {
+      // Transport is already torn down on the network side; swallow.
+    });
+    this.state$.next('disconnected');
+  }
+
+  async openSftp(): Promise<ISftpSession> {
+    return this._connection.startSftp();
+  }
+
+  private _requireShell(): ISshShell {
+    if (!this._shell) {
+      throw new Error('Shell has not been started yet — call startShell() first.');
+    }
+    return this._shell;
+  }
+
+  private readonly _onShellEvent = (ev: ShellListenerEvent): void => {
+    if ('kind' in ev) {
+      // Dropped notice — surface as control message in the output stream so
+      // the UI can render a "lost N..M bytes" banner if it wants. v1 just
+      // forwards the seq range as text.
+      this.shellOutput$.next(`\r\n[termlnk] dropped seq ${ev.fromSeq}..${ev.toSeq}\r\n`);
+      return;
+    }
+    const chunk = ev as ITerminalChunk;
+    this.shellOutput$.next(utf8Decoder.decode(new Uint8Array(chunk.bytes), { stream: true }));
+  };
+}
+
+export class MobileSshClientService extends Disposable {
+  async connect(options: IMobileSshConnectOptions): Promise<IMobileSshSession> {
+    await RnRussh.uniffiInitAsync();
+
+    if (!options.password && !options.privateKey) {
+      throw new Error('Either password or privateKey is required');
+    }
+
+    const connection = await RnRussh.connect({
+      host: options.host,
+      port: options.port,
+      username: options.username,
+      security: options.privateKey
+        ? { type: 'key', privateKey: options.privateKey }
+        : { type: 'password', password: options.password! },
+      onServerKey: async (info) => {
+        if (!options.hostId) {
+          // No TOFU store key — accept once. Callers should pass hostId so
+          // the store is keyed correctly; we don't want to refuse based on
+          // a stale empty store either.
+          return true;
+        }
+        const decision = await evaluateServerKey(
+          options.hostId,
+          info.algorithm,
+          info.fingerprintSha256,
+        );
+        if (decision.kind === 'mismatch') {
+          throw new Error(
+            `Host key for ${info.host}:${info.port} changed since first use. ` +
+              `Stored ${decision.stored.algorithm} ${decision.stored.fingerprintSha256}; ` +
+              `presented ${decision.presented.algorithm} ${decision.presented.fingerprintSha256}.`,
+          );
+        }
+        return true;
+      },
+    });
+    return new MobileSshSession(options.host, connection);
+  }
+}
