@@ -176,10 +176,10 @@ export class DynamicIslandController extends Disposable {
     this._islandBrowserWindow.showInactive();
     this._isVisible = true;
 
-    // Stationary 必须在 showInactive() + 首次 paint 之后设置，
-    // 否则 Chromium deferred Cocoa 操作会覆盖 collectionBehavior。
+    // Stationary must be applied after `showInactive()` and the first paint,
+    // otherwise Chromium's deferred Cocoa work overwrites `collectionBehavior`.
     this._applyStationaryBehavior(this._islandBrowserWindow);
-    // 延时兜底，捕获偶发的 deferred reset
+    // Backstop: catch the occasional deferred reset that still slips through.
     setTimeout(() => {
       if (this._isVisible && this._islandBrowserWindow && !this._islandBrowserWindow.isDestroyed()) {
         this._applyStationaryBehavior(this._islandBrowserWindow);
@@ -235,16 +235,18 @@ export class DynamicIslandController extends Disposable {
 
     this._islandBrowserWindow = win;
 
-    // 禁用此窗口的 constrainFrameRect:toScreen:（method swizzling），
-    // 使 y=0 贴顶位置不受系统状态转换期间 window level 降级影响。
+    // Disable this window's `constrainFrameRect:toScreen:` via method
+    // swizzling so the `y=0` placement is not pushed down when the window
+    // level is briefly demoted during a system state transition.
     this._disableFrameConstraint(win);
 
     win.setAlwaysOnTop(true, 'screen-saver');
 
     // Persist across all Spaces and fullscreen apps.
-    // skipTransformProcessType 必须传 true：Electron 默认会把应用切到
-    // UIElementApplication（accessory）以叠加全屏窗口，导致 Dock 图标消失、
-    // 主窗口在切换应用后自动隐藏。这里直接跳过 process type 转换。
+    // `skipTransformProcessType: true` is required. Electron defaults to
+    // switching the app to `UIElementApplication` (accessory) so it can
+    // overlay fullscreen windows — that hides the Dock icon and makes the
+    // main window auto-hide after app switching. Skip the transform.
     win.setVisibleOnAllWorkspaces(true, {
       visibleOnFullScreen: true,
       skipTransformProcessType: true,
@@ -277,7 +279,7 @@ export class DynamicIslandController extends Disposable {
     });
   }
 
-  /** 当 macOS 将窗口的 alwaysOnTop 降级时，立即恢复层级和位置。 */
+  /** Restore the window's level and position the moment macOS demotes its `alwaysOnTop`. */
   private _setupAlwaysOnTopGuard(win: BrowserWindow): void {
     win.on('always-on-top-changed', (_event, isAlwaysOnTop) => {
       if (!isAlwaysOnTop && this._isVisible && !win.isDestroyed()) {
@@ -318,9 +320,9 @@ export class DynamicIslandController extends Disposable {
   }
 
   /**
-   * 补充 _setupAlwaysOnTopGuard 的辅助防线：
-   * 部分场景下 level 数值被降级但 alwaysOnTop 布尔值未翻转，
-   * always-on-top-changed 不会触发，需通过电源事件补充覆盖。
+   * Backup guard for `_setupAlwaysOnTopGuard`. In some scenarios the window
+   * level is demoted while the `alwaysOnTop` boolean stays unchanged — the
+   * `always-on-top-changed` event never fires, so power events fill the gap.
    */
   private _initPowerMonitorListener(): void {
     const handler = () => {
@@ -334,7 +336,7 @@ export class DynamicIslandController extends Disposable {
     }));
   }
 
-  /** 重新提升灵动岛窗口的层级和位置。先恢复 level，再设 position。 */
+  /** Re-promote the island window: restore the level first, then the position. */
   private _restoreIslandLevel(): void {
     if (!this._isVisible || !this._islandBrowserWindow || this._islandBrowserWindow.isDestroyed()) {
       return;
@@ -346,9 +348,9 @@ export class DynamicIslandController extends Disposable {
   }
 
   /**
-   * 通过原生 addon 设置 NSWindowCollectionBehaviorStationary，
-   * 使灵动岛在 Mission Control / Spaces 动画中保持原地不动。
-   * Electron 未暴露此 API，必须通过原生代码设置。
+   * Apply `NSWindowCollectionBehaviorStationary` via a native addon so the
+   * island stays in place during Mission Control / Spaces animations.
+   * Electron does not expose this API, so a native call is required.
    */
   private _applyStationaryBehavior(win: BrowserWindow): void {
     try {
@@ -361,8 +363,9 @@ export class DynamicIslandController extends Disposable {
   }
 
   /**
-   * 通过原生 addon（method swizzling）禁用此窗口的 constrainFrameRect:toScreen:，
-   * 使 y=0 不受 AppKit visibleFrame 约束。仅对标记的窗口生效。
+   * Native addon (method swizzling) that disables
+   * `constrainFrameRect:toScreen:` on this window, freeing `y=0` from the
+   * AppKit `visibleFrame` constraint. Applies only to flagged windows.
    */
   private _disableFrameConstraint(win: BrowserWindow): void {
     try {
@@ -386,8 +389,9 @@ export class DynamicIslandController extends Disposable {
   // ---------------------------------------------------------------------------
 
   /**
-   * 在所有非岛窗口上注册 before-input-event 监听，
-   * 使用户在终端主窗口也能通过 ⌘Y/⌘N 响应权限请求。
+   * Register `before-input-event` on every non-island window so users can
+   * respond to permission requests with ⌘Y / ⌘N from the main terminal
+   * window as well.
    */
   private _initPermissionKeyboard(): void {
     this.disposeWithMe(

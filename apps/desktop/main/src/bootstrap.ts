@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { extname, isAbsolute, resolve } from 'node:path';
@@ -21,8 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
 import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
 import { AuthPlugin, IDeviceNameProvider, IIdleProbe } from '@termlnk/auth';
-import { AuthCorePlugin, OsHostnameDeviceNameProvider } from '@termlnk/auth-core';
-import { Core, IUpdaterService, LocaleType, LogLevel } from '@termlnk/core';
+import { AuthCorePlugin } from '@termlnk/auth-core';
+import { Core, ILogService, IUpdaterService, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
 import { ElectronPlugin } from '@termlnk/electron';
 import { ElectronIdleProbe, ElectronMainPlugin, FileDialogService, MockUpdaterService, SafeStorageCipher } from '@termlnk/electron-main';
@@ -38,7 +39,46 @@ import { chadracula } from '@termlnk/themes';
 import { app, protocol } from 'electron';
 import { dirname, join, relative } from 'pathe';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
+import { OsHostnameDeviceNameProvider } from './platform/os-hostname-device-name-provider.service';
 import { fixProcessPath } from './shell-path';
+
+// Load apps/desktop/.env into process.env in unpackaged runs. Vite's `define` doesn't
+// rewrite `process.env.*` in Node-target main bundles, and we don't ship dotenv as a
+// runtime dependency — this tiny loader covers TERMLNK_* style flags the same way
+// EAS/Expo handles `.env` on the mobile side. Packaged builds skip it (no .env on disk).
+function loadDotenv(): void {
+  if (app.isPackaged) {
+    return;
+  }
+  const envPath = resolve(process.cwd(), '.env');
+  let content: string;
+  try {
+    content = readFileSync(envPath, 'utf-8');
+  } catch {
+    return;
+  }
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+    const eq = line.indexOf('=');
+    if (eq <= 0) {
+      continue;
+    }
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\'')))) {
+      value = value.slice(1, -1);
+    }
+    // Shell-provided values win over .env so `TERMLNK_X=... pnpm dev` overrides the file.
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadDotenv();
 
 // Must run before any child-process spawning (PTY, MCP stdio, etc.)
 fixProcessPath();
@@ -147,6 +187,20 @@ function withAsarEnabled<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
+// Production cloud endpoint baked into the packaged build.
+const PRODUCTION_CLOUD_BASE_URL = 'https://cloud.termlnk.com/v1';
+
+// Dev/CI takes TERMLNK_CLOUD_BASE_URL (via shell or apps/desktop/.env loaded by
+// electron-vite). Packaged builds hit the hard-coded constant — env var only wins
+// in unpackaged runs so a stray shell variable can't redirect end-user traffic.
+function resolveCloudBaseUrl(): string | undefined {
+  const envValue = process.env.TERMLNK_CLOUD_BASE_URL?.trim();
+  if (envValue && !app.isPackaged) {
+    return envValue;
+  }
+  return PRODUCTION_CLOUD_BASE_URL || undefined;
+}
+
 function resolveRendererAssetPath(requestURL: string): string | null {
   const { hostname, pathname } = new URL(requestURL);
   if (hostname !== 'termlnk') {
@@ -229,20 +283,25 @@ app.whenReady().then(async () => {
 
   // Auth/Sync contracts ship with Noop ITokenRefresher / ISyncTransportService;
   // Phase 3 swaps in HTTP impls via plugin overrides.
+  // Cloud endpoint is wired through TERMLNK_CLOUD_BASE_URL (dev: .env / shell;
+  // packaged release: hard-code below). Empty/unset → cloud features stay offline
+  // (HttpAuthService unbound; AuthGate shows the "cloud unavailable" placeholder).
+  const cloudBaseUrl = resolveCloudBaseUrl();
+  core.getInjector().get(ILogService).log(`[Bootstrap] cloudBaseUrl = ${cloudBaseUrl ?? '(unset — cloud features disabled)'}`);
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
+    cloudBaseUrl,
     // powerMonitor-backed probe makes autoLockIdleMinutes effective on Electron;
     // auth-core's NoopIdleProbe stays the default for pure Node hosts.
-    // OsHostnameDeviceNameProvider lifts hostname() from node:os for device list
-    // entries — auth-core itself defaults to a platform-agnostic 'Unknown device' so
-    // the package stays free of node:os imports (mobile would crash in Metro).
+    // OsHostnameDeviceNameProvider is the Electron-side adapter for IDeviceNameProvider
+    // (lives in ./platform/ so auth-core stays free of node:os imports).
     override: [
       [IIdleProbe, { useClass: ElectronIdleProbe }],
       [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
     ],
   });
   core.registerPlugin(SyncPlugin);
-  core.registerPlugin(SyncCorePlugin);
+  core.registerPlugin(SyncCorePlugin, { cloudBaseUrl });
 
   // Bundled skills must live outside app.asar — Node's fs APIs throw ENOENT
   // on asar virtual directory entries; extraResources drops them into

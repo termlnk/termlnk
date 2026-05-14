@@ -76,8 +76,10 @@ export class ElectronMainPlugin extends Plugin {
     ]);
   }
 
-  // 灵动岛是 macOS NSPanel，若先于主 NSWindow 可见会让应用被判定为 accessory，
-  // Dock 图标消失、切走后主窗口自动隐藏。推迟到 Steady（主窗口已 show）实例化。
+  // The Dynamic Island is a macOS NSPanel — showing it before the main
+  // NSWindow makes the app register as an accessory: the Dock icon
+  // disappears and the main window auto-hides after switching away.
+  // Defer creation until Steady, after the main window has shown.
   override onSteady(): void {
     touchDependencies(this._injector, [
       [DynamicIslandController],

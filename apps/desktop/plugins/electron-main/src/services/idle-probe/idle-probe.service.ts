@@ -17,13 +17,15 @@ import type { IIdleProbe } from '@termlnk/auth';
 import { powerMonitor } from 'electron';
 
 /**
- * Electron 实现 —— 把 IIdleProbe 接到 `powerMonitor.getSystemIdleTime()`。
+ * Electron implementation — wires `IIdleProbe` to
+ * `powerMonitor.getSystemIdleTime()`.
  *
- * `getSystemIdleTime` 是 Electron 提供的跨平台 API，返回**系统层面**最后一次输入
- * （鼠标 / 键盘 / 触屏）距今的秒数。比"应用层焦点检测"更准确——用户切窗写文档
- * 时不会被误判为 idle。
+ * `getSystemIdleTime` returns the seconds since the last **system-level**
+ * input (mouse / keyboard / touch) on macOS, Windows and Linux. That is
+ * more accurate than app-level focus detection — a user who switched away
+ * to write a document is not falsely treated as idle.
  *
- * macOS / Windows / Linux 均支持；调用极轻（系统级 syscall）。
+ * The call is a cheap syscall on all three platforms.
  */
 export class ElectronIdleProbe implements IIdleProbe {
   getIdleSeconds(): number {

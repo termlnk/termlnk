@@ -111,8 +111,9 @@ export class AppSettingsController extends Disposable {
   }
 
   /**
-   * Windows: Squirrel.Windows 将应用安装在版本化目录 (app-x.y.z/) 下，
-   * Update.exe 才是跨版本稳定的入口。直接注册 process.execPath 会在更新后失效。
+   * Windows: Squirrel.Windows installs the app under a versioned directory
+   * (`app-x.y.z/`); `Update.exe` is the only stable launcher across versions.
+   * Registering `process.execPath` directly would break on the next update.
    */
   private _applyAutoLaunchWindows(enabled: boolean): void {
     const updateExe = resolve(dirname(process.execPath), '..', 'Update.exe');
@@ -129,8 +130,9 @@ export class AppSettingsController extends Disposable {
   }
 
   /**
-   * Linux: Electron 的 setLoginItemSettings 不支持 DEB/AppImage，
-   * 遵循 XDG Autostart 规范，在 ~/.config/autostart/ 下管理 .desktop 文件。
+   * Linux: Electron's `setLoginItemSettings` does not support DEB or
+   * AppImage. We follow the XDG Autostart spec and manage `.desktop` files
+   * under `~/.config/autostart/`.
    */
   private _applyAutoLaunchLinux(enabled: boolean): void {
     const autostartDir = join(app.getPath('home'), '.config', 'autostart');

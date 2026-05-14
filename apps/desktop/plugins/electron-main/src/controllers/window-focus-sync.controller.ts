@@ -20,22 +20,28 @@ import { ISyncService as ISyncServiceId, SYNC_TRIGGER_INTERVALS } from '@termlnk
 import { debounceTime, filter, map, takeUntil } from 'rxjs';
 
 /**
- * 窗口聚焦 → SyncService.syncNow 触发桥（**仅主进程**，cloud-sync-architecture.md §4.6 触发策略表第 4 行）。
+ * Window-focus → `SyncService.syncNow` bridge (**main process only**).
+ * See cloud-sync-architecture.md §4.6, trigger row 4.
  *
- * 用户从后台返回前台窗口时立即 push + pull 一次，给"切回 Termlnk 看到的就是最新状态"
- * 的体感——5 min 兜底轮询保证最终一致，但用户可能等不了那么久。
+ * When the user returns to a Termlnk window we push + pull once so the
+ * state feels immediately fresh — the 5-min fallback poll guarantees
+ * eventual consistency, but that's too slow for "I just clicked back to
+ * the app".
  *
- * 设计要点：
- * - **debounce pullDebounceMs (200 ms)**：多窗口快速切焦点 / 浏览器拖拽返回桌面这种连发
- *   focus 事件被合并成一次 syncNow，不会刷云端
- * - **ISyncService Quantity.OPTIONAL**：sync 未配置（无 cloudBaseUrl）时 controller 空转，
- *   不阻断 ElectronMainPlugin 启动
- * - **syncNow 异常吞掉**：网络失败 / master_key_locked 等错误已经在 SyncService 内推到
- *   `lastError$`，UI 自然显示；本 controller 只是触发器，无需重复处理
+ * - **`debounceTime(pullDebounceMs)` (200 ms)** collapses bursts of focus
+ *   events (multi-window switching, browser-drag-back-to-desktop) into a
+ *   single `syncNow`.
+ * - **`ISyncService` is `Quantity.OPTIONAL`** — without `cloudBaseUrl` the
+ *   service is unbound and this controller no-ops, never blocking
+ *   `ElectronMainPlugin` startup.
+ * - **`syncNow` exceptions are swallowed.** Network failures and
+ *   `master_key_locked` errors are already surfaced via
+ *   `SyncService.lastError$` for the UI; we don't double-report.
  *
- * 不在 controller 里做的事：
- * - 不读 enabled$——SyncService.syncNow 内部已守门（`!this._enabled$.getValue() → return`），
- *   重复 disable 状态守卫只会让代码更脆，不增加正确性
+ * Out of scope here:
+ * - We don't gate on `enabled$` — `SyncService.syncNow` already returns
+ *   early when disabled (`!this._enabled$.getValue() → return`). Adding a
+ *   second guard only makes the code more brittle.
  */
 export class WindowFocusSyncController extends RxDisposable {
   constructor(
@@ -52,7 +58,8 @@ export class WindowFocusSyncController extends RxDisposable {
 
     windowManagerService.windowEvent$
       .pipe(
-        // 任何窗口聚焦都视作"用户回到 app"——多窗口场景下先聚焦哪个不重要
+        // Any window getting focus counts as "user returned to the app"
+        // — with multi-window setups the specific window does not matter.
         map((events) => Array.from(events.values())),
         filter((eventList) => eventList.includes(WindowEvent.Focus)),
         debounceTime(SYNC_TRIGGER_INTERVALS.pullDebounceMs),

@@ -19,7 +19,7 @@ import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { powerSaveBlocker } from 'electron';
 
 export class KeepAwakeService extends Disposable implements IKeepAwakeService {
-  // 引用计数：每次 acquire 注册唯一 Symbol；集合非空时保持 OS 级 blocker
+  // Reference counting: each `acquire()` registers a unique Symbol; the OS-level blocker stays on while the set is non-empty.
   private readonly _holders = new Set<symbol>();
   private _blockerId: number | null = null;
 

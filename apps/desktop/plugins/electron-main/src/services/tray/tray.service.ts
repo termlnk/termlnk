@@ -116,8 +116,9 @@ export class TrayService extends Disposable implements ITrayService {
 
     const target = windows.find((w) => !w.isMinimized()) ?? windows[0];
 
-    // dock.show() 是异步的 setActivationPolicy(Regular) 过程。
-    // 必须先等它完成、App 脱离 Accessory 模式，window.show() 才能真正把窗口前置。
+    // `dock.show()` runs an async `setActivationPolicy(Regular)`. We have
+    // to await it so the app leaves Accessory mode before `window.show()`
+    // can actually bring the window to the front.
     if (platform === Platform.Mac) {
       await app.dock?.show();
     }

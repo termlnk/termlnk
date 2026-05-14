@@ -73,8 +73,11 @@ interface INavigator {
   userAgent: string;
   maxTouchPoints?: number;
   language: string;
+  product?: string;
 }
 declare const navigator: INavigator;
+
+const isReactNative = typeof navigator === 'object' && navigator.product === 'ReactNative';
 
 if (typeof nodeProcess === 'object') {
   // Native environment
@@ -86,6 +89,13 @@ if (typeof nodeProcess === 'object') {
   _isCI = !!nodeProcess.env.CI || !!nodeProcess.env.BUILD_ARTIFACTSTAGINGDIRECTORY || !!nodeProcess.env.GITHUB_WORKSPACE;
   _locale = LANGUAGE_DEFAULT;
   _isNative = true;
+} else if (isReactNative) {
+  // React Native — third runtime alongside Node and Web. The navigator polyfill exists
+  // but has no userAgent / language; OS-level branching should go through react-native's
+  // `Platform.OS` in the consumer rather than the userAgent string parsing below.
+  _isNative = true;
+  _isMobile = true;
+  _locale = LANGUAGE_DEFAULT;
 } else if (typeof navigator === 'object' && !isElectronRenderer) {
   // Web environment
   _userAgent = navigator.userAgent;
