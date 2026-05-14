@@ -16,8 +16,8 @@
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { BackupRepository, IBackupSnapshot } from '@termlnk/database';
 import { Buffer } from 'node:buffer';
-import { IMasterKeyService } from '@termlnk/auth';
-import { MasterKeyService } from '@termlnk/auth-core';
+import { IMasterKeyService, IPasswordHasher } from '@termlnk/auth';
+import { HashWasmPasswordHasher, MasterKeyService } from '@termlnk/auth-core';
 import { ILogService as ILogServiceId, Injector } from '@termlnk/core';
 import { BACKUP_PAYLOAD_PREFIX } from '@termlnk/sync';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -125,6 +125,9 @@ interface ITestBed {
 function createTestBed(): ITestBed {
   const injector = new Injector();
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
+  // MasterKeyService now requires IPasswordHasher (see P6.2). Bind the Wasm impl since
+  // these tests run under Node.
+  injector.add([IPasswordHasher, { useClass: HashWasmPasswordHasher }]);
   injector.add([IMasterKeyService, { useClass: MasterKeyService }]);
   const cryptoService = new SyncCryptoService(
     injector.get(IMasterKeyService),

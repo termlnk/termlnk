@@ -19,12 +19,13 @@ import { Disposable } from '@termlnk/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 
 /**
- * 占位 transport——connect 一直处于"未连接"状态；push/pull 返回空响应。
+ * Placeholder transport — stays "disconnected"; push/pull throw.
  *
- * 用途：Phase 3 网络层落地前，SyncCorePlugin 注册一个可用的 transport binding，
- * 让 SyncService 能正常 enable（而不是因 DI 缺失抛错）。enable() 后 state$
- * 立即变 Offline，UI 显示"未连接"——用户主动登录 / 配置后端后由 desktop main
- * 的 override 替换为真实 HTTP/WS 实现。
+ * Used when no cloud backend is configured. `SyncCorePlugin` always binds a
+ * transport so `SyncService.enable()` works (instead of failing DI). After
+ * `enable()` the service immediately enters Offline; once the user logs in or
+ * configures a backend, desktop main overrides this with the real HTTP/WS
+ * implementation.
  */
 export class NoopSyncTransportService extends Disposable implements ISyncTransportService {
   private readonly _connected$ = new BehaviorSubject<boolean>(false);
@@ -48,7 +49,7 @@ export class NoopSyncTransportService extends Disposable implements ISyncTranspo
   }
 
   async connect(): Promise<void> {
-    // 不抛错，但保持 connected=false——SyncService 进入 Offline 状态
+    // No error, but stay disconnected so `SyncService` enters Offline.
   }
 
   async disconnect(): Promise<void> {

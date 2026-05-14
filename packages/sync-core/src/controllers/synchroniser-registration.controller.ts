@@ -24,18 +24,21 @@ import { ProviderSynchroniser } from '../synchronisers/provider-synchroniser';
 import { SkillSynchroniser } from '../synchronisers/skill-synchroniser';
 
 /**
- * 启动时把可用 synchroniser 注册到 SyncService。
+ * Registers the available synchronisers with `SyncService` at startup.
  *
- * 通过 controller 而非 Plugin 直接注册——controller 在 onReady 阶段被 touch，
- * 此时所有依赖都已 ready；Plugin 的 onStarting 阶段服务还没构造。
+ * Registration happens in a controller, not directly in the plugin: the
+ * controller is touched at `onReady`, by which time every dependency is
+ * constructed. Plugin `onStarting` runs too early — services don't exist yet.
  *
- * Synchroniser 的 `start()` 才会订阅 Repository.changed$；构造本身没有副作用。
- * 因此过滤可以发生在 register 这一步——被排除的 synchroniser 永远拿不到 start 调用，
- * 不订阅本地变更，也就不会往 outbox 灌东西。
+ * `start()` is what subscribes the synchroniser to `Repository.changed$`;
+ * construction is side-effect free. So filtering at the register step is
+ * sufficient — an excluded synchroniser never has `start()` called and never
+ * pushes anything into the outbox.
  *
- * 排除来源：`ISyncPluginConfig.excludedResources`（用户偏好；默认空数组）。
- * chat / terminal_session_backup / mcp_oauth_token 这些**架构层面**的非同步资源
- * 根本就没有 synchroniser，与本字段无关。
+ * Exclusion source: `ISyncPluginConfig.excludedResources` (user preference,
+ * default empty). Architecturally non-syncable resources (chat,
+ * terminal_session_backup, mcp_oauth_token) simply have no synchroniser and
+ * are independent of this list.
  */
 export class SynchroniserRegistrationController extends Disposable {
   constructor(

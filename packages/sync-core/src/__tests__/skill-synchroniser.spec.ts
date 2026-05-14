@@ -112,6 +112,9 @@ class FakeOutbox implements ISyncOutboxService {
   }
 
   async clearResource(): Promise<void> {}
+  async purgeByEntityIdPrefixes(): Promise<number> {
+    return 0;
+  }
 }
 
 class FakeCrypto implements ISyncCryptoService {
@@ -328,6 +331,18 @@ describe('SkillSynchroniser', () => {
     expect(snapshot).toHaveLength(2);
     expect(snapshot.every((m) => m.op === 'upsert')).toBe(true);
     expect(bed.outbox.enqueued).toHaveLength(2);
+  });
+
+  it('buildInitialSnapshot skips rows that already have a sync_row_meta entry', async () => {
+    bed.skillRepo.rows.set('s1', makeSkill('s1'));
+    bed.skillRepo.rows.set('s2', makeSkill('s2'));
+    await bed.rowMeta.upsert({ resource: 'skill', entityId: 's1', version: 2, updatedAt: Date.now() });
+
+    const snapshot = await bed.syncer.buildInitialSnapshot();
+
+    expect(snapshot).toHaveLength(1);
+    expect(bed.outbox.enqueued).toHaveLength(1);
+    expect(bed.outbox.enqueued[0].entityId).toBe('s2');
   });
 
   it('races: row deleted between event and getById → emits delete mutation instead of crashing', async () => {

@@ -13,7 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { TokenManager } from '@termlnk/auth-core';
+// Deep import: must match the resolution path used by http-transport.service.ts so the
+// TypeScript nominal identity of TokenManager stays single — going through the package
+// barrel would resolve to lib/types and create a second incompatible class type.
+import type { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { ISyncMutation } from '@termlnk/sync';
 import type { HttpFetchFn, HttpWebSocketCtor, IHttpWebSocket } from '../services/http-transport.service';

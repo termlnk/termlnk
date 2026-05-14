@@ -108,6 +108,9 @@ class FakeOutbox implements ISyncOutboxService {
   }
 
   async clearResource(): Promise<void> {}
+  async purgeByEntityIdPrefixes(): Promise<number> {
+    return 0;
+  }
 }
 
 class FakeCrypto implements ISyncCryptoService {
@@ -291,6 +294,18 @@ describe('McpSynchroniser', () => {
 
     expect(snapshot).toHaveLength(2);
     expect(bed.outbox.enqueued).toHaveLength(2);
+  });
+
+  it('buildInitialSnapshot skips rows that already have a sync_row_meta entry', async () => {
+    bed.mcpRepo.rows.set('m1', makeServer('m1'));
+    bed.mcpRepo.rows.set('m2', makeServer('m2'));
+    await bed.rowMeta.upsert({ resource: 'mcp_server', entityId: 'm1', version: 7, updatedAt: Date.now() });
+
+    const snapshot = await bed.syncer.buildInitialSnapshot();
+
+    expect(snapshot).toHaveLength(1);
+    expect(bed.outbox.enqueued).toHaveLength(1);
+    expect(bed.outbox.enqueued[0].entityId).toBe('m2');
   });
 
   it('dispose unsubscribes — subsequent changed$ events are ignored', async () => {

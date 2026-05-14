@@ -24,26 +24,28 @@ import { BehaviorSubject } from 'rxjs';
 const LAST_CLIENT_MUT_ID_FIELD = 'lastClientMutId';
 
 /**
- * 单调的 client_mut_id 分配器 + outbox 写入协调器。
+ * Monotonic `client_mut_id` allocator and outbox writer.
  *
- * 设计要点：
- * - clientMutId 必须**严格单调递增**，否则服务端去重 (clientId, clientMutId) 会失效
- * - 启动恢复路径：max(persistedHighWaterMark, max(outbox.client_mut_id)) 之和 + 1 为下一个 ID
- *   - persisted high water 防止 outbox 全部 ack 后 max() 归 0 重复利用 ID
- *   - max from outbox 防止 config 写入失败时退化（保证一定 > 已存在的 ID）
- * - 主进程内单实例 → in-memory 计数器是真理来源；写库 + 写持久化是异步成本，崩溃也至多丢若干 ID 不影响正确性
+ * - `clientMutId` must be **strictly monotonic** or the server's
+ *   `(clientId, clientMutId)` dedupe breaks.
+ * - Startup recovery: next ID = `max(persistedHighWaterMark, max(outbox.client_mut_id)) + 1`.
+ *   The persisted high-water guards against an empty outbox resetting the
+ *   sequence; the outbox max guards against a config write that never landed.
+ * - Single instance in the main process, so the in-memory counter is the
+ *   source of truth. DB writes and persistence are async; a crash loses at
+ *   most a few IDs and never causes reuse.
  *
- * pendingCount$ 仅在 enqueue / ack / clearResource 三个本地动作里更新——服务端拒绝
- * 不影响"待推送"语义（仍在队列里等下次重试）。
+ * `pendingCount$` is updated only by enqueue / ack / clearResource — server
+ * rejection does not change "pending" because the row stays for retry.
  */
 export class SyncOutboxService extends Disposable implements ISyncOutboxService {
   private readonly _pendingCount$ = new BehaviorSubject<number>(0);
   readonly pendingCount$: Observable<number> = this._pendingCount$.asObservable();
 
-  /** 已分配的最大 clientMutId；首次启动 = 0；下次分配 = _lastClientMutId + 1 */
+  /** Largest allocated `clientMutId`; starts at 0; next = `_lastClientMutId + 1`. */
   private _lastClientMutId = 0;
 
-  /** 是否已完成首次 hydrate（初始计数 + 计数器加载）。在它前调用 enqueue 会先等待 hydrate。 */
+  /** Resolves when initial hydrate (count + counter) finishes; enqueues await it. */
   private _hydratePromise: Promise<void> | null = null;
 
   constructor(
@@ -121,7 +123,7 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
     this._logService.warn(
       `[SyncOutboxService] server rejected ${mutationIds.length} mutation(s) — reason: ${reason}`
     );
-    // 拒绝不改变 pendingCount——条目仍在队列里待下次重试
+    // Rejection does not change `pendingCount` — the row stays for retry.
   }
 
   async countByResource(resource: SyncResourceId): Promise<number> {
@@ -135,10 +137,22 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
     await this._refreshPendingCount();
   }
 
+  async purgeByEntityIdPrefixes(resource: SyncResourceId, prefixes: readonly string[]): Promise<number> {
+    if (prefixes.length === 0) {
+      return 0;
+    }
+    await this._hydratePromise;
+    const deleted = await this._outboxRepo.deleteByResourceAndEntityIdPrefixes(resource, prefixes);
+    if (deleted > 0) {
+      await this._refreshPendingCount();
+    }
+    return deleted;
+  }
+
   /**
-   * 启动一次性的初始化：
-   * 1. 计算待推送总数推到 pendingCount$
-   * 2. 校准 in-memory clientMutId 计数器
+   * One-shot startup hydration:
+   * 1. publish the current pending count to `pendingCount$`
+   * 2. realign the in-memory `clientMutId` counter
    */
   private async _hydrate(): Promise<void> {
     try {
@@ -152,15 +166,16 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
       this._pendingCount$.next(count);
     } catch (err) {
       this._logService.error('[SyncOutboxService] hydrate failed:', err);
-      // hydrate 失败不阻塞构造；后续 enqueue 会用 _lastClientMutId=0 起步——
-      // 但 outbox 本地数据可能已有更高 ID，此情况会立即被 dbMax 抢占。
+      // Hydrate failure does not block construction; later enqueues fall back
+      // to `_lastClientMutId = 0`. If the outbox already holds higher IDs,
+      // the next `_hydrate` run will overtake them via `dbMax`.
     }
   }
 
   private async _allocateClientMutId(): Promise<number> {
     const next = this._lastClientMutId + 1;
     this._lastClientMutId = next;
-    // 持久化 high water mark：即使 outbox 被 ack 全清空，下次启动也能从这里恢复
+    // Persist the high-water mark so the sequence survives an outbox fully drained by ack.
     await this._configRepo.setField(SYNC_PLUGIN_CONFIG_KEY, LAST_CLIENT_MUT_ID_FIELD, next);
     return next;
   }

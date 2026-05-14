@@ -23,23 +23,24 @@ const TEXT_DECODER = new TextDecoder();
 const PREFIX_BYTES = TEXT_ENCODER.encode(BACKUP_PAYLOAD_PREFIX);
 
 /**
- * 加密备份编排器。
+ * Encrypted-backup orchestrator.
  *
- * 数据流（导出）：
- *   BackupRepository.exportSnapshot()  → 明文凭据 IBackupSnapshot
+ * Export:
+ *   BackupRepository.exportSnapshot()  → IBackupSnapshot with plaintext creds
  *   → JSON.stringify → utf8 bytes
  *   → SyncCryptoService.encrypt        → tmsync1: frame
- *   → 拼接 BACKUP_PAYLOAD_PREFIX        → tmbak1: 字节流（写文件）
+ *   → prepend BACKUP_PAYLOAD_PREFIX     → tmbak1: bytes (written to file)
  *
- * 数据流（导入）：
+ * Import:
  *   tmbak1: bytes
- *   → 校验 + 剥离 BACKUP_PAYLOAD_PREFIX
+ *   → validate + strip BACKUP_PAYLOAD_PREFIX
  *   → SyncCryptoService.decrypt        → utf8 bytes
  *   → JSON.parse                       → IBackupSnapshot
- *   → BackupRepository.importSnapshot  → DB 写回（重新本地加密）
+ *   → BackupRepository.importSnapshot  → DB (re-encrypted with local key)
  *
- * 调用前提：master key 已 unlocked（SyncCryptoService.available === true）。
- * locked 时直接抛错——避免误导用户得到一个"成功"但实际什么也没做的状态。
+ * Requires an unlocked master key (`SyncCryptoService.available === true`).
+ * When locked we throw rather than report a misleading "success" with no work
+ * done.
  */
 export class BackupService extends Disposable implements IBackupService {
   constructor(

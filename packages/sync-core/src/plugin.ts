@@ -14,7 +14,12 @@
  */
 
 import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
-import { AuthCorePlugin, TokenManager } from '@termlnk/auth-core';
+import { AuthCorePlugin } from '@termlnk/auth-core';
+// Deep import keeps TokenManager from being resolved through the package barrel — that
+// path drags @termlnk/database into the type graph and produces a second nominal
+// TokenManager when http-transport.service.ts also deep-imports it. Both call sites
+// must share one resolution path or TS treats them as incompatible classes.
+import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
 import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService, SyncPlugin } from '@termlnk/sync';

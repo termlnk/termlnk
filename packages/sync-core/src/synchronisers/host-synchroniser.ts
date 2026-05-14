@@ -26,23 +26,29 @@ const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
 /**
- * Host 同步器（行级 LWW，含 group 节点）。
+ * Host synchroniser — row-level LWW, including group nodes.
  *
- * 同步范围：完整 IHostEntity 行，含 `tree` / `pid` / `sort` 字段——树拓扑在
- * 远端已是合法状态，本地按行 upsert 即可（深度排序仅在 server-side patch 顺序保证）。
+ * Scope: full `IHostEntity` rows, including `tree` / `pid` / `sort`. The
+ * server holds the canonical tree topology; locally we just upsert per row.
  *
- * 安全语义：
- * - HostRepository.getInfoById 返回**已解密**的 credential/proxy，同步层用 sync E2EE
- *   再加密上传；接收端 syncUpsertRow 用本地 SecretCipher 重新加密入库
- * - hostChainIds 校验在同步 apply 路径**跳过**（源设备已校验；本地拒绝会让两端永久分歧）
+ * Security:
+ * - `HostRepository.getInfoById` returns **decrypted** credential/proxy
+ *   fields. We re-encrypt with sync E2EE for upload; the receiving side
+ *   re-encrypts with the local `SecretCipher` on `syncUpsertRow`.
+ * - `hostChainIds` validation is **skipped** in the apply path — the source
+ *   device already validated, and rejecting locally would keep the two ends
+ *   permanently divergent.
  *
- * 删除级联：HostRepository.delete 在 SQL 层级联删除所有后代——同步只发一条 delete
- * mutation，接收端的 delete 自然 cascade。两端最终一致。
+ * Cascade delete: `HostRepository.delete` cascades to descendants at the SQL
+ * level, so we only enqueue one delete mutation. The receiving side cascades
+ * the same way; both ends converge.
  *
- * 局限（明示）：
- * - 不做 patch 拓扑排序——若服务端发来 [child, parent] 顺序，child 写入时 parent 暂缺，
- *   tree 字段会暂时悬空；下次 pull 自然修复，无 FK 约束所以不会写入失败
- * - 'move' 事件被视为普通 update（行的 pid/tree 已变）
+ * Known limits:
+ * - No topological sort of incoming patches. If the server delivers
+ *   `[child, parent]`, the child briefly references a missing parent in
+ *   `tree`. There is no FK to fail the write; the next pull repairs it.
+ * - `move` events are treated as plain updates (the row's `pid`/`tree` are
+ *   already correct in the DB).
  */
 export class HostSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
@@ -78,7 +84,7 @@ export class HostSynchroniser extends RxDisposable implements IResourceSynchroni
         if (this._applyingPatch) {
           return;
         }
-        // 'move' 事件视为 update — 行的 pid/tree/sort 已变，需要 push
+        // `move` is treated as update — the row's `pid`/`tree`/`sort` already changed.
         const t = event.type === 'move' ? 'update' : event.type;
         void this._handleLocalChange(event.id, t);
       })
@@ -109,21 +115,27 @@ export class HostSynchroniser extends RxDisposable implements IResourceSynchroni
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
-    // getInfoById 是 by-id；getListByPid 只取一层。要拉所有行需要遍历全树。
-    // 简单做法：从根开始递归。
+    // Only enqueue rows that have never been synced before — sync_row_meta is upserted on
+    // both push.accepted and applyPatch. A pre-existing meta row means the row is already
+    // represented on the server (with whatever version meta records), so re-enqueuing would
+    // just create redundant outbox traffic on every enable().
     const rows = await this._collectAllHosts();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
       const meta = await this._rowMeta.get(RESOURCE_ID, row.id);
-      const enqueued = await this._outbox.enqueue(this._buildUpsertMutation(row, meta?.version ?? null));
+      if (meta) {
+        continue;
+      }
+      const enqueued = await this._outbox.enqueue(this._buildUpsertMutation(row, null));
       out.push(enqueued);
     }
     return out;
   }
 
   private async _collectAllHosts(): Promise<IHostEntity[]> {
-    // 树结构 → 所有 id → 逐个 getInfoById 取完整 IHostEntity（含 credential / proxy 解密）。
-    // N+1 查询，仅 snapshot 路径调用，量级小（典型 <100 主机），可接受。
+    // Walk the tree → collect every id → fetch each full `IHostEntity`
+    // (credential/proxy get decrypted along the way). This is N+1, but it
+    // only runs in the snapshot path and host counts are small (typically <100).
     const tree = await this._hostRepo.getTree();
     const ids: string[] = [];
     const collectIds = (nodes: typeof tree): void => {
@@ -226,7 +238,8 @@ export class HostSynchroniser extends RxDisposable implements IResourceSynchroni
       }
       const decrypted = this._crypto.decrypt(item.payload);
       const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as IHostEntity;
-      // 防御：服务端不应改 id，但若改了，以 patch 的 entityId 为准
+      // Defensive: the server should never change `id`, but if it does, the
+      // patch's `entityId` is the source of truth.
       const normalised: IHostEntity = { ...row, id: item.entityId };
       await this._hostRepo.syncUpsertRow(normalised);
       await this._rowMeta.upsert({

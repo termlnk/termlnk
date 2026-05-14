@@ -26,8 +26,9 @@ const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
 /**
- * EntityId 命名空间前缀——把 3 张关联表（provider / model_config / custom_model）
- * 映射到同一个 `ai_provider` 资源 ID 下，避免 SyncResourceId 列表膨胀。
+ * EntityId namespace prefixes. They fold three related tables
+ * (provider / model_config / custom_model) onto the single `ai_provider`
+ * resource ID, instead of expanding the `SyncResourceId` enum.
  */
 const KIND_PREFIX = {
   provider: 'prov:',
@@ -43,19 +44,21 @@ interface IProviderPayload {
 }
 
 /**
- * AI Provider 同步器（行级 LWW 跨 3 张关联表）。
+ * AI Provider synchroniser — row-level LWW spanning three related tables.
  *
- * 同步范围：
- * - `ai_provider` (Provider 主表)，apiKey 经 Repository 透明解密上 wire（再被 sync E2EE 包裹）
- * - `ai_provider_model` (内置模型 enabled/overrides 增量)
- * - `ai_custom_model` (用户自定义模型完整定义)
+ * Scope:
+ * - `ai_provider` (main table); `apiKey` is decrypted by the repository on
+ *   read and re-encrypted by sync E2EE for transport.
+ * - `ai_provider_model` (per-model enabled/overrides for built-in models).
+ * - `ai_custom_model` (full user-defined model definitions).
  *
- * 一条 mutation 对应一行——三张表的 entityId 加 `prov:` / `pmod:` / `cmod:` 前缀
- * 区分子表，applyPatch 按前缀分发到对应 Repository upsert。
+ * One mutation per row; the entityId prefix (`prov:` / `pmod:` / `cmod:`)
+ * tells `applyPatch` which repository upsert to dispatch.
  *
- * 级联删除：本地 `deleteProvider` 会在 SQL 层 cascade 子表，但只发出一个 'provider' delete
- * 事件——同步层不试图重建子表 delete 列表（这要扫旧状态成本高），改让接收端的
- * `deleteProvider` 自己执行同样的 cascade。两端最终一致。
+ * Cascade delete: local `deleteProvider` cascades to children at the SQL
+ * layer but only emits one `provider` delete event. We do not try to
+ * reconstruct child delete events (would require scanning old state); the
+ * receiver's `deleteProvider` cascades the same way, so both ends converge.
  */
 export class ProviderSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
@@ -124,24 +127,44 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
+    // See HostSynchroniser.buildInitialSnapshot — only enqueue rows without a sync_row_meta
+    // record so re-running enable() never produces redundant outbox traffic.
     const out: ISyncMutation[] = [];
 
     const providers = await this._providerRepo.getProviders();
     for (const row of providers) {
-      out.push(await this._enqueueUpsert('provider', row, row.id));
+      const mutation = await this._enqueueUpsertIfUnsynced('provider', row, row.id);
+      if (mutation) {
+        out.push(mutation);
+      }
     }
 
     const modelConfigs = await this._providerRepo.getAllModelConfigs();
     for (const row of modelConfigs) {
-      out.push(await this._enqueueUpsert('modelConfig', row, row.id));
+      const mutation = await this._enqueueUpsertIfUnsynced('modelConfig', row, row.id);
+      if (mutation) {
+        out.push(mutation);
+      }
     }
 
     const customModels = await this._providerRepo.getAllCustomModels();
     for (const row of customModels) {
-      out.push(await this._enqueueUpsert('customModel', row, row.id));
+      const mutation = await this._enqueueUpsertIfUnsynced('customModel', row, row.id);
+      if (mutation) {
+        out.push(mutation);
+      }
     }
 
     return out;
+  }
+
+  private async _enqueueUpsertIfUnsynced(kind: ProviderKind, row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity, id: string): Promise<ISyncMutation | null> {
+    const entityId = `${KIND_PREFIX[kind]}${id}`;
+    const meta = await this._rowMeta.get(RESOURCE_ID, entityId);
+    if (meta) {
+      return null;
+    }
+    return this._outbox.enqueue(this._buildUpsertMutation(kind, row, entityId, null));
   }
 
   private _eventTypeToKind(type: 'provider' | 'model-config' | 'custom-model'): ProviderKind | null {
@@ -208,12 +231,6 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
     return customs.find((r) => r.id === id) ?? null;
   }
 
-  private async _enqueueUpsert(kind: ProviderKind, row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity, id: string): Promise<ISyncMutation> {
-    const entityId = `${KIND_PREFIX[kind]}${id}`;
-    const meta = await this._rowMeta.get(RESOURCE_ID, entityId);
-    return this._outbox.enqueue(this._buildUpsertMutation(kind, row, entityId, meta?.version ?? null));
-  }
-
   private _buildUpsertMutation(kind: ProviderKind, row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity, entityId: string, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
     const payloadObj: IProviderPayload = { kind, row };
     const json = JSON.stringify(payloadObj);
@@ -229,7 +246,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
 
   private async _applyOne(item: ISyncPatchItem): Promise<void> {
     if (item.op === 'clear') {
-      // 全量重置：所有 provider + 关联表
+      // Full reset: every provider + cascaded children.
       const providers = await this._providerRepo.getProviders();
       for (const p of providers) {
         await this._providerRepo.deleteProvider(p.id);
@@ -263,7 +280,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
       const decrypted = this._crypto.decrypt(item.payload);
       const parsed = JSON.parse(TEXT_DECODER.decode(decrypted)) as IProviderPayload;
 
-      // 防御：服务端不应把 entityId.kind 与 payload.kind 错配
+      // Defensive: the server must never mismatch entityId.kind and payload.kind.
       if (parsed.kind !== kind) {
         this._logService.warn(`[ProviderSynchroniser] kind mismatch: entityId=${kind}, payload=${parsed.kind}`);
         return;

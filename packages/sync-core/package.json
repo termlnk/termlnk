@@ -50,6 +50,7 @@
   },
   "peerDependencies": {
     "@termlnk/auth": "workspace:*",
+    "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/sync": "workspace:*",

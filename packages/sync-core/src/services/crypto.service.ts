@@ -28,35 +28,40 @@ import { SYNC_PAYLOAD_PREFIX } from '@termlnk/sync';
 const TEXT_ENCODER = new TextEncoder();
 
 /**
- * `tmsync1:` 字面量编码为 ASCII 字节，作为密文 frame 的 magic header。
+ * Magic header for the ciphertext frame: the ASCII bytes of `tmsync1:`.
  *
- * 与本地 SafeStorage 加密的 `tmenc1:` 区分：调用方拿到陌生字节流时
- * 可凭前缀判断是该走 sync E2EE 还是 secret-cipher 路径。
+ * Distinguishes sync E2EE frames from local SafeStorage frames (`tmenc1:`),
+ * so an unknown blob can be routed to the right cipher by prefix.
  */
 const PREFIX_BYTES = TEXT_ENCODER.encode(SYNC_PAYLOAD_PREFIX);
 
-/** XChaCha20 标准 nonce 长度（24 字节）。 */
+/** XChaCha20 nonce length (bytes). */
 const NONCE_LEN = 24;
 
-/** Poly1305 认证 tag 长度（16 字节）。 */
+/** Poly1305 authentication tag length (bytes). */
 const POLY1305_TAG_LEN = 16;
 
 /**
- * 同步层 E2EE 加密器实现。
+ * Sync-layer E2EE cipher.
  *
- * Frame 布局：
+ * Frame layout:
  * ```
  *   [PREFIX_BYTES (8)] [nonce (24)] [ciphertext + tag]
  * ```
  *
- * 调用约定：
- * - master key locked 时所有 encrypt/decrypt/hmacIndex 抛错（避免业务方误把空数据当成"成功"）
- * - 上层应在调用前先确认 `available === true`，或捕获异常转化为 `cipher_mismatch` / `master_key_locked` 错误码
+ * Contract:
+ * - When the master key is locked, every operation throws — callers must
+ *   never treat a missing key as silent success.
+ * - Callers should check `available === true` up front, or translate the
+ *   exception into the `cipher_mismatch` / `master_key_locked` error code.
  *
- * 与 ISecretCipherService 的边界（明示）：
- * - SecretCipher：本地 at-rest（`tmenc1:`），密钥来自 OS keystore / 设备指纹；保护"SQLite 文件被偷"
- * - SyncCryptoService：跨设备 E2EE（`tmsync1:`），密钥来自用户主密码；保护"服务端零知识"
- * - 双层加密：本地敏感字段先被 SecretCipher 加成 `tmenc1:`，再被 SyncCryptoService 整条加成 `tmsync1:` 上传
+ * Boundary vs. `ISecretCipherService`:
+ * - SecretCipher (`tmenc1:`): local at-rest; key from OS keystore / device
+ *   fingerprint; defends against "SQLite file stolen".
+ * - SyncCryptoService (`tmsync1:`): cross-device E2EE; key derived from the
+ *   user master password; defends against a curious server.
+ * - Defense in depth: sensitive fields are first wrapped in `tmenc1:` for
+ *   local storage, then the whole row is wrapped in `tmsync1:` for upload.
  */
 export class SyncCryptoService extends Disposable implements ISyncCryptoService {
   constructor(
@@ -94,7 +99,7 @@ export class SyncCryptoService extends Disposable implements ISyncCryptoService 
 
     const nonce = payload.subarray(PREFIX_BYTES.length, PREFIX_BYTES.length + NONCE_LEN);
     const sealed = payload.subarray(PREFIX_BYTES.length + NONCE_LEN);
-    // @noble/ciphers Poly1305 验证失败时抛错——我们直接透传即可
+    // @noble/ciphers throws on Poly1305 verification failure; let it propagate.
     return xchacha20poly1305(key.encKey, nonce).decrypt(sealed);
   }
 

@@ -22,29 +22,34 @@ import { distinctUntilChanged, takeUntil } from 'rxjs';
 import { SyncService } from '../services/sync.service';
 
 /**
- * 认证→同步状态桥接控制器（**仅主进程**）。
+ * Auth → sync state bridge (**main process only**).
  *
- * 用户成功登录 → 按 `ISyncPluginConfig.autoEnableOnLogin` 决定是否 enable；
- * 登出 → 永远 disable（auth 不在了，sync 也跑不了）。
+ * On successful sign-in: enable if `ISyncPluginConfig.autoEnableOnLogin`
+ * permits. On sign-out: always disable — without auth, sync cannot run.
  *
- * 用户手动开关：登录后即使 autoEnableOnLogin=false，用户仍可通过 SyncStatusPanel
- * 的 Enable Switch 主动启用——本 controller 只做"登录瞬间是否自动启用"的决策，
- * 不会反复推翻用户的手动选择。
+ * Manual override: even with `autoEnableOnLogin=false`, the user can still
+ * flip the SyncStatusPanel switch. This controller only decides the
+ * "moment-of-sign-in" auto-enable; it never overrides a manual choice
+ * afterwards.
  *
- * 设计要点：
- * - IAuthService 是 Quantity.OPTIONAL：未配置 cloudBaseUrl 时本控制器构造仍成功
- *   但订阅源不存在——`_authService` 为 null 时 _initListeners 什么也不做，
- *   SyncService 保持 Disabled 状态（用户仍可单独使用 P2.7 加密备份等离线功能）
- * - distinctUntilChanged 防抖：authState$ 内部可能在错误恢复时短时间多次推同值
- * - 每次 Authenticated 转换时**重新读 config**——用户改 autoEnableOnLogin 后
- *   重新登录就能看到新行为，不需要重启
- * - enable/disable 是 idempotent（SyncService 内部有 `_enabled$` 守卫），
- *   所以重复触发不会出问题，但 distinctUntilChanged 还是首选——少一次 RPC 链
+ * Design notes:
+ * - `IAuthService` is `Quantity.OPTIONAL`: without `cloudBaseUrl` the
+ *   service is unbound and `_authService` is null. `_initListeners` then
+ *   no-ops and `SyncService` stays Disabled — the user can still use
+ *   offline features such as encrypted backup.
+ * - `distinctUntilChanged` filters duplicate emissions that can briefly
+ *   occur in error-recovery flows.
+ * - Every `Authenticated` transition **re-reads** the config so a config
+ *   change picked up after restart-less re-login takes effect.
+ * - `enable` / `disable` are idempotent (`SyncService` guards on
+ *   `_enabled$`), but we still prefer `distinctUntilChanged` to spare an
+ *   RPC round-trip.
  *
- * 不在 controller 里做的事：
- * - 不读 IAuthService.currentUser$——authState 已经是充分信号
- * - 不处理 token 刷新失败导致的隐式登出（TokenManager 内部 fail-soft 已经
- *   把状态推回 Unauthenticated，本 controller 收到信号后自然 disable）
+ * Out of scope here:
+ * - We don't read `currentUser$` — `authState` is sufficient.
+ * - We don't handle implicit sign-out from refresh failures; `TokenManager`
+ *   already pushes `Unauthenticated` on fail-soft, and we disable in
+ *   reaction.
  */
 export class AuthSyncBridgeController extends RxDisposable {
   private readonly _authService: IAuthService | null;
@@ -78,13 +83,13 @@ export class AuthSyncBridgeController extends RxDisposable {
         } else if (state === AuthState.Unauthenticated) {
           void this._disableSync();
         }
-        // Authenticating / Error 状态不动 SyncService——错误恢复期间保留之前的同步状态
+        // `Authenticating` / `Error` don't touch SyncService — keep the previous state during recovery.
       });
   }
 
   private _shouldAutoEnableOnLogin(): boolean {
     const config = this._configService.getConfig<ISyncPluginConfig>(SYNC_PLUGIN_CONFIG_KEY);
-    // 未设置时按 SyncPlugin defaultPluginConfig 走（true）
+    // Unset falls back to SyncPlugin's defaultPluginConfig (true).
     return config?.autoEnableOnLogin !== false;
   }
 

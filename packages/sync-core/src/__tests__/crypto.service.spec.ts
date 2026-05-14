@@ -15,8 +15,8 @@
 
 import type { ILogService, LogLevel } from '@termlnk/core';
 import { Buffer } from 'node:buffer';
-import { IMasterKeyService } from '@termlnk/auth';
-import { MasterKeyService } from '@termlnk/auth-core';
+import { IMasterKeyService, IPasswordHasher } from '@termlnk/auth';
+import { HashWasmPasswordHasher, MasterKeyService } from '@termlnk/auth-core';
 import { ILogService as ILogServiceId, Injector } from '@termlnk/core';
 import { SYNC_PAYLOAD_PREFIX } from '@termlnk/sync';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -47,6 +47,10 @@ interface ITestBed {
 function createTestBed(): ITestBed {
   const injector = new Injector();
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
+  // MasterKeyService now takes IPasswordHasher as a constructor dep (P6.2 extracted the
+  // Argon2id call so React Native can swap in a native binding). Tests stay on the
+  // WebAssembly default since they run under Node.
+  injector.add([IPasswordHasher, { useClass: HashWasmPasswordHasher }]);
   injector.add([IMasterKeyService, { useClass: MasterKeyService }]);
   injector.add([SyncCryptoService]);
 

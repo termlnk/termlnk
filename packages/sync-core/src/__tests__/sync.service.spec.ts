@@ -66,6 +66,24 @@ class FakeOutbox implements ISyncOutboxService {
     this.rows = this.rows.filter((r) => r.resource !== resource);
     this.pendingCount$.next(this.rows.length);
   }
+
+  async purgeByEntityIdPrefixes(resource: SyncResourceId, prefixes: readonly string[]): Promise<number> {
+    if (prefixes.length === 0) {
+      return 0;
+    }
+    const before = this.rows.length;
+    this.rows = this.rows.filter((r) => {
+      if (r.resource !== resource) {
+        return true;
+      }
+      return !prefixes.some((prefix) => r.entityId.startsWith(prefix));
+    });
+    const deleted = before - this.rows.length;
+    if (deleted > 0) {
+      this.pendingCount$.next(this.rows.length);
+    }
+    return deleted;
+  }
 }
 
 class FakeTransport implements ISyncTransportService {
@@ -142,6 +160,8 @@ class FakeSynchroniser implements IResourceSynchroniser {
   status$ = new BehaviorSubject<SynchroniserStatus>(SynchroniserStatus.Idle);
   appliedPatches: ISyncPatchItem[][] = [];
   startCalls = 0;
+  initialSnapshotCalls = 0;
+  initialSnapshotError: Error | null = null;
   disposed = false;
 
   constructor(public readonly resourceId: SyncResourceId) {}
@@ -159,6 +179,10 @@ class FakeSynchroniser implements IResourceSynchroniser {
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
+    this.initialSnapshotCalls++;
+    if (this.initialSnapshotError) {
+      throw this.initialSnapshotError;
+    }
     return [];
   }
 
@@ -235,6 +259,32 @@ describe('SyncService', () => {
     expect(mc.startCalls).toBe(1);
     expect(bed.transport.connectCalls).toBe(1);
     expect(await firstValue(bed.service.enabled$)).toBe(true);
+  });
+
+  it('enable seeds initial snapshot for every registered synchroniser', async () => {
+    const sk = new FakeSynchroniser('skill');
+    const mc = new FakeSynchroniser('mcp_server');
+    bed.service.register(sk);
+    bed.service.register(mc);
+
+    await bed.service.enable();
+
+    expect(sk.initialSnapshotCalls).toBe(1);
+    expect(mc.initialSnapshotCalls).toBe(1);
+  });
+
+  it('enable swallows initial snapshot failures and keeps going for the next synchroniser', async () => {
+    const failing = new FakeSynchroniser('skill');
+    failing.initialSnapshotError = new Error('snapshot boom');
+    const ok = new FakeSynchroniser('mcp_server');
+    bed.service.register(failing);
+    bed.service.register(ok);
+
+    await expect(bed.service.enable()).resolves.toBeUndefined();
+
+    expect(failing.initialSnapshotCalls).toBe(1);
+    expect(ok.initialSnapshotCalls).toBe(1);
+    expect(bed.transport.connectCalls).toBe(1);
   });
 
   it('enable persists a fresh clientId on first run; reuses it on subsequent runs', async () => {
@@ -380,9 +430,9 @@ describe('SyncService', () => {
     await bed.service.forceFullResync();
     await flushAsync(50);
 
-    // 至少触发了一次 pull
+    // At least one pull was triggered.
     expect(bed.transport.pullCalls.length).toBeGreaterThan(0);
-    // 该次 pull 请求的 cursor 必为 null（重头拉）
+    // That pull's cursor must be null — full resync starts from scratch.
     expect(bed.transport.pullCalls[0].cursor).toBeNull();
   });
 

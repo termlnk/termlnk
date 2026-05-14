@@ -131,6 +131,9 @@ class FakeOutbox implements ISyncOutboxService {
   }
 
   async clearResource(): Promise<void> {}
+  async purgeByEntityIdPrefixes(): Promise<number> {
+    return 0;
+  }
 }
 
 class FakeCrypto implements ISyncCryptoService {
@@ -379,6 +382,19 @@ describe('ConfigSynchroniser', () => {
     expect(bed.outbox.enqueued.map((m) => m.entityId).sort()).toEqual([
       'app.config::lang',
       'app.config::theme',
+      'terminal.config::fontSize',
+    ]);
+  });
+
+  it('buildInitialSnapshot skips fields that already have a sync_field_meta entry', async () => {
+    bed.configRepo.store.set('app.config', { theme: 'nord', lang: 'en-US' });
+    bed.configRepo.store.set('terminal.config', { fontSize: 14 });
+    await bed.fieldMeta.upsert({ resource: 'config', entityId: 'app.config', field: 'theme', updatedAt: Date.now() });
+
+    const snapshot = await bed.syncer.buildInitialSnapshot();
+    expect(snapshot).toHaveLength(2);
+    expect(bed.outbox.enqueued.map((m) => m.entityId).sort()).toEqual([
+      'app.config::lang',
       'terminal.config::fontSize',
     ]);
   });

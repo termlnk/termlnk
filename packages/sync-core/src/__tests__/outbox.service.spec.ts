@@ -31,10 +31,10 @@ class NoopLogService implements ILogService {
 }
 
 /**
- * In-memory 假 SyncOutboxRepository——只测 Service 的业务逻辑（FIFO 顺序、计数、ID 分配），
- * 不测 SQL 行为（那是 Drizzle/SQLite 的责任）。
- *
- * 真 Repository 的 SQL 行为需在 @termlnk/database 自己的集成测试里验证（带真 SQLite native binding）。
+ * In-memory fake `SyncOutboxRepository` — covers the service's business logic
+ * (FIFO order, counts, ID allocation) only. SQL behaviour is Drizzle/SQLite's
+ * concern and is exercised by `@termlnk/database`'s own integration tests
+ * (which use the real SQLite native binding).
  */
 class FakeOutboxRepository {
   private _rows: ISyncOutboxEntity[] = [];
@@ -137,7 +137,7 @@ async function createTestBed(): Promise<ITestBed> {
     configRepo as unknown as ConfigRepository,
     logService
   );
-  // 等待构造期的 hydrate 完成
+  // Wait for the constructor's hydrate() to finish.
   await service.peek(1);
   return { outboxRepo, configRepo, logService, service };
 }

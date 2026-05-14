@@ -36,8 +36,9 @@ class NoopLogService implements ILogService {
 }
 
 /**
- * 用 plain config bag 模拟 IConfigService.getConfig，避免拉起整个 ConfigService。
- * 控制器只调 getConfig；其它接口实现成空操作。
+ * Plain config-bag fake for `IConfigService.getConfig` so we avoid spinning
+ * up the real `ConfigService`. The controller only calls `getConfig`; the
+ * rest of the interface is implemented as no-ops.
  */
 class StubConfigService implements IConfigService {
   readonly configChanged$: Observable<Record<string, unknown>> = EMPTY;
@@ -68,9 +69,7 @@ class StubConfigService implements IConfigService {
   }
 }
 
-/**
- * 替身 SyncService —— 控制器只用 register；其它路径不触发。
- */
+/** Stand-in `SyncService`: the controller only calls `register`. */
 class FakeSyncService {
   registered: SyncResourceId[] = [];
 

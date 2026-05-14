@@ -49,6 +49,7 @@ class FakeAuthService implements IAuthService {
   async logout(): Promise<void> {}
   getCurrentUser(): IUserAccount | null { return null; }
   async getAccessToken(): Promise<string | null> { return null; }
+  async restore(): Promise<void> {}
   async listDevices() { return []; }
   async revokeDevice(): Promise<void> {}
 }
@@ -89,10 +90,11 @@ async function flushAsync(): Promise<void> {
 }
 
 /**
- * 注意：FakeAuthService 用 BehaviorSubject(Unauthenticated)，所以 controller 首次
- * 订阅就会立即收到一次 Unauthenticated 触发 disable()——这相当于"应用启动时刻"
- * 的语义（与生产一致）。下方所有用例的 disableCalls 都隐含含这次启动 disable，
- * 并以"setState 之后的增量调用"为真正断言对象，避免噪声。
+ * `FakeAuthService` uses `BehaviorSubject(Unauthenticated)`, so the controller's
+ * first subscription receives an immediate `Unauthenticated` and fires
+ * `disable()` once — this matches production "app startup" semantics. Every
+ * test below implicitly accounts for that startup disable; assertions look at
+ * the delta after each `setState` call to keep the noise out.
  */
 describe('AuthSyncBridgeController — autoEnableOnLogin', () => {
   let bed: ITestBed;
@@ -187,12 +189,13 @@ describe('AuthSyncBridgeController — autoEnableOnLogin', () => {
     await flushAsync();
     const failingSync = bed.sync as unknown as { enable: () => Promise<void> };
     const errorSpy = vi.spyOn(failingSync, 'enable').mockRejectedValueOnce(new Error('boom'));
-    // 1st sign-in: spy rejects without invoking original → enableCalls 不增加
+    // 1st sign-in: spy rejects without invoking original → enableCalls stays 0.
     bed.auth.setState(AuthState.Authenticated);
     await flushAsync();
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(bed.sync.enableCalls).toBe(0);
-    // 异常被吞掉后控制器仍然存活 → 第二次登录走回真实路径，原方法递增计数
+    // The exception is swallowed and the controller stays alive — second
+    // sign-in falls through to the real path and bumps the counter.
     bed.auth.setState(AuthState.Unauthenticated);
     await flushAsync();
     bed.auth.setState(AuthState.Authenticated);

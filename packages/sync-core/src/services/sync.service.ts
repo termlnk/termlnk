@@ -18,10 +18,17 @@ import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncOutbox
 import type { Observable } from 'rxjs';
 import { Disposable, generateRandomId, ILogService, Inject, toDisposable } from '@termlnk/core';
 import { ConfigRepository, SyncCursorRepository } from '@termlnk/database';
-import { ISyncOutboxService as ISyncOutboxServiceId, ISyncTransportService as ISyncTransportServiceId, SYNC_PLUGIN_CONFIG_KEY, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SynchroniserStatus, SyncState } from '@termlnk/sync';
+import { ISyncOutboxService as ISyncOutboxServiceId, ISyncTransportService as ISyncTransportServiceId, NON_SYNCABLE_CONFIG_KEYS, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SynchroniserStatus, SyncState } from '@termlnk/sync';
 import { BehaviorSubject, debounceTime, filter, interval, merge, Subject, Subscription } from 'rxjs';
 
 const CLIENT_ID_FIELD = 'clientId';
+
+// `config` resource entityIds are `${key}::${subKey}`. Garbage left by the pre-fix
+// self-referential enqueue bug all sits under the non-syncable plugin config keys, so we
+// purge by these prefixes at first enable() on a process.
+const CONFIG_GARBAGE_ENTITY_PREFIXES: readonly string[] = Array.from(NON_SYNCABLE_CONFIG_KEYS).map(
+  (key) => `${key}::`
+);
 
 // Top-level sync coordinator (main-process only). Registers ResourceSynchronisers and
 // drives the push/pull/poke cadence:
@@ -56,6 +63,10 @@ export class SyncService extends Disposable implements ISyncService {
 
   // Per-device client id; loaded or generated at first enable().
   private _clientId: string | null = null;
+
+  // Garbage purge runs once per process — it scans persistent outbox rows that exist purely
+  // because of an earlier bug. After the first sweep further work is wasted disk I/O.
+  private _garbagePurged = false;
 
   private readonly _pushTrigger$ = new Subject<void>();
   private readonly _pullTrigger$ = new Subject<void>();
@@ -112,6 +123,14 @@ export class SyncService extends Disposable implements ISyncService {
       s.start();
     }
     this._clientId = await this._loadOrCreateClientId();
+    await this._purgeConfigGarbageOnce();
+    // First-enable for this user-on-device: walk every synchroniser and enqueue rows that
+    // have never been pushed before (those without a sync_row_meta / sync_field_meta entry).
+    // Each synchroniser implements its own de-dup so re-enable on subsequent sessions is a
+    // cheap no-op. Seeded before the trigger pipeline subscribes — outbox.pendingCount$ is
+    // a BehaviorSubject and will replay its current (now non-zero) value at subscribe time,
+    // so the first debounce window fires push without any extra trigger plumbing.
+    await this._seedInitialSnapshots();
 
     // Disconnect -> Offline; reconnect -> Idle + immediate pull.
     this._transportSub = this._transport.connected$.subscribe((isConnected) => {
@@ -204,28 +223,78 @@ export class SyncService extends Disposable implements ISyncService {
     }
     try {
       this._state$.next(SyncState.Syncing);
-      const mutations = await this._outbox.peek();
-      if (mutations.length === 0) {
-        this._state$.next(SyncState.Idle);
-        return;
-      }
-      const resp = await this._transport.push({ clientId: this._clientId, mutations });
-      if (resp.accepted.length > 0) {
-        await this._outbox.ack([...resp.accepted]);
-      }
-      if (resp.rejected.length > 0) {
-        const rejectedIds = resp.rejected.map((r) => r.id);
-        const reason = resp.rejected.map((r) => `${r.id}:${r.reason}`).join(';');
-        await this._outbox.markRejected(rejectedIds, reason);
-        // Rejections almost always mean a baseVersion conflict; pull first so the next
-        // push is built against the latest state.
-        this._pullTrigger$.next();
+      // Drain the outbox in fixed-size batches so a single push never has to serialise
+      // the entire queue. Each iteration is bounded by SYNC_PUSH_BATCH_SIZE; the loop
+      // exits when the outbox is empty or no row in the latest batch was accepted (the
+      // remaining rows would just be replayed indefinitely — let the next pull/push tick
+      // retry after baseVersion conflicts resolve).
+      while (this._enabled$.getValue()) {
+        const mutations = await this._outbox.peek(SYNC_PUSH_BATCH_SIZE);
+        if (mutations.length === 0) {
+          break;
+        }
+        const resp = await this._transport.push({ clientId: this._clientId, mutations });
+        if (resp.accepted.length > 0) {
+          await this._outbox.ack([...resp.accepted]);
+        }
+        if (resp.rejected.length > 0) {
+          const rejectedIds = resp.rejected.map((r) => r.id);
+          const reason = resp.rejected.map((r) => `${r.id}:${r.reason}`).join(';');
+          await this._outbox.markRejected(rejectedIds, reason);
+          // Rejections almost always mean a baseVersion conflict; pull first so the next
+          // push is built against the latest state.
+          this._pullTrigger$.next();
+        }
+        if (resp.accepted.length === 0) {
+          // Nothing made progress this round — the rejected rows still occupy the FIFO head
+          // and a tight loop would just resubmit them. Stop and wait for the next trigger.
+          break;
+        }
       }
       this._state$.next(SyncState.Idle);
     } catch (err) {
       this._reportError('network', `push failed: ${(err as Error).message}`);
     } finally {
       await this._refreshStats();
+    }
+  }
+
+  // Runs every enable(): walks each registered synchroniser and seeds the outbox with rows
+  // that have never been synced. Synchronisers gate their own emit by sync_row_meta / sync_field_meta
+  // so this is a no-op on subsequent enable() once the first push has been ack'd and
+  // the resulting pull echo has filled meta. A per-synchroniser failure is logged and skipped —
+  // a half-seeded outbox still pushes what it has, and the next pull/push cycle keeps the
+  // session alive while the broken synchroniser surfaces its own error.
+  private async _seedInitialSnapshots(): Promise<void> {
+    for (const synchroniser of this._synchronisers.values()) {
+      try {
+        await synchroniser.buildInitialSnapshot();
+      } catch (err) {
+        this._logService.warn(
+          `[SyncService] initial snapshot failed for resource ${synchroniser.resourceId}:`,
+          err
+        );
+      }
+    }
+  }
+
+  // Runs once per process during enable(): drops outbox rows for `config` resource whose
+  // entityId belongs to a non-syncable plugin config key. These rows are residue from the
+  // pre-fix self-referential enqueue loop (see ConfigSynchroniser); pushing them upstream
+  // would be wasted bandwidth and pollute server-side history.
+  private async _purgeConfigGarbageOnce(): Promise<void> {
+    if (this._garbagePurged) {
+      return;
+    }
+    this._garbagePurged = true;
+    try {
+      const deleted = await this._outbox.purgeByEntityIdPrefixes('config', CONFIG_GARBAGE_ENTITY_PREFIXES);
+      if (deleted > 0) {
+        this._logService.log(`[SyncService] purged ${deleted} non-syncable config mutation(s) from outbox`);
+      }
+    } catch (err) {
+      // Non-fatal: enable() proceeds. If purge keeps failing the user can hit Resync.
+      this._logService.warn('[SyncService] failed to purge outbox garbage:', err);
     }
   }
 

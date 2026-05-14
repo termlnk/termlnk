@@ -17,40 +17,40 @@ import type { IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOut
 import type { Observable } from 'rxjs';
 import { ILogService, Inject, RxDisposable } from '@termlnk/core';
 import { ConfigRepository, SyncFieldMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService as ISyncCryptoServiceId, ISyncOutboxService as ISyncOutboxServiceId, SynchroniserStatus } from '@termlnk/sync';
+import { ISyncCryptoService as ISyncCryptoServiceId, ISyncOutboxService as ISyncOutboxServiceId, NON_SYNCABLE_CONFIG_KEYS, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const RESOURCE_ID = 'config' as const;
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
-/** entityId 编码为 `<key>::<subKey>` 形式——`::` 分隔符让 key 与 subKey 解耦反序列化。 */
+/** entityId is encoded as `<key>::<subKey>`; the `::` lets us split unambiguously. */
 const ENTITY_DELIMITER = '::';
 
 interface IFieldPayload {
   readonly value: unknown;
-  /** 本地写入时间（epoch ms）——LWW 比较的关键 */
+  /** Local write time (epoch ms) — the LWW comparator. */
   readonly updatedAt: number;
 }
 
 /**
- * Config 同步器（**字段级** LWW）。
+ * Config synchroniser — **field-level** LWW.
  *
- * 与其他 4 个 row-level synchroniser 的本质差异：config.value 是嵌套 JSON，
- * 整行 LWW 会让两台设备相互覆写未变更的 subKey。所以本同步器以 (key, subKey) 为
- * 最小单位，每个字段独立维护时间戳，避免跨设备 subKey 互相吞噬。
+ * Unlike the four row-level synchronisers, `config.value` is nested JSON. Row
+ * LWW would let two devices clobber each other's unrelated subKeys, so the
+ * unit of synchronisation is `(key, subKey)` with a per-field timestamp.
  *
- * Push 路径：
- * - subKey 事件 → 一条 mutation
- * - 无 subKey 的 set 事件（整 key 替换）→ 拆成所有现存 subKey 的 mutation
- * - 无 subKey 的 delete 事件（整 key 删除）→ 一条 entityId 末尾空 subKey 的 delete mutation
+ * Push:
+ * - subKey event → one mutation
+ * - whole-key `set` (no subKey) → fan out one mutation per existing subKey
+ * - whole-key `delete` (no subKey) → one delete mutation with empty subKey
  *
- * Pull 路径：
- * - decode entityId → (key, subKey)
- * - 比较 payload.updatedAt 与本地 sync_field_meta.updatedAt
- * - 仅当远端更新 → setField/deleteField + 更新 sync_field_meta
+ * Pull:
+ * - decode entityId → `(key, subKey)`
+ * - compare `payload.updatedAt` with local `sync_field_meta.updatedAt`
+ * - apply only when the remote is strictly newer
  *
- * 不使用 sync_row_meta（那是行级 synchroniser 的）。
+ * Does not use `sync_row_meta` (that is for row-level synchronisers).
  */
 export class ConfigSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
@@ -86,6 +86,13 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
         if (this._applyingPatch) {
           return;
         }
+        // Device-specific plugin config (sync internals, auth tokens, window state, …) must
+        // never enter the outbox. Skipping here also breaks the self-referential loop where
+        // SyncOutboxService.enqueue persists `sync.config.lastClientMutId`, which would
+        // otherwise re-enter this handler and enqueue another mutation ad infinitum.
+        if (NON_SYNCABLE_CONFIG_KEYS.has(event.key)) {
+          return;
+        }
         void this._handleLocalChange(event);
       })
     );
@@ -115,20 +122,35 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
+    // Only enqueue fields without a sync_field_meta record — those are the ones that have
+    // never been touched by the sync write path (i.e. existed before the first enable()).
+    // _enqueueFieldUpsert already writes the meta as a side effect, so subsequent enable()
+    // calls naturally short-circuit here.
     const out: ISyncMutation[] = [];
     const all = await this._configRepo.getAll();
     const now = Date.now();
 
     for (const entry of all) {
+      if (NON_SYNCABLE_CONFIG_KEYS.has(entry.key)) {
+        continue;
+      }
       const value = entry.value;
-      // 平铺成 (key, subKey) 字段对——支持嵌套对象的第一层
+      // Flatten to (key, subKey) field pairs — first object level only.
       if (value && typeof value === 'object' && !Array.isArray(value)) {
         for (const [field, fieldValue] of Object.entries(value as Record<string, unknown>)) {
+          const existingMeta = await this._fieldMeta.get(RESOURCE_ID, entry.key, field);
+          if (existingMeta) {
+            continue;
+          }
           const enqueued = await this._enqueueFieldUpsert(entry.key, field, fieldValue, now);
           out.push(enqueued);
         }
       } else {
-        // 原始值（字符串、数字、null、数组）：用空 subKey 表示整 key
+        const existingMeta = await this._fieldMeta.get(RESOURCE_ID, entry.key, '');
+        if (existingMeta) {
+          continue;
+        }
+        // Primitive value (string / number / null / array): use empty subKey for the whole key.
         const enqueued = await this._enqueueFieldUpsert(entry.key, '', value, now);
         out.push(enqueued);
       }
@@ -142,7 +164,7 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
       const now = Date.now();
 
       if (event.subKey !== undefined) {
-        // 字段级事件
+        // Field-level event.
         if (event.type === 'set') {
           const value = await this._configRepo.getField(event.key, event.subKey);
           await this._enqueueFieldUpsert(event.key, event.subKey, value, now);
@@ -152,14 +174,14 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
         return;
       }
 
-      // 整 key 事件——拆解
+      // Whole-key event — fan out.
       if (event.type === 'delete') {
-        // 整 key 删除：发一个 entityId 末尾为空 subKey 的 delete mutation
+        // Whole-key delete: one mutation with an empty trailing subKey.
         await this._enqueueFieldDelete(event.key, '', now);
         return;
       }
 
-      // 整 key 设值（罕见路径）：把现存 subKey 都重新 push
+      // Whole-key set (rare): re-push every existing subKey.
       const current = await this._configRepo.get(event.key);
       if (current && typeof current === 'object' && !Array.isArray(current)) {
         for (const [field, fieldValue] of Object.entries(current as Record<string, unknown>)) {
@@ -238,13 +260,21 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
     }
     const { key, subKey } = decoded;
 
+    // Defense-in-depth: refuse to apply device-specific keys even if the server returned them
+    // (older client may have pushed garbage before the outbound filter shipped).
+    if (NON_SYNCABLE_CONFIG_KEYS.has(key)) {
+      return;
+    }
+
     if (item.op === 'del') {
-      // 字段级删除——只有当远端的 updatedAt（来自 payload，不直接传时回退到 0）较新才生效
-      // 但 delete 路径 payload 为 null，无法携带 updatedAt——退化为"无条件应用"
-      // 这是字段级 LWW 的边界 case：删除冲突场景下倾向于"删除胜出"
+      // Field-level delete. Ideally we would compare the remote `updatedAt`
+      // with the local `sync_field_meta.updatedAt`, but delete payloads are
+      // null and cannot carry a timestamp — so we apply unconditionally. This
+      // means "delete wins" on conflicts, which is the documented edge case
+      // for field-level LWW.
       if (subKey === '') {
         await this._configRepo.delete(key);
-        // 清理这个 key 下所有字段元数据
+        // Drop every field-meta row under this key.
         const fields = await this._fieldMeta.getByEntity(RESOURCE_ID, key);
         for (const f of fields) {
           await this._fieldMeta.delete(RESOURCE_ID, key, f.field);
@@ -270,10 +300,11 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
         return;
       }
 
-      // 字段级 LWW：仅当远端 updatedAt 比本地 sync_field_meta.updatedAt 严格更新时才应用
+      // Field-level LWW: apply only when remote `updatedAt` is strictly newer
+      // than local `sync_field_meta.updatedAt`.
       const local = await this._fieldMeta.get(RESOURCE_ID, key, subKey);
       if (local && local.updatedAt >= parsed.updatedAt) {
-        // 本地更新——丢弃远端
+        // Local wins — drop the remote update.
         return;
       }
 

@@ -26,15 +26,17 @@ const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
 /**
- * MCP Server 同步器（行级 LWW）。
+ * MCP Server synchroniser — row-level LWW.
  *
- * 同步范围：完整 IMcpServerEntity 行。
- * - `config` 内的敏感字段（stdio.env / http.headers value）在读取时已被
- *   McpServerRepository 透明解密——同步器看到的是明文，再用 sync E2EE master key
- *   重新加密上传，接收端 upsert 时 Repository 会用本地 SecretCipher 重新加密入库
- * - **不同步** `mcp_oauth_token`（每设备各自重新走 OAuth flow）
- * - 接收端 `status` / `lastError` 等运行时字段会被 patch 覆盖——这是预期行为，
- *   下次连接时 MCPClientService 会写回真实状态
+ * Scope: full `IMcpServerEntity` rows.
+ * - Sensitive fields inside `config` (stdio.env / http.headers value) are
+ *   already decrypted by `McpServerRepository` on read; the synchroniser
+ *   re-encrypts the row with the sync E2EE master key. On the receiving side
+ *   the repository re-encrypts the same fields with the local `SecretCipher`.
+ * - `mcp_oauth_token` is **not** synced — each device re-runs the OAuth flow.
+ * - Patch overwrites runtime fields like `status` / `lastError`. That is
+ *   intentional; `MCPClientService` writes the real status back on next
+ *   connect.
  */
 export class McpSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
@@ -99,11 +101,16 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
+    // See HostSynchroniser.buildInitialSnapshot — only enqueue rows without a sync_row_meta
+    // record so re-running enable() never produces redundant outbox traffic.
     const rows = await this._mcpRepo.getAll();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
       const meta = await this._rowMeta.get(RESOURCE_ID, row.id);
-      const enqueued = await this._outbox.enqueue(this._buildUpsertMutation(row, meta?.version ?? null));
+      if (meta) {
+        continue;
+      }
+      const enqueued = await this._outbox.enqueue(this._buildUpsertMutation(row, null));
       out.push(enqueued);
     }
     return out;
@@ -192,7 +199,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
 
       const existing = await this._mcpRepo.getById(item.entityId);
       if (existing) {
-        // 更新除 id 外的所有字段；Repository 会重新加密 config 内的敏感字段
+        // Update everything except `id`; the repository re-encrypts the sensitive `config` fields.
         const { id: _id, ...rest } = row;
         await this._mcpRepo.update(item.entityId, rest);
       } else {

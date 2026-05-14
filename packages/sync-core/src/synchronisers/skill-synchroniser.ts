@@ -26,18 +26,23 @@ const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
 /**
- * Skill 同步器（行级 LWW）。
+ * Skill synchroniser — row-level LWW.
  *
- * 同步范围：完整 ISkillEntity 行（含 path）。
- * - 接收端的 `path` 在新设备上指向不存在的本地文件——SkillDiscoveryService 下次扫描会重置为正确路径
- * - `checksum` 字段帮助 SkillDiscovery 判断是否需要重新解析文件内容
- * - **不同步** Skill 文件本身（用户用 git/dotfiles 管）
+ * Scope: full `ISkillEntity` rows, including `path`.
+ * - On the receiving device the synced `path` points at a non-existent local
+ *   file; `SkillDiscoveryService` repairs it on the next scan.
+ * - `checksum` lets `SkillDiscovery` decide whether to re-parse a file.
+ * - The skill files themselves are **not** synced — users manage those via
+ *   git / dotfiles.
  *
- * Push 路径：SkillRepository.changed$ → 读全行 → E2EE 加密 → SyncOutboxService.enqueue
- * Pull 路径：ISyncPatchItem → E2EE 解密 → SkillRepository.upsert/delete + sync_row_meta 更新
+ * Push: `SkillRepository.changed$` → read full row → E2EE encrypt →
+ *   `SyncOutboxService.enqueue`
+ * Pull: `ISyncPatchItem` → E2EE decrypt → `SkillRepository.upsert/delete` +
+ *   `sync_row_meta` update
  *
- * **自反性防护**：applyPatch 期间临时屏蔽 changed$ 订阅，避免"server pull → 写本地 → 触发 changed$ →
- * 又把同一变更 push 回 server"的环路。
+ * **Self-reflection guard**: while `applyPatch` is running we ignore
+ * `changed$` to avoid the loop "server pull → local write → `changed$` →
+ * push the same change back to the server".
  */
 export class SkillSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
@@ -45,7 +50,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
   private readonly _status$ = new BehaviorSubject<SynchroniserStatus>(SynchroniserStatus.Idle);
   readonly status$: Observable<SynchroniserStatus> = this._status$.asObservable();
 
-  /** 屏蔽自我触发：applyPatch 写入 SkillRepository 时，对应的 changed$ 事件不再回推到 outbox。 */
+  /** Suppress self-reflection: while `applyPatch` writes to `SkillRepository`, the resulting `changed$` event must not feed back into the outbox. */
   private _applyingPatch = false;
   private _started = false;
 
@@ -99,16 +104,21 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
   }
 
   async buildMutations(): Promise<ISyncMutation[]> {
-    // 默认 buildMutations 由本地 changed$ 增量驱动；显式批量构造留给 buildInitialSnapshot
+    // Incremental push is driven by `changed$`; explicit batches go through `buildInitialSnapshot`.
     return [];
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
+    // See HostSynchroniser.buildInitialSnapshot — only enqueue rows without a sync_row_meta
+    // record so re-running enable() never produces redundant outbox traffic.
     const rows = await this._skillRepo.getAll();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
       const meta = await this._rowMeta.get(RESOURCE_ID, row.id);
-      const mutation = await this._buildUpsertMutation(row, meta?.version ?? null);
+      if (meta) {
+        continue;
+      }
+      const mutation = await this._buildUpsertMutation(row, null);
       const enqueued = await this._outbox.enqueue(mutation);
       out.push(enqueued);
     }
@@ -134,7 +144,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
 
       const row = await this._skillRepo.getById(id);
       if (!row) {
-        // 竞态：事件到达前行已被删除——退化为 delete mutation
+        // Race: the row was deleted before the event reached us — fall back to a delete mutation.
         await this._outbox.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
@@ -171,7 +181,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
 
   private async _applyOne(item: ISyncPatchItem): Promise<void> {
     if (item.op === 'clear') {
-      // 全量重置——本地 SkillDiscovery 会重新扫描并 upsert
+      // Full reset — local `SkillDiscovery` will re-scan and re-upsert.
       const rows = await this._skillRepo.getAll();
       for (const r of rows) {
         await this._skillRepo.delete(r.id);
@@ -198,7 +208,8 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
       }
       const decrypted = this._crypto.decrypt(item.payload);
       const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISkillEntity;
-      // 防御：服务端不应改 id，但若改了，以 patch 的 entityId 为准
+      // Defensive: the server should never change `id`, but if it does the
+      // patch's `entityId` is the source of truth.
       const normalised: ISkillEntity = { ...row, id: item.entityId };
       await this._skillRepo.upsert(normalised);
       await this._rowMeta.upsert({

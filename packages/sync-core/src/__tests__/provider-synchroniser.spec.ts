@@ -143,6 +143,9 @@ class FakeOutbox implements ISyncOutboxService {
   }
 
   async clearResource(): Promise<void> {}
+  async purgeByEntityIdPrefixes(): Promise<number> {
+    return 0;
+  }
 }
 
 class FakeCrypto implements ISyncCryptoService {
@@ -401,6 +404,23 @@ describe('ProviderSynchroniser', () => {
       'cmod:cm1',
       'pmod:mc1',
       'prov:p1',
+      'prov:p2',
+    ]);
+  });
+
+  it('buildInitialSnapshot skips rows that already have a sync_row_meta entry', async () => {
+    bed.providerRepo.providers.set('p1', makeProvider('p1'));
+    bed.providerRepo.providers.set('p2', makeProvider('p2'));
+    bed.providerRepo.modelConfigs.set('mc1', makeModelConfig('mc1', 'p1'));
+    bed.providerRepo.customModels.set('cm1', makeCustomModel('cm1', 'p1'));
+    await bed.rowMeta.upsert({ resource: 'ai_provider', entityId: 'prov:p1', version: 4, updatedAt: Date.now() });
+    await bed.rowMeta.upsert({ resource: 'ai_provider', entityId: 'cmod:cm1', version: 5, updatedAt: Date.now() });
+
+    const snapshot = await bed.syncer.buildInitialSnapshot();
+
+    expect(snapshot).toHaveLength(2);
+    expect(bed.outbox.enqueued.map((m) => m.entityId).sort()).toEqual([
+      'pmod:mc1',
       'prov:p2',
     ]);
   });

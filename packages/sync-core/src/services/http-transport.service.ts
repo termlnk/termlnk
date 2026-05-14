@@ -15,36 +15,33 @@
 
 import type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse, ISyncMutation, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { base64ToBytes, bytesToBase64 } from '@termlnk/auth';
-// Deep import: @termlnk/auth-core/index.ts re-exports AuthCorePlugin (含 @termlnk/database
-// 间接拉入 better-sqlite3 native module)。本服务跨端共享（desktop/web/mobile），
-// 使用 .ts 子路径导出避免在浏览器 bundle 误带 sqlite。
+import { base64ToBytes, bytesToBase64, HttpRequestError } from '@termlnk/auth';
+// Deep import: @termlnk/auth-core/index.ts re-exports AuthCorePlugin, which
+// transitively pulls in better-sqlite3 via @termlnk/database. This service is
+// shared across desktop/web/mobile, so we take the .ts subpath to keep
+// SQLite out of browser bundles.
 import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { SYNC_TRIGGER_INTERVALS } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
 
-/** 最大重连退避时间——超过这个值就不再增长，但仍持续尝试。 */
+/** Reconnect backoff cap; we keep retrying past it but stop growing. */
 const MAX_RECONNECT_BACKOFF_MS = 30_000;
 
-/** 重连初始退避（指数 base） */
+/** Initial reconnect backoff (exponential base). */
 const INITIAL_RECONNECT_BACKOFF_MS = 1_000;
 
-/** WebSocket 心跳：每 N ms 发一次 ping，避免 NAT/proxy 静默断连。 */
+/** WebSocket heartbeat interval; keeps NAT/proxy paths from silently dropping. */
 const HEARTBEAT_INTERVAL_MS = SYNC_TRIGGER_INTERVALS.heartbeatMs;
 
-/**
- * 子集化的 fetch 函数签名——方便测试注入 fake，不强绑定 undici 类型。
- */
+/** Subset of `fetch` we depend on; lets tests inject a fake without binding to undici types. */
 export type HttpFetchFn = (url: string, init: {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
 }) => Promise<{ ok: boolean; status: number; statusText: string; json: () => Promise<unknown>; text: () => Promise<string> }>;
 
-/**
- * 子集化的 WebSocket 接口——方便测试注入 fake，不强绑定 undici 类型。
- */
+/** Subset of `WebSocket` we depend on; lets tests inject a fake without binding to undici types. */
 export interface IHttpWebSocket {
   send: (data: string) => void;
   close: (code?: number, reason?: string) => void;
@@ -54,27 +51,29 @@ export interface IHttpWebSocket {
 export type HttpWebSocketCtor = new (url: string, protocols?: string[]) => IHttpWebSocket;
 
 /**
- * HttpSyncTransportService 配置——构造时注入。
+ * Constructor config for HttpSyncTransportService.
  *
- * `baseUrl` 指向云服务根（如 `https://cloud.termlnk.io/v1` 或 self-host 地址），
- * 路径拼接：`{baseUrl}/sync/push`、`{baseUrl}/sync/pull`、`wss://...{baseUrl path}/sync/poke`。
+ * `baseUrl` is the cloud root (e.g. `https://cloud.termlnk.io/v1` or a
+ * self-hosted address). Paths are appended directly:
+ * `{baseUrl}/sync/push`, `{baseUrl}/sync/pull`,
+ * `wss://...{baseUrl path}/sync/poke`.
  *
- * `fetchFn` / `webSocketCtor` 注入点：生产用 undici 默认值（DEFAULT_FETCH_FN /
- * DEFAULT_WEBSOCKET_CTOR），测试注 fake。
+ * `fetchFn` / `webSocketCtor` are injection points; production uses the
+ * defaults (`DEFAULT_FETCH_FN` / `DEFAULT_WEBSOCKET_CTOR`), tests inject fakes.
  */
 export interface IHttpSyncTransportConfig {
   readonly baseUrl: string;
-  /** WebSocket URL；不显式传时从 baseUrl 推导（http→ws / https→wss + /sync/poke）。 */
+  /** WebSocket URL; derived from `baseUrl` when omitted (http→ws / https→wss + /sync/poke). */
   readonly websocketUrl?: string;
-  /** fetch 实现注入点；默认 globalThis.fetch。 */
+  /** `fetch` implementation; defaults to `globalThis.fetch`. */
   readonly fetchFn?: HttpFetchFn;
-  /** WebSocket 构造器注入点；默认 globalThis.WebSocket。 */
+  /** `WebSocket` constructor; defaults to `globalThis.WebSocket`. */
   readonly webSocketCtor?: HttpWebSocketCtor;
 }
 
 /**
- * 默认 fetch—— globalThis.fetch；Node 22+ / 浏览器 / RN 原生提供，
- * 跨平台无需 polyfill 即可工作。
+ * Default fetch: `globalThis.fetch`. Provided natively by Node 22+, browsers
+ * and React Native — no polyfill needed.
  */
 const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   const resp = await globalThis.fetch(url, init as RequestInit);
@@ -88,13 +87,14 @@ const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
 };
 
 /**
- * 默认 WebSocket—— globalThis.WebSocket；Node 22+ / 浏览器 / RN 均原生提供，
- * 接口与 RFC 6455 一致；子协议传 token 这一惯用法在三端通用。
+ * Default WebSocket: `globalThis.WebSocket`. Provided natively by Node 22+,
+ * browsers and React Native; conforms to RFC 6455. Passing the token via
+ * subprotocol is a portable idiom across all three runtimes.
  */
 const DEFAULT_WEBSOCKET_CTOR: HttpWebSocketCtor = globalThis.WebSocket as unknown as HttpWebSocketCtor;
 
 /**
- * Wire format（与 cloud-sync-architecture.md §4.3 一致）：
+ * Wire format (matches cloud-sync-architecture.md §4.3):
  *
  * ```
  * POST {baseUrl}/sync/push
@@ -108,11 +108,11 @@ const DEFAULT_WEBSOCKET_CTOR: HttpWebSocketCtor = globalThis.WebSocket as unknow
  *
  * WS  {baseUrl}/sync/poke
  *   Server → Client: { type: 'poke', resource, cursor }
- *   Client → Server: { type: 'ping' } 每 30s 一次
+ *   Client → Server: { type: 'ping' } every 30s
  * ```
  *
- * Uint8Array → JSON：base64 字符串编码。`payload` 字段在 wire 上恒为 string|null，
- * 反序列化时若是 string 则 base64 解码回 Uint8Array。
+ * Uint8Array → JSON is base64. `payload` is `string | null` on the wire; on
+ * deserialization a string is base64-decoded back to `Uint8Array`.
  */
 interface IWirePushBody {
   clientId: string;
@@ -162,17 +162,21 @@ interface IWirePokeMessage {
 }
 
 /**
- * HTTP / WebSocket transport 实现。
+ * HTTP + WebSocket transport.
  *
- * 关键设计：
- * - 凭据：每个请求通过 TokenManager.getAccessToken 拿到 access token，附带 Bearer
- *   header。token 过期 / refresh 失败时返回 null —— 这里 throw "unauthenticated"
- *   让 SyncService 的 push/pull catch 路径转发为 SyncErrorCode.unauthenticated
- * - 序列化：Uint8Array ↔ base64（JSON 不能原生承载二进制）。Wire format 严格对齐
- *   架构 §4.3——任何字段名变更需要服务端同步
- * - 重连：connect() 主动发起连接；onclose 触发后立即指数退避（1s, 2s, 4s, ..., 30s）
- *   重试，直到 disconnect() 显式关闭。心跳 30s 一次，对端 close 即触发 onclose
- * - WebSocket 收消息后只发布 IPokeMessage——不解码 patch（patch 走 HTTP pull）
+ * Design notes:
+ * - Auth: every request fetches an access token via `TokenManager.getAccessToken`
+ *   and sets the `Bearer` header. If the token is expired and refresh fails the
+ *   manager returns null; we throw "unauthenticated" so `SyncService`'s
+ *   push/pull catch path can map it to `SyncErrorCode.unauthenticated`.
+ * - Serialization: `Uint8Array ↔ base64` (JSON cannot carry binary). Field
+ *   names are locked to architecture §4.3 — any rename requires a server-side
+ *   change too.
+ * - Reconnect: `connect()` opens the socket; on `onclose` we retry with
+ *   exponential backoff (1s, 2s, 4s, …, 30s) until `disconnect()` is called.
+ *   Heartbeat fires every 30s; if the peer closes, `onclose` runs.
+ * - The WebSocket only emits `IPokeMessage`; the patch itself goes through
+ *   HTTP `pull`.
  */
 export class HttpSyncTransportService extends Disposable implements ISyncTransportService {
   private readonly _connected$ = new BehaviorSubject<boolean>(false);
@@ -184,9 +188,9 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
   private _ws: IHttpWebSocket | null = null;
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  /** 是否已显式 disconnect——置 true 后不再触发重连 */
+  /** Set true after `disconnect()`; suppresses further reconnect attempts. */
   private _stopped = false;
-  /** 当前指数退避（ms） */
+  /** Current exponential backoff (ms). */
   private _reconnectBackoff = INITIAL_RECONNECT_BACKOFF_MS;
 
   private readonly _fetchFn: HttpFetchFn;
@@ -293,7 +297,10 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      throw new Error(`[HttpSyncTransportService] ${method} ${url} → ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 200)}` : ''}`);
+      // SyncService maps this onto SyncErrorCode via .status / .serverCode — e.g.
+      // 401+`unauthorized` → access token rejected; 401+`invalid_refresh` → caller must
+      // re-auth. Without the typed payload the upper layer had no way to differentiate.
+      throw new HttpRequestError(`${method} ${url}`, resp.status, resp.statusText, text);
     }
 
     return { json: () => resp.json() };
@@ -333,8 +340,8 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
     }
 
     const url = this._websocketUrl();
-    // WebSocket 子协议字段携带凭据（RFC 6455）——避免在 URL query string 暴露 token，
-    // 那种做法会被 server access log 落盘。
+    // Pass the token via the RFC 6455 subprotocol field rather than a query
+    // string, so server access logs do not record it.
     const ws = new this._webSocketCtor(url, [`Bearer.${token}`]);
 
     ws.addEventListener('open', () => {
@@ -359,7 +366,7 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
 
     ws.addEventListener('error', (event) => {
       this._logService.warn('[HttpSyncTransportService] WebSocket error:', event);
-      // 不在这里发起重连——onclose 紧随其后会处理
+      // Reconnect is handled in `onclose`, which fires right after `onerror`.
     });
 
     this._ws = ws;
@@ -379,7 +386,7 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
       const poke = parsed as IWirePokeMessage;
       this._poke$.next({ type: 'poke', resource: poke.resource, cursor: poke.cursor });
     }
-    // pong 消息暂时忽略——心跳成功的副作用是 ws 不进 onclose
+    // Pong is ignored — its only purpose is to keep `onclose` from firing.
   }
 
   private _startHeartbeat(): void {
