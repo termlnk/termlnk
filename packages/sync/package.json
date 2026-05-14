@@ -10,7 +10,11 @@
     "type": "git"
   },
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "react-native": "./lib/cjs/index.js",
+      "default": "./src/index.ts"
+    },
     "./*": "./src/*"
   },
   "main": "./src/index.ts",
@@ -49,12 +53,9 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
-    "@termlnk/auth": "workspace:*",
-    "@termlnk/core": "workspace:*",
-    "rxjs": ">=7.0.0"
+    "@termlnk/core": "workspace:*"
   },
   "dependencies": {
-    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*"
   },
   "devDependencies": {

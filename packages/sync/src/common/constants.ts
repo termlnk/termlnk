@@ -34,6 +34,29 @@ export const SYNC_TRIGGER_INTERVALS = {
   heartbeatMs: 30 * 1000,
 } as const;
 
+// Max mutations the SyncService sends in a single push request. The transport peels off
+// mutations in FIFO order; the loop keeps pumping until the outbox drains or push errors.
+// Bound chosen to keep the HTTP body well under any reasonable server limit even with
+// 32 KiB encrypted payloads (200 * 32 KiB ~= 6.4 MiB).
+export const SYNC_PUSH_BATCH_SIZE = 200;
+
+// Plugin config keys whose contents are device-specific runtime state — never sync across
+// devices. Used by the `config` resource synchroniser to drop both inbound patches and
+// outbound mutations for these keys, and to purge any residual outbox rows on startup.
+//
+// Rule of thumb: anything written by the engine itself (sync.config.clientId,
+// sync.config.lastClientMutId), the auth stack (tokens, deviceId), or per-device
+// platform integration state (window position, OS keystore handles) lives here.
+export const NON_SYNCABLE_CONFIG_KEYS: ReadonlySet<string> = new Set([
+  // sync engine internals (clientId, lastClientMutId, autoEnableOnLogin, excludedResources)
+  'sync.config',
+  // auth tokens + deviceId + idle-lock config
+  'auth.config',
+  // desktop runtime (appSettings, override) + main-process window state
+  'electron.config',
+  'electron-main.config',
+]);
+
 // Bump on algorithm change so the decrypt path can dispatch by version.
 export const SYNC_PAYLOAD_VERSION = 1;
 
