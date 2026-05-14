@@ -18,9 +18,13 @@ import { hkdf } from '@noble/hashes/hkdf.js';
 // eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { sha256 } from '@noble/hashes/sha2.js';
 import { base64ToBytes, HKDF_INFO, MASTER_KEY_DERIVATION } from '@termlnk/auth';
-import { argon2id } from 'hash-wasm';
 
 const TEXT_ENCODER = new TextEncoder();
+
+// libsodium's `crypto_pwhash` hard-codes saltlen to 16 bytes; we must produce a fixed-length
+// salt so the same derivation runs on both hash-wasm (desktop) and libsodium (mobile).
+const KDF_SALT_INFO = 'termlnk.kdf.salt.v1';
+const KDF_SALT_BYTES = 16;
 
 export interface IDerivedSubKeys {
   readonly authKey: Uint8Array;
@@ -28,35 +32,22 @@ export interface IDerivedSubKeys {
   readonly indexKey: Uint8Array;
 }
 
-// Composes the Argon2id input salt as `utf8(lowercased(email)) || base64decode(saltB64)`.
-// Including the email gives "same password, different account -> different master key" so
-// dictionary attacks across accounts do not amortize. The random server-side component
-// guarantees first-time entropy. Email is normalized (trim + lowercase) so case differences
-// cannot derive different keys for the same login.
+// Produces the 16-byte Argon2id salt as `HKDF-SHA256(IKM=email, salt=serverSalt, info)`.
+// HKDF gives us a deterministic, fixed-length compression of `(email, serverSalt)` while
+// preserving cross-account isolation: different emails feed into different IKM, so two
+// accounts on the same server salt still derive distinct master keys. Email is normalized
+// (trim + lowercase) so case differences cannot derive different keys for the same login.
+//
+// History: prior to KDF v1 this returned `utf8(email) || base64decode(serverSalt)` —
+// variable length, which broke under libsodium. The compression is a one-way function so
+// the shape change requires a re-derivation; see KDF_VERSION.
 export function computeArgon2Salt(email: string, saltB64: string): Uint8Array {
   const emailBytes = TEXT_ENCODER.encode(email.trim().toLowerCase());
   const serverSaltBytes = base64ToBytes(saltB64);
   if (serverSaltBytes.length === 0) {
     throw new Error('Argon2 salt material is empty: serverSaltB64 must decode to >= 1 byte');
   }
-  const out = new Uint8Array(emailBytes.length + serverSaltBytes.length);
-  out.set(emailBytes, 0);
-  out.set(serverSaltBytes, emailBytes.length);
-  return out;
-}
-
-// Argon2id stretch using OWASP-baseline parameters from `@termlnk/auth`. Runs via WASM
-// for cross-platform parity. Callers must drop the password reference once this returns.
-export async function deriveMasterKey(password: string, salt: Uint8Array): Promise<Uint8Array> {
-  return await argon2id({
-    password,
-    salt,
-    parallelism: MASTER_KEY_DERIVATION.parallelism,
-    iterations: MASTER_KEY_DERIVATION.iterations,
-    memorySize: MASTER_KEY_DERIVATION.memoryKiB,
-    hashLength: MASTER_KEY_DERIVATION.outputBytes,
-    outputType: 'binary',
-  });
+  return hkdf(sha256, emailBytes, serverSaltBytes, TEXT_ENCODER.encode(KDF_SALT_INFO), KDF_SALT_BYTES);
 }
 
 // Splits the master key into three independent sub-keys via HKDF-SHA256. The info labels

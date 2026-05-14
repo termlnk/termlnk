@@ -14,23 +14,32 @@
  */
 
 import { Buffer } from 'node:buffer';
-import { MASTER_KEY_DERIVATION } from '@termlnk/auth';
+import { bytesToHex, MASTER_KEY_DERIVATION } from '@termlnk/auth';
 import { describe, expect, it } from 'vitest';
-import { computeArgon2Salt, deriveMasterKey, deriveSubKeys, zeroize } from '../crypto/kdf';
+import { computeArgon2Salt, deriveSubKeys, zeroize } from '../crypto/kdf';
+import { HashWasmPasswordHasher } from '../services/hash-wasm-password-hasher.service';
 
 const TEST_PASSWORD = 'correct horse battery staple';
 const TEST_EMAIL = 'alice@example.com';
 const TEST_SALT_B64 = Buffer.from('static-test-salt-32-bytes-fixed!').toString('base64');
 
-describe('computeArgon2Salt', () => {
-  it('appends server salt bytes after lowercased email bytes', () => {
-    const salt = computeArgon2Salt(TEST_EMAIL, TEST_SALT_B64);
-    const serverBytes = Buffer.from(TEST_SALT_B64, 'base64');
-    const emailBytes = new TextEncoder().encode(TEST_EMAIL);
+// Cross-implementation anchor. Same (email, serverSalt) → same 16-byte salt regardless of
+// which hashing backend the platform uses. Hex computed from the current HKDF construction;
+// any change to KDF_SALT_INFO/KDF_SALT_BYTES/serverSalt encoding must update this and bump
+// KDF_VERSION.
+const KAT_SALT_HEX = '2dcc2203cee76fcc22a9e59e65412848';
 
-    expect(salt.length).toBe(emailBytes.length + serverBytes.length);
-    expect(salt.subarray(0, emailBytes.length)).toEqual(emailBytes);
-    expect(salt.subarray(emailBytes.length)).toEqual(new Uint8Array(serverBytes));
+describe('computeArgon2Salt', () => {
+  it('returns 16 bytes regardless of email length (libsodium compatibility)', () => {
+    const short = computeArgon2Salt('a@b.c', TEST_SALT_B64);
+    const long = computeArgon2Salt('a-very-long-email-address-that-exceeds-sixteen-bytes@example.com', TEST_SALT_B64);
+    expect(short.length).toBe(16);
+    expect(long.length).toBe(16);
+  });
+
+  it('matches the cross-implementation KAT vector', () => {
+    const salt = computeArgon2Salt(TEST_EMAIL, TEST_SALT_B64);
+    expect(bytesToHex(salt)).toBe(KAT_SALT_HEX);
   });
 
   it('normalizes email casing and whitespace', () => {
@@ -45,32 +54,40 @@ describe('computeArgon2Salt', () => {
     expect(a).not.toEqual(b);
   });
 
+  it('produces different salts for different server salts', () => {
+    const a = computeArgon2Salt(TEST_EMAIL, TEST_SALT_B64);
+    const otherB64 = Buffer.from('different-server-random-32bytesx').toString('base64');
+    const b = computeArgon2Salt(TEST_EMAIL, otherB64);
+    expect(a).not.toEqual(b);
+  });
+
   it('throws when server salt material is empty', () => {
     expect(() => computeArgon2Salt(TEST_EMAIL, '')).toThrow(/empty/i);
   });
 });
 
-describe('deriveMasterKey', () => {
+describe('HashWasmPasswordHasher.argon2id', () => {
   const ARGON2_TEST_TIMEOUT_MS = 30_000;
+  const hasher = new HashWasmPasswordHasher();
 
-  it('returns a 32-byte key matching MASTER_KEY_DERIVATION.outputBytes', async () => {
+  it('returns a 32-byte key matching params.outputBytes', async () => {
     const salt = computeArgon2Salt(TEST_EMAIL, TEST_SALT_B64);
-    const key = await deriveMasterKey(TEST_PASSWORD, salt);
+    const key = await hasher.argon2id(TEST_PASSWORD, salt, MASTER_KEY_DERIVATION);
     expect(key).toBeInstanceOf(Uint8Array);
     expect(key.length).toBe(MASTER_KEY_DERIVATION.outputBytes);
   }, ARGON2_TEST_TIMEOUT_MS);
 
   it('is deterministic given identical password + salt', async () => {
     const salt = computeArgon2Salt(TEST_EMAIL, TEST_SALT_B64);
-    const a = await deriveMasterKey(TEST_PASSWORD, salt);
-    const b = await deriveMasterKey(TEST_PASSWORD, salt);
+    const a = await hasher.argon2id(TEST_PASSWORD, salt, MASTER_KEY_DERIVATION);
+    const b = await hasher.argon2id(TEST_PASSWORD, salt, MASTER_KEY_DERIVATION);
     expect(a).toEqual(b);
   }, ARGON2_TEST_TIMEOUT_MS);
 
   it('produces different keys when password changes', async () => {
     const salt = computeArgon2Salt(TEST_EMAIL, TEST_SALT_B64);
-    const a = await deriveMasterKey(TEST_PASSWORD, salt);
-    const b = await deriveMasterKey(`${TEST_PASSWORD}!`, salt);
+    const a = await hasher.argon2id(TEST_PASSWORD, salt, MASTER_KEY_DERIVATION);
+    const b = await hasher.argon2id(`${TEST_PASSWORD}!`, salt, MASTER_KEY_DERIVATION);
     expect(a).not.toEqual(b);
   }, ARGON2_TEST_TIMEOUT_MS);
 
@@ -78,8 +95,8 @@ describe('deriveMasterKey', () => {
     const saltA = computeArgon2Salt(TEST_EMAIL, TEST_SALT_B64);
     const otherB64 = Buffer.from('different-server-random-32bytesx').toString('base64');
     const saltB = computeArgon2Salt(TEST_EMAIL, otherB64);
-    const a = await deriveMasterKey(TEST_PASSWORD, saltA);
-    const b = await deriveMasterKey(TEST_PASSWORD, saltB);
+    const a = await hasher.argon2id(TEST_PASSWORD, saltA, MASTER_KEY_DERIVATION);
+    const b = await hasher.argon2id(TEST_PASSWORD, saltB, MASTER_KEY_DERIVATION);
     expect(a).not.toEqual(b);
   }, ARGON2_TEST_TIMEOUT_MS);
 });

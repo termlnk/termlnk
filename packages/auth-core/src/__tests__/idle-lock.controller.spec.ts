@@ -94,6 +94,7 @@ class FakeAuthService implements IAuthService {
 
   getCurrentUser(): IUserAccount | null { return null; }
   async getAccessToken(): Promise<string | null> { return null; }
+  async restore(): Promise<void> {}
   async listDevices() { return []; }
   async revokeDevice(): Promise<void> {}
 }

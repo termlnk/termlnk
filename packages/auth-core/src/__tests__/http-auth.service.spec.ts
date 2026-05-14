@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDerivationMaterial, IMasterKey, IMasterKeyService, ISrpClientService, IUserAccount } from '@termlnk/auth';
+import type { IAuthKeyValueStorage, IDerivationMaterial, IMasterKey, IMasterKeyService, ISrpClientService, IUserAccount, IUserStorageService } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { HttpFetchFn } from '../services/http-auth.service';
 import { Buffer } from 'node:buffer';
@@ -83,6 +83,36 @@ class FakeTokenStorage {
   }
 }
 
+class FakeAuthKeyValueStorage implements IAuthKeyValueStorage {
+  private readonly _map = new Map<string, string>();
+  async getString(key: string): Promise<string | null> {
+    return this._map.get(key) ?? null;
+  }
+
+  async setString(key: string, value: string): Promise<void> {
+    this._map.set(key, value);
+  }
+
+  async deleteKey(key: string): Promise<void> {
+    this._map.delete(key);
+  }
+}
+
+class FakeUserStorage implements IUserStorageService {
+  data: IUserAccount | null = null;
+  async load(): Promise<IUserAccount | null> {
+    return this.data;
+  }
+
+  async save(user: IUserAccount): Promise<void> {
+    this.data = user;
+  }
+
+  async clear(): Promise<void> {
+    this.data = null;
+  }
+}
+
 class NeverRefresher {
   async refresh(): Promise<never> {
     throw new Error('refresher should not be called in these tests');
@@ -138,6 +168,8 @@ interface ITestBed {
   srp: ISrpClientService;
   tokenManager: TokenManager;
   storage: FakeTokenStorage;
+  authKv: FakeAuthKeyValueStorage;
+  userStorage: FakeUserStorage;
 }
 
 function createTestBed(): ITestBed {
@@ -149,7 +181,9 @@ function createTestBed(): ITestBed {
     new NeverRefresher() as never,
     new NoopLogService()
   );
-  return { masterKey, srp, tokenManager, storage };
+  const authKv = new FakeAuthKeyValueStorage();
+  const userStorage = new FakeUserStorage();
+  return { masterKey, srp, tokenManager, storage, authKv, userStorage };
 }
 
 describe('HttpAuthService — register', () => {
@@ -181,6 +215,8 @@ describe('HttpAuthService — register', () => {
       bed.masterKey,
       bed.srp,
       bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
       new NoopLogService()
     );
 
@@ -192,6 +228,7 @@ describe('HttpAuthService — register', () => {
 
     expect(user).toEqual(TEST_USER);
     expect(auth.getCurrentUser()).toEqual(TEST_USER);
+    expect(bed.userStorage.data).toEqual(TEST_USER);
     expect(bed.masterKey.derivedFor?.password).toBe('correct-horse');
     expect(bed.masterKey.derivedFor?.material.email).toBe('alice@example.com');
     expect(bed.storage.data?.accessToken).toBe('a-1');
@@ -216,6 +253,8 @@ describe('HttpAuthService — register', () => {
       bed.masterKey,
       bed.srp,
       bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
       new NoopLogService()
     );
 
@@ -323,6 +362,8 @@ describe('HttpAuthService — login (full SRP6a round-trip with simulated server
       bed.masterKey,
       bed.srp,
       bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
       new NoopLogService()
     );
 
@@ -333,6 +374,7 @@ describe('HttpAuthService — login (full SRP6a round-trip with simulated server
     expect(user).toEqual(TEST_USER);
     expect(bed.storage.data?.accessToken).toBe('after-login');
     expect(auth.getCurrentUser()).toEqual(TEST_USER);
+    expect(bed.userStorage.data).toEqual(TEST_USER);
 
     auth.dispose();
   }, 60_000);
@@ -396,6 +438,8 @@ describe('HttpAuthService — login (full SRP6a round-trip with simulated server
       bed.masterKey,
       bed.srp,
       bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
       new NoopLogService()
     );
 
@@ -435,13 +479,18 @@ describe('HttpAuthService — logout', () => {
       bed.masterKey,
       bed.srp,
       bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
       new NoopLogService()
     );
+
+    bed.userStorage.data = { ...TEST_USER };
 
     await auth.logout();
 
     expect(bed.masterKey.lockCalls).toBeGreaterThan(0);
     expect(bed.storage.data).toBeNull();
+    expect(bed.userStorage.data).toBeNull();
     expect(auth.getCurrentUser()).toBeNull();
     auth.dispose();
   });
@@ -453,11 +502,221 @@ describe('HttpAuthService — logout', () => {
       bed.masterKey,
       bed.srp,
       bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
       new NoopLogService()
     );
 
     await auth.logout();
     expect(calls).toHaveLength(0); // no token → no server hit
+    auth.dispose();
+  });
+});
+
+describe('HttpAuthService — restore', () => {
+  let bed: ITestBed;
+
+  beforeEach(() => {
+    bed = createTestBed();
+  });
+
+  afterEach(() => {
+    bed.tokenManager.dispose();
+  });
+
+  function liveTokens() {
+    return {
+      accessToken: 'live-access',
+      refreshToken: 'live-refresh',
+      // Well outside the 30 s TokenManager refresh margin, so getAccessToken returns it as-is
+      // without exercising the refresher.
+      accessTokenExpiresAt: Date.now() + 600_000,
+      refreshTokenExpiresAt: Date.now() + 86_400_000,
+    };
+  }
+
+  it('emits cached user immediately and updates from /auth/me on success', async () => {
+    bed.storage.data = liveTokens();
+    bed.userStorage.data = { ...TEST_USER, displayName: 'stale name' };
+
+    const freshUser: IUserAccount = { ...TEST_USER, displayName: 'fresh name', emailVerified: false };
+    const { fetch, calls } = makeFakeFetch([
+      (call) => call.url.endsWith('/auth/me') && call.init.method === 'GET'
+        ? { status: 200, json: { user: freshUser } }
+        : null,
+    ]);
+
+    const auth = new HttpAuthService(
+      { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
+      bed.masterKey,
+      bed.srp,
+      bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
+      new NoopLogService()
+    );
+
+    const userEmissions: Array<IUserAccount | null> = [];
+    const stateEmissions: AuthState[] = [];
+    const userSub = auth.currentUser$.subscribe((u) => userEmissions.push(u));
+    const stateSub = auth.authState$.subscribe((s) => stateEmissions.push(s));
+
+    await auth.restore();
+
+    expect(calls[0].init.headers?.Authorization).toBe('Bearer live-access');
+    expect(auth.getCurrentUser()).toEqual(freshUser);
+    expect(bed.userStorage.data).toEqual(freshUser);
+    // First emission is cached, last is fresh — proves the fast-path → self-heal sequence.
+    expect(userEmissions[1]).toEqual({ ...TEST_USER, displayName: 'stale name' });
+    expect(userEmissions[userEmissions.length - 1]).toEqual(freshUser);
+    expect(stateEmissions).toContain(AuthState.Authenticated);
+
+    userSub.unsubscribe();
+    stateSub.unsubscribe();
+    auth.dispose();
+  });
+
+  it('keeps cached user when /auth/me returns 404 (endpoint not deployed yet)', async () => {
+    bed.storage.data = liveTokens();
+    bed.userStorage.data = { ...TEST_USER };
+
+    const { fetch } = makeFakeFetch([
+      (call) => call.url.endsWith('/auth/me') ? { status: 404, text: 'not found' } : null,
+    ]);
+
+    const auth = new HttpAuthService(
+      { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
+      bed.masterKey,
+      bed.srp,
+      bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
+      new NoopLogService()
+    );
+
+    await auth.restore();
+
+    expect(auth.getCurrentUser()).toEqual(TEST_USER);
+    expect(bed.userStorage.data).toEqual(TEST_USER);
+    expect(bed.storage.data?.accessToken).toBe('live-access');
+    auth.dispose();
+  });
+
+  it('keeps cached user when /auth/me throws a network error', async () => {
+    bed.storage.data = liveTokens();
+    bed.userStorage.data = { ...TEST_USER };
+
+    const failingFetch: HttpFetchFn = async () => {
+      throw new TypeError('fetch failed');
+    };
+    const auth = new HttpAuthService(
+      { baseUrl: 'https://cloud.example/v1', fetchFn: failingFetch },
+      bed.masterKey,
+      bed.srp,
+      bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
+      new NoopLogService()
+    );
+
+    await auth.restore();
+
+    expect(auth.getCurrentUser()).toEqual(TEST_USER);
+    expect(bed.userStorage.data).toEqual(TEST_USER);
+    expect(bed.storage.data?.accessToken).toBe('live-access');
+    auth.dispose();
+  });
+
+  it('clears session when /auth/me returns 401 (server revoked the token)', async () => {
+    bed.storage.data = liveTokens();
+    bed.userStorage.data = { ...TEST_USER };
+
+    const { fetch } = makeFakeFetch([
+      (call) => call.url.endsWith('/auth/me') ? { status: 401, text: 'revoked' } : null,
+    ]);
+    const auth = new HttpAuthService(
+      { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
+      bed.masterKey,
+      bed.srp,
+      bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
+      new NoopLogService()
+    );
+
+    await auth.restore();
+
+    expect(auth.getCurrentUser()).toBeNull();
+    expect(bed.userStorage.data).toBeNull();
+    expect(bed.storage.data).toBeNull();
+    expect(bed.masterKey.lockCalls).toBeGreaterThan(0);
+    auth.dispose();
+  });
+
+  it('fetches and persists user when token is live but no cached user exists', async () => {
+    bed.storage.data = liveTokens();
+    // userStorage.data stays null — simulates a partial-write scenario between releases.
+
+    const { fetch } = makeFakeFetch([
+      (call) => call.url.endsWith('/auth/me') ? { status: 200, json: { user: TEST_USER } } : null,
+    ]);
+    const auth = new HttpAuthService(
+      { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
+      bed.masterKey,
+      bed.srp,
+      bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
+      new NoopLogService()
+    );
+
+    await auth.restore();
+
+    expect(auth.getCurrentUser()).toEqual(TEST_USER);
+    expect(bed.userStorage.data).toEqual(TEST_USER);
+    auth.dispose();
+  });
+
+  it('clears cached user when no token is present (fail-soft drop)', async () => {
+    // No tokens stored; TokenManager.getAccessToken returns null on first call.
+    bed.userStorage.data = { ...TEST_USER };
+
+    const { fetch, calls } = makeFakeFetch([]);
+    const auth = new HttpAuthService(
+      { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
+      bed.masterKey,
+      bed.srp,
+      bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
+      new NoopLogService()
+    );
+
+    await auth.restore();
+
+    expect(calls).toHaveLength(0); // no /auth/me hit when there's no token
+    expect(auth.getCurrentUser()).toBeNull();
+    expect(bed.userStorage.data).toBeNull();
+    auth.dispose();
+  });
+
+  it('is a noop when neither cached user nor token exist', async () => {
+    const { fetch, calls } = makeFakeFetch([]);
+    const auth = new HttpAuthService(
+      { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
+      bed.masterKey,
+      bed.srp,
+      bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
+      new NoopLogService()
+    );
+
+    await auth.restore();
+
+    expect(calls).toHaveLength(0);
+    expect(auth.getCurrentUser()).toBeNull();
+    expect(bed.userStorage.data).toBeNull();
     auth.dispose();
   });
 });
@@ -477,6 +736,8 @@ describe('HttpAuthService — getAccessToken', () => {
       bed.masterKey,
       bed.srp,
       bed.tokenManager,
+      bed.authKv,
+      bed.userStorage,
       new NoopLogService()
     );
 

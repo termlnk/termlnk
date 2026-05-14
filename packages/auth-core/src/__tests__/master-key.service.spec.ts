@@ -13,9 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IArgon2idParams, IPasswordHasher } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import { Buffer } from 'node:buffer';
-import { MasterKeyState } from '@termlnk/auth';
+import { IPasswordHasher as IPasswordHasherId, MasterKeyState } from '@termlnk/auth';
 import { ILogService as ILogServiceId, Injector } from '@termlnk/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MasterKeyService } from '../services/master-key.service';
@@ -33,9 +34,26 @@ class NoopLogService implements ILogService {
   setLogLevel(_level: LogLevel): void {}
 }
 
+// Deterministic, fast hasher: produces a 32-byte output derived from password+salt by
+// concatenating their first 32 hashed bytes. Sufficient for testing state transitions,
+// determinism, and zeroize — the real Argon2id properties live in kdf.spec.ts.
+class FakePasswordHasher implements IPasswordHasher {
+  async argon2id(password: string, salt: Uint8Array, params: IArgon2idParams): Promise<Uint8Array> {
+    const passwordBytes = new TextEncoder().encode(password);
+    const out = new Uint8Array(params.outputBytes);
+    for (let i = 0; i < params.outputBytes; i++) {
+      const pb = passwordBytes[i % passwordBytes.length] ?? 0;
+      const sb = salt[i % salt.length] ?? 0;
+      out[i] = (pb ^ sb ^ (i * 31)) & 0xFF;
+    }
+    return out;
+  }
+}
+
 function createTestBed(): { injector: Injector; service: MasterKeyService } {
   const injector = new Injector();
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
+  injector.add([IPasswordHasherId, { useClass: FakePasswordHasher }]);
   injector.add([MasterKeyService]);
   return { injector, service: injector.get(MasterKeyService) };
 }

@@ -16,12 +16,12 @@
 import type { IDeviceNameProvider } from '@termlnk/auth';
 
 // Platform-agnostic fallback. AuthCorePlugin binds this by default so the package never
-// imports `node:os` (which breaks Metro for React Native). Electron main, web server, and
-// mobile each override with their own provider:
+// imports node-only APIs (which would break Metro for React Native). Each app owns its
+// own provider in its platform/ layer and registers it via DI override:
 //
-//   - Electron / Node: OsHostnameDeviceNameProvider (`os.hostname()`)
-//   - React Native:    ExpoDeviceNameProvider (`expo-device` modelName)
-//   - Browser SPA:     anything navigator-derived (currently no override)
+//   - apps/desktop/main, apps/web/server: hostname()-backed provider (node:os)
+//   - apps/mobile: ExpoDeviceNameProvider (expo-device modelName)
+//   - Browser SPA: anything navigator-derived (currently no override)
 export class DefaultDeviceNameProvider implements IDeviceNameProvider {
   getName(): string {
     return 'Unknown device';

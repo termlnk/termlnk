@@ -13,12 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDerivationMaterial, IMasterKey, IMasterKeyService } from '@termlnk/auth';
+import type { IDerivationMaterial, IMasterKey, IMasterKeyService, IPasswordHasher } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { MasterKeyState } from '@termlnk/auth';
+import { IPasswordHasher as IPasswordHasherId, MASTER_KEY_DERIVATION, MasterKeyState } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
-import { computeArgon2Salt, deriveMasterKey, deriveSubKeys, zeroize } from '../crypto/kdf';
+import { computeArgon2Salt, deriveSubKeys, zeroize } from '../crypto/kdf';
 
 // State machine: starts Locked; derive() flips to Unlocked, lock()/dispose() return to Locked.
 export class MasterKeyService extends Disposable implements IMasterKeyService {
@@ -28,7 +28,8 @@ export class MasterKeyService extends Disposable implements IMasterKeyService {
   private _currentKey: IMasterKey | null = null;
 
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService
+    @Inject(ILogService) private readonly _logService: ILogService,
+    @Inject(IPasswordHasherId) private readonly _passwordHasher: IPasswordHasher
   ) {
     super();
   }
@@ -51,7 +52,7 @@ export class MasterKeyService extends Disposable implements IMasterKeyService {
     this._zeroizeAndClear();
 
     const salt = computeArgon2Salt(material.email, material.saltB64);
-    const masterKey = await deriveMasterKey(password, salt);
+    const masterKey = await this._passwordHasher.argon2id(password, salt, MASTER_KEY_DERIVATION);
     try {
       const subKeys = deriveSubKeys(masterKey);
       const next: IMasterKey = {

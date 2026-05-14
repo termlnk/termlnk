@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthError, IAuthService, IDevice, IDeviceNameProvider, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenPair, IUserAccount } from '@termlnk/auth';
+import type { AuthErrorCode, IAuthError, IAuthKeyValueStorage, IAuthService, IDevice, IDeviceNameProvider, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenPair, IUserAccount, IUserStorageService } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { AuthState, bytesToBase64, bytesToHex, IDeviceNameProvider as IDeviceNameProviderId, IMasterKeyService as IMasterKeyServiceId, ISrpClientService as ISrpClientServiceId, randomBytes } from '@termlnk/auth';
-import { Disposable, ILogService, Inject, Optional } from '@termlnk/core';
+import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage as IAuthKeyValueStorageId, IDeviceNameProvider as IDeviceNameProviderId, IMasterKeyService as IMasterKeyServiceId, ISrpClientService as ISrpClientServiceId, IUserStorageService as IUserStorageServiceId, randomBytes } from '@termlnk/auth';
+import { Disposable, generateRandomId, ILogService, Inject, Optional } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { TokenManager } from './token-manager.service';
 
@@ -50,6 +50,70 @@ const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   };
 };
 
+const SERVER_CODE_TO_AUTH_CODE: Readonly<Record<string, AuthErrorCode>> = {
+  email_already_registered: 'email_already_registered',
+  invalid_credentials: 'invalid_credentials',
+  email_not_verified: 'email_not_verified',
+  registration_closed: 'registration_closed',
+  // Server differentiates `unauthorized` (access token rejected; refresh may recover)
+  // from `invalid_refresh` (refresh itself revoked/replayed). Mirror that here so callers
+  // can decide whether to retry silently or force a sign-in.
+  unauthorized: 'token_expired',
+  invalid_refresh: 'session_expired',
+  invalid_request: 'invalid_request',
+  rate_limited: 'rate_limited',
+  server_error: 'server_error',
+};
+
+function mapServerErrorCode(code: string | undefined): AuthErrorCode | null {
+  if (!code) {
+    return null;
+  }
+  return SERVER_CODE_TO_AUTH_CODE[code] ?? null;
+}
+
+function mapHttpStatusCode(status: number): AuthErrorCode {
+  // Status-only fallback for responses that didn't carry a `code`. Treats 401/403 as a
+  // credential failure since that's the most common cause at login/register; specific
+  // states (registration_closed, session_expired, …) come through SERVER_CODE_TO_AUTH_CODE.
+  if (status === 400) {
+    return 'invalid_request';
+  }
+  if (status === 401 || status === 403) {
+    return 'invalid_credentials';
+  }
+  if (status === 409) {
+    return 'email_already_registered';
+  }
+  if (status === 429) {
+    return 'rate_limited';
+  }
+  if (status >= 500) {
+    return 'server_error';
+  }
+  return 'unknown';
+}
+
+// User-facing English copy. UI layers that need localization can switch on `AuthError.code` and
+// look up their own strings; this is the fallback when the UI just renders `err.message`.
+const FRIENDLY_MESSAGES: Readonly<Record<AuthErrorCode, string>> = {
+  invalid_credentials: 'Invalid email or password.',
+  email_already_registered: 'This email is already registered. Try signing in instead.',
+  email_not_verified: 'Please verify your email before signing in.',
+  registration_closed: 'Open registration is disabled on this server.',
+  session_expired: 'Your session has ended. Please sign in again.',
+  invalid_request: 'The request was rejected by the server. Please try again.',
+  rate_limited: 'Too many attempts. Please wait a moment and try again.',
+  network: 'Network error. Check your connection and try again.',
+  server_error: 'Server error. Please try again later.',
+  token_expired: 'Your session has expired. Please sign in again.',
+  unknown: 'Something went wrong. Please try again.',
+};
+
+function friendlyMessageFor(code: AuthErrorCode): string {
+  return FRIENDLY_MESSAGES[code];
+}
+
 // Wire format:
 //
 //   POST {baseUrl}/auth/register
@@ -67,6 +131,11 @@ const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
 //   POST {baseUrl}/auth/logout    (Bearer auth, best-effort)
 //     Resp: 204
 //
+//   GET  {baseUrl}/auth/me        (Bearer auth)
+//     Resp: { user }
+//     Used at startup to self-heal stale cached user fields (displayName, avatarUrl,
+//     emailVerified). 404 = endpoint not deployed yet → graceful keep-cached fallback.
+//
 // Server MUST validate srpM1 before issuing tokens; otherwise an attacker that guessed
 // the password could observe a token leak alongside the SRP rejection.
 interface IRegisterRequestBody {
@@ -76,6 +145,10 @@ interface IRegisterRequestBody {
   srpSalt: string;
   srpVerifier: string;
   deviceName?: string;
+  // Stable per-device id (nanoid). The server upserts the device row keyed on
+  // (userId, deviceId), so re-login from the same install reuses the existing row instead
+  // of creating a new one each time.
+  deviceId: string;
 }
 
 interface IRegisterResponseBody {
@@ -101,10 +174,16 @@ interface ISrpVerifyRequestBody {
   clientPublicEphemeral: string;
   clientSessionProof: string;
   deviceName?: string;
+  // See IRegisterRequestBody.deviceId.
+  deviceId: string;
 }
 
 interface IDeviceListResponseBody {
   devices: IDevice[];
+}
+
+interface IMeResponseBody {
+  user: IUserAccount;
 }
 
 interface ISrpVerifyResponseBody {
@@ -137,11 +216,17 @@ export class HttpAuthService extends Disposable implements IAuthService {
 
   private readonly _fetchFn: HttpFetchFn;
 
+  // In-memory cache for the persisted device id. First read goes through IAuthKeyValueStorage;
+  // subsequent reads short-circuit so register/login don't hit the keystore each call.
+  private _deviceIdCache: string | null = null;
+
   constructor(
     private readonly _config: IHttpAuthServiceConfig,
     @Inject(IMasterKeyServiceId) private readonly _masterKey: IMasterKeyService,
     @Inject(ISrpClientServiceId) private readonly _srp: ISrpClientService,
     @Inject(TokenManager) private readonly _tokenManager: TokenManager,
+    @Inject(IAuthKeyValueStorageId) private readonly _storage: IAuthKeyValueStorage,
+    @Inject(IUserStorageServiceId) private readonly _userStorage: IUserStorageService,
     @Inject(ILogService) private readonly _logService: ILogService,
     @Optional(IDeviceNameProviderId) private readonly _deviceNameProvider: IDeviceNameProvider | null = null
   ) {
@@ -186,6 +271,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
         srpSalt: enrollment.srpSalt,
         srpVerifier: enrollment.srpVerifier,
         deviceName: this._safeDeviceName(),
+        deviceId: await this._loadOrCreateDeviceId(),
       };
       if (input.displayName !== undefined) {
         body.displayName = input.displayName;
@@ -195,8 +281,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
       await this._completeAuthSession(resp);
       return resp.user;
     } catch (err) {
-      this._handleError(err, 'register');
-      throw err;
+      throw this._toAuthError(err, 'register');
     }
   }
 
@@ -232,6 +317,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
           clientPublicEphemeral: ephemeral.public,
           clientSessionProof: session.proof,
           deviceName: this._safeDeviceName(),
+          deviceId: await this._loadOrCreateDeviceId(),
         } satisfies ISrpVerifyRequestBody
       );
 
@@ -242,54 +328,33 @@ export class HttpAuthService extends Disposable implements IAuthService {
       await this._completeAuthSession(verifyResp);
       return verifyResp.user;
     } catch (err) {
-      this._handleError(err, 'login');
       // SRP server-proof failure / network error / wrong password → master key may be partially
       // derived. Lock it to keep the in-memory invariant clean.
       this._masterKey.lock();
-      throw err;
+      throw this._toAuthError(err, 'login');
     }
   }
 
   async listDevices(): Promise<readonly IDevice[]> {
-    const token = await this._tokenManager.getAccessToken();
-    if (!token) {
-      throw new Error('[HttpAuthService] not authenticated');
+    try {
+      const resp = await this._fetchAuthorized('GET /auth/devices', '/auth/devices', 'GET');
+      const json = await resp.json() as IDeviceListResponseBody;
+      return json.devices;
+    } catch (err) {
+      throw err instanceof AuthError ? err : this._classifyError(err);
     }
-    const url = this._joinUrl('/auth/devices');
-    const resp = await this._fetchFn(url, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-    });
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      throw new Error(`[HttpAuthService] GET /auth/devices → ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 200)}` : ''}`);
-    }
-    const json = await resp.json() as IDeviceListResponseBody;
-    return json.devices;
   }
 
   async revokeDevice(deviceId: string): Promise<void> {
     if (!deviceId) {
-      throw new Error('[HttpAuthService] deviceId is required');
+      throw new AuthError('unknown', '[HttpAuthService] deviceId is required');
     }
-    const token = await this._tokenManager.getAccessToken();
-    if (!token) {
-      throw new Error('[HttpAuthService] not authenticated');
-    }
-    const url = this._joinUrl(`/auth/devices/${encodeURIComponent(deviceId)}/revoke`);
-    const resp = await this._fetchFn(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-    });
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      throw new Error(`[HttpAuthService] POST /auth/devices/.../revoke → ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 200)}` : ''}`);
+    const path = `/auth/devices/${encodeURIComponent(deviceId)}/revoke`;
+    try {
+      await this._fetchAuthorized(`POST ${path}`, path, 'POST');
+      // Server responds 204 No Content — no body to parse.
+    } catch (err) {
+      throw err instanceof AuthError ? err : this._classifyError(err);
     }
   }
 
@@ -312,9 +377,59 @@ export class HttpAuthService extends Disposable implements IAuthService {
 
     this._masterKey.lock();
     await this._tokenManager.clear();
+    await this._userStorage.clear();
     this._currentUser$.next(null);
     this._authState$.next(AuthState.Unauthenticated);
     this._lastError$.next(null);
+  }
+
+  // Rehydrates currentUser$/authState$ from the locally persisted user + token pair.
+  // Called once at plugin onReady. Idempotent: subsequent calls re-derive from current
+  // storage state. Fail-soft on every step — never throws to the caller.
+  async restore(): Promise<void> {
+    const cachedUser = await this._userStorage.load();
+    if (cachedUser) {
+      // Fast path: emit immediately so the UI does not flash the login screen while
+      // we negotiate refresh / /auth/me. The post-network step below may overwrite this.
+      this._currentUser$.next(cachedUser);
+      this._authState$.next(AuthState.Authenticated);
+    }
+
+    // getAccessToken auto-refreshes when within the 30 s margin and fail-soft clears
+    // both cache and storage when refresh fails. Either outcome is durable: null means
+    // "no usable token left", non-null means "token verified usable for the next call".
+    const token = await this._tokenManager.getAccessToken();
+    if (!token) {
+      if (cachedUser) {
+        await this._userStorage.clear();
+        this._currentUser$.next(null);
+        this._authState$.next(AuthState.Unauthenticated);
+      }
+      return;
+    }
+
+    // Token still alive — best-effort self-heal so changes elsewhere (displayName, avatar,
+    // emailVerified) reach this device without forcing a re-login. Errors are classified:
+    //   401/403          → server revoked the token; clear everything.
+    //   404 / network    → endpoint not deployed yet or transient outage; keep cached user.
+    //   anything else    → log and keep cached user.
+    try {
+      const fresh = await this._fetchMe(token);
+      await this._userStorage.save(fresh);
+      this._currentUser$.next(fresh);
+      this._authState$.next(AuthState.Authenticated);
+    } catch (err) {
+      if (err instanceof HttpRequestError && (err.status === 401 || err.status === 403)) {
+        this._logService.log('[HttpAuthService] /auth/me rejected token; clearing session');
+        await this._userStorage.clear();
+        await this._tokenManager.clear();
+        this._masterKey.lock();
+        this._currentUser$.next(null);
+        this._authState$.next(AuthState.Unauthenticated);
+        return;
+      }
+      this._logService.warn('[HttpAuthService] /auth/me self-heal failed (keeping cached user):', err);
+    }
   }
 
   private async _completeAuthSession(resp: IRegisterResponseBody | ISrpVerifyResponseBody): Promise<void> {
@@ -325,65 +440,153 @@ export class HttpAuthService extends Disposable implements IAuthService {
       refreshTokenExpiresAt: resp.refreshTokenExpiresAt,
     };
     await this._tokenManager.setTokens(tokens);
+    await this._userStorage.save(resp.user);
     this._currentUser$.next(resp.user);
     this._authState$.next(AuthState.Authenticated);
   }
 
-  private _handleError(err: unknown, context: string): void {
-    const message = err instanceof Error ? err.message : String(err);
-    const code = this._classifyError(err);
-    this._logService.warn(`[HttpAuthService] ${context} failed (${code}): ${message}`);
-    this._lastError$.next({ code, message });
-    this._authState$.next(AuthState.Error);
+  // GET /auth/me — Bearer-authorized lookup of the canonical user record. Throws
+  // HttpRequestError on non-2xx so restore() can branch on status.
+  private async _fetchMe(token: string): Promise<IUserAccount> {
+    const url = this._joinUrl('/auth/me');
+    let resp: Awaited<ReturnType<HttpFetchFn>>;
+    try {
+      resp = await this._fetchFn(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
+    } catch (err) {
+      throw new AuthError('network', err instanceof Error ? err.message : String(err));
+    }
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new HttpRequestError('GET /auth/me', resp.status, resp.statusText, text);
+    }
+    const body = await resp.json() as IMeResponseBody;
+    return body.user;
   }
 
-  private _classifyError(err: unknown): IAuthError['code'] {
+  // Translate any thrown value into a user-facing AuthError and update the public state streams.
+  // Already-classified AuthError instances pass through unchanged (only the side-effects re-fire).
+  private _toAuthError(err: unknown, context: string): AuthError {
+    const authError = err instanceof AuthError ? err : this._classifyError(err);
+    const raw = err instanceof Error ? err.message : String(err);
+    this._logService.warn(`[HttpAuthService] ${context} failed (${authError.code}): ${raw}`);
+    this._lastError$.next({ code: authError.code, message: authError.message });
+    this._authState$.next(AuthState.Error);
+    return authError;
+  }
+
+  private _classifyError(err: unknown): AuthError {
+    if (err instanceof HttpRequestError) {
+      const code = mapServerErrorCode(err.serverCode) ?? mapHttpStatusCode(err.status);
+      return new AuthError(code, friendlyMessageFor(code));
+    }
     const message = err instanceof Error ? err.message : String(err);
-    // Error format from _fetchAuthFreeJson: "[HttpAuthService] POST <url> → <status> ..."
-    const statusMatch = /→ (\d{3})/.exec(message);
-    if (statusMatch) {
-      const status = Number.parseInt(statusMatch[1], 10);
-      if (status === 401 || status === 403) {
-        return 'invalid_credentials';
-      }
-      if (status === 409) {
-        return 'email_already_registered';
-      }
-      if (status === 429) {
-        return 'rate_limited';
-      }
-      if (status >= 500) {
-        return 'server_error';
-      }
-    }
+    // SRP M2 mismatch surfaces as "Server provided session proof is invalid" — same UX as wrong password.
     if (message.includes('verifySession') || message.toLowerCase().includes('proof')) {
-      return 'invalid_credentials';
+      return new AuthError('invalid_credentials', friendlyMessageFor('invalid_credentials'));
     }
+    // fetch() failure outside a 4xx/5xx (DNS, refused, offline) bubbles up as a TypeError or
+    // similar with "fetch" or "network" in the message; same with platform-specific wording.
     if (message.toLowerCase().includes('fetch') || message.toLowerCase().includes('network')) {
-      return 'network';
+      return new AuthError('network', friendlyMessageFor('network'));
     }
-    return 'unknown';
+    return new AuthError('unknown', friendlyMessageFor('unknown'));
+  }
+
+  // Bearer-authenticated request; mirrors `_fetchAuthFreeJson` error handling so that
+  // listDevices/revokeDevice/logout surface `HttpRequestError` with `serverCode` populated
+  // and callers map `unauthorized` / `invalid_refresh` consistently.
+  private async _fetchAuthorized(
+    operation: string,
+    path: string,
+    method: 'POST' | 'GET'
+  ): Promise<{ json: () => Promise<unknown> }> {
+    const token = await this._tokenManager.getAccessToken();
+    if (!token) {
+      throw new AuthError('session_expired', friendlyMessageFor('session_expired'));
+    }
+    const url = this._joinUrl(path);
+    let resp: Awaited<ReturnType<HttpFetchFn>>;
+    try {
+      resp = await this._fetchFn(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      });
+    } catch {
+      throw new AuthError('network', friendlyMessageFor('network'));
+    }
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new HttpRequestError(operation, resp.status, resp.statusText, text);
+    }
+    return { json: () => resp.json() };
   }
 
   private async _fetchAuthFreeJson<T>(path: string, body: unknown): Promise<T> {
     const url = this._joinUrl(path);
-    const resp = await this._fetchFn(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    let resp: Awaited<ReturnType<HttpFetchFn>>;
+    try {
+      resp = await this._fetchFn(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      // fetch() rejected before we got a response (DNS, refused, TLS, offline). Translate to a
+      // typed error so the classifier doesn't have to regex-match platform-specific wording.
+      throw new AuthError('network', friendlyMessageFor('network'));
+    }
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      throw new Error(`[HttpAuthService] POST ${path} → ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 200)}` : ''}`);
+      throw new HttpRequestError(`POST ${path}`, resp.status, resp.statusText, text);
     }
     return resp.json() as Promise<T>;
   }
 
   private _joinUrl(path: string): string {
     return `${this._config.baseUrl.replace(/\/+$/, '')}${path}`;
+  }
+
+  // Loads the stable per-device id from IAuthKeyValueStorage, or generates and persists a
+  // fresh one if none exists. Cached in-memory after the first call so register/login
+  // don't hit the keystore on every attempt.
+  //
+  // Failure mode: if the keystore throws (e.g. OS keychain locked) we still return a
+  // deterministic value for this process — better than blocking sign-in. The next process
+  // start will retry persistence. The downside is the server may see a one-off "new" device
+  // for that crashed-keystore window; acceptable trade-off versus a hard auth outage.
+  private async _loadOrCreateDeviceId(): Promise<string> {
+    if (this._deviceIdCache) {
+      return this._deviceIdCache;
+    }
+    try {
+      const stored = await this._storage.getString(AUTH_DEVICE_ID_STORAGE_KEY);
+      if (stored && stored.length > 0) {
+        this._deviceIdCache = stored;
+        return stored;
+      }
+    } catch (err) {
+      this._logService.warn('[HttpAuthService] device id read failed, generating fresh:', err);
+    }
+    const fresh = generateRandomId(24);
+    try {
+      await this._storage.setString(AUTH_DEVICE_ID_STORAGE_KEY, fresh);
+    } catch (err) {
+      this._logService.warn('[HttpAuthService] device id persist failed (will retry next launch):', err);
+    }
+    this._deviceIdCache = fresh;
+    return fresh;
   }
 
   private _safeDeviceName(): string {

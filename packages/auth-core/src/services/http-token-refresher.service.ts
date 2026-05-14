@@ -14,6 +14,7 @@
  */
 
 import type { ITokenPair, ITokenRefresher } from '@termlnk/auth';
+import { HttpRequestError } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 
 // Minimal subset of fetch we depend on — easier to fake in tests; production uses
@@ -94,7 +95,10 @@ export class HttpTokenRefresher extends Disposable implements ITokenRefresher {
       this._logService.warn(
         `[HttpTokenRefresher] refresh failed: ${resp.status} ${resp.statusText}${text ? ` — ${text.slice(0, 200)}` : ''}`
       );
-      throw new Error(`token refresh failed: ${resp.status}`);
+      // Surfaces server's `invalid_refresh` (single-use replay or expired) vs transient
+      // failures via .serverCode/.status — TokenManager decides whether to clear tokens
+      // (force re-sign-in) or retry.
+      throw new HttpRequestError('POST /auth/refresh', resp.status, resp.statusText, text);
     }
 
     const json = await resp.json() as IRefreshResponseBody;
