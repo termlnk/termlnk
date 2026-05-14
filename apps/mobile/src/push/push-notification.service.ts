@@ -14,6 +14,7 @@
  */
 
 import type { IAuthService } from '@termlnk/auth';
+import { HttpRequestError } from '@termlnk/auth';
 import { addNotificationReceivedListener, addNotificationResponseReceivedListener, getExpoPushTokenAsync, getPermissionsAsync, requestPermissionsAsync, setNotificationHandler } from 'expo-notifications';
 import { Platform } from 'react-native';
 
@@ -137,7 +138,8 @@ export class PushNotificationService {
     });
 
     if (!response.ok) {
-      throw new Error(`push/register failed: HTTP ${response.status}`);
+      const text = await response.text().catch(() => '');
+      throw new HttpRequestError(`POST ${url}`, response.status, response.statusText, text);
     }
 
     this._registeredToken = token;
@@ -154,7 +156,7 @@ export class PushNotificationService {
     }
 
     const url = this._joinUrl(this._cloudBaseUrl, 'push/register');
-    await fetch(url, {
+    const response = await fetch(url, {
       method: 'DELETE',
       headers: {
         'content-type': 'application/json',
@@ -162,6 +164,12 @@ export class PushNotificationService {
       },
       body: JSON.stringify({ deviceToken: this._registeredToken }),
     });
+    if (!response.ok) {
+      // Surface deregister failures so the caller can log/retry — the previous best-effort
+      // swallow meant the server kept fanning invites to a phone that thought it logged out.
+      const text = await response.text().catch(() => '');
+      throw new HttpRequestError(`DELETE ${url}`, response.status, response.statusText, text);
+    }
     this._registeredToken = null;
   }
 

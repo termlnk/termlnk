@@ -14,36 +14,40 @@
  */
 
 import type { Dependency, Injector } from '@termlnk/core';
-import { IAuthKeyValueStorage, IDeviceNameProvider, IIdleProbe } from '@termlnk/auth';
+import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { InjectSelf, Plugin, registerDependencies } from '@termlnk/core';
-import { ExpoAppStateIdleProbe } from './expo-app-state-idle-probe.service';
-import { ExpoDeviceNameProvider } from './expo-device-name-provider.service';
 import { ExpoSecureStoreAuthKeyValueStorage } from './expo-secure-store-auth-key-value-storage.service';
 
 export const MOBILE_PLATFORM_PLUGIN_NAME = 'MOBILE_PLATFORM_PLUGIN';
 
-// React Native equivalent of DatabasePlugin's platform-binding responsibilities. Must
-// be registered BEFORE AuthCorePlugin so the OS keystore / device-name bindings are
-// available when TokenStorageService asks for them. The Electron main process gets the
-// same bindings through DatabasePlugin (ConfigRepository + SafeStorage) + an
-// OsHostnameDeviceNameProvider override — the contracts are platform-symmetric.
+// React Native equivalent of DatabasePlugin's platform-binding responsibilities. Binds
+// only the contracts that auth-core does NOT ship with a default — currently just the
+// OS keystore. Identifiers that auth-core already binds a default for (IIdleProbe,
+// IDeviceNameProvider) must be passed through AuthCorePlugin's `override` so redi
+// replaces the default binding instead of accumulating a second one (which trips
+// "Expect 1 dependency item(s) ... but get 2" at injection time).
+//
+// Constructor avoids the `@InjectSelf() protected readonly _injector` parameter-property
+// form on purpose: babel-plugin-parameter-decorator cannot keep param decorators paired
+// with TypeScript parameter properties (see apps/mobile/babel.config.js comment). Split
+// into a plain decorated parameter + explicit field assignment so the decorator survives
+// Babel's TS strip pass.
 export class MobilePlatformPlugin extends Plugin {
   static override pluginName = MOBILE_PLATFORM_PLUGIN_NAME;
 
+  protected readonly _injector: Injector;
+
   constructor(
     _config: undefined = undefined,
-    @InjectSelf() protected readonly _injector: Injector
+    @InjectSelf() injector: Injector
   ) {
     super();
+    this._injector = injector;
   }
 
   override onStarting(): void {
     const dependencies: Dependency[] = [
       [IAuthKeyValueStorage, { useClass: ExpoSecureStoreAuthKeyValueStorage }],
-      [IDeviceNameProvider, { useClass: ExpoDeviceNameProvider }],
-      // AppState-derived idle probe: time-in-background → IdleLockController auto-locks
-      // master key after IAuthPluginConfig.autoLockIdleMinutes minutes.
-      [IIdleProbe, { useClass: ExpoAppStateIdleProbe }],
     ];
     registerDependencies(this._injector, dependencies);
   }

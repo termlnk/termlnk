@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "termlnk",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -45,7 +44,7 @@
             "extraPods": [
               {
                 "name": "CSSH-Binary",
-                "podspec": "https://raw.githubusercontent.com/termlnk/react-native-ssh-sftp/main/CSSH-Binary.podspec"
+                "podspec": "https://raw.githubusercontent.com/termlnk/react-native-ssh-sftp/main/vendor/CSSH-Binary.podspec"
               },
               {
                 "name": "NMSSH",

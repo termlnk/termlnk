@@ -18,10 +18,13 @@
 // import side-effect must run before any auth-core code path that calls randomBytes.
 import 'react-native-get-random-values';
 
-import { AuthPlugin } from '@termlnk/auth';
+import { AuthPlugin, IDeviceNameProvider, IIdleProbe, IPasswordHasher } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import Constants from 'expo-constants';
+import { ExpoAppStateIdleProbe } from '../platform/expo-app-state-idle-probe.service';
+import { ExpoDeviceNameProvider } from '../platform/expo-device-name-provider.service';
+import { LibsodiumPasswordHasher } from '../platform/libsodium-password-hasher.service';
 import { MobilePlatformPlugin } from '../platform/mobile-platform.plugin';
 
 interface IMobileCoreEnv {
@@ -56,8 +59,20 @@ export function createMobileCore(): Core {
   // been backgrounded for 5 minutes idle. ExpoAppStateIdleProbe drives the counter via
   // AppState.addEventListener; IdleLockController in @termlnk/auth-core polls and locks.
   core.registerPlugin(AuthPlugin, { autoLockIdleMinutes: 5 });
+  // IIdleProbe / IDeviceNameProvider must go through AuthCorePlugin.override — auth-core
+  // already binds Noop/Default impls in its own onStarting, and a second registerDependencies
+  // for the same identifier would accumulate (redi `add` is append, not replace), tripping
+  // "Expect 1 dependency item(s) ... but get 2" the moment IdleLockController is touched.
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl: env.cloudBaseUrl,
+    override: [
+      [IIdleProbe, { useClass: ExpoAppStateIdleProbe }],
+      [IDeviceNameProvider, { useClass: ExpoDeviceNameProvider }],
+      // Hermes ships no WebAssembly runtime, so the default HashWasmPasswordHasher
+      // throws at Argon2id call sites. libsodium's `crypto_pwhash` provides a JSI
+      // Argon2id that matches the cross-platform KAT in auth-core.
+      [IPasswordHasher, { useClass: LibsodiumPasswordHasher }],
+    ],
   });
 
   core.start();

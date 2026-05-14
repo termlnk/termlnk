@@ -15,7 +15,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://staging.termlnk.io/v1"
+        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://cloud.termlnk.com/v1"
       }
     },
     "preview": {
@@ -28,7 +28,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://staging.termlnk.io/v1"
+        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://cloud.termlnk.com/v1"
       }
     },
     "production": {
@@ -41,7 +41,7 @@
         "autoIncrement": "versionCode"
       },
       "env": {
-        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://api.termlnk.io/v1"
+        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://cloud.termlnk.com/v1"
       }
     }
   },

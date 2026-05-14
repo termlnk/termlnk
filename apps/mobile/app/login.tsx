@@ -107,6 +107,10 @@ export default function Login() {
         >
           {busy ? <ActivityIndicator color="#0a0a0a" /> : <Text style={styles.buttonLabel}>Sign in</Text>}
         </Pressable>
+
+        <Pressable onPress={() => router.push('/register')} disabled={busy} style={styles.linkRow}>
+          <Text style={styles.linkText}>Don&apos;t have an account? Create one</Text>
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
@@ -125,4 +129,6 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.5 },
   buttonPressed: { opacity: 0.8 },
   buttonLabel: { color: '#0a0a0a', fontSize: 15, fontWeight: '600' },
+  linkRow: { marginTop: 16, alignItems: 'center' },
+  linkText: { color: '#60a5fa', fontSize: 13 },
 });
