@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+    "uniffi-russh",
+    "uniffi-bindgen",
+    "uniffi-bindgen-swift",
+]
+
+# Shared uniffi version — also matches the `uniffi-bindgen-react-native` SHA
+# pinned in ../package.json. Bumping this needs to land alongside that bump.
+[workspace.dependencies]
+uniffi = "0.29"

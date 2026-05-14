@@ -1,0 +1,47 @@
+[package]
+name = "uniffi-russh"
+version = "0.1.0"
+edition = "2021"
+
+# Runtime + FFI + SSH deps
+[dependencies]
+# UniFFI runtime with the tokio feature so async exports surface as JS promises.
+uniffi = { workspace = true, features = ["tokio"] }
+
+# FFI-safe error enum derive.
+thiserror = "1.0.64"
+
+# Tokio runtime + IO bits used by russh + the shell ring buffer.
+tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros", "time", "net", "sync", "io-util"] }
+
+# Async ecosystem utilities pulled in transitively; kept explicit so version
+# bumps land in this file rather than via russh.
+bytes = "1.10.1"
+futures = "0.3.31"
+base64 = "0.22"
+ed25519-dalek = "2"
+
+# SSH client. russh's default features pull in aws-lc (needs CMake) — we
+# stay on `ring` to keep the Android NDK build path clean. `flate2` enables
+# SSH compression negotiation; `rsa` enables the RSA key types.
+russh = { version = "0.54.3", default-features = false, features = ["ring", "flate2", "rsa"] }
+russh-keys = "0.49.2"
+
+# Secure RNG for in-app key generation.
+rand = "0.8"
+
+# Lazy statics used by the shell session.
+once_cell = "1.21.3"
+
+# Async trait helper; kept as a transitive guard.
+async-trait = "0.1"
+
+[build-dependencies]
+# Compile-time bindings codegen.
+uniffi = { workspace = true, features = ["build"] }
+
+[lib]
+# - cdylib   : C-compatible dynamic library (Android/iOS JSI loader target)
+# - staticlib: Static archive (iOS static link via xcframework)
+# - lib      : Normal rlib (unit tests, internal usage)
+crate-type = ["cdylib", "staticlib", "lib"]

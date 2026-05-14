@@ -1,0 +1,16 @@
+[package]
+name = "uniffi-bindgen"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Shim crate required by ubrn so `cargo run -p uniffi-bindgen -- …` works
+# without enabling the `cli` feature on the cdylib library crate (which
+# would clash with linker settings on Android/iOS targets).
+
+[dependencies]
+uniffi = { workspace = true, features = ["cli"] }
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/main.rs"
