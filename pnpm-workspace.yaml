@@ -10,6 +10,7 @@ packages:
   - apps/web/renderer
   - apps/web/plugins/*
   - apps/mobile
+  - apps/mobile/packages/*
   - apps/mobile/plugins/*
 
 ignoredBuiltDependencies:
@@ -25,6 +26,7 @@ onlyBuiltDependencies:
   - protobufjs
   - react-native-libsodium
   - sharp
+  - uniffi-bindgen-react-native
 
 overrides:
   '@types/react': ^19.2.14

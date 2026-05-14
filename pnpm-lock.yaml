@@ -671,6 +671,25 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  apps/mobile/packages/react-native-russh:
+    dependencies:
+      react:
+        specifier: ^19.2.6
+        version: 19.2.6
+      react-native:
+        specifier: ~0.83.9
+        version: 0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6)
+      uniffi-bindgen-react-native:
+        specifier: github:jhugman/uniffi-bindgen-react-native#62c91bcce60ca9bbee7269820cc79a9680cb908b
+        version: https://codeload.github.com/jhugman/uniffi-bindgen-react-native/tar.gz/62c91bcce60ca9bbee7269820cc79a9680cb908b
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../../../internal/shared
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   apps/web/plugins/web-renderer:
     dependencies:
       '@termlnk/core':
@@ -15004,6 +15023,11 @@ packages:
   unicorn-magic@0.3.0:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
     engines: {node: '>=18'}
+
+  uniffi-bindgen-react-native@https://codeload.github.com/jhugman/uniffi-bindgen-react-native/tar.gz/62c91bcce60ca9bbee7269820cc79a9680cb908b:
+    resolution: {tarball: https://codeload.github.com/jhugman/uniffi-bindgen-react-native/tar.gz/62c91bcce60ca9bbee7269820cc79a9680cb908b}
+    version: 0.31.0-2
+    hasBin: true
 
   unified@11.0.5:
     resolution: {integrity: sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA==}
@@ -31065,6 +31089,8 @@ snapshots:
   unicode-property-aliases-ecmascript@2.2.0: {}
 
   unicorn-magic@0.3.0: {}
+
+  uniffi-bindgen-react-native@https://codeload.github.com/jhugman/uniffi-bindgen-react-native/tar.gz/62c91bcce60ca9bbee7269820cc79a9680cb908b: {}
 
   unified@11.0.5:
     dependencies:

@@ -1,0 +1,15 @@
+# ubrn-generated native artefacts (regenerated on each build:native)
+android/
+ios/
+cpp/
+*.xcframework
+*.xcframework.zip
+
+# Rust build outputs
+rust/target/
+
+# Bob outputs (not used in workspace mode but keep clean)
+lib/
+
+# Node
+node_modules/

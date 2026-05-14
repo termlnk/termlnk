@@ -1,0 +1,17 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build:native": {
+      "outputs": ["android/**", "ios/**", "cpp/**", "src/generated/**"]
+    },
+    "build:ios": {
+      "inputs": ["rust/**", "!rust/target", "ubrn.config.yaml"],
+      "outputs": ["ios/**", "cpp/**", "src/generated/**"]
+    },
+    "build:android": {
+      "inputs": ["rust/**", "!rust/target", "ubrn.config.yaml"],
+      "outputs": ["android/**", "cpp/**", "src/generated/**"]
+    }
+  }
+}
