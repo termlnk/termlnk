@@ -65,7 +65,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
 import { AuthPlugin, IDeviceNameProvider } from '@termlnk/auth';
-import { AuthCorePlugin, OsHostnameDeviceNameProvider } from '@termlnk/auth-core';
+import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, LocalDerivedSecretCipher, SQLiteAdaptor } from '@termlnk/database';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
@@ -76,6 +76,7 @@ import { appRouter, RPCServerPlugin } from '@termlnk/rpc-server';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncCorePlugin } from '@termlnk/sync-core';
 import { IWebServerRouterProvider, WebServerPlugin } from '@termlnk/web-server';
+import { OsHostnameDeviceNameProvider } from './platform/os-hostname-device-name-provider.service';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = join(here, '../../../..');
@@ -130,9 +131,8 @@ async function bootstrap(): Promise<void> {
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl: process.env.TERMLNK_CLOUD_BASE_URL,
-    // OsHostnameDeviceNameProvider lifts hostname() from node:os for device list
-    // entries — auth-core defaults to a platform-agnostic 'Unknown device' so the
-    // package itself stays free of node:os imports.
+    // OsHostnameDeviceNameProvider is the web-server-side adapter for IDeviceNameProvider
+    // (lives in ./platform/ so auth-core stays free of node:os imports).
     override: [
       [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
     ],
