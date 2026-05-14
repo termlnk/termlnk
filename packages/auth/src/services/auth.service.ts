@@ -48,6 +48,17 @@ export interface IAuthService {
 
   getCurrentUser(): IUserAccount | null;
 
+  // Rehydrates currentUser$/authState$ from the locally persisted user + token pair.
+  // - Cached user present → emit it immediately so the UI does not flash the login screen.
+  // - Token still valid (or refreshable) → best-effort GET /auth/me to refresh stale fields;
+  //   network/404 failures keep the cached user (graceful degrade); 401/403 clears the
+  //   whole session.
+  // - Token missing or refresh chain broken → clear the cached user and emit Unauthenticated.
+  //
+  // Idempotent and safe to call multiple times; only the main-process plugin's onReady
+  // invokes it in production. A noop when the user was never logged in.
+  restore(): Promise<void>;
+
   // Devices currently holding an active refresh token, ordered by lastSeenAt desc.
   // Entry for the current device has isCurrent=true.
   listDevices(): Promise<readonly IDevice[]>;

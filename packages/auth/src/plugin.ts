@@ -15,14 +15,10 @@
 
 import type { IAuthPluginConfig } from './controllers/config.schema';
 import { IConfigService, Inject, Injector, merge, Plugin } from '@termlnk/core';
-import { AUTH_PLUGIN_NAME } from './common/constants';
 import { AUTH_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 
-export { AUTH_PLUGIN_NAME };
+export const AUTH_PLUGIN_NAME = 'AUTH_PLUGIN';
 
-// Contract-only plugin: registers config but binds no services.
-// Main-process implementation lives in @termlnk/auth-core; the renderer facade is in
-// @termlnk/rpc-client.
 export class AuthPlugin extends Plugin {
   static override pluginName = AUTH_PLUGIN_NAME;
 
