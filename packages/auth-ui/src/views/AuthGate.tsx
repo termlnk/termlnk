@@ -45,6 +45,10 @@ export function AuthGate() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('login');
   const [hideErrorOnSwitch, setHideErrorOnSwitch] = useState(false);
+  // Surfaces errors that don't make it into IAuthService.lastError$ — e.g. tRPC route-level
+  // failures when the main process refuses the call ("cloud auth service is not configured")
+  // or transport faults. lastError$ wins when both are present so we don't show stale text.
+  const [localError, setLocalError] = useState<string | null>(null);
 
   if (!authClient) {
     return (
@@ -61,7 +65,9 @@ export function AuthGate() {
   }
 
   const busy = authState === AuthState.Authenticating;
-  const errorMessage = !hideErrorOnSwitch && lastError ? lastError.message : undefined;
+  const errorMessage = hideErrorOnSwitch
+    ? undefined
+    : (lastError?.message ?? localError ?? undefined);
 
   if (currentUser) {
     return (
@@ -81,7 +87,22 @@ export function AuthGate() {
 
   const switchTo = (next: ViewMode): void => {
     setHideErrorOnSwitch(true);
+    setLocalError(null);
     setViewMode(next);
+  };
+
+  const beforeSubmit = (): void => {
+    setHideErrorOnSwitch(false);
+    setLocalError(null);
+  };
+
+  // The auth router throws when cloud is unconfigured ("cloud auth service is not
+  // configured"). HttpAuthService failures land in lastError$ instead, so prefer that
+  // when available and only fall back to err.message for transport/route-level errors.
+  const handleSubmitError = (context: 'login' | 'register', err: unknown): void => {
+    logService.error(`[AuthGate] ${context} failed:`, err);
+    const message = err instanceof Error ? err.message : String(err);
+    setLocalError(message);
   };
 
   if (viewMode === 'register') {
@@ -91,11 +112,11 @@ export function AuthGate() {
         errorMessage={errorMessage}
         onSwitchToLogin={() => switchTo('login')}
         onSubmit={async (input: IRegisterInput) => {
-          setHideErrorOnSwitch(false);
+          beforeSubmit();
           try {
             await authClient.register(input);
           } catch (err) {
-            logService.error('[AuthGate] register failed:', err);
+            handleSubmitError('register', err);
           }
         }}
       />
@@ -108,11 +129,11 @@ export function AuthGate() {
       errorMessage={errorMessage}
       onSwitchToRegister={() => switchTo('register')}
       onSubmit={async (input: ILoginInput) => {
-        setHideErrorOnSwitch(false);
+        beforeSubmit();
         try {
           await authClient.login(input);
         } catch (err) {
-          logService.error('[AuthGate] login failed:', err);
+          handleSubmitError('login', err);
         }
       }}
     />

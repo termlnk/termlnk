@@ -25,13 +25,13 @@ export interface IAccountPanelProps {
 }
 
 /**
- * 已登录账号面板——展示账号信息 + 登出按钮。
+ * Signed-in account panel — shows the account details and a sign-out button.
  *
- * 不展示的字段（设计选择）：
- * - userId：内部 UUID，用户感知不到价值
- * - createdAt / updatedAt：时间戳放到详情页才有意义
+ * Intentionally hidden:
+ * - `userId`: internal UUID, no user-facing value.
+ * - `createdAt` / `updatedAt`: timestamps belong on a detail page.
  *
- * 显示名优先级：displayName → email 前缀。
+ * Display-name fallback: `displayName` → email prefix.
  */
 export function AccountPanel(props: IAccountPanelProps) {
   const localeService = useDependency(LocaleService);
