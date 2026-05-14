@@ -197,7 +197,10 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
       name: patch.name ?? existing?.name,
       enabled: patch.enabled ?? existing?.enabled ?? false,
       api: patch.api ?? existing?.api,
-      // Smart-merge：空字符串视为"未变更"——这是 tRPC 路由脱敏后 UI 可能回传的常见值（编辑表单 apiKey 字段留空 = 保留原 apiKey）
+      // Smart-merge: an empty string means "unchanged". The tRPC router
+      // redacts `apiKey` before sending it to the UI, so the edit form
+      // posts back an empty string when the user did not touch the field
+      // — we must keep the existing value in that case.
       apiKey: (typeof patch.apiKey === 'string' && patch.apiKey !== '') ? patch.apiKey : existing?.apiKey,
       baseUrl: patch.baseUrl ?? existing?.baseUrl,
       headers: patch.headers ?? existing?.headers,

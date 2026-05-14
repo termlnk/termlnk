@@ -149,8 +149,8 @@ describe('PtyMultiplexerService', () => {
 
     mux.attachClient('s1', 'clientA', SharedTerminalRole.CoPilot, 'Alice');
 
-    // snapshot 是 async 发送（headless serialize 需等 write flush）
-    // 等到指向 clientA 的 SessionEvent 帧出现，最长 1s
+    // The snapshot is dispatched asynchronously (headless serialize must wait
+    // for write flush). Wait up to 1s for a SessionEvent frame targeted at clientA.
     const snapshotFrame = await waitFor(() => outbound.find(
       (f) => f.target === 'clientA' && f.frame.channel === FrameChannel.SessionEvent
     ));

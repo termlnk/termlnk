@@ -14,19 +14,20 @@
  */
 
 /**
- * 共享终端角色——4 级权限模型。
+ * Shared-terminal role — four-level permission model.
  *
- * 设计依据：cloud-sync-architecture.md §5.7.2。
+ * See cloud-sync-architecture.md §5.7.2.
  *
- * | 角色 | 权限 | 备注 |
- * |------|------|------|
- * | Owner | PTY 持有者；唯一可邀请、撤销、kick、降级；永远可写 | 同账号设备登录默认 owner |
- * | CoPilot | 受邀写者；与 owner/其他 co-pilot 通过软锁轮转输入；可让出键盘 | 跨账号协作的常见角色；同账号其他设备也用 |
- * | Observer | 只读；订阅 PTY 输出但不发 stdin；可禁用敏感字段回显 | 围观、答疑、教学 |
- * | Auditor | 与 observer 同权限；**加入即强制录制**且 UI 显著标识 | 合规预留 |
+ * | Role     | Permissions                                                                            | Notes                                                                  |
+ * |----------|----------------------------------------------------------------------------------------|------------------------------------------------------------------------|
+ * | Owner    | Holds the PTY; only one who can invite, revoke, kick, demote; always writable.         | Default for same-account device sign-ins.                              |
+ * | CoPilot  | Invited writer; rotates input with owner / other co-pilots via a soft lock; can yield. | Typical cross-account role; also used by other devices of same account |
+ * | Observer | Read-only; subscribes to PTY output but cannot send stdin; can mask sensitive echoes.  | Audience, support, teaching.                                           |
+ * | Auditor  | Same permission as observer; **joining forces recording** and the UI marks them.       | Reserved for compliance.                                               |
  *
- * Phase 5 单账号场景：daemon = Owner，其他登录设备 = CoPilot。
- * Phase 5.5 跨账号协作：所有四个角色都被使用，邀请时 capability 携带角色字段。
+ * Phase 5 (same account): daemon = Owner, other signed-in devices = CoPilot.
+ * Phase 5.5 (cross account): all four roles are used; invites carry the role in
+ * the capability payload.
  */
 export enum SharedTerminalRole {
   Owner = 'owner',
@@ -36,15 +37,17 @@ export enum SharedTerminalRole {
 }
 
 /**
- * 角色 → 是否可写（发 stdin）。Owner / CoPilot 是 writer；Observer / Auditor 只读。
- * 仲裁是 UI 软锁——driver 标记决定实际是否发送（参见 IDriverState）。
+ * Whether the role may send stdin. Owner / CoPilot are writers; Observer /
+ * Auditor are read-only. Final dispatch goes through the UI's soft lock —
+ * the `driver` flag decides what actually leaves the wire (see `IDriverState`).
  */
 export function isWriterRole(role: SharedTerminalRole): boolean {
   return role === SharedTerminalRole.Owner || role === SharedTerminalRole.CoPilot;
 }
 
 /**
- * 角色 → 是否强制开启录制。Auditor 加入即强制；其他角色由 owner 在 UI 选择。
+ * Whether the role forces session recording on. Auditors always do; other
+ * roles let the owner pick in the UI.
  */
 export function requiresMandatoryRecording(role: SharedTerminalRole): boolean {
   return role === SharedTerminalRole.Auditor;

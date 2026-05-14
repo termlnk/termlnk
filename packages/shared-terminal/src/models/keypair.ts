@@ -14,12 +14,14 @@
  */
 
 /**
- * NaCl box 兼容 X25519 keypair——daemon 长期身份 + 客户端长期/临时身份共用此结构。
+ * NaCl box-compatible X25519 keypair — used for the daemon's long-term
+ * identity and for clients' long-term / ephemeral identities.
  *
- * - publicKey: 32 bytes
- * - secretKey: 32 bytes（**绝不出现在 daemon 进程之外**——除 ephemeral 私钥写入 invite fragment）
+ * - `publicKey`: 32 bytes
+ * - `secretKey`: 32 bytes; **never leaves the daemon process**, except for
+ *   ephemeral private keys that are baked into the invite URL fragment.
  *
- * 编码：daemon 持久化在 OS keychain；wire 上以 base64url 字符串传输。
+ * Encoded as base64url on the wire; the daemon persists keys in the OS keychain.
  */
 export interface IKeypair {
   readonly publicKey: Uint8Array;
@@ -27,9 +29,9 @@ export interface IKeypair {
 }
 
 /**
- * 已派生的共享密钥——NaCl box.before（X25519 ECDH + HSalsa20）的输出。
+ * Derived shared key — output of `NaCl box.before` (X25519 ECDH + HSalsa20).
  *
- * 32 bytes；后续 `secretbox(message, nonce, sharedKey)` 加密快路径用。
+ * 32 bytes; used by the fast-path encryption (`secretbox(message, nonce, sharedKey)`).
  */
 export interface ISharedKey {
   readonly bytes: Uint8Array;

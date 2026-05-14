@@ -18,22 +18,28 @@ import { SerializeAddon } from '@xterm/addon-serialize';
 import { Terminal } from '@xterm/headless';
 
 /**
- * 单 session 的 xterm-headless 包装——维护权威终端 state 并按需 serialize。
+ * Per-session xterm-headless wrapper — holds the authoritative terminal state
+ * and serialises on demand.
  *
- * 设计依据：cloud-sync-architecture.md §5.3。
+ * See cloud-sync-architecture.md §5.3.
  *
- * **职责**：
- * - 接收 PTY 输出字节，由 xterm.js parser 解析为光标 / SGR / scrollback 等语义状态
- * - serialize() 输出可在客户端 xterm.js `Terminal.write()` 直接重放的 ANSI 字节串
- * - resize() 在 driver 改变窗口尺寸时同步给 headless terminal 内部 buffer
+ * Responsibilities:
+ * - Accept PTY output bytes; xterm.js parses them into cursor / SGR /
+ *   scrollback semantic state.
+ * - `serialize()` returns an ANSI byte string a client can replay via
+ *   `Terminal.write()`.
+ * - `resize()` propagates driver-side resize events into the headless
+ *   terminal's internal buffer.
  *
- * **与 RingBuffer 的分工**：
- * - HeadlessSession：语义级 state（光标位置 / 颜色 / alt-buffer / scrollback line 数）
- * - RingBuffer：raw byte 流（保留 SGR 边界完整性，便于重放最近 N 字节）
+ * Boundary vs. `RingBuffer`:
+ * - `HeadlessSession`: semantic state (cursor position, colors, alt-buffer,
+ *   scrollback line count).
+ * - `RingBuffer`: raw byte stream (preserves SGR boundaries so the last N
+ *   bytes can be replayed).
  *
- * **不做的事**：
- * - 不做并发同步（调用方在主进程单线程使用）
- * - 不持有任何 attached client 状态——那是 PtyMultiplexer 的职责
+ * Out of scope:
+ * - Concurrency. Used single-threaded in the main process.
+ * - No attached-client state — that belongs to `PtyMultiplexer`.
  */
 export class HeadlessSession {
   private readonly _terminal: Terminal;
@@ -47,8 +53,10 @@ export class HeadlessSession {
       allowProposedApi: true,
     });
     this._serialize = new SerializeAddon();
-    // SerializeAddon 的 ITerminalAddon 类型来自 @xterm/xterm；headless 的同名接口结构相同
-    // 但 TS 视为不同类型，运行时完全兼容。Cast 是 xterm.js 生态的标准做法。
+    // SerializeAddon ships with the `ITerminalAddon` type from `@xterm/xterm`;
+    // the headless variant has a structurally identical interface but TS sees
+    // them as distinct. Runtime is compatible — the cast is standard practice
+    // in the xterm.js ecosystem.
     this._terminal.loadAddon(this._serialize as unknown as ITerminalAddon);
   }
 
@@ -69,11 +77,12 @@ export class HeadlessSession {
   }
 
   /**
-   * 输出当前 state 的 ANSI 重放序列。
+   * Return the ANSI replay sequence for the current state.
    *
-   * **关键**：xterm.js 的 write 是异步解析（事件循环 chunked），调用 serialize 前
-   * 必须等所有 pending write 处理完，否则得到的是中间态。这里通过 zero-length write
-   * 注入一个 flush callback 串行化等待。
+   * `Terminal.write` is parsed asynchronously (event-loop chunked), so any
+   * pending writes must drain before serialization or we'd serialize an
+   * intermediate state. Injecting a zero-length write gives us a flush
+   * callback to await.
    */
   async serialize(scrollback?: number): Promise<string> {
     await new Promise<void>((resolve) => {

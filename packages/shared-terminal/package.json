@@ -49,8 +49,7 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
-    "@termlnk/core": "workspace:*",
-    "rxjs": ">=7.0.0"
+    "@termlnk/core": "workspace:*"
   },
   "dependencies": {
     "@termlnk/core": "workspace:*"

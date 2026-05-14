@@ -14,25 +14,26 @@
  */
 
 /**
- * Driver 仲裁状态——同一时刻最多 1 个 client 持有键盘控制。
+ * Driver arbitration state — at most one client holds the keyboard at any
+ * given moment.
  *
- * 设计依据：cloud-sync-architecture.md §5.7.3 自由竞争协议 + 软锁 UI。
+ * See cloud-sync-architecture.md §5.7.3 (free-competition protocol + soft-lock UI).
  *
- * 协议层：所有 writer 客户端都可发 stdin，按到达顺序写入 PTY（不丢字节）。
- * UI 层：只有 driverId 标记的 client 默认发送，其他 writer 默认拦截显示"按 X 抢键盘"。
+ * Protocol layer: every writer may send stdin and the PTY consumes bytes in
+ * arrival order (nothing is dropped).
+ * UI layer: only the client marked as `driverId` sends by default; the rest
+ * are intercepted with a "press X to take the keyboard" prompt.
  */
 export interface IDriverState {
   readonly sessionId: string;
   readonly driverId: string | null;
-  /** 最近一次 driver 心跳——超时 SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS 自动清空 */
+  /** Last driver heartbeat; auto-clears after `SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS`. */
   readonly lastHeartbeatAt: number;
-  /** owner 是否锁定 driver（true = 不允许抢占，只能 owner 手动让出） */
+  /** When true, the owner has locked the driver — only the owner can hand it off. */
   readonly locked: boolean;
 }
 
-/**
- * Driver 抢占请求 / 让出 / 强制锁定——control channel JSON payload。
- */
+/** Driver request / handover / release — control-channel JSON payload. */
 export type IDriverHandover =
   | {
     readonly type: 'driver_request';

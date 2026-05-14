@@ -49,7 +49,6 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
-    "@termlnk/auth": "workspace:*",
     "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
@@ -57,7 +56,6 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@termlnk/auth": "workspace:*",
     "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",

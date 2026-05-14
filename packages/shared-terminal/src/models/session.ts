@@ -16,7 +16,8 @@
 import type { SharedTerminalRole } from './role';
 
 /**
- * Daemon 总状态——区分"未启动 / 已启动等待 relay / 已连接 relay 等待 PTY 注册 / 在线"。
+ * Daemon-level state machine:
+ * not started → starting → waiting for relay → registering PTY → online.
  */
 export enum DaemonState {
   Inactive = 'inactive',
@@ -26,9 +27,7 @@ export enum DaemonState {
   Error = 'error',
 }
 
-/**
- * Client 端总状态——配对前/中/后。
- */
+/** Client-side connection state: before, during, and after pairing. */
 export enum ClientConnectionState {
   Idle = 'idle',
   Pairing = 'pairing',
@@ -39,12 +38,12 @@ export enum ClientConnectionState {
 }
 
 /**
- * 单个 SSH/PTY 会话被广播为协作会话的状态。
+ * State of an SSH/PTY session that is being broadcast for collaboration.
  *
- * - **Idle**：PTY 在跑，但还没人 attach（除 owner 自己）
- * - **Active**：≥1 个 client 在 attach
- * - **Recording**：协议层面正在落 asciicast；不阻塞 Active
- * - **Closed**：PTY 已退出
+ * - **Idle**: the PTY is running but nobody besides the owner is attached.
+ * - **Active**: at least one client is attached.
+ * - **Recording**: an asciicast is being captured; does not block `Active`.
+ * - **Closed**: the PTY has exited.
  */
 export enum SharedSessionState {
   Idle = 'idle',
@@ -53,54 +52,53 @@ export enum SharedSessionState {
   Closed = 'closed',
 }
 
-/**
- * 一个被广播出去的 PTY 会话——daemon 端视角。
- */
+/** A PTY session being broadcast — as seen by the daemon. */
 export interface ISharedSession {
-  /** 会话 ID（与 termlnk SSH session ID 一对一） */
+  /** Session ID (1:1 with the termlnk SSH session ID). */
   readonly id: string;
-  /** 用户起的名字（host 名 / "ssh prod-bastion"） */
+  /** User-facing title (host name or e.g. `"ssh prod-bastion"`). */
   readonly title: string;
-  /** 当前状态 */
   readonly state: SharedSessionState;
-  /** 终端列宽 */
+  /** Terminal column count. */
   readonly cols: number;
-  /** 终端行数 */
+  /** Terminal row count. */
   readonly rows: number;
-  /** 创建时间（ms epoch） */
+  /** Creation time (epoch ms). */
   readonly createdAt: number;
-  /** 当前所有 attached 客户端 ID（含 owner 自己） */
+  /** IDs of every attached client, including the owner. */
   readonly participantIds: readonly string[];
-  /** 当前 driver 客户端 ID（null = 无人持有键盘） */
+  /** Current driver client ID; null means no one holds the keyboard. */
   readonly driverId: string | null;
-  /** 是否正在录制 */
+  /** Whether the session is currently being recorded. */
   readonly recording: boolean;
 }
 
 /**
- * 客户端 attach 时拿到的会话快照——状态恢复用。
+ * Snapshot the client receives on attach — used to restore terminal state.
  *
- * snapshot 字段含 xterm-headless serialize 的完整 state（光标 / SGR / scrollback）。
- * 弱网重连时一次性补齐，避免画面撕裂。
+ * The serialized field carries the complete xterm-headless state (cursor,
+ * SGR, scrollback). Sending it in one shot on reconnect avoids the visual
+ * tearing of replaying byte-by-byte over a flaky link.
  */
 export interface ISessionSnapshot {
   readonly sessionId: string;
   readonly title: string;
   readonly cols: number;
   readonly rows: number;
-  /** xterm-addon-serialize 输出的 ANSI 字节串（可直接 write 给 client xterm 实例恢复） */
+  /** ANSI byte string produced by xterm-addon-serialize; safe to write directly to the client's xterm. */
   readonly serialized: string;
-  /** 快照生成时刻该会话已观察到的最高 ptyData seq——客户端从 seq+1 开始监听 */
+  /** Highest ptyData seq observed for this session at snapshot time; clients resume from seq+1. */
   readonly observedSeq: number;
   readonly state: SharedSessionState;
   readonly driverId: string | null;
 }
 
 /**
- * 参与者视角——给 client / UI 用。
+ * Participant view — surfaced to clients and the UI.
  *
- * 与 IPairedDevice 区别：PairedDevice 是"曾经配对过的客户端"，Participant 是
- * "当前 attached 到某 session 的活跃 connection"，是更短暂的运行时实体。
+ * Distinct from `IPairedDevice`: a paired device is a client that has
+ * paired at some point; a participant is an active connection currently
+ * attached to a session, and is much shorter-lived.
  */
 export interface IParticipant {
   readonly connectionId: string;

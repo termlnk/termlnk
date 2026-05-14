@@ -19,9 +19,11 @@ export { SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '../common/constants';
 
 export interface ISharedTerminalPluginConfig {
   /**
-   * Relay 服务 base URL（含协议与版本前缀，如 `wss://relay.termlnk.cloud/v1`）。
-   * 配置后才会启动 daemon，否则 ISharedTerminalService 处于 inactive。
-   * 留空 = 共享终端功能禁用（与同步层 cloudBaseUrl 同语义）。
+   * Relay base URL with protocol + version prefix
+   * (e.g. `wss://relay.termlnk.cloud/v1`). When set, the daemon starts;
+   * otherwise `ISharedTerminalService` stays inactive. Leave undefined to
+   * disable shared-terminal entirely (mirrors the sync layer's
+   * `cloudBaseUrl`).
    */
   relayBaseUrl?: string;
 
@@ -35,18 +37,19 @@ export interface ISharedTerminalPluginConfig {
   cloudBaseUrl?: string;
 
   /**
-   * 是否在用户登录后自动启动 daemon——架构 §5.x"应用启动→ daemon ready"路径。
-   * false 时 daemon 仅在用户主动点"添加设备"或"开始协作"时启动。
+   * Whether to start the daemon automatically after sign-in — architecture
+   * §5.x "app startup → daemon ready". With `false`, the daemon starts only
+   * when the user clicks "Add device" or "Start collaboration".
    */
   autoStartDaemon?: boolean;
 
   /**
-   * 默认录制策略——auditor 加入时会强制开启，owner 可在 UI 覆盖。
-   * 设计依据：cloud-sync-architecture.md §5.7.6。
+   * Default recording policy. Auditors force this on regardless; the owner
+   * can override in the UI. See cloud-sync-architecture.md §5.7.6.
    */
   defaultRecording?: 'off' | 'on';
 
-  /** 仅供测试/集成场景的 DI 覆盖出口；生产部署不应配置。 */
+  /** DI override hook for tests / integration; not for production. */
   override?: DependencyOverride;
 }
 

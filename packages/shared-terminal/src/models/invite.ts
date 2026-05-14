@@ -53,20 +53,20 @@ export interface ICollabInvite {
 /** Claim payload the invitee sends to the relay, wrapped in the ephemeral channel. */
 export interface IInviteClaimPayload {
   readonly inviteId: string;
-  /** 受邀者长期公钥（base64url 32 bytes）——daemon 用此 + 自己 secret 派生 sharedKey 给该用户分发 sessionKey */
+  /** Invitee's long-term public key (32 bytes, base64url). The daemon combines it with its own secret to derive a sharedKey and distribute the sessionKey. */
   readonly userPubkey: string;
-  /** capability 明文（重新加密发到 relay；daemon 用 ephPub+? 校验对应 inviteId 一致）*/
+  /** Encrypted capability payload sent to the relay; the daemon validates it against the original `inviteId`. */
   readonly capabilityCipher: string;
-  /** 受邀者上报的显示名（UI 给 owner 看） */
+  /** Display name the invitee reports — shown in the owner's UI. */
   readonly displayName?: string;
 }
 
 /** Invite claim result. */
 export interface IInviteClaimResult {
   readonly inviteId: string;
-  /** 服务端分配的 connectionId（per-connection 撤销用） */
+  /** Server-assigned connection ID; used for per-connection revocation. */
   readonly connectionId: string;
-  /** 邀请仍可用 / 已过期 / 已被消费 / 被撤销 */
+  /** Whether the invite is still usable, expired, consumed or revoked. */
   readonly status: 'accepted' | 'expired' | 'consumed' | 'revoked' | 'invalid';
   readonly reason?: string;
 }

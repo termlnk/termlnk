@@ -14,6 +14,7 @@
  */
 
 import type { ICollabInviteCreateInput, ICollabInviteServerView, ICollabInviteTransportService } from '@termlnk/shared-terminal';
+import { HttpRequestError } from '@termlnk/auth';
 // Deep import: @termlnk/auth-core/index.ts re-exports AuthCorePlugin which transitively
 // drags @termlnk/database / better-sqlite3 native module — avoid pulling native bindings
 // into renderer / web bundles that only need the TokenManager runtime.
@@ -62,7 +63,7 @@ export interface IHttpCollabInviteTransportConfig {
  *
  * POST {baseUrl}/collab/invite/:inviteId/revoke
  *   Body: empty
- *   Response: { invite: ICollabInviteServerView }
+ *   Response: 204 No Content  // server-side: clients refresh via GET /collab/invite
  *
  * GET  {baseUrl}/collab/invite
  *   Response: { invites: ICollabInviteServerView[] }
@@ -129,7 +130,7 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
     });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      throw new Error(`[HttpCollabInviteTransportService] ${method} ${url} → ${resp.status} ${resp.statusText}${text ? `: ${text.slice(0, 200)}` : ''}`);
+      throw new HttpRequestError(`${method} ${url}`, resp.status, resp.statusText, text);
     }
     return { json: () => resp.json(), text: () => resp.text() };
   }

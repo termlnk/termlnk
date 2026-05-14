@@ -28,13 +28,14 @@ import {
 } from '@termlnk/shared-terminal';
 
 /**
- * Wire 帧布局——文档 §5.2 + 契约层 IFrameCodecService 头注释。
+ * Wire frame layout — see architecture §5.2 and the `IFrameCodecService`
+ * header comment in the contract package.
  *
- * 明文（即将进入 secretbox）：
- *   ver(1) | ch(1) | flags(1) | seq(4 LE u32) | payload(N)   ← header 7 bytes
+ * Plaintext (about to enter secretbox):
+ *   ver(1) | ch(1) | flags(1) | seq(4 LE u32) | payload(N)   ← 7-byte header
  *
- * 密文（NaCl secretbox 输出含 16-byte Poly1305 tag 在末尾）：
- *   "tmst1:"(6) | nonce(24) | secretbox(明文)
+ * Ciphertext (NaCl secretbox output appends a 16-byte Poly1305 tag):
+ *   "tmst1:"(6) | nonce(24) | secretbox(plaintext)
  */
 const FRAME_HEADER_BYTES = 7;
 const FRAME_PREFIX_BYTES = textEncoder().encode(SHARED_TERMINAL_FRAME_PREFIX);
@@ -59,7 +60,7 @@ export class FrameCodecService implements IFrameCodecService {
     out[0] = SHARED_TERMINAL_FRAME_VERSION;
     out[1] = frame.channel;
     out[2] = frame.flags & 0xFF;
-    // 32-bit LE seq
+    // 32-bit LE seq.
     out[3] = frame.seq & 0xFF;
     out[4] = (frame.seq >>> 8) & 0xFF;
     out[5] = (frame.seq >>> 16) & 0xFF;
@@ -81,7 +82,8 @@ export class FrameCodecService implements IFrameCodecService {
       throw new Error(`[FrameCodecService] unknown channel ${channel}`);
     }
     const flags = bytes[2]!;
-    // 32-bit LE seq — 高位字节用乘法避免 JS 位运算 int32 溢出（0xFFFFFFFF | 0 → -1）
+    // 32-bit LE seq — use multiplication for the high bytes to avoid JS
+    // bitwise ops overflowing into int32 (0xFFFFFFFF | 0 → -1).
     const seq = bytes[3]! + bytes[4]! * 0x100 + bytes[5]! * 0x10000 + bytes[6]! * 0x1000000;
     const payload = bytes.slice(FRAME_HEADER_BYTES);
     return { channel, flags, seq, payload };

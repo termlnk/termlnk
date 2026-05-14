@@ -18,9 +18,10 @@ import type { ISharedKey } from '../models/keypair';
 import { createIdentifier } from '@termlnk/core';
 
 /**
- * 帧编解码 + 加密一体服务——把逻辑帧序列化为 wire 字节流，反之亦然。
+ * Frame codec + encryption combined — turns logical frames into wire bytes
+ * and back.
  *
- * Wire 格式（明文层布局，即将进入 NaCl secretbox 的字节）：
+ * Plaintext layout (the bytes that go into NaCl secretbox):
  *
  * ```
  * +--------+--------+----------+----------------+
@@ -30,38 +31,39 @@ import { createIdentifier } from '@termlnk/core';
  * +---------------------------------------------+
  * ```
  *
- * Wire 格式（密文层）：
+ * Wire layout (ciphertext):
  *
  * ```
- * +-------------+-----------+--------------------------+
- * | "tmst1:"(6) | nonce(24) | secretbox(明文层)         |
- * +-------------+-----------+--------------------------+
+ * +-------------+-----------+----------------------------+
+ * | "tmst1:"(6) | nonce(24) | secretbox(plaintext layout)|
+ * +-------------+-----------+----------------------------+
  * ```
  *
- * 设计依据：cloud-sync-architecture.md §5.2 BinaryMuxFrame + §4.2 加密原语决策。
+ * See cloud-sync-architecture.md §5.2 (BinaryMuxFrame) and §4.2 (crypto
+ * primitives).
  */
 export interface IFrameCodecService {
-  /**
-   * 将逻辑帧序列化为明文字节（不加密）——单元测试 / debug 用。
-   */
+  /** Serialize to plaintext bytes (no encryption) — for unit tests / debug. */
   encodePlain(frame: IFrame): Uint8Array;
 
-  /**
-   * 解码明文字节为逻辑帧——单元测试 / debug 用。失败抛错。
-   */
+  /** Decode plaintext bytes back to a frame — for unit tests / debug. Throws on failure. */
   decodePlain(bytes: Uint8Array): IFrame;
 
   /**
-   * 加密 + 序列化——返回 wire 字节流（含 `tmst1:` 前缀 + nonce + 密文 + tag）。
-   * 仅支持 SHARED_TERMINAL_FRAME_VERSION 当前版本；旧版本由 decode 路径自动 dispatch。
+   * Encrypt + serialize — returns wire bytes
+   * (`tmst1:` prefix + nonce + ciphertext + tag). Only the current
+   * `SHARED_TERMINAL_FRAME_VERSION` is supported on encode; the decode path
+   * dispatches older versions automatically.
    */
   encrypt(frame: IFrame, sharedKey: ISharedKey): Uint8Array;
 
   /**
-   * 解密 + 反序列化——失败抛错（密钥错 / 篡改 / 不支持版本 / 非法字段）。
+   * Decrypt + deserialize — throws on bad key, tampering, unsupported
+   * version, or malformed fields.
    *
-   * 旧版本 wire bytes 仍能解码（向后兼容铁律）；版本字段在密文层之前的常量前缀，
-   * 通过前缀字符串识别版本即可。
+   * Older wire bytes still decode (backward compatibility is required).
+   * The version is encoded in the constant prefix above the ciphertext, so
+   * we identify the version from the prefix alone.
    */
   decrypt(wireBytes: Uint8Array, sharedKey: ISharedKey): IFrame;
 }
