@@ -131,6 +131,7 @@ const locale: typeof enUS = {
       'inline-suggest-model-description': '行内建议专用模型，建议选用响应快、成本低的小模型。',
       'inline-suggest-model-default': '使用主对话模型',
       'inline-suggest-model-default-description': '跟随当前 Chat 面板选择的模型',
+      'inline-suggest-model-empty': '未找到匹配的模型',
     },
     'color-scheme': {
       'dark-theme-title': '深色主题',

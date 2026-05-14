@@ -129,6 +129,7 @@ const locale = {
       'inline-suggest-model-description': 'Dedicated model for inline suggestions. A fast, low-cost model is usually best.',
       'inline-suggest-model-default': 'Use the main chat model',
       'inline-suggest-model-default-description': 'Follow whatever is currently selected in the chat panel',
+      'inline-suggest-model-empty': 'No matching model',
     },
     'color-scheme': {
       'dark-theme-title': 'Dark Themes',

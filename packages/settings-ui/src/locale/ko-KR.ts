@@ -131,6 +131,7 @@ const locale: typeof enUS = {
       'inline-suggest-model-description': '인라인 제안 전용 모델. 빠르고 저렴한 모델을 추천합니다.',
       'inline-suggest-model-default': '메인 챗 모델 사용',
       'inline-suggest-model-default-description': '채팅 패널에서 현재 선택된 모델을 따릅니다',
+      'inline-suggest-model-empty': '일치하는 모델을 찾을 수 없습니다',
     },
     'color-scheme': {
       'dark-theme-title': '다크 테마',

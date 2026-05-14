@@ -131,6 +131,7 @@ const locale: typeof enUS = {
       'inline-suggest-model-description': 'インライン提案専用モデル。高速・低コストなモデルがおすすめです。',
       'inline-suggest-model-default': 'メインのチャットモデルを使う',
       'inline-suggest-model-default-description': 'チャットパネルで現在選択されているモデルに追従します',
+      'inline-suggest-model-empty': '一致するモデルが見つかりません',
     },
     'color-scheme': {
       'dark-theme-title': 'ダークテーマ',

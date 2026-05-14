@@ -57,7 +57,6 @@
   },
   "peerDependencies": {
     "@termlnk/agent": "workspace:*",
-    "@termlnk/agent-ui": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
@@ -71,7 +70,6 @@
   },
   "dependencies": {
     "@termlnk/agent": "workspace:*",
-    "@termlnk/agent-ui": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",

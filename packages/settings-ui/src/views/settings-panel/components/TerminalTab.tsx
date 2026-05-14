@@ -13,14 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITerminalSuggestConfig } from '@termlnk/agent';
+import type { IProviderGroup, ITerminalSuggestConfig } from '@termlnk/agent';
 import type { CursorStyle, ILocalTerminalConfig, ILocalTerminalShellOption, IShellIntegrationConfig, ITerminalAppearanceConfig, LocalTerminalShell, TerminalRendererEngine } from '@termlnk/terminal';
 import type { ReactElement } from 'react';
 import { AGENT_PLUGIN_CONFIG_KEY, AGENT_TERMINAL_SUGGEST_CONFIG_SUB_KEY, DEFAULT_TERMINAL_SUGGEST_CONFIG } from '@termlnk/agent';
-import { ProviderModelSelect } from '@termlnk/agent-ui';
 import { LocaleService, platform } from '@termlnk/core';
-import { Card, CardContent, CardHeader, cn, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, useDependency } from '@termlnk/design';
-import { IConfigManagerService } from '@termlnk/rpc-client';
+import { Card, CardContent, CardHeader, cn, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, useDependency, useObservable } from '@termlnk/design';
+import { IConfigManagerService, IProviderConfigClientService } from '@termlnk/rpc-client';
 import { createMissingShellOption, DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LETTER_SPACING, DEFAULT_PERSISTENCE_SCROLLBACK, DEFAULT_TERMINAL_RENDERER_ENGINE, getDefaultLocalTerminalConfig, IPTYService, normalizeLocalTerminalConfig, normalizeShellIntegrationConfig, resolveLegacyShellValue, SHELL_INTEGRATION_CONFIG_KEY, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_TERMINAL_FONT_FAMILIES, PERSISTENCE_SCROLLBACK_MAX, PERSISTENCE_SCROLLBACK_MIN, TERMINAL_FONT_SIZE_MAX, TERMINAL_FONT_SIZE_MIN, TERMINAL_LETTER_SPACING_MAX, TERMINAL_LETTER_SPACING_MIN } from '../../../config/config';
@@ -99,6 +98,102 @@ function normalizeTerminalSettings(value: Partial<ITerminalAppearanceConfig> | n
       ? value.ctrlOrMetaOpenTerminalLink
       : defaults.ctrlOrMetaOpenTerminalLink,
   };
+}
+
+const DEFAULT_INLINE_SUGGEST_MODEL_SENTINEL = '__termlnk_inline_suggest_default__';
+
+interface IInlineSuggestModelItem {
+  value: string;
+  label: string;
+}
+
+interface IInlineSuggestModelComboboxProps {
+  value: string | null;
+  onChange: (modelId: string | null) => void;
+}
+
+function compareInlineSuggestModelItems(a: IInlineSuggestModelItem, b: IInlineSuggestModelItem): boolean {
+  return a.value === b.value;
+}
+
+function InlineSuggestModelCombobox(props: IInlineSuggestModelComboboxProps): ReactElement {
+  const { value, onChange } = props;
+  const localeService = useDependency(LocaleService);
+  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providers = useObservable(providerConfigService.providers$, [] as IProviderGroup[]);
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+
+  const defaultLabel = localeService.t('settings-ui.terminal.inline-suggest-model-default');
+
+  const items = useMemo<IInlineSuggestModelItem[]>(() => {
+    const result: IInlineSuggestModelItem[] = [
+      { value: DEFAULT_INLINE_SUGGEST_MODEL_SENTINEL, label: defaultLabel },
+    ];
+
+    for (const provider of providers) {
+      if (!provider.enabled) {
+        continue;
+      }
+      for (const model of provider.models) {
+        if (!model.enabled) {
+          continue;
+        }
+        result.push({
+          value: model.id,
+          label: `${provider.name} · ${model.name}`,
+        });
+      }
+    }
+
+    // Surface stale ids as raw entries so a removed/disabled selection does
+    // not silently revert to "use default" on next render.
+    if (value && !result.some((item) => item.value === value)) {
+      result.push({ value, label: value });
+    }
+
+    return result;
+  }, [providers, defaultLabel, value]);
+
+  const selectedItem = useMemo<IInlineSuggestModelItem | null>(() => {
+    const lookupValue = value ?? DEFAULT_INLINE_SUGGEST_MODEL_SENTINEL;
+    return items.find((item) => item.value === lookupValue) ?? null;
+  }, [items, value]);
+
+  const handleValueChange = useCallback((next: IInlineSuggestModelItem | null) => {
+    if (!next || next.value === DEFAULT_INLINE_SUGGEST_MODEL_SENTINEL) {
+      onChange(null);
+      return;
+    }
+    onChange(next.value);
+  }, [onChange]);
+
+  return (
+    <div ref={anchorRef} className="tm:relative tm:w-full">
+      <Combobox
+        items={items}
+        value={selectedItem}
+        onValueChange={handleValueChange}
+        isItemEqualToValue={compareInlineSuggestModelItems}
+      >
+        <ComboboxInput
+          className="tm:h-9 tm:w-full"
+          placeholder={defaultLabel}
+        />
+        <ComboboxContent anchor={anchorRef}>
+          <ComboboxEmpty>
+            {localeService.t('settings-ui.terminal.inline-suggest-model-empty')}
+          </ComboboxEmpty>
+          <ComboboxList className="tm:max-h-72">
+            {(item: IInlineSuggestModelItem) => (
+              <ComboboxItem key={item.value} value={item}>
+                {item.label}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </div>
+  );
 }
 
 export function TerminalTab(): ReactElement {
@@ -759,20 +854,9 @@ export function TerminalTab(): ReactElement {
                 </FieldLabel>
                 <FieldContent className="tm:flex-none tm:items-end">
                   <div className={cn('tm:w-60 tm:max-w-full')}>
-                    <ProviderModelSelect
+                    <InlineSuggestModelCombobox
                       value={suggestConfig.suggestModelId ?? null}
                       onChange={(modelId) => updateSuggestConfig({ suggestModelId: modelId ?? undefined })}
-                      defaultEntry={{
-                        label: localeService.t('settings-ui.terminal.inline-suggest-model-default'),
-                        description: localeService.t('settings-ui.terminal.inline-suggest-model-default-description'),
-                      }}
-                      triggerClassName={cn(`
-                        tm:h-9 tm:border-one-bg3 tm:bg-black tm:p-3 tm:text-white tm:shadow-xs tm:outline-hidden
-                        tm:transition-[color,box-shadow]
-                        tm:hover:border-blue tm:hover:bg-black
-                        tm:focus-visible:border-blue tm:focus-visible:ring-[3px] tm:focus-visible:ring-blue/50
-                        tm:disabled:opacity-50
-                      `)}
                     />
                   </div>
                 </FieldContent>
