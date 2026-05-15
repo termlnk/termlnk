@@ -13,12 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-// `react-native-get-random-values` polyfills the global `crypto.getRandomValues` —
-// @noble/hashes, @noble/ciphers, and secure-remote-password all assume Web Crypto. The
-// import side-effect must run before any auth-core code path that calls randomBytes.
-import 'react-native-get-random-values';
-
 import { AuthPlugin, IDeviceNameProvider, IIdleProbe, IPasswordHasher } from '@termlnk/auth';
+
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import Constants from 'expo-constants';
@@ -26,6 +22,10 @@ import { ExpoAppStateIdleProbe } from '../platform/expo-app-state-idle-probe.ser
 import { ExpoDeviceNameProvider } from '../platform/expo-device-name-provider.service';
 import { LibsodiumPasswordHasher } from '../platform/libsodium-password-hasher.service';
 import { MobilePlatformPlugin } from '../platform/mobile-platform.plugin';
+// `react-native-get-random-values` polyfills the global `crypto.getRandomValues` —
+// @noble/hashes, @noble/ciphers, and secure-remote-password all assume Web Crypto. The
+// import side-effect must run before any auth-core code path that calls randomBytes.
+import 'react-native-get-random-values';
 
 interface IMobileCoreEnv {
   // Cloud root URL with `/v1` suffix (matches §6.1.4 auth + sync routes). Read from

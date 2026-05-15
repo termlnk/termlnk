@@ -160,7 +160,7 @@ export class MobileSyncPullService extends Disposable {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'authorization': `Bearer ${tokens.accessToken}`,
+        authorization: `Bearer ${tokens.accessToken}`,
       },
       body: JSON.stringify({
         clientId: this._config.clientId,

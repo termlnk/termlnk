@@ -16,8 +16,8 @@
 import { authenticateAsync, hasHardwareAsync, isEnrolledAsync, supportedAuthenticationTypesAsync } from 'expo-local-authentication';
 
 export type BiometricCapability =
-  | 'unsupported'      // no hardware
-  | 'not-enrolled'     // hardware exists but no biometric configured
+  | 'unsupported' // no hardware
+  | 'not-enrolled' // hardware exists but no biometric configured
   | 'available';
 
 export interface IBiometricAvailability {

@@ -13,8 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AppStateStatus, NativeEventSubscription } from 'react-native';
 import type { IIdleProbe } from '@termlnk/auth';
+import type { AppStateStatus, NativeEventSubscription } from 'react-native';
 import { Disposable } from '@termlnk/core';
 import { AppState } from 'react-native';
 

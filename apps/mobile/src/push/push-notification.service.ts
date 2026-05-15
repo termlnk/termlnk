@@ -128,7 +128,7 @@ export class PushNotificationService {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'authorization': `Bearer ${accessToken}`,
+        authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         deviceToken: token,
@@ -160,7 +160,7 @@ export class PushNotificationService {
       method: 'DELETE',
       headers: {
         'content-type': 'application/json',
-        'authorization': `Bearer ${accessToken}`,
+        authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ deviceToken: this._registeredToken }),
     });

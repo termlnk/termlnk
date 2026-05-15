@@ -58,13 +58,13 @@ export function buildShellResumptionCommand(options: IShellResumptionOptions): I
   // the final $SHELL is the no-resume fallback — replaces the bash process so detaching
   // is a clean SSH exit instead of a nested shell.
   const command = [
-    `if command -v tmux >/dev/null 2>&1; then`,
+    'if command -v tmux >/dev/null 2>&1; then',
     `  tmux new-session -A -s ${sessionName};`,
-    `elif command -v screen >/dev/null 2>&1; then`,
+    'elif command -v screen >/dev/null 2>&1; then',
     `  screen -RR ${sessionName};`,
-    `else`,
-    `  echo "termlnk: tmux/screen not found; running plain shell";`,
-    `fi`,
+    'else',
+    '  echo "termlnk: tmux/screen not found; running plain shell";',
+    'fi',
     '',
   ].join('\n');
   return { command, sessionName };

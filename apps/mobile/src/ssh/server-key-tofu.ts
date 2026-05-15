@@ -58,7 +58,7 @@ export async function loadStoredServerKey(hostId: string): Promise<IStoredServer
 export async function recordServerKey(
   hostId: string,
   algorithm: string,
-  fingerprintSha256: string,
+  fingerprintSha256: string
 ): Promise<IStoredServerKey> {
   const entry: IStoredServerKey = {
     algorithm,
@@ -76,7 +76,7 @@ export async function forgetServerKey(hostId: string): Promise<void> {
 export async function evaluateServerKey(
   hostId: string,
   algorithm: string,
-  fingerprintSha256: string,
+  fingerprintSha256: string
 ): Promise<TofuDecision> {
   const stored = await loadStoredServerKey(hostId);
   if (!stored) {

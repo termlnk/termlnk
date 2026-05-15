@@ -3,6 +3,14 @@
  *
  * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
  * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
  */
 
 // Foreground/background SSH lifecycle manager. P6.9-7 re-build on top of
@@ -14,11 +22,11 @@
 // + the resumption command (tmux/screen) so a fresh SSH+shell pair can be
 // re-established without UI intervention.
 
-import type { IMobileSshConnectOptions, IMobileSshSession } from './mobile-ssh-client.service';
+import type { NativeEventSubscription } from 'react-native';
+import type { IMobileSshConnectOptions, IMobileSshSession, MobileSshClientService } from './mobile-ssh-client.service';
 import { Disposable } from '@termlnk/core';
-import { AppState, type NativeEventSubscription } from 'react-native';
+import { AppState } from 'react-native';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { MobileSshClientService } from './mobile-ssh-client.service';
 
 export type ManagedSessionState = 'disconnected' | 'connecting' | 'reconnecting' | 'connected' | 'error';
 
@@ -43,7 +51,7 @@ class ManagedSshSession extends Disposable implements IManagedSshSession {
   constructor(
     readonly hostId: string,
     private readonly _client: MobileSshClientService,
-    private readonly _connectOptions: IMobileSshConnectOptions,
+    private readonly _connectOptions: IMobileSshConnectOptions
   ) {
     super();
   }
@@ -119,7 +127,7 @@ export class MobileSshSessionManager extends Disposable {
   manage(
     hostId: string,
     connectOptions: IMobileSshConnectOptions,
-    opts?: { resumptionCommand?: string | null },
+    opts?: { resumptionCommand?: string | null }
   ): IManagedSshSession {
     const existing = this._sessions.get(hostId);
     if (existing) {
