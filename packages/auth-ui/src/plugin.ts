@@ -13,29 +13,31 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
+import type { Dependency, Injector } from '@termlnk/core';
+import type { IAuthUIPluginConfig } from './controllers/config.schema';
 import { AuthPlugin } from '@termlnk/auth';
-import { DependentOn, InjectSelf, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
+import { DependentOn, IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
 import { UserRoundIcon } from 'lucide-react';
 import { AuthUIController } from './controllers/auth-ui.controller';
+import { AUTH_UI_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { AccountTab } from './views/settings/AccountTab';
 
 export const AUTH_UI_PLUGIN_NAME = 'AUTH_UI_PLUGIN';
-
-export interface IAuthUIPluginConfig {
-  override?: DependencyOverride;
-}
 
 @DependentOn(AuthPlugin)
 export class AuthUIPlugin extends Plugin {
   static override pluginName = AUTH_UI_PLUGIN_NAME;
 
   constructor(
-    private readonly _config: IAuthUIPluginConfig = {},
-    @InjectSelf() protected readonly _injector: Injector
+    private readonly _config: IAuthUIPluginConfig = defaultPluginConfig,
+    @InjectSelf() protected readonly _injector: Injector,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
+
+    const config = merge({}, defaultPluginConfig, this._config);
+    this._configService.setConfig(AUTH_UI_PLUGIN_CONFIG_KEY, config);
   }
 
   override onStarting(): void {

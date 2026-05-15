@@ -15,13 +15,10 @@
 
 import type { ISyncPluginConfig } from './controllers/config.schema';
 import { IConfigService, Inject, Injector, merge, Plugin } from '@termlnk/core';
-import { SYNC_PLUGIN_NAME } from './common/constants';
 import { defaultPluginConfig, SYNC_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 
-export { SYNC_PLUGIN_NAME };
+export const SYNC_PLUGIN_NAME = 'SYNC_PLUGIN';
 
-// Contract-only: registers config but binds no services. Main-process implementation
-// lives in @termlnk/sync-core.
 export class SyncPlugin extends Plugin {
   static override pluginName = SYNC_PLUGIN_NAME;
 
@@ -32,7 +29,7 @@ export class SyncPlugin extends Plugin {
   ) {
     super();
 
-    const merged = merge({}, defaultPluginConfig, this._config);
-    this._configService.setConfig(SYNC_PLUGIN_CONFIG_KEY, merged);
+    const config = merge({}, defaultPluginConfig, this._config);
+    this._configService.setConfig(SYNC_PLUGIN_CONFIG_KEY, config);
   }
 }

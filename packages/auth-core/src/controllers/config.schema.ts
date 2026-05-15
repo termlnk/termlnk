@@ -15,20 +15,15 @@
 
 import type { DependencyOverride } from '@termlnk/core';
 
-export const AUTH_PLUGIN_CONFIG_KEY = 'auth.config';
+export const AUTH_CORE_PLUGIN_CONFIG_KEY = 'auth-core.config';
 
-export interface IAuthPluginConfig {
+export interface IAuthCorePluginConfig {
   override?: DependencyOverride;
 
-  // Idle minutes before auto-lock; 0 disables. Manual logout always locks.
-  // IdleLockController in @termlnk/auth-core polls this and calls IMasterKeyService.lock().
-  autoLockIdleMinutes?: number;
+  // Cloud root with version prefix. When set, IAuthService and ITokenRefresher bind to
+  // their HTTP implementations; when unset, both stay unbound and optional consumers
+  // resolve to null.
+  cloudBaseUrl?: string;
 }
 
-// The cloud base URL is intentionally not declared here. It is a startup parameter consumed
-// by AuthCorePlugin (IAuthCorePluginConfig.cloudBaseUrl); duplicating it would create a
-// confusing contract-vs-impl split where only the impl side actually wins.
-
-export const defaultPluginConfig: IAuthPluginConfig = {
-  autoLockIdleMinutes: 0,
-};
+export const defaultPluginConfig: IAuthCorePluginConfig = {};

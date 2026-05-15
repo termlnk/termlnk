@@ -13,17 +13,18 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
+import type { Dependency, Injector } from '@termlnk/core';
+import type { ISyncCorePluginConfig } from './controllers/config.schema';
 import { AuthCorePlugin } from '@termlnk/auth-core';
-// Deep import keeps TokenManager from being resolved through the package barrel — that
-// path drags @termlnk/database into the type graph and produces a second nominal
-// TokenManager when http-transport.service.ts also deep-imports it. Both call sites
-// must share one resolution path or TS treats them as incompatible classes.
+// Deep import: both this file and http-transport.service.ts must take the same path or
+// TypeScript surfaces a second nominal TokenManager. The barrel also pulls in
+// @termlnk/database, which we want to keep out of browser/mobile bundles.
 import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
-import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService, SyncPlugin } from '@termlnk/sync';
 import { AuthSyncBridgeController } from './controllers/auth-sync-bridge.controller';
+import { defaultPluginConfig, SYNC_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { SynchroniserRegistrationController } from './controllers/synchroniser-registration.controller';
 import { BackupService } from './services/backup.service';
 import { SyncCryptoService } from './services/crypto.service';
@@ -39,26 +40,19 @@ import { SkillSynchroniser } from './synchronisers/skill-synchroniser';
 
 export const SYNC_CORE_PLUGIN_NAME = 'SYNC_CORE_PLUGIN';
 
-export interface ISyncCorePluginConfig {
-  // Cloud root with version prefix (e.g. `https://cloud.termlnk.io/v1`). When set the
-  // HTTP transport replaces the default Noop binding. With no URL, SyncService.enable()
-  // immediately transitions to Offline; backup / import still work because they do not
-  // depend on the network.
-  cloudBaseUrl?: string;
-
-  // Override path; lets desktop-main swap the transport without going through cloudBaseUrl.
-  override?: DependencyOverride;
-}
-
 @DependentOn(DatabasePlugin, AuthCorePlugin, SyncPlugin)
 export class SyncCorePlugin extends Plugin {
   static override pluginName = SYNC_CORE_PLUGIN_NAME;
 
   constructor(
-    private readonly _config: ISyncCorePluginConfig = {},
-    @InjectSelf() protected readonly _injector: Injector
+    private readonly _config: ISyncCorePluginConfig = defaultPluginConfig,
+    @InjectSelf() protected readonly _injector: Injector,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
+
+    const config = merge({}, defaultPluginConfig, this._config);
+    this._configService.setConfig(SYNC_CORE_PLUGIN_CONFIG_KEY, config);
   }
 
   override onStarting(): void {
@@ -73,8 +67,8 @@ export class SyncCorePlugin extends Plugin {
       [ISyncService, { useClass: SyncService }],
       transportBinding,
 
-      // SynchroniserRegistrationController injects the concrete SyncService class, so we
-      // bind the same instance under both the interface token and the concrete token.
+      // Bound under both the interface and concrete tokens so register() (concrete-only)
+      // and ISyncService consumers resolve to the same instance.
       [SyncService, { useClass: SyncService }],
 
       [HostSynchroniser, { useClass: HostSynchroniser }],
@@ -92,21 +86,13 @@ export class SyncCorePlugin extends Plugin {
   private _buildHttpTransportBinding(baseUrl: string): Dependency {
     return [ISyncTransportService, {
       // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
-      useFactory: (
-        tokenManager: TokenManager,
-        logService: ILogService
-      ) => new HttpSyncTransportService(
-        { baseUrl },
-        tokenManager,
-        logService
-      ),
+      useFactory: (tokenManager: TokenManager, logService: ILogService) =>
+        new HttpSyncTransportService({ baseUrl }, tokenManager, logService),
       deps: [TokenManager, ILogService],
     }];
   }
 
   override onReady(): void {
-    // Touch the registration + bridge controllers: the former wires synchronisers into
-    // SyncService, the latter subscribes to IAuthService.authState$.
     touchDependencies(this._injector, [
       [AuthSyncBridgeController],
       [SynchroniserRegistrationController],

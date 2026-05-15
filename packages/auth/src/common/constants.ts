@@ -13,8 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-export const AUTH_PLUGIN_CONFIG_KEY = 'auth.config';
-
 // Key under which auth-core persists the stable per-device identifier through
 // IAuthKeyValueStorage. The value is a nanoid generated on first sign-in / register;
 // it is sent on every subsequent auth request so the server can deduplicate session

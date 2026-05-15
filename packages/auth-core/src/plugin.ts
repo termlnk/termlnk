@@ -14,9 +14,11 @@
  */
 
 import type { IAuthKeyValueStorage as IAuthKeyValueStorageType, IDeviceNameProvider as IDeviceNameProviderType, IMasterKeyService as IMasterKeyServiceType, ISrpClientService as ISrpClientServiceType, IUserStorageService as IUserStorageServiceType } from '@termlnk/auth';
-import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
+import type { Dependency, Injector } from '@termlnk/core';
+import type { IAuthCorePluginConfig } from './controllers/config.schema';
 import { AuthPlugin, IAuthKeyValueStorage, IAuthService, IDeviceNameProvider, IIdleProbe, IMasterKeyService, IPasswordHasher, ISrpClientService, ITokenRefresher, ITokenStorageService, IUserStorageService } from '@termlnk/auth';
-import { DependentOn, ILogService, InjectSelf, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
+import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
+import { AUTH_CORE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { IdleLockController } from './controllers/idle-lock.controller';
 import { DefaultDeviceNameProvider } from './services/default-device-name-provider.service';
 import { HashWasmPasswordHasher } from './services/hash-wasm-password-hasher.service';
@@ -31,43 +33,50 @@ import { UserStorageService } from './services/user-storage.service';
 
 export const AUTH_CORE_PLUGIN_NAME = 'AUTH_CORE_PLUGIN';
 
-export interface IAuthCorePluginConfig {
-  // Cloud root with version prefix (e.g. `https://cloud.termlnk.io/v1`). When set, IAuthService
-  // and ITokenRefresher are bound to their HTTP implementations. When unset, both stay
-  // unbound; consumers using Quantity.OPTIONAL receive null and the UI shows a placeholder.
-  cloudBaseUrl?: string;
-
-  override?: DependencyOverride;
-}
-
 @DependentOn(AuthPlugin)
 export class AuthCorePlugin extends Plugin {
   static override pluginName = AUTH_CORE_PLUGIN_NAME;
 
   constructor(
-    private readonly _config: IAuthCorePluginConfig = {},
-    @InjectSelf() protected readonly _injector: Injector
+    private readonly _config: IAuthCorePluginConfig = defaultPluginConfig,
+    @InjectSelf() protected readonly _injector: Injector,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
+
+    const config = merge(
+      {},
+      defaultPluginConfig,
+      this._config
+    );
+    this._configService.setConfig(AUTH_CORE_PLUGIN_CONFIG_KEY, config);
   }
 
   override onStarting(): void {
+    this._initDependencies();
+  }
+
+  override onReady(): void {
+    touchDependencies(this._injector, [
+      [IdleLockController],
+    ]);
+
+    const authService = this._injector.get(IAuthService, Quantity.OPTIONAL);
+    if (authService) {
+      void authService.restore();
+    }
+  }
+
+  private _initDependencies(): void {
     const dependencies: Dependency[] = [
       [IMasterKeyService, { useClass: MasterKeyService }],
       [ISrpClientService, { useClass: SrpClientService }],
       [ITokenStorageService, { useClass: TokenStorageService }],
       [IUserStorageService, { useClass: UserStorageService }],
       [TokenManager, { useClass: TokenManager }],
-      // WebAssembly-backed Argon2id. React Native/Hermes lacks WebAssembly support and
-      // must override this with a native binding (see apps/mobile MobilePlatformPlugin).
       [IPasswordHasher, { useClass: HashWasmPasswordHasher }],
-      // Platform-agnostic fallback (returns 'Unknown device'). Each app overrides this
-      // from its own platform/ layer (apps/desktop/main, apps/web/server, apps/mobile).
       [IDeviceNameProvider, { useClass: DefaultDeviceNameProvider }],
-      // Safe default for non-Electron contexts; ElectronMainPlugin overrides with a
-      // powerMonitor-backed implementation.
       [IIdleProbe, { useClass: NoopIdleProbe }],
-      // No public interface; onReady touches it so the constructor wires up subscriptions.
       [IdleLockController],
     ];
 
@@ -81,45 +90,22 @@ export class AuthCorePlugin extends Plugin {
         }],
         [IAuthService, {
           // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
-          useFactory: (
-            masterKey: IMasterKeyServiceType,
-            srp: ISrpClientServiceType,
-            tokenManager: TokenManager,
-            storage: IAuthKeyValueStorageType,
-            userStorage: IUserStorageServiceType,
-            logService: ILogService,
-            deviceNameProvider: IDeviceNameProviderType
-          ) => new HttpAuthService(
-            { baseUrl },
-            masterKey,
-            srp,
-            tokenManager,
-            storage,
-            userStorage,
-            logService,
-            deviceNameProvider
-          ),
+          useFactory: (masterKey: IMasterKeyServiceType, srp: ISrpClientServiceType, tokenManager: TokenManager, storage: IAuthKeyValueStorageType, userStorage: IUserStorageServiceType, logService: ILogService, deviceNameProvider: IDeviceNameProviderType) =>
+            new HttpAuthService(
+              { baseUrl },
+              masterKey,
+              srp,
+              tokenManager,
+              storage,
+              userStorage,
+              logService,
+              deviceNameProvider
+            ),
           deps: [IMasterKeyService, ISrpClientService, TokenManager, IAuthKeyValueStorage, IUserStorageService, ILogService, IDeviceNameProvider],
         }]
       );
     }
 
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
-  }
-
-  override onReady(): void {
-    touchDependencies(this._injector, [
-      [IdleLockController],
-    ]);
-
-    // Restore currentUser$/authState$ from the locally persisted token + user pair so
-    // a restart does not bounce the user back to the login screen. Only when an
-    // IAuthService implementation is bound (i.e. cloudBaseUrl was configured) — without
-    // it there is nothing to restore and no UI consumer to receive the emit. Fire and
-    // forget: restore() is internally fail-soft and never throws.
-    const authService = this._injector.get(IAuthService, Quantity.OPTIONAL);
-    if (authService) {
-      void authService.restore();
-    }
   }
 }

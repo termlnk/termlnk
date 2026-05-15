@@ -13,8 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
+export type { IAuthUIPluginConfig } from './controllers/config.schema';
+export { AUTH_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export { AUTH_UI_PLUGIN_NAME, AuthUIPlugin } from './plugin';
-export type { IAuthUIPluginConfig } from './plugin';
 export { AccountPanel } from './views/AccountPanel';
 export type { IAccountPanelProps } from './views/AccountPanel';
 export { AuthGate } from './views/AuthGate';

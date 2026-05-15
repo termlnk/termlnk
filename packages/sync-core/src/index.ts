@@ -13,8 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
+export type { ISyncCorePluginConfig } from './controllers/config.schema';
+export { SYNC_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export { SYNC_CORE_PLUGIN_NAME, SyncCorePlugin } from './plugin';
-export type { ISyncCorePluginConfig } from './plugin';
 export { BackupService } from './services/backup.service';
 export { SyncCryptoService } from './services/crypto.service';
 export { HttpSyncTransportService } from './services/http-transport.service';

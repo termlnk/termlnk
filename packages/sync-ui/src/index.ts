@@ -13,7 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
+export type { ISyncUIPluginConfig } from './controllers/config.schema';
+export { SYNC_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export { SYNC_UI_PLUGIN_NAME, SyncUIPlugin } from './plugin';
-export type { ISyncUIPluginConfig } from './plugin';
 export { BackupCard } from './views/BackupCard';
 export { SyncStatusPanel } from './views/SyncStatusPanel';

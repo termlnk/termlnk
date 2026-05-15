@@ -13,7 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-export { AUTH_DEVICE_ID_STORAGE_KEY, AUTH_PLUGIN_CONFIG_KEY, HKDF_INFO, KDF_VERSION, MASTER_KEY_DERIVATION } from './common/constants';
+export { AUTH_DEVICE_ID_STORAGE_KEY, HKDF_INFO, KDF_VERSION, MASTER_KEY_DERIVATION } from './common/constants';
+export { AUTH_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IAuthPluginConfig } from './controllers/config.schema';
 export type { IDevice } from './models/device';
 export type { IDerivationMaterial, IMasterKey } from './models/master-key';

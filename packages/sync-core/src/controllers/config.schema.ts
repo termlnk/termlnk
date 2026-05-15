@@ -15,20 +15,16 @@
 
 import type { DependencyOverride } from '@termlnk/core';
 
-export const AUTH_PLUGIN_CONFIG_KEY = 'auth.config';
+export const SYNC_CORE_PLUGIN_CONFIG_KEY = 'sync-core.config';
 
-export interface IAuthPluginConfig {
+export interface ISyncCorePluginConfig {
   override?: DependencyOverride;
 
-  // Idle minutes before auto-lock; 0 disables. Manual logout always locks.
-  // IdleLockController in @termlnk/auth-core polls this and calls IMasterKeyService.lock().
-  autoLockIdleMinutes?: number;
+  // Cloud root with version prefix (e.g. `https://cloud.termlnk.io/v1`). When set the
+  // HTTP transport replaces the default Noop binding. With no URL, SyncService.enable()
+  // immediately transitions to Offline; backup / import still work because they do not
+  // depend on the network.
+  cloudBaseUrl?: string;
 }
 
-// The cloud base URL is intentionally not declared here. It is a startup parameter consumed
-// by AuthCorePlugin (IAuthCorePluginConfig.cloudBaseUrl); duplicating it would create a
-// confusing contract-vs-impl split where only the impl side actually wins.
-
-export const defaultPluginConfig: IAuthPluginConfig = {
-  autoLockIdleMinutes: 0,
-};
+export const defaultPluginConfig: ISyncCorePluginConfig = {};

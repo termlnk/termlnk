@@ -29,7 +29,7 @@ export class AuthPlugin extends Plugin {
   ) {
     super();
 
-    const merged = merge({}, defaultPluginConfig, this._config);
-    this._configService.setConfig(AUTH_PLUGIN_CONFIG_KEY, merged);
+    const rest = merge({}, defaultPluginConfig, this._config);
+    this._configService.setConfig(AUTH_PLUGIN_CONFIG_KEY, rest);
   }
 }

@@ -13,28 +13,28 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Dependency, DependencyOverride, Injector } from '@termlnk/core';
-import { DependentOn, InjectSelf, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import type { Dependency, Injector } from '@termlnk/core';
+import type { ISyncUIPluginConfig } from './controllers/config.schema';
+import { DependentOn, IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { SyncPlugin } from '@termlnk/sync';
+import { defaultPluginConfig, SYNC_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { SyncUIController } from './controllers/sync-ui.controller';
 
 export const SYNC_UI_PLUGIN_NAME = 'SYNC_UI_PLUGIN';
 
-export interface ISyncUIPluginConfig {
-  override?: DependencyOverride;
-}
-
-// Sync UI plugin: registers sync.command.* via SyncUIController during onReady. Components
-// (SyncStatusPanel / BackupCard) are named exports; settings-ui chooses where to mount them.
 @DependentOn(SyncPlugin)
 export class SyncUIPlugin extends Plugin {
   static override pluginName = SYNC_UI_PLUGIN_NAME;
 
   constructor(
-    private readonly _config: ISyncUIPluginConfig = {},
-    @InjectSelf() protected readonly _injector: Injector
+    private readonly _config: ISyncUIPluginConfig = defaultPluginConfig,
+    @InjectSelf() protected readonly _injector: Injector,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
+
+    const config = merge({}, defaultPluginConfig, this._config);
+    this._configService.setConfig(SYNC_UI_PLUGIN_CONFIG_KEY, config);
   }
 
   override onStarting(): void {

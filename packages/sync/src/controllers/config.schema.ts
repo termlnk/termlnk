@@ -16,7 +16,7 @@
 import type { DependencyOverride } from '@termlnk/core';
 import type { SyncResourceId } from '../common/constants';
 
-export { SYNC_PLUGIN_CONFIG_KEY } from '../common/constants';
+export const SYNC_PLUGIN_CONFIG_KEY = 'sync.config';
 
 export interface ISyncPluginConfig {
   override?: DependencyOverride;

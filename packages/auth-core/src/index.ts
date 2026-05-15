@@ -13,10 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
+export type { IAuthCorePluginConfig } from './controllers/config.schema';
+export { AUTH_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IDerivedSubKeys } from './crypto/kdf';
 export { computeArgon2Salt, deriveSubKeys, zeroize } from './crypto/kdf';
 export { AUTH_CORE_PLUGIN_NAME, AuthCorePlugin } from './plugin';
-export type { IAuthCorePluginConfig } from './plugin';
 export { HashWasmPasswordHasher } from './services/hash-wasm-password-hasher.service';
 export { HttpAuthService } from './services/http-auth.service';
 export type { IHttpAuthServiceConfig } from './services/http-auth.service';

@@ -13,9 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-export const SYNC_PLUGIN_NAME = 'SYNC_PLUGIN';
-export const SYNC_PLUGIN_CONFIG_KEY = 'sync.config';
-
 // Resource IDs that map to SQLite tables. All except `config` use row-level LWW; `config`
 // is field-level LWW because its value is a nested JSON blob. Chat-family rows, terminal
 // session backups and MCP OAuth tokens are intentionally never synced.
