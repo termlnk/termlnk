@@ -30,9 +30,16 @@ import { crypto_pwhash, crypto_pwhash_ALG_ARGON2ID13, crypto_pwhash_SALTBYTES, r
 //   Bumping `MASTER_KEY_DERIVATION.parallelism` would silently desync this backend from
 //   the hash-wasm one, so we assert instead of papering over it.
 export class LibsodiumPasswordHasher implements IPasswordHasher {
+  // Field declaration is separated from the constructor parameter because
+  // babel-plugin-parameter-decorator cannot pair a parameter decorator with a TypeScript
+  // parameter property — see apps/mobile/babel.config.js.
+  private readonly _logService: ILogService;
+
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService
-  ) {}
+    @Inject(ILogService) logService: ILogService
+  ) {
+    this._logService = logService;
+  }
 
   async argon2id(password: string, salt: Uint8Array, params: IArgon2idParams): Promise<Uint8Array> {
     if (salt.length !== crypto_pwhash_SALTBYTES) {
