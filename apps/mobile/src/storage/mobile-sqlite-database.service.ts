@@ -43,6 +43,14 @@ CREATE TABLE IF NOT EXISTS sync_meta (
   resource TEXT PRIMARY KEY,
   cursor TEXT
 );
+
+CREATE TABLE IF NOT EXISTS recent_sessions (
+  host_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  last_used_at INTEGER NOT NULL,
+  PRIMARY KEY (host_id, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_recent_sessions_last_used_at ON recent_sessions(last_used_at);
 `;
 
 export interface IMobileSqliteDatabaseService {

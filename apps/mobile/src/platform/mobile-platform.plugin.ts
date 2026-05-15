@@ -16,6 +16,7 @@
 import type { Dependency, Injector } from '@termlnk/core';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { InjectSelf, Plugin, registerDependencies } from '@termlnk/core';
+import { IRecentSessionsRepository, RecentSessionsRepository } from '../sessions/recent-sessions-repository';
 import { IMobileHostRepository, MobileHostRepository } from '../storage/mobile-host-repository';
 import { IMobileSecretCipherService, MobileSecretCipherService } from '../storage/mobile-secret-cipher.service';
 import { IMobileSqliteDatabaseService, MobileSqliteDatabaseService } from '../storage/mobile-sqlite-database.service';
@@ -56,6 +57,7 @@ export class MobilePlatformPlugin extends Plugin {
       [IMobileSecretCipherService, { useClass: MobileSecretCipherService }],
       [IMobileSqliteDatabaseService, { useClass: MobileSqliteDatabaseService }],
       [IMobileHostRepository, { useClass: MobileHostRepository }],
+      [IRecentSessionsRepository, { useClass: RecentSessionsRepository }],
     ];
     registerDependencies(this._injector, dependencies);
   }

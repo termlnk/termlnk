@@ -21,6 +21,7 @@ import { AuthState, IAuthService as IAuthServiceId, IMasterKeyService as IMaster
 import { ILogService as ILogServiceId, Quantity } from '@termlnk/core';
 import Constants from 'expo-constants';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { IRecentSessionsRepository } from '../sessions/recent-sessions-repository';
 import { IMobileHostRepository } from '../storage/mobile-host-repository';
 import { MobileSyncPullService } from '../sync/mobile-sync-pull.service';
 import { createMobileCore } from './create-mobile-core';
@@ -125,4 +126,13 @@ export function useAuthState(): AuthState {
 export function useCurrentUser(): IUserAccount | null {
   const auth = useAuthService();
   return useObservableValue(auth?.currentUser$, null);
+}
+
+// Resolves the singleton RecentSessionsRepository from the DI container. Calling
+// `.ready()` is the caller's responsibility — for Recent tab the screen does it
+// once on mount; for terminal/sftp screens the touch() call implicitly opens
+// the DB through the same SQLite singleton.
+export function useRecentSessionsRepository() {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IRecentSessionsRepository), [core]);
 }
