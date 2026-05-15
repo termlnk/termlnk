@@ -16,6 +16,9 @@
 import type { Dependency, Injector } from '@termlnk/core';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { InjectSelf, Plugin, registerDependencies } from '@termlnk/core';
+import { IMobileHostRepository, MobileHostRepository } from '../storage/mobile-host-repository';
+import { IMobileSecretCipherService, MobileSecretCipherService } from '../storage/mobile-secret-cipher.service';
+import { IMobileSqliteDatabaseService, MobileSqliteDatabaseService } from '../storage/mobile-sqlite-database.service';
 import { ExpoSecureStoreAuthKeyValueStorage } from './expo-secure-store-auth-key-value-storage.service';
 
 export const MOBILE_PLATFORM_PLUGIN_NAME = 'MOBILE_PLATFORM_PLUGIN';
@@ -48,6 +51,11 @@ export class MobilePlatformPlugin extends Plugin {
   override onStarting(): void {
     const dependencies: Dependency[] = [
       [IAuthKeyValueStorage, { useClass: ExpoSecureStoreAuthKeyValueStorage }],
+      // Storage layer for synced host vault. Order matters only for documentation here —
+      // redi resolves topology automatically.
+      [IMobileSecretCipherService, { useClass: MobileSecretCipherService }],
+      [IMobileSqliteDatabaseService, { useClass: MobileSqliteDatabaseService }],
+      [IMobileHostRepository, { useClass: MobileHostRepository }],
     ];
     registerDependencies(this._injector, dependencies);
   }

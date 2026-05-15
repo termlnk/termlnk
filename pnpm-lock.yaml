@@ -609,6 +609,9 @@ importers:
       expo-splash-screen:
         specifier: ^55.0.20
         version: 55.0.20(expo@55.0.23)(typescript@6.0.3)
+      expo-sqlite:
+        specifier: ^55.0.16
+        version: 55.0.16(expo@55.0.23)(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)
       expo-status-bar:
         specifier: ^55.0.6
         version: 55.0.6(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)
@@ -1393,7 +1396,7 @@ importers:
         version: 12.9.0
       drizzle-orm:
         specifier: 1.0.0-rc.2
-        version: 1.0.0-rc.2(@sinclair/typebox@0.34.49)(@types/better-sqlite3@7.6.13)(@types/mssql@9.1.11(@azure/core-client@1.10.1))(better-sqlite3@12.9.0)(mssql@11.0.1(@azure/core-client@1.10.1))(typebox@1.1.33)(valibot@1.3.1(typescript@6.0.3))(zod@4.4.3)
+        version: 1.0.0-rc.2(@sinclair/typebox@0.34.49)(@types/better-sqlite3@7.6.13)(@types/mssql@9.1.11(@azure/core-client@1.10.1))(better-sqlite3@12.9.0)(expo-sqlite@55.0.16(expo@55.0.23)(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6))(mssql@11.0.1(@azure/core-client@1.10.1))(typebox@1.1.33)(valibot@1.3.1(typescript@6.0.3))(zod@4.4.3)
       nanoid:
         specifier: ^5.1.11
         version: 5.1.11
@@ -8447,6 +8450,9 @@ packages:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
 
+  await-lock@2.2.2:
+    resolution: {integrity: sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw==}
+
   axios@1.16.0:
     resolution: {integrity: sha512-6hp5CwvTPlN2A31g5dxnwAX0orzM7pmCRDLnZSX772mv8WDqICwFjowHuPs04Mc8deIld1+ejhtaMn5vp6b+1w==}
 
@@ -10507,6 +10513,13 @@ packages:
     resolution: {integrity: sha512-WI5T0dutiZhxsqlF+jhEP4JRpQNILLlP8IpmKehsnV53Cncv6AQrKE7y1sOWwDyC2m2GBufZ/Vwam1RMt2EfmA==}
     peerDependencies:
       expo: '*'
+
+  expo-sqlite@55.0.16:
+    resolution: {integrity: sha512-v6EIL4ygqWt/+ZfI76jIIv+IIaU8PnWPNjkmIN95vEQgh0FrWqzwssqe5ffQmm79kIfqIPTtAgTdl8MuZv88gg==}
+    peerDependencies:
+      expo: '*'
+      react: ^19.2.6
+      react-native: '*'
 
   expo-status-bar@55.0.6:
     resolution: {integrity: sha512-ijOUptfdiqYt7rObZ6jrPQ8sE5YN/8MxKCIJx0b7TY4nGkSJxhPIxeoW4GXcXCA8mTQ9PiOHH/ThLZgRVZvUlQ==}
@@ -22920,6 +22933,8 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
+  await-lock@2.2.2: {}
+
   axios@1.16.0:
     dependencies:
       follow-redirects: 1.16.0
@@ -24215,12 +24230,13 @@ snapshots:
       get-tsconfig: 4.13.7
       jiti: 2.6.1
 
-  drizzle-orm@1.0.0-rc.2(@sinclair/typebox@0.34.49)(@types/better-sqlite3@7.6.13)(@types/mssql@9.1.11(@azure/core-client@1.10.1))(better-sqlite3@12.9.0)(mssql@11.0.1(@azure/core-client@1.10.1))(typebox@1.1.33)(valibot@1.3.1(typescript@6.0.3))(zod@4.4.3):
+  drizzle-orm@1.0.0-rc.2(@sinclair/typebox@0.34.49)(@types/better-sqlite3@7.6.13)(@types/mssql@9.1.11(@azure/core-client@1.10.1))(better-sqlite3@12.9.0)(expo-sqlite@55.0.16(expo@55.0.23)(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6))(mssql@11.0.1(@azure/core-client@1.10.1))(typebox@1.1.33)(valibot@1.3.1(typescript@6.0.3))(zod@4.4.3):
     optionalDependencies:
       '@sinclair/typebox': 0.34.49
       '@types/better-sqlite3': 7.6.13
       '@types/mssql': 9.1.11(@azure/core-client@1.10.1)
       better-sqlite3: 12.9.0
+      expo-sqlite: 55.0.16(expo@55.0.23)(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)
       mssql: 11.0.1(@azure/core-client@1.10.1)
       typebox: 1.1.33
       valibot: 1.3.1(typescript@6.0.3)
@@ -25385,6 +25401,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
+
+  expo-sqlite@55.0.16(expo@55.0.23)(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6):
+    dependencies:
+      await-lock: 2.2.2
+      expo: 55.0.23(@babel/core@7.29.0)(@expo/dom-webview@55.0.6)(@expo/metro-runtime@55.0.11)(expo-router@55.0.14)(react-dom@19.2.6(react@19.2.6))(react-native-webview@13.16.1(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6))(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6))(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
+      react: 19.2.6
+      react-native: 0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6)
 
   expo-status-bar@55.0.6(react-native@0.83.9(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.14)(react@19.2.6))(react@19.2.6):
     dependencies:
