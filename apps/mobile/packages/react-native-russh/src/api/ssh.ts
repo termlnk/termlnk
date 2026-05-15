@@ -216,7 +216,7 @@ export function connect(opts: IConnectOptions): Promise<ISshConnection> {
     const security =
       opts.security.type === 'password'
         ? GeneratedRussh.Security.Password.new({ password: opts.security.password })
-        : GeneratedRussh.Security.Key.new({ privateKeyContent: opts.security.privateKey });
+        : GeneratedRussh.Security.Key.new({ privateKeyContent: normalizePrivateKey(opts.security.privateKey) });
 
     const conn = await GeneratedRussh.connect(
       {
@@ -270,4 +270,12 @@ export function validatePrivateKey(
 
 export function uniffiInitAsync(): Promise<void> {
   return callRusshAsync(() => GeneratedRussh.uniffiInitAsync());
+}
+
+function normalizePrivateKey(value: string): string {
+  let normalized = value.replace(/\r\n/g, '\n');
+  if (!normalized.includes('\n') && normalized.includes('\\n')) {
+    normalized = normalized.replace(/\\n/g, '\n');
+  }
+  return normalized;
 }

@@ -3,7 +3,8 @@ use std::sync::{Arc, Weak};
 
 use tokio::sync::{broadcast, Mutex as AsyncMutex};
 
-use russh::client::{Config, Handle as ClientHandle};
+use russh::client::{AuthResult, Config, Handle as ClientHandle};
+use russh::keys::HashAlg;
 use russh::keys::PrivateKeyWithHashAlg;
 use russh::{self, client, ChannelMsg, Disconnect};
 
@@ -174,6 +175,94 @@ impl fmt::Debug for SshConnection {
             .field("info.created_at_ms", &self.info.created_at_ms)
             .field("info.connected_at_ms", &self.info.connected_at_ms)
             .finish()
+    }
+}
+
+async fn authenticate_with_private_key(
+    handle: &mut ClientHandle<NoopHandler>,
+    username: &str,
+    private_key_content: &str,
+) -> Result<AuthResult, SshError> {
+    // Normalize and parse using shared helper so RN-validated keys match runtime parsing.
+    let (_canonical, parsed) = normalize_openssh_ed25519_seed_key(private_key_content)?;
+    let key = Arc::new(parsed);
+    let key_algorithm = key.algorithm().to_string();
+    let fingerprint_sha256 = format!(
+        "{}",
+        key.public_key()
+            .fingerprint(russh::keys::ssh_key::HashAlg::Sha256)
+    );
+
+    if !key.algorithm().is_rsa() {
+        let auth_result = handle
+            .authenticate_publickey(username.to_string(), PrivateKeyWithHashAlg::new(key, None))
+            .await?;
+        if matches!(auth_result, AuthResult::Success) {
+            return Ok(auth_result);
+        }
+        return Err(SshError::Auth(format!(
+            "publickey rejected: key_algorithm={key_algorithm}, key_fingerprint={fingerprint_sha256}, result={auth_result:?}"
+        )));
+    }
+
+    let mut last_auth_result = None;
+    let mut attempted = Vec::new();
+    for hash_alg in rsa_auth_hash_candidates(handle).await? {
+        attempted.push(describe_rsa_hash_alg(hash_alg).to_string());
+        let auth_result = handle
+            .authenticate_publickey(
+                username.to_string(),
+                PrivateKeyWithHashAlg::new(key.clone(), hash_alg),
+            )
+            .await?;
+        if matches!(auth_result, AuthResult::Success) {
+            return Ok(auth_result);
+        }
+        last_auth_result = Some(auth_result);
+    }
+
+    if let Some(auth_result) = last_auth_result {
+        return Err(SshError::Auth(format!(
+            "publickey rejected: key_algorithm={key_algorithm}, key_fingerprint={fingerprint_sha256}, attempted_signature_algorithms={}, result={auth_result:?}",
+            attempted.join(",")
+        )));
+    }
+
+    let auth_result = handle
+        .authenticate_publickey(username.to_string(), PrivateKeyWithHashAlg::new(key, None))
+        .await?;
+    if matches!(auth_result, AuthResult::Success) {
+        return Ok(auth_result);
+    }
+    Err(SshError::Auth(format!(
+        "publickey rejected: key_algorithm={key_algorithm}, key_fingerprint={fingerprint_sha256}, attempted_signature_algorithms=ssh-rsa, result={auth_result:?}"
+    )))
+}
+
+async fn rsa_auth_hash_candidates(
+    handle: &ClientHandle<NoopHandler>,
+) -> Result<Vec<Option<HashAlg>>, SshError> {
+    Ok(rsa_auth_hash_candidates_from_server_sig_algs(
+        handle.best_supported_rsa_hash().await?,
+    ))
+}
+
+fn rsa_auth_hash_candidates_from_server_sig_algs(
+    server_sig_alg: Option<Option<HashAlg>>,
+) -> Vec<Option<HashAlg>> {
+    match server_sig_alg {
+        Some(Some(hash_alg)) => vec![Some(hash_alg)],
+        Some(None) => vec![None],
+        None => vec![Some(HashAlg::Sha512), Some(HashAlg::Sha256)],
+    }
+}
+
+fn describe_rsa_hash_alg(hash_alg: Option<HashAlg>) -> &'static str {
+    match hash_alg {
+        Some(HashAlg::Sha512) => "rsa-sha2-512",
+        Some(HashAlg::Sha256) => "rsa-sha2-256",
+        Some(_) => "rsa-sha2-unknown",
+        None => "ssh-rsa",
     }
 }
 
@@ -351,9 +440,7 @@ impl SshConnection {
         Ok(session)
     }
 
-    pub async fn start_sftp(
-        &self,
-    ) -> Result<Arc<crate::ssh_sftp::SftpSession>, SshError> {
+    pub async fn start_sftp(&self) -> Result<Arc<crate::ssh_sftp::SftpSession>, SshError> {
         install_panic_hook_once();
         clear_last_panic();
         let client_handle = self.client_handle.lock().await;
@@ -459,11 +546,7 @@ pub async fn connect(options: ConnectOptions) -> Result<Arc<SshConnection>, SshE
         Security::Key {
             private_key_content,
         } => {
-            // Normalize and parse using shared helper so RN-validated keys match runtime parsing.
-            let (_canonical, parsed) = normalize_openssh_ed25519_seed_key(private_key_content)?;
-            let pk_with_hash = PrivateKeyWithHashAlg::new(Arc::new(parsed), None);
-            handle
-                .authenticate_publickey(details.username.clone(), pk_with_hash)
+            authenticate_with_private_key(&mut handle, &details.username, private_key_content)
                 .await?
         }
     };
@@ -496,4 +579,33 @@ pub async fn connect(options: ConnectOptions) -> Result<Arc<SshConnection>, SshE
     // Initialize weak self reference.
     *conn.self_weak.lock().await = Arc::downgrade(&conn);
     Ok(conn)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rsa_auth_hash_candidates_use_server_choice_when_available() {
+        let candidates = rsa_auth_hash_candidates_from_server_sig_algs(Some(Some(HashAlg::Sha256)));
+
+        assert_eq!(candidates, vec![Some(HashAlg::Sha256)]);
+    }
+
+    #[test]
+    fn rsa_auth_hash_candidates_fallback_to_sha2_when_server_sig_algs_missing() {
+        let candidates = rsa_auth_hash_candidates_from_server_sig_algs(None);
+
+        assert_eq!(
+            candidates,
+            vec![Some(HashAlg::Sha512), Some(HashAlg::Sha256)]
+        );
+    }
+
+    #[test]
+    fn rsa_auth_hash_candidates_keep_legacy_when_server_only_supports_legacy() {
+        let candidates = rsa_auth_hash_candidates_from_server_sig_algs(Some(None));
+
+        assert_eq!(candidates, vec![None]);
+    }
 }
