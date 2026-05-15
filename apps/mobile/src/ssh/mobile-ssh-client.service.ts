@@ -3,32 +3,17 @@
  *
  * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
  * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
  */
 
-// React Native side fat-client SSH abstraction, P6.9-7 re-implementation.
-// Wraps @termlnk/react-native-russh (Rust russh + russh-sftp via
-// uniffi-bindgen-react-native). Replaces the P6.3 NMSSH/JSch bridge that
-// P6.9-1 deleted.
-//
-// Contract surface deliberately mirrors the original IMobileSshSession so
-// MobileSshSessionManager / terminal.tsx / sftp.tsx reconnect without
-// touching their state-machine logic. The visible deltas are:
-//   * server-key TOFU runs as part of connect() (rejects on mismatch).
-//   * SFTP is opened via connection.startSftp() on the same SSH session,
-//     so MobileSftpClientService can take an ISshConnection rather than a
-//     separate SSHClient — no second TCP handshake.
-//   * exec() throws — russh's high-level surface only exposes start_shell;
-//     callers should run `cmd; exit` inside the shell when they need
-//     one-shot output. v1 mobile UI doesn't call exec(); v1.1 can add an
-//     ad-hoc shell channel for it if needed.
-
-import type {
-  ISftpSession,
-  ISshConnection,
-  ISshShell,
-  ITerminalChunk,
-  ShellListenerEvent,
-} from '@termlnk/react-native-russh';
+import type { ISftpSession, ISshConnection, ISshShell, ITerminalChunk, ShellListenerEvent } from '@termlnk/react-native-russh';
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { RnRussh } from '@termlnk/react-native-russh';
@@ -85,7 +70,7 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
 
   constructor(
     readonly host: string,
-    private readonly _connection: ISshConnection,
+    private readonly _connection: ISshConnection
   ) {
     super();
   }
@@ -103,7 +88,7 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
 
   async exec(_command: string): Promise<string> {
     throw new Error(
-      'MobileSshSession.exec() is not supported by the russh backend — use startShell() + writeToShell() and parse the output stream.',
+      'MobileSshSession.exec() is not supported by the russh backend — use startShell() + writeToShell() and parse the output stream.'
     );
   }
 
@@ -212,13 +197,13 @@ export class MobileSshClientService extends Disposable {
         const decision = await evaluateServerKey(
           options.hostId,
           info.algorithm,
-          info.fingerprintSha256,
+          info.fingerprintSha256
         );
         if (decision.kind === 'mismatch') {
           throw new Error(
             `Host key for ${info.host}:${info.port} changed since first use. ` +
               `Stored ${decision.stored.algorithm} ${decision.stored.fingerprintSha256}; ` +
-              `presented ${decision.presented.algorithm} ${decision.presented.fingerprintSha256}.`,
+              `presented ${decision.presented.algorithm} ${decision.presented.fingerprintSha256}.`
           );
         }
         return true;
