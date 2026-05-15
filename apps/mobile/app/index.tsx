@@ -15,7 +15,7 @@
 
 import { AuthState } from '@termlnk/auth';
 import { Redirect, Stack } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { useAuthService, useAuthState } from '../src/core/core-context';
 
 export default function Index() {
@@ -24,35 +24,31 @@ export default function Index() {
 
   if (!authService) {
     return (
-      <View style={styles.center}>
+      <View className="flex-1 items-center justify-center bg-black px-6">
         <Stack.Screen options={{ title: 'Termlnk' }} />
-        <Text style={styles.title}>Termlnk</Text>
-        <Text style={styles.message}>
-          Cloud sync is not configured. Set EXPO_PUBLIC_CLOUD_BASE_URL or app.json
-          `extra.cloudBaseUrl` to point at a termlnk-server deployment.
+        <Text className="mb-3 text-[28px] font-semibold text-light-grey">
+          Termlnk
+        </Text>
+        <Text className="mt-2 text-center text-[14px] leading-5 text-grey-fg">
+          Cloud sync is not configured. Set EXPO_PUBLIC_CLOUD_BASE_URL or
+          app.json `extra.cloudBaseUrl` to point at a termlnk-server deployment.
         </Text>
       </View>
     );
   }
 
   if (state === AuthState.Authenticated) {
-    return <Redirect href="/hosts" />;
+    return <Redirect href="/(tabs)/hosts" />;
   }
 
   if (state === AuthState.Authenticating) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#3b82f6" />
-        <Text style={styles.message}>Signing in…</Text>
+      <View className="flex-1 items-center justify-center bg-black">
+        <ActivityIndicator color="#61afef" />
+        <Text className="mt-3 text-[14px] text-grey-fg">Signing in…</Text>
       </View>
     );
   }
 
   return <Redirect href="/login" />;
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#0a0a0a' },
-  title: { color: '#e5e7eb', fontSize: 28, fontWeight: '600', marginBottom: 12 },
-  message: { color: '#9ca3af', fontSize: 14, textAlign: 'center', marginTop: 12 },
-});

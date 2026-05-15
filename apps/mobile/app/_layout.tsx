@@ -14,14 +14,31 @@
  */
 
 import { Stack } from 'expo-router';
+
 import { StatusBar } from 'expo-status-bar';
 import { CoreProvider } from '../src/core/core-context';
+import '../global.css';
+
+// Base46 onedark palette — mirrors values from tailwind.config.js so the native
+// header chrome (which can't read Tailwind classes directly) matches the rest
+// of the app. Keep these literal here; the navigation layer is the only place
+// outside JSX that needs raw hex values.
+const BG = '#1e222a';
+const FG = '#6f737b';
 
 export default function RootLayout() {
   return (
     <CoreProvider>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerStyle: { backgroundColor: '#0a0a0a' }, headerTintColor: '#e5e7eb' }} />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: BG },
+          headerTintColor: FG,
+          contentStyle: { backgroundColor: BG },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
     </CoreProvider>
   );
 }
