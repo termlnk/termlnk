@@ -69,8 +69,8 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   const core = new Core(defaultOptions);
   core.registerPlugin(RPCPlugin);
   core.registerPlugin(RPCClientPlugin);
-  // Auth/Sync UI mirrors the main process; views inject IAuthClientService with
-  // Quantity.OPTIONAL so AuthGate falls back to a placeholder when cloudBaseUrl is unset.
+  // Auth/Sync views resolve IAuthClientService as OPTIONAL so AuthGate falls back to a
+  // placeholder when cloudBaseUrl is unset.
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthUIPlugin);
   core.registerPlugin(SyncPlugin);

@@ -102,7 +102,7 @@ export default function Login() {
           <Text className="mt-3 text-[12px] text-blue">
             {biometric.displayName}
             {' '}
-            unlock will be available after first sign-in. (v1.1)
+            unlock will be available after first sign-in.
           </Text>
         )}
 

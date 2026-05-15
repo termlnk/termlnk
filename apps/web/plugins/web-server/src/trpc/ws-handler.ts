@@ -19,8 +19,8 @@ import type { Buffer } from 'node:buffer';
 import type { IncomingMessage } from 'node:http';
 import type { Socket } from 'node:net';
 import type { AnyRouter } from './types';
-import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { TRPCError } from '@trpc/server';
+import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { WebSocketServer } from 'ws';
 
 export interface ICreateTRPCWSHandlerOptions {
@@ -55,22 +55,11 @@ export interface ITRPCWSHandlerHandle {
   close(): Promise<void>;
 }
 
-/**
- * Expose the appRouter as a WebSocket subscription endpoint.
- *
- * Sibling of `createTRPCStandaloneHandler`: HTTP serves query/mutation, WS serves
- * subscriptions. Same router, two transports — tRPC v11 makes business code
- * transport-agnostic.
- *
- * The factory does NOT subscribe to `server.upgrade` itself. Path routing is the
- * owning service's responsibility (`WebServerService`), so multiple WS subsystems
- * (e.g. shared-terminal relay in Phase 5) can coexist on a single port without
- * each registering an `upgrade` listener and racing.
- *
- * Authentication runs at upgrade time before the socket is handed to the
- * WebSocketServer, so unauthenticated peers cannot waste resources establishing
- * a half-open WS just to be told "no" on the first subscription frame.
- */
+// Expose the appRouter as a WebSocket subscription endpoint. The factory does NOT
+// subscribe to server.upgrade itself — path routing is the owning service's job, so
+// multiple WS subsystems can coexist on a single port without racing upgrade
+// listeners. Authentication runs at upgrade time before handing the socket to the
+// WebSocketServer, so unauthenticated peers do not waste resources.
 export function createTRPCWSHandler(
   opts: ICreateTRPCWSHandlerOptions
 ): ITRPCWSHandlerHandle {

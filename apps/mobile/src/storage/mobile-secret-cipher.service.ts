@@ -19,19 +19,11 @@ import { base64ToBytes, bytesToBase64 } from '@termlnk/auth';
 import { createIdentifier } from '@termlnk/core';
 import { deleteItemAsync, getItemAsync, setItemAsync, WHEN_UNLOCKED_THIS_DEVICE_ONLY } from 'expo-secure-store';
 
-// Device-bound encryption service for the mobile host repository. The 32-byte DEK lives
-// in iOS Keychain / Android Keystore via expo-secure-store (WHEN_UNLOCKED_THIS_DEVICE_ONLY)
-// and never crosses the network. The frame format is `tmlocal1:` + 24-byte XChaCha20
-// nonce + Poly1305-tagged ciphertext — distinct prefix from the sync layer's `tmsync1:`
-// to prevent a misrouted blob from being silently decrypted with the wrong key.
-//
-// Symmetry with the desktop SecretCipher service: both bind secrets to the device,
-// neither participates in cloud sync. The cloud round-trip is handled by SyncCryptoService
-// using the user's master key; this service only encrypts what lives on disk locally.
-//
-// Biometric hook: expo-secure-store's `requireAuthentication: true` would gate every
-// DEK read on Touch ID / Face ID. v1 leaves it disabled per the plan; flipping to true
-// is a one-line change.
+// Device-bound encryption for the mobile host repository. The 32-byte DEK lives in iOS
+// Keychain / Android Keystore via expo-secure-store (WHEN_UNLOCKED_THIS_DEVICE_ONLY) and
+// never crosses the network. Frame format: `tmlocal1:` + 24-byte XChaCha20 nonce +
+// Poly1305-tagged ciphertext. Distinct prefix from the sync layer's `tmsync1:` prevents
+// a misrouted blob from being silently decrypted with the wrong key.
 
 const DEK_KEY = 'termlnk.mobile.host-dek-v1';
 const FRAME_PREFIX = 'tmlocal1:';
@@ -119,7 +111,7 @@ export class MobileSecretCipherService implements IMobileSecretCipherService {
     crypto.getRandomValues(bytes);
     await setItemAsync(DEK_KEY, bytesToBase64(bytes), {
       keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-      // requireAuthentication: false  // v1 leaves this off; v1.1 flips to true for biometric gating.
+      // Set requireAuthentication: true to gate every DEK read on Touch ID / Face ID.
     });
     this._dek = bytes;
     return bytes;

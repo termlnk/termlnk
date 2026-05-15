@@ -71,11 +71,9 @@ function fromUniffiSshError(err: unknown): RusshError | null {
     });
   }
   if (SshError.Russh.instanceOf(err)) {
-    // The Rust side flattens every `russh::Error` and `std::io::Error` into
-    // this catch-all string. Heuristic classification on a free-form debug
-    // payload is brittle, so we keep `kind: 'unknown'` and preserve the full
-    // text — splitting the catch-all into typed variants belongs on the Rust
-    // side (TODO in rust/uniffi-russh/src/utils.rs).
+    // Rust flattens every `russh::Error` and `std::io::Error` into this catch-all
+    // string. Heuristic classification on a free-form debug payload is brittle, so
+    // we keep `kind: 'unknown'` and preserve the full text.
     const inner = innerString(err);
     return new RusshError('unknown', inner ?? 'SSH error', { cause: err });
   }

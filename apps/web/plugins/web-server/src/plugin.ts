@@ -27,32 +27,15 @@ import { IWebSessionService, WebSessionService } from './services/web-session.se
 
 export const WEB_SERVER_PLUGIN_NAME = 'WEB_SERVER_PLUGIN';
 
-/**
- * WebServerPlugin — HTTP/WS entry point for the termlnk-web process.
- *
- * Mirrors ElectronMainPlugin in shape: both depend on RPCServerPlugin and only
- * differ in transport. Electron exposes the router over IPC; web exposes it
- * over Node http with the tRPC standalone HTTP adapter plus a WS adapter.
- *
- * Caller responsibilities:
- * 1. Pass `staticRoot` / `port` / TLS material via plugin config.
- * 2. **Must** override `IWebServerRouterProvider` to supply the appRouter.
- *    The package is intentionally agnostic about the router shape so
- *    apps/web/server can wire its own composition at the edge.
- * 3. Provide a master password through `masterPassword*` config (literal /
- *    file path / env var name). Browser never sees the master password —
- *    deployer-supplied secrets are the only entry point.
- *
- * In scope for P7.1a/b/c:
- * - HTTP server lifecycle (start / stop).
- * - tRPC standalone HTTP adapter (query / mutation).
- * - tRPC WebSocket subscription adapter.
- * - Static SPA hosting (dist + history fallback).
- * - Master-key holder seeded from env / file (Argon2id derives master key +
- *   sub-keys + access verifier; all in process memory, never persisted).
- * - Browser login / logout / status endpoints under `/__termlnk-web/*` with
- *   session cookie + idle 30-minute eviction.
- */
+// HTTP/WS entry point for the termlnk-web process. Mirrors ElectronMainPlugin in shape:
+// both depend on RPCServerPlugin and only differ in transport (IPC vs Node http+ws).
+//
+// Caller responsibilities:
+//   1. Pass `staticRoot` / `port` / TLS material via plugin config.
+//   2. Override IWebServerRouterProvider to supply the appRouter — the package is
+//      intentionally router-shape agnostic.
+//   3. Provide a master password via `masterPassword*` config (literal/file/env). The
+//      browser never sees it; deployer-supplied secrets are the only entry point.
 @DependentOn(RPCServerPlugin)
 export class WebServerPlugin extends Plugin {
   static override pluginName = WEB_SERVER_PLUGIN_NAME;
@@ -81,6 +64,7 @@ export class WebServerPlugin extends Plugin {
       // override mechanism silently drops the binding because it only
       // replaces existing dependencies.
       [IWebServerRouterProvider, {
+        // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
         useFactory: () => {
           throw new Error('[WebServerPlugin] IWebServerRouterProvider was not overridden in plugin config — the edge process must inject the appRouter via `override: [[IWebServerRouterProvider, { useValue: { getRouter: () => appRouter } }]]`.');
         },

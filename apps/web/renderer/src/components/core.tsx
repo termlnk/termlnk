@@ -52,19 +52,8 @@ export interface ICreateTermlnkConfig extends ICoreConfig {
   terminalUIConfig?: ITerminalUIConfig;
 }
 
-// Mirrors apps/desktop/renderer/src/components/core.tsx, with three swaps
-// driven by cloud-sync-architecture.md §7.2.3 / §7.2.4:
-// 1. Drop ElectronPlugin / ElectronRendererPlugin — those rely on Electron
-//    preload bridges that do not exist in the browser.
-// 2. Add WebRendererPlugin, which registers WebRPCClientService (httpBatchLink
-//    + wsLink instead of ipcLink), a Noop window manager, and a real
-//    WebUpdaterService that polls GitHub Releases for "new version available"
-//    hints (download / install rejected — operators update by pulling a new
-//    docker image). UIPlugin's UpdaterUIController picks up that binding and
-//    renders the sidebar button + dialog with the same components used on
-//    desktop.
-// 3. Skip island plugins entirely — the dynamic-island secondary window is an
-//    Electron-only concept; the web SPA has only the main workbench surface.
+// Browser counterpart to apps/desktop/renderer's core.tsx: drops Electron and island
+// plugins, adds WebRendererPlugin (HTTP/WS RPC, Noop window manager, GitHub-poll updater).
 export function createCore(ref: string | HTMLElement, options?: Partial<ICreateTermlnkConfig>) {
   const {
     terminalUIConfig,
@@ -83,11 +72,9 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   const core = new Core(defaultOptions);
   core.registerPlugin(RPCPlugin);
   core.registerPlugin(RPCClientPlugin);
-  // Register NetworkPlugin so HTTPService is available for browser-side
-  // direct HTTP calls (WebUpdaterService GitHub poll, WebShell session
-  // checks). The browser SPA leaves IFetchProvider on its DefaultFetchProvider
-  // — proxy injection is a node-only concern handled in the desktop main /
-  // server bootstrap.
+  // NetworkPlugin gives the browser HTTPService for direct HTTP (updater poll, shell
+  // session checks). Browser keeps the default IFetchProvider — proxy injection is
+  // node-only and handled in the server bootstrap.
   core.registerPlugin(NetworkPlugin, { useFetchImpl: true });
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthUIPlugin);

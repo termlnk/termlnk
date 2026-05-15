@@ -18,18 +18,10 @@ import { HttpRequestError } from '@termlnk/auth';
 import { addNotificationReceivedListener, addNotificationResponseReceivedListener, getExpoPushTokenAsync, getPermissionsAsync, requestPermissionsAsync, setNotificationHandler } from 'expo-notifications';
 import { Platform } from 'react-native';
 
-// Wraps Expo Push: permission + token lookup + POST /v1/push/register. Designed for the
-// mobile app to call once on login success (post-token) and again whenever the OS hands
-// us a refreshed device token. Logout calls deregister() so the server stops fanning
-// invites to a phone that just changed accounts.
-//
-// Why Expo Push Service rather than direct APNs/FCM:
-//   - Expo Push tokens (`ExponentPushToken[...]`) are a single string that works on
-//     both platforms; the server fan-out can stay agnostic until the v1.x maturity
-//     bump introduces a direct APNs/FCM bridge for higher delivery guarantees.
-//   - expo-notifications already brokers the OS permission prompt + token rotation,
-//     so we do not have to bind the lower-level NotificationCenter / FirebaseMessaging
-//     bridges manually.
+// Wraps Expo Push: permission + token lookup + POST /push/register. The Expo token works
+// on iOS and Android, and expo-notifications already brokers the OS permission prompt +
+// token rotation, so the server fan-out can stay platform-agnostic. Called on login and
+// again on OS token refresh; logout deregisters so the server stops fanning invites.
 
 export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined';
 
@@ -165,8 +157,8 @@ export class PushNotificationService {
       body: JSON.stringify({ deviceToken: this._registeredToken }),
     });
     if (!response.ok) {
-      // Surface deregister failures so the caller can log/retry — the previous best-effort
-      // swallow meant the server kept fanning invites to a phone that thought it logged out.
+      // Surface failures so the caller can retry — silent failure would keep the server
+      // fanning invites to a phone that thought it logged out.
       const text = await response.text().catch(() => '');
       throw new HttpRequestError(`DELETE ${url}`, response.status, response.statusText, text);
     }

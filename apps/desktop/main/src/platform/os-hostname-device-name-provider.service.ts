@@ -16,9 +16,8 @@
 import type { IDeviceNameProvider } from '@termlnk/auth';
 import { hostname } from 'node:os';
 
-// Electron main binding for IDeviceNameProvider. Lives in the app layer (mirrors
-// apps/mobile/src/platform/expo-device-name-provider.service.ts) so @termlnk/auth-core
-// stays free of node:* imports and remains loadable from React Native / browser bundlers.
+// Electron-main binding for IDeviceNameProvider; lives in the app layer so auth-core
+// stays free of node:* imports.
 export class OsHostnameDeviceNameProvider implements IDeviceNameProvider {
   getName(): string {
     return hostname();

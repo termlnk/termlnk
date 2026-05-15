@@ -13,22 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-// Mobile shell resumption strategy: when iOS backgrounds the app for >30s the TCP
-// SSH channel goes away, but the user's shell state should not. tmux / screen on the
-// remote side keeps a detached session alive across reconnects.
-//
-// On every SSH shell start we run an idempotent command that:
-//   1. Detects tmux availability — `command -v tmux` exits 0 when found.
-//   2. `tmux new-session -A -s NAME` attaches if the named session exists, else creates
-//      it. The `-A` flag is what gives us the "resume where I left off" UX.
-//   3. Falls back to `screen -RR NAME` (reattach, reconnect detached).
-//   4. Final fallback: plain login shell. We do NOT print a warning here — the user can
-//      see in the UI whether `IShellResumptionState.kind === 'plain'`.
-//
-// Why not `exec tmux ...`: replacing the SSH shell process means SSH session dies the
-// moment the user detaches tmux. Running tmux as a child preserves the SSH channel as
-// a thin wrapper around the tmux client; exit drops back to bash, then SSH closes
-// cleanly.
+// Mobile shell resumption. iOS backgrounds drop the SSH channel after ~30s, so we wrap
+// the remote shell in `tmux new-session -A` (with `screen -RR` fallback) to keep the
+// user's shell state alive across reconnects. We deliberately run tmux as a child, not
+// via `exec`: replacing the SSH shell would let detach kill the SSH session, while a
+// child wrapper lets detach return to bash and exit cleanly.
 
 export interface IShellResumptionOptions {
   readonly hostId: string;
@@ -70,10 +59,9 @@ export function buildShellResumptionCommand(options: IShellResumptionOptions): I
   return { command, sessionName };
 }
 
-// Result of a remote probe — populated by the UI after observing the first shell
-// output. P6.4 ships the *command* and a name; classifying the actual remote state
-// (which binary won) is best done by parsing PS1 / the user's prompt later, since the
-// SSH lib only surfaces stdout chunks.
+// Result of the remote probe — populated by the UI after observing the first shell
+// output. Classifying which binary actually attached requires parsing PS1; this layer
+// only emits the command + name.
 export type ShellResumptionKind = 'tmux' | 'screen' | 'plain';
 
 export interface IShellResumptionState {

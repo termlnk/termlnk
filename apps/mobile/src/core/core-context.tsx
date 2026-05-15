@@ -39,9 +39,8 @@ const CLIENT_ID = 'mobile-app';
 
 const CoreContext = createContext<ICoreContextValue | null>(null);
 
-// Single Core for the app lifetime. React StrictMode mounts effects twice in dev — we
-// gate against re-creation by stashing the instance in module scope, then dispose on
-// the genuine unmount. Expo Router never unmounts the root layout outside hot reload.
+// Single Core for the app lifetime; stashed in module scope so StrictMode's double-mount
+// in dev does not re-create it.
 let _moduleCore: Core | null = null;
 
 export function CoreProvider({ children }: { children: ReactNode }): ReactNode {
@@ -56,7 +55,7 @@ export function CoreProvider({ children }: { children: ReactNode }): ReactNode {
     return core.getInjector().get(IAuthServiceId, Quantity.OPTIONAL) ?? null;
   }, [core]);
 
-  // Lazy: only built when a screen actually wants the synced hosts. Stored on the
+  // Lazy: built when a screen first asks for the synced hosts, then memoised on the
   // CoreProvider closure so it survives across screens.
   const value = useMemo<ICoreContextValue>(() => {
     let syncPull: MobileSyncPullService | null = null;
@@ -104,8 +103,6 @@ export function useAuthService(): IAuthService | null {
   return useCoreContext().authService;
 }
 
-// Subscribes once on mount; emits the latest value through useState. The observable is
-// stable because the Core / auth service singleton never re-creates per render.
 function useObservableValue<T>(observable$: Observable<T> | undefined, initial: T): T {
   const [value, setValue] = useState<T>(initial);
   useEffect(() => {
@@ -128,10 +125,9 @@ export function useCurrentUser(): IUserAccount | null {
   return useObservableValue(auth?.currentUser$, null);
 }
 
-// Resolves the singleton RecentSessionsRepository from the DI container. Calling
-// `.ready()` is the caller's responsibility — for Recent tab the screen does it
-// once on mount; for terminal/sftp screens the touch() call implicitly opens
-// the DB through the same SQLite singleton.
+// Resolves the singleton RecentSessionsRepository; `.ready()` is the caller's
+// responsibility (the Recent tab calls it on mount; other screens implicitly open the
+// DB via touch()).
 export function useRecentSessionsRepository() {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IRecentSessionsRepository), [core]);

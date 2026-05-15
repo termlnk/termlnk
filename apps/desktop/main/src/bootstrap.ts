@@ -83,16 +83,13 @@ loadDotenv();
 // Must run before any child-process spawning (PTY, MCP stdio, etc.)
 fixProcessPath();
 
-// Single-instance lock — Windows/Linux fork a new process on each launch
-// while macOS LaunchServices already deduplicates GUI launches; the lock
-// covers CLI launches uniformly. Must run before app.whenReady().
-// SingleInstanceController handles the 'second-instance' event.
+// Must run before app.whenReady(); covers Windows/Linux fork-per-launch and CLI launches
+// uniformly (macOS LaunchServices already dedupes GUI launches).
 if (!app.requestSingleInstanceLock()) {
   app.exit(0);
 }
 
-// GPU acceleration & rendering optimizations.
-// These must be set before app.whenReady() per Chromium requirements.
+// Must be set before app.whenReady() per Chromium requirements.
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -134,11 +131,9 @@ const configDir = join(homedir(), '.config', 'termlnk');
 const dbPath = join(configDir, 'termlnk.db');
 const dbAdaptor = new SQLiteAdaptor({ filename: dbPath, migrationsFolder });
 
-// Renderer dist directory (inside asar in production)
 const rendererDir = join(appRoot, '../renderer');
 
-// Production entry: app:// custom protocol URL served by the handler above.
-// Dev entry: localhost URL from ELECTRON_RENDERER_URL env.
+// Dev → ELECTRON_RENDERER_URL (localhost); prod → app:// served by the handler below.
 const url = is.dev && process.env.ELECTRON_RENDERER_URL ? process.env.ELECTRON_RENDERER_URL : 'app://termlnk/';
 
 const MIME_TYPES: Record<string, string> = {
@@ -198,7 +193,7 @@ function resolveCloudBaseUrl(): string | undefined {
   if (envValue && !app.isPackaged) {
     return envValue;
   }
-  return PRODUCTION_CLOUD_BASE_URL || undefined;
+  return PRODUCTION_CLOUD_BASE_URL;
 }
 
 function resolveRendererAssetPath(requestURL: string): string | null {
@@ -266,14 +261,9 @@ app.whenReady().then(async () => {
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
 
-  // NetworkPlugin: register before plugins that issue HTTP traffic so they
-  // resolve HTTPService against this binding. Override IFetchProvider with
-  // NodeProxyFetchProvider so all in-process HTTP (LLM provider sync, MCP
-  // registry, web fetch tool, future direct callers) routes through the
-  // user's configured HTTP/SOCKS5 proxy without each call site rebuilding
-  // the dispatcher. useFetchImpl forces the Fetch implementation in main
-  // process — XHR is browser-only and the default switch picks XHR when
-  // `window` is absent (the inverse of what we need here).
+  // Register before any plugin that issues HTTP traffic. NodeProxyFetchProvider routes
+  // every in-process HTTP call through the user's configured proxy. useFetchImpl forces
+  // Fetch in the main process — the default switch picks XHR when `window` is absent.
   core.registerPlugin(NetworkPlugin, {
     useFetchImpl: true,
     override: [
@@ -281,20 +271,15 @@ app.whenReady().then(async () => {
     ],
   });
 
-  // Auth/Sync contracts ship with Noop ITokenRefresher / ISyncTransportService;
-  // Phase 3 swaps in HTTP impls via plugin overrides.
-  // Cloud endpoint is wired through TERMLNK_CLOUD_BASE_URL (dev: .env / shell;
-  // packaged release: hard-code below). Empty/unset → cloud features stay offline
-  // (HttpAuthService unbound; AuthGate shows the "cloud unavailable" placeholder).
+  // Cloud endpoint: TERMLNK_CLOUD_BASE_URL (dev) or PRODUCTION_CLOUD_BASE_URL (packaged).
+  // Empty/unset → cloud stays offline and AuthGate shows the "unavailable" placeholder.
   const cloudBaseUrl = resolveCloudBaseUrl();
   core.getInjector().get(ILogService).log(`[Bootstrap] cloudBaseUrl = ${cloudBaseUrl ?? '(unset — cloud features disabled)'}`);
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl,
-    // powerMonitor-backed probe makes autoLockIdleMinutes effective on Electron;
-    // auth-core's NoopIdleProbe stays the default for pure Node hosts.
-    // OsHostnameDeviceNameProvider is the Electron-side adapter for IDeviceNameProvider
-    // (lives in ./platform/ so auth-core stays free of node:os imports).
+    // Electron-only overrides for IIdleProbe / IDeviceNameProvider; the adapters live in
+    // ./platform/ so auth-core stays free of node:os imports.
     override: [
       [IIdleProbe, { useClass: ElectronIdleProbe }],
       [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
@@ -311,11 +296,8 @@ app.whenReady().then(async () => {
     : join(process.resourcesPath, 'bundled-skills');
   const userSkillsDir = join(configDir, 'skills');
 
-  // Resolve the agent-hook-cli source bundle so HookLauncherService can
-  // copy the POSIX/Windows launchers + Node helper into ~/.config/termlnk/bin/.
-  // In dev, read straight from the monorepo; in prod, read from the vite-
-  // bundled copy inside the main process dist directory (see
-  // `copyAgentHookCliAssets` in configs/main.config.ts).
+  // Dev reads the agent-hook-cli source straight from the monorepo; prod reads from the
+  // vite-bundled copy inside the main process dist directory.
   const hookCliSrcDir = is.dev
     ? join(appRoot, '../../../../packages/agent-hook-cli/src')
     : join(appRoot, 'agent-hook-cli');
@@ -335,10 +317,9 @@ app.whenReady().then(async () => {
     ],
   });
 
-  // Dev-only: swap the real UpdaterService for a scripted mock when
-  // TERMLNK_MOCK_UPDATER is set, so the updater UI (button + dialog +
-  // progress bar) can be exercised without a packaged build. Accepts
-  // `normal`, `check-error`, `download-error`, or `no-update`.
+  // Dev-only: TERMLNK_MOCK_UPDATER swaps in a scripted mock so the updater UI can be
+  // exercised without a packaged build. Accepts `normal`, `check-error`, `download-error`,
+  // or `no-update`.
   const useMockUpdater = !app.isPackaged && process.env.TERMLNK_MOCK_UPDATER !== undefined;
   core.registerPlugin(ElectronMainPlugin, {
     url,
@@ -371,6 +352,7 @@ app.whenReady().then(async () => {
     }
   });
 }).catch((err) => {
+  // Bootstrap may fail before any ILogService is bound; stderr is the only sink left.
   console.error('[Bootstrap] Fatal initialization error:', err);
   app.exit(1);
 });

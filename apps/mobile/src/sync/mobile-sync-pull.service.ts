@@ -31,15 +31,13 @@ const NONCE_LEN = 24;
 const POLY1305_TAG_LEN = 16;
 const HOST_RESOURCE = 'host' as const;
 
-// Resource IDs that the mobile pull recognises. P6.1 only renders `host`; the
-// pull endpoint returns whatever the server has — we keep the others around so the
-// cursor still advances and a future P6.x can render them without re-pulling.
+// Mobile-recognised pull resources. Only `host` is rendered today; the others land in
+// the cursor stream so the cursor still advances and future surfaces can pick them up
+// without re-pulling.
 type MobileResourceId = 'host' | 'config' | 'ai_provider' | 'mcp_server' | 'skill';
 
-// Wire format mirrors @termlnk/sync IPullResponse + base64 payload encoding documented
-// inside packages/sync-core/src/services/http-transport.service.ts. Keep this typed
-// locally instead of importing @termlnk/sync — that package would drag in `nanoid` and
-// other contract-layer dependencies the mobile app does not need yet.
+// Locally-typed wire shape (mirrors the server contract). Avoids dragging @termlnk/sync
+// into the mobile bundle along with its desktop-only transitive deps.
 interface WirePatchItem {
   op: 'put' | 'del' | 'clear';
   resource: MobileResourceId;
@@ -54,9 +52,8 @@ interface WirePullResponse {
   lastMutationId: number;
 }
 
-// Shape of a decrypted host JSON from the sync payload. Mirrors the desktop's
-// IHostEntity row JSON — see HostSynchroniser._buildUpsertMutation. Any field we don't
-// recognise here flows through to MobileHostRepository as-is.
+// Decrypted host JSON from the sync payload. Unknown fields flow through to
+// MobileHostRepository as-is.
 interface WireHostEntity {
   id?: string;
   pid?: string;
@@ -90,10 +87,8 @@ export class MobileSyncPullService extends Disposable {
   // but flat — UI only ever wanted the hosts list.
   readonly hosts$: Observable<readonly IMobileHost[]>;
 
-  // Field declarations are separated from constructor parameters because
-  // babel-plugin-parameter-decorator cannot pair a parameter decorator with a TypeScript
-  // parameter property — see apps/mobile/babel.config.js. Non-decorated parameters share
-  // the same convention here for consistency.
+  // Field-declaration + body-assignment shape avoids parameter-property syntax, which
+  // babel-plugin-parameter-decorator cannot pair with parameter decorators.
   private readonly _config: IMobileSyncPullConfig;
   private readonly _masterKeyService: IMasterKeyService;
   private readonly _tokenStorage: ITokenStorageService;
@@ -178,7 +173,7 @@ export class MobileSyncPullService extends Disposable {
 
     for (const item of body.patch) {
       if (item.resource !== 'host') {
-        // Other resources land in the cursor stream but P6.1 only renders hosts.
+        // Only host rows are rendered today; other resources still advance the cursor.
         continue;
       }
       if (item.op === 'clear') {

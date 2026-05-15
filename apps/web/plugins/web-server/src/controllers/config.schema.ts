@@ -15,21 +15,16 @@
 
 import type { DependencyOverride } from '@termlnk/core';
 
-/**
- * Top-level config key for this plugin. Follows the "one key per plugin, use
- * subKey for persisted fields" rule. Phase 7.1a only carries runtime startup
- * params; Phase 7.1c will append persisted fields (SRP verifier, JWT secret
- * hash, ...) under subKeys on the same object.
- */
+// Top-level config key. Persisted fields live under subKeys on the same object.
 export const WEB_SERVER_PLUGIN_CONFIG_KEY = 'web-server.config';
 
-/** Path prefix for tRPC HTTP endpoint. Coexists with SPA / auth endpoints. */
+// Path prefix for tRPC HTTP endpoint.
 export const TRPC_HTTP_PATH_PREFIX = '/trpc';
 
-/** Path for tRPC WebSocket subscriptions (mounted in P7.1b). */
+// Path for tRPC WebSocket subscriptions.
 export const TRPC_WS_PATH = '/trpc-ws';
 
-/** Path prefix reserved for SRP6a + unlock-handshake endpoints (mounted in P7.1c). */
+// Path prefix reserved for the browser auth handshake.
 export const TERMLNK_WEB_AUTH_PATH_PREFIX = '/__termlnk-web';
 
 export interface IWebServerConfig {
@@ -100,8 +95,8 @@ export interface IWebServerConfig {
 
   /**
    * Idle window before a browser session is auto-evicted from the in-memory
-   * session map. Defaults to 30 minutes per cloud-sync-architecture.md §7.2.5.
-   * The master key itself is not affected — it lives with the process.
+   * session map. Defaults to 30 minutes. The master key itself is not affected —
+   * it lives with the process.
    */
   sessionIdleTimeoutMs?: number;
 
@@ -116,7 +111,7 @@ export interface IWebServerConfig {
 /** Default env var name to pull the master password from when masterPasswordFile / masterPassword aren't set. */
 export const DEFAULT_MASTER_PASSWORD_ENV = 'TERMLNK_MASTER_PASSWORD';
 
-/** Default browser-session idle timeout — 30 minutes (cloud-sync-architecture.md §7.2.5). */
+// Default browser-session idle timeout: 30 minutes.
 export const DEFAULT_SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 export const defaultPluginConfig: IWebServerConfig = {

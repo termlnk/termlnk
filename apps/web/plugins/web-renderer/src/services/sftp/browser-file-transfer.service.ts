@@ -17,28 +17,11 @@ import type { IBrowserFileTransferService } from '@termlnk/sftp-ui';
 import { Disposable, ILogService } from '@termlnk/core';
 import { IRPCClientService } from '@termlnk/rpc-client';
 
-/**
- * Browser-side IBrowserFileTransferService implementation.
- *
- * Wires the SFTP UI's "I want to ship a file between this browser tab and the
- * SFTP host" intent to two existing tRPC mutations:
- *
- * - upload: a hidden `<input type="file">` collects File objects, each is
- *   read into a base64 string via FileReader, then `sftp.writeFile` lands it
- *   at `<remoteDir>/<file.name>`.
- * - download: `sftp.readFile` returns a base64 payload; the browser turns it
- *   into a Blob, generates an Object URL, and triggers a programmatic
- *   `<a download>` click. URL.revokeObjectURL runs on the next animation
- *   frame so the browser has time to start the download.
- *
- * v1 size envelope: tRPC's HTTP transport encodes the whole payload in one
- * request, and Node's default body limit on the standalone adapter is 1 MiB.
- * Realistic SFTP files exceed that often, so this implementation pre-checks
- * file size and rejects with a clear message rather than letting the server
- * truncate silently. A streaming SFTP procedure unlocks larger payloads in a
- * follow-up — the contract on IBrowserFileTransferService stays the same.
- */
-const MAX_BYTES_PER_FILE = 4 * 1024 * 1024; // 4 MiB ceiling for v1
+// Browser-side IBrowserFileTransferService backed by sftp.writeFile / sftp.readFile.
+// tRPC's HTTP transport encodes the whole payload in one request and the standalone
+// adapter caps bodies at 1 MiB, so we pre-check size and reject loudly instead of
+// letting the server truncate silently.
+const MAX_BYTES_PER_FILE = 4 * 1024 * 1024;
 
 export class BrowserFileTransferService extends Disposable implements IBrowserFileTransferService {
   constructor(
@@ -58,7 +41,7 @@ export class BrowserFileTransferService extends Disposable implements IBrowserFi
     const uploaded: string[] = [];
     for (const file of files) {
       if (file.size > MAX_BYTES_PER_FILE) {
-        const message = `File "${file.name}" is ${formatBytes(file.size)}, exceeds the v1 ${formatBytes(MAX_BYTES_PER_FILE)} per-file ceiling. A streaming upload route lands in a follow-up.`;
+        const message = `File "${file.name}" is ${formatBytes(file.size)}, exceeds the ${formatBytes(MAX_BYTES_PER_FILE)} per-file ceiling.`;
         this._logService.warn(`[BrowserFileTransferService] ${message}`);
         throw new Error(message);
       }

@@ -49,20 +49,9 @@ const INITIAL_STATE: IWebServerStateSnapshot = {
   errorMessage: null,
 };
 
-/**
- * IWebServerService — Node http/https plus tRPC HTTP/WS adapters.
- *
- * Responsibilities:
- * - Start / stop the HTTP(S) server.
- * - Dispatch `/trpc/*` to the tRPC standalone HTTP handler (query/mutation).
- * - Dispatch upgrades on `/trpc-ws` to the tRPC WebSocket handler (subscription).
- * - Reject upgrades on any other path so unknown paths cannot hold sockets open.
- * - Forward everything else to IStaticFileService (SPA dist).
- * - Expose `state$` so UI / controllers can observe lifecycle.
- *
- * SRP6a master-password unlock + session cookie (P7.1c) plug in via
- * `mountRouteHandler(prefix, handler)` without changing this service.
- */
+// Node http/https + tRPC HTTP/WS adapters. Dispatches /trpc/* to the standalone handler,
+// /trpc-ws upgrades to the WS handler, everything else to IStaticFileService. Custom
+// handlers can be mounted via mountRouteHandler without modifying this service.
 export interface IWebServerService {
   readonly state$: Observable<IWebServerStateSnapshot>;
 
@@ -87,11 +76,9 @@ export interface IWebServerService {
   setRouter(router: AnyRouter): void;
 
   /**
-   * Mount a custom HTTP handler under a given path prefix (P7.1c uses this
-   * for `/__termlnk-web/login/*`, tests can mount health-check endpoints, ...).
-   * Handlers run in registration order before tRPC / static SPA. A handler
-   * returning `true` short-circuits the chain; `false` lets the request fall
-   * through.
+   * Mount a custom HTTP handler under a given path prefix. Handlers run in
+   * registration order before tRPC / static SPA. Returning `true` short-circuits
+   * the chain; `false` lets the request fall through.
    */
   mountRouteHandler(prefix: string, handler: IRouteHandler): void;
 
@@ -105,19 +92,8 @@ export interface IWebServerService {
 
 export const IWebServerService = createIdentifier<IWebServerService>('web-server.service');
 
-/**
- * Default IWebServerService implementation.
- *
- * Routing priority for HTTP requests:
- *   1. Custom `mountRouteHandler` handlers (e.g. P7.1c SRP6a endpoints).
- *   2. `/trpc/*` -> tRPC standalone HTTP handler.
- *   3. Anything else -> IStaticFileService (SPA dist + history fallback).
- *   4. 404 fallback.
- *
- * For HTTP `upgrade`:
- *   - `/trpc-ws` -> tRPC WebSocket handler.
- *   - Anything else -> `socket.destroy()` (immediate rejection).
- */
+// HTTP priority: custom handlers → /trpc/* → IStaticFileService → 404.
+// Upgrade priority: /trpc-ws → tRPC WS handler; anything else → socket.destroy().
 export class WebServerService extends Disposable implements IWebServerService {
   private readonly _state$ = new BehaviorSubject<IWebServerStateSnapshot>(INITIAL_STATE);
   readonly state$: Observable<IWebServerStateSnapshot> = this._state$.asObservable();
@@ -268,7 +244,7 @@ export class WebServerService extends Disposable implements IWebServerService {
       try {
         const pathname = this._extractPathname(req.url ?? '/');
 
-        // 1. Custom mounted handlers (P7.1c SRP6a endpoints, etc.).
+        // 1. Custom mounted handlers.
         for (const route of this._customRoutes) {
           if (this._pathMatchesPrefix(pathname, route.prefix)) {
             const handled = await route.handler(req, res);

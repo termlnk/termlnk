@@ -18,28 +18,16 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Inpu
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createCore } from './core';
 
-/**
- * WebShell — login gate for the termlnk-web SPA.
- *
- * The browser never holds a master password (architecture decision Δ30).
- * Instead the deployer injects the master password into the termlnk-web
- * server process via env / docker secrets; the browser presents a single
- * "access password" form that maps to the server's Argon2id verifier.
- * After /__termlnk-web/login succeeds, the server hands back an HttpOnly
- * session cookie and we mount the full Workbench (createCore + every UI
- * plugin), unchanged from the desktop renderer.
- *
- * State machine:
- *   loading       → first /__termlnk-web/status is in flight
- *   holder_error  → server has no master password configured / Argon2id
- *                   failed; deployer must fix env / secrets
- *   login_required→ holder unlocked, no valid session cookie yet
- *   authenticated → cookie valid; render Workbench
- *
- * The two transition events are (a) login success, which flips us straight
- * to authenticated; (b) Workbench teardown / explicit logout, which calls
- * /__termlnk-web/logout and flips us back to login_required.
- */
+// Login gate for the termlnk-web SPA. The browser never holds the master password —
+// the deployer injects it server-side, the browser only sees an "access password" that
+// maps to the server's Argon2id verifier. On login the server hands back an HttpOnly
+// session cookie and we mount the full Workbench.
+//
+// State machine:
+//   loading        — first /__termlnk-web/status is in flight
+//   holder_error   — server has no master password / Argon2id failed
+//   login_required — holder unlocked but no valid cookie yet
+//   authenticated  — cookie valid; render Workbench
 
 type ShellState =
   | { kind: 'loading' }
@@ -261,8 +249,8 @@ function Workbench({ onLogout }: IWorkbenchProps) {
     };
   }, []);
 
-  // Expose logout to a global hook so the UI plugins can wire a menu item
-  // in P7.8 without needing a fresh DI service. Cheap and reversible.
+  // Expose logout on a global hook so UI plugins can wire a menu item without a fresh
+  // DI service.
   useEffect(() => {
     (window as unknown as { __termlnkWebLogout?: () => void }).__termlnkWebLogout = onLogout;
     return () => {

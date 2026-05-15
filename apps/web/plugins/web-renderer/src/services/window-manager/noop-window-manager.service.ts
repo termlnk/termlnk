@@ -33,19 +33,9 @@ const DEFAULT_WINDOW_STATE: IWindowState = {
     : { x: 0, y: 0, width: 1280, height: 800 },
 };
 
-/**
- * No-op IWindowManagerService for browser deployments.
- *
- * In termlnk-web the browser tab IS the window — Electron's window
- * primitives (multi-window orchestration, vibrancy, opacity, always-on-top)
- * have no equivalent. We expose a single virtual window with id=1 so existing
- * UI plugins that read `getCurrentWindowId()` keep working, but any actual
- * mutation (minimize / maximize / setOpacity / ...) is silently ignored.
- *
- * This keeps the desktop renderer's `IWindowManagerService` consumers — like
- * the workbench title bar buttons — from crashing under DI; the web SPA may
- * choose to hide those buttons via capability flags in a later phase.
- */
+// Browser-side IWindowManagerService stub. The tab IS the window; expose a single virtual
+// window so UI consumers (`getCurrentWindowId`, title-bar buttons) still resolve, but
+// every mutation is a no-op.
 export class NoopWindowManagerService implements IWindowManagerService {
   readonly windowState$: Observable<Map<number, IWindowState>> = of(
     new Map([[VIRTUAL_WINDOW_ID, DEFAULT_WINDOW_STATE]])

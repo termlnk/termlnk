@@ -20,22 +20,9 @@ import { IWebSessionService } from '../services/web-session.service';
 import { createAuthRouteHandler } from '../trpc/auth-routes';
 import { TERMLNK_WEB_AUTH_PATH_PREFIX } from './config.schema';
 
-/**
- * Wires the master-key holder + session service + auth route handler into the
- * server lifecycle.
- *
- * Order on plugin onReady:
- *   1. Mount the auth handler under TERMLNK_WEB_AUTH_PATH_PREFIX so it short-
- *      circuits before the tRPC dispatcher even when the holder is still
- *      pending (so login UI loads even before the master password is sourced).
- *   2. Trigger holder initialization (Argon2id can take ~250ms — we do not
- *      block plugin.onReady on it; the server starts in `pending` state and
- *      tRPC procedures must guard with `getMasterKey()` calls).
- *
- * Failure of holder initialization flips state to 'error' but does NOT abort
- * the plugin chain — the auth `/status` endpoint still serves a clear error,
- * and the deployer can fix the env source and restart without rebuilding.
- */
+// Mounts the auth handler so the login UI loads even while the holder is still pending,
+// then fires holder.initialize() without blocking onReady. Holder failures flip the
+// state machine but never abort the plugin chain.
 export class AuthController extends Disposable {
   constructor(
     @Inject(IWebServerService) private readonly _webServerService: IWebServerService,

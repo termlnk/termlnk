@@ -19,21 +19,18 @@ import { Pressable, Text, View } from 'react-native';
 
 interface ParsedInvite {
   readonly inviteId: string;
-  // ephSecretB64 + capability are intentionally NOT surfaced in the UI even when
-  // resolved; the screen only shows the public-safe inviteId. The full secret lives in
-  // memory of this screen for the moment of attempt, then drops on unmount.
+  // ephSecretB64 + capability are never surfaced in the UI. The secret lives in this
+  // screen's memory for the attempt window and is dropped on unmount.
   readonly hasFragment: boolean;
 }
 
-// Deep-link entry for path-B (§3.6 / §5) collab invites:
+// Deep-link entry for collab invites:
 //   termlnk://invite/<sessionId>#<ephSecretB64>
-// Or via the universal-link bridge:
 //   https://invite.termlnk.io/s/<sessionId>#<ephSecretB64>
 //
-// Expo Linking strips the hash fragment from `useLocalSearchParams` (router params come
-// from query string only), so we accept the fragment either as `?frag=...` (rewritten
-// by the router middleware when the screen mounts) or fall back to "no fragment" mode
-// where we tell the user to use a desktop deep link instead.
+// Expo Linking strips the hash fragment from useLocalSearchParams, so we accept the
+// fragment as `?frag=...` (rewritten by router middleware) and fall back to a hint when
+// the launch path stripped it.
 function parseInvite(rawId: string | string[] | undefined, frag: string | undefined): ParsedInvite | null {
   if (!rawId || Array.isArray(rawId) || rawId.length === 0) {
     return null;
@@ -95,10 +92,8 @@ export default function InviteScreen() {
             as a peer of the inviter&apos;s terminal.
           </Text>
           <Text className="mt-3.5 text-[12px] leading-[18px] text-grey">
-            Path-B receiver wiring (NaCl box + relay attach + xterm rendering) ships in
-            v1.1 of the mobile client. The desktop and termlnk-web clients support it
-            today via the shared-terminal-core relay endpoint. Use one of those to
-            accept the invitation for now.
+            The mobile client cannot accept collab invitations yet. Use the desktop or
+            termlnk-web client to join via the shared-terminal-core relay endpoint.
           </Text>
           {!invite.hasFragment && (
             <Text className="mt-3 text-[12px] leading-[18px] text-yellow">

@@ -13,51 +13,18 @@
  * governing permissions and limitations under the License.
  */
 
-/**
- * termlnk-web server entrypoint (P7.3).
- *
- * This process is the user-self-hosted twin of `apps/desktop/main`: same DI
- * container, same plugins (minus the Electron triplet), same business code.
- * The difference is purely transport: the appRouter is exposed over Node http
- * + tRPC standalone HTTP/WS adapters by `@termlnk/web-server` instead of
- * Electron IPC.
- *
- * Per cloud-sync-architecture.md §3.2 / §6.2 / §7.2 + decision Δ24, this
- * entrypoint deliberately does not import any `@termlnk/electron*` package.
- *
- * Plugin chain (lines up with `apps/desktop/main/src/bootstrap.ts` minus the
- * Electron triplet plus `WebServerPlugin`):
- * - DatabasePlugin: SQLite vault + LocalDerivedSecretCipher (no Electron
- *   safeStorage available; device-bound key derivation is the documented
- *   fallback even on the desktop side).
- * - RPCPlugin: shared protocol layer.
- * - AuthPlugin / AuthCorePlugin: identity. IIdleProbe is left at its
- *   `NoopIdleProbe` default since termlnk-web has no system idle signal.
- * - SyncPlugin / SyncCorePlugin: vault sync client (talks to termlnk-server).
- * - RPCServerPlugin: tRPC routers + IFileDialogService default
- *   `NoopFileDialogService` (browser uses File System Access API in P7.4+).
- * - WebServerPlugin: the HTTP/WS surface itself, plus the
- *   IWebServerRouterProvider override that hands `appRouter` over.
- *
- * AgentCorePlugin is a hard dependency of RPCServerPlugin (router resolves
- * agent + skill subroutes), so this entrypoint registers it with the same
- * directory layout the desktop main uses, just rooted under
- * `~/.config/termlnk-web` instead of `~/.config/termlnk`. P7.9 (docker image)
- * will swap the dev-mode bundled-skill resolution for an in-image copy via
- * extraResources analogue.
- *
- * Master password sourcing: WebServerPlugin reads from
- * `TERMLNK_MASTER_PASSWORD` env / `TERMLNK_MASTER_PASSWORD_FILE` per its own
- * config; this entrypoint defers entirely to that resolution chain.
- *
- * Known dev-launch limitation: tsx's esbuild integration does not load the
- * tsconfig `extends` chain across npm-package boundaries, so direct
- * `tsx ./src/main.ts` of cross-package .ts sources hits "Parameter
- * decorators only work when experimental decorators are enabled" on
- * unrelated packages. Production runs build the packages first
- * (`pnpm build`) and start from the compiled `lib/es/` outputs; that path
- * lands together with the docker image work in P7.9.
- */
+// termlnk-web server entrypoint. User-self-hosted twin of apps/desktop/main: same DI
+// container and business plugins; the appRouter is exposed over Node http + tRPC
+// HTTP/WS adapters instead of Electron IPC. Deliberately imports no @termlnk/electron*
+// package.
+//
+// Master password sourcing is delegated entirely to WebServerPlugin
+// (TERMLNK_MASTER_PASSWORD / TERMLNK_MASTER_PASSWORD_FILE).
+//
+// Known dev-launch limitation: tsx's esbuild integration does not load the tsconfig
+// `extends` chain across npm-package boundaries, so direct `tsx ./src/main.ts` trips
+// "Parameter decorators only work when experimental decorators are enabled" on cross-
+// package .ts sources. Production builds the packages first and starts from `lib/es/`.
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -131,8 +98,8 @@ async function bootstrap(): Promise<void> {
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl: process.env.TERMLNK_CLOUD_BASE_URL,
-    // OsHostnameDeviceNameProvider is the web-server-side adapter for IDeviceNameProvider
-    // (lives in ./platform/ so auth-core stays free of node:os imports).
+    // OsHostnameDeviceNameProvider lives in ./platform/ so auth-core stays free of
+    // node:os imports.
     override: [
       [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
     ],

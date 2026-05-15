@@ -5,9 +5,7 @@
  * you may not use this file except in compliance with the License.
  */
 
-// Public type surface for @termlnk/react-native-russh. These types are stable
-// across the P6.9 sub-items: P6.9-2 lands them as the contract; P6.9-5 wires
-// the implementation through the ubrn-generated bindings.
+// Public type surface for @termlnk/react-native-russh.
 
 export type TerminalType =
   | 'Vanilla'

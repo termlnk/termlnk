@@ -45,25 +45,10 @@ interface IGithubReleaseResponse {
   assets?: IGithubReleaseAsset[];
 }
 
-/**
- * WebUpdaterService — implements IUpdaterService for the browser SPA.
- *
- * The web shell can't auto-download or auto-install — those operations need
- * an OS-level updater that doesn't exist in a browser tab. Instead, this
- * service polls GitHub Releases on a long interval (default 24h) and surfaces
- * a "new version available" hint via the same UpdateButton + UpdateDialog
- * components used on desktop. The actual rollout — pulling a new docker image
- * or running `git pull` on a self-hosted deployment — is left to the operator.
- *
- * State machine:
- *   IDLE → CHECKING → AVAILABLE | NOT_AVAILABLE | ERROR
- * The DOWNLOADING / DOWNLOADED states from IUpdaterService are never reached
- * here; calling `downloadUpdate()` / `quitAndInstall()` rejects with a
- * NOT_SUPPORTED error so callers fail fast instead of silently no-op'ing.
- *
- * GitHub anonymous API rate-limit is 60 req/h per IP. The 24h default cadence
- * leaves plenty of headroom even when many tabs share the same IP.
- */
+// Browser IUpdaterService: polls GitHub Releases on a long interval (default 24h) and
+// surfaces a "new version available" hint via the desktop UpdateButton/UpdateDialog.
+// downloadUpdate/quitAndInstall reject — operators roll out via docker image or git
+// pull. The 24h cadence stays well under GitHub's 60 req/h anonymous rate-limit.
 export class WebUpdaterService extends Disposable implements IUpdaterService {
   private readonly _status$ = new BehaviorSubject<UpdateStatus>(UpdateStatus.IDLE);
   readonly status$: Observable<UpdateStatus> = this._status$.asObservable();

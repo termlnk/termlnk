@@ -63,17 +63,11 @@ const MIME_TYPES: Record<string, string> = {
   '.map': 'application/json',
 };
 
-/**
- * Node-http static SPA implementation.
- *
- * - Path-traversal guard: resolved path must stay inside `staticRoot`, else 403.
- * - SPA history fallback: extension-less misses fall through to index.html.
- * - GET / HEAD only; other verbs return false so tRPC / custom handlers can claim them.
- *
- * Out of scope for P7.1a:
- * - gzip / brotli negotiation (delegate to the reverse proxy in production).
- * - Long-lived / immutable cache headers (enable once renderer ships hashed filenames).
- */
+// Node-http static SPA hosting. Path-traversal-guarded (paths must stay inside
+// staticRoot). Extension-less misses fall through to index.html (history fallback);
+// GET/HEAD only so tRPC and custom handlers can claim other verbs.
+// Not implemented: gzip/brotli negotiation (reverse proxy concern), long-lived
+// immutable cache headers (enable once renderer ships hashed filenames).
 export class StaticFileService implements IStaticFileService {
   constructor(
     @IConfigService private readonly _configService: IConfigService,

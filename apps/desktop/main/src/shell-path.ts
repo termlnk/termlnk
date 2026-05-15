@@ -28,17 +28,9 @@ const FALLBACK_PATHS = [
 // Strip ANSI escape sequences that some shell configs emit.
 const ANSI_RE = /\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
 
-/**
- * Fix `process.env.PATH` for packaged Electron apps launched from
- * Finder / Dock, where the inherited PATH is minimal
- * (`/usr/bin:/bin:/usr/sbin:/sbin`).
- *
- * Spawns the user's login shell to capture the full PATH.
- * Falls back to appending common tool directories on failure.
- *
- * Must be called as early as possible in the main process — before
- * any child-process spawning (PTY, MCP stdio transport, etc.).
- */
+// Restores a usable PATH on macOS Finder/Dock launches by spawning the user's login
+// shell. Falls back to appending well-known tool directories. Must run before any
+// child-process spawn.
 export function fixProcessPath(): void {
   if (process.platform === 'win32') {
     return;
@@ -59,10 +51,9 @@ export function fixProcessPath(): void {
       return;
     }
   } catch {
-    // Shell spawn failed — fall through to fallback.
+    // Fall through to fallback.
   }
 
-  // Fallback: append common tool directories that are not already present.
   const currentPath = process.env.PATH || '';
   const dirs = currentPath.split(':').filter(Boolean);
   const missing = FALLBACK_PATHS.filter((p) => !dirs.includes(p));

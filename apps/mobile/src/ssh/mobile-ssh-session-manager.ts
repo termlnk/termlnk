@@ -13,14 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-// Foreground/background SSH lifecycle manager. P6.9-7 re-build on top of
-// @termlnk/react-native-russh.
-//
-// Pattern from P6.4: maintain N managed sessions; on AppState `active`,
-// walk all sessions and call reconnect() on any that died while the app
-// was backgrounded. Each session keeps its original IMobileSshConnectOptions
-// + the resumption command (tmux/screen) so a fresh SSH+shell pair can be
-// re-established without UI intervention.
+// Foreground/background SSH lifecycle manager. On AppState `active` we walk all managed
+// sessions and reconnect any that died while backgrounded. Each session keeps its
+// IMobileSshConnectOptions + tmux/screen resumption command so reconnect can re-establish
+// SSH + shell without UI intervention.
 
 import type { NativeEventSubscription } from 'react-native';
 import type { IMobileSshConnectOptions, IMobileSshSession, MobileSshClientService } from './mobile-ssh-client.service';
