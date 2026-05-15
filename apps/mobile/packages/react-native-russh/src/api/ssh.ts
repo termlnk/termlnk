@@ -3,32 +3,21 @@
  *
  * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
  * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
  */
 
-// Idiomatic TS wrappers over ubrn-generated bindings. Pattern mirrors
-// fressh src/api.ts: uniffi's classes cannot be passed as plain objects
-// with methods + props, so the wrapper layer flattens each handle into a
-// fresh object that's safe to ferry across the JS bridge.
-
+import type { ISftpSession } from './sftp';
+import type { IBufferReadResult, IBufferStats, IConnectOptions, IRusshError, IServerPublicKeyInfo, IShellListenerOptions, IStartShellOptions, ITerminalChunk, ShellCursor, ShellListenerEvent, SshConnectionProgress, StreamKind, TerminalType } from './types';
 import * as GeneratedRussh from '../index';
 import { callRusshAsync, callRusshSync, toRusshError } from './errors';
 import { wrapSftpSession } from './sftp';
-import type {
-  IBufferReadResult,
-  IBufferStats,
-  IConnectOptions,
-  IRusshError,
-  IServerPublicKeyInfo,
-  IShellListenerOptions,
-  IStartShellOptions,
-  ITerminalChunk,
-  ShellCursor,
-  ShellListenerEvent,
-  StreamKind,
-  SshConnectionProgress,
-  TerminalType,
-} from './types';
-import type { ISftpSession } from './sftp';
 
 const terminalLiteralToEnum: Record<TerminalType, GeneratedRussh.TerminalType> = {
   Vanilla: GeneratedRussh.TerminalType.Vanilla,
@@ -78,7 +67,7 @@ function toTerminalChunk(ch: GeneratedRussh.TerminalChunk): ITerminalChunk {
 }
 
 function toServerKeyInfo(
-  info: GeneratedRussh.ServerPublicKeyInfo,
+  info: GeneratedRussh.ServerPublicKeyInfo
 ): IServerPublicKeyInfo {
   return {
     host: info.host,
@@ -120,11 +109,11 @@ function wrapShellSession(shell: GeneratedRussh.ShellSessionLike): ISshShell {
     connectionId: info.connectionId,
     sendData: (data, o) =>
       callRusshAsync(() =>
-        shell.sendData(data, o?.signal ? { signal: o.signal } : undefined),
+        shell.sendData(data, o?.signal ? { signal: o.signal } : undefined)
       ),
     close: (o) =>
       callRusshAsync(() =>
-        shell.close(o?.signal ? { signal: o.signal } : undefined),
+        shell.close(o?.signal ? { signal: o.signal } : undefined)
       ),
     bufferStats: () =>
       callRusshSync(() => {
@@ -192,21 +181,21 @@ function wrapConnection(conn: GeneratedRussh.SshConnectionLike): ISshConnection 
               : undefined,
             terminalSize: opts.terminalSize
               ? {
-                  rowHeight: opts.terminalSize.rowHeight,
-                  colWidth: opts.terminalSize.colWidth,
-                }
+                rowHeight: opts.terminalSize.rowHeight,
+                colWidth: opts.terminalSize.colWidth,
+              }
               : undefined,
             terminalPixelSize: opts.terminalPixelSize
               ? {
-                  pixelWidth: opts.terminalPixelSize.pixelWidth,
-                  pixelHeight: opts.terminalPixelSize.pixelHeight,
-                }
+                pixelWidth: opts.terminalPixelSize.pixelWidth,
+                pixelHeight: opts.terminalPixelSize.pixelHeight,
+              }
               : undefined,
             onClosedCallback: opts.onClosed
               ? { onChange: (channelId: number) => opts.onClosed!(channelId) }
               : undefined,
           },
-          opts.abortSignal ? { signal: opts.abortSignal } : undefined,
+          opts.abortSignal ? { signal: opts.abortSignal } : undefined
         );
         return wrapShellSession(shell);
       }),
@@ -217,7 +206,7 @@ function wrapConnection(conn: GeneratedRussh.SshConnectionLike): ISshConnection 
       }),
     disconnect: (o) =>
       callRusshAsync(() =>
-        conn.disconnect(o?.signal ? { signal: o.signal } : undefined),
+        conn.disconnect(o?.signal ? { signal: o.signal } : undefined)
       ),
   };
 }
@@ -239,9 +228,9 @@ export function connect(opts: IConnectOptions): Promise<ISshConnection> {
         },
         onConnectionProgressCallback: opts.onConnectionProgress
           ? {
-              onChange: (status: GeneratedRussh.SshConnectionProgressEvent) =>
-                opts.onConnectionProgress!(progressEnumToLiteral[status]),
-            }
+            onChange: (status: GeneratedRussh.SshConnectionProgressEvent) =>
+              opts.onConnectionProgress!(progressEnumToLiteral[status]),
+          }
           : undefined,
         onDisconnectedCallback: opts.onDisconnected
           ? { onChange: (connectionId: string) => opts.onDisconnected!(connectionId) }
@@ -251,14 +240,14 @@ export function connect(opts: IConnectOptions): Promise<ISshConnection> {
             opts.onServerKey(toServerKeyInfo(serverKeyInfo), opts.abortSignal),
         },
       },
-      opts.abortSignal ? { signal: opts.abortSignal } : undefined,
+      opts.abortSignal ? { signal: opts.abortSignal } : undefined
     );
     return wrapConnection(conn);
   });
 }
 
 export function generateKeyPair(
-  type: 'rsa' | 'ecdsa' | 'ed25519',
+  type: 'rsa' | 'ecdsa' | 'ed25519'
 ): string {
   const map: Record<typeof type, GeneratedRussh.KeyType> = {
     rsa: GeneratedRussh.KeyType.Rsa,
@@ -269,7 +258,7 @@ export function generateKeyPair(
 }
 
 export function validatePrivateKey(
-  key: string,
+  key: string
 ): { valid: true; error?: never } | { valid: false; error: IRusshError } {
   try {
     GeneratedRussh.validatePrivateKey(key);
