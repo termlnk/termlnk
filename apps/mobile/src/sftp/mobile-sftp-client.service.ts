@@ -13,20 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
-// SFTP service on top of @termlnk/react-native-russh. P6.9-7 re-build.
-//
-// The SFTP subsystem is opened on the *same* SSH connection via
-// IMobileSshSession.openSftp() — no second TCP handshake. Compared to the
-// P6.3 NMSSH wrapper, the surface gains: per-transfer progress callbacks,
-// mid-flight cancel through a synchronous handle, and entry metadata that
-// includes uid/gid bytes (we project them as filename + mode + size for
-// the UI; the underlying ISftpEntry has the raw fields if v1.1 needs them).
+// SFTP service on top of @termlnk/react-native-russh. The subsystem is opened on the same
+// SSH connection via IMobileSshSession.openSftp() — no second TCP handshake.
 
 import type {
   ISftpEntry,
   ISftpSession,
   ISftpTransferHandle,
 } from '@termlnk/react-native-russh';
+import type { Observable } from 'rxjs';
 import type { IMobileSshSession } from '../ssh/mobile-ssh-client.service';
 import { Disposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
@@ -36,13 +31,24 @@ export type SftpState = 'idle' | 'connecting' | 'ready' | 'transferring' | 'erro
 export type { ISftpEntry, ISftpTransferHandle };
 
 export class MobileSftpClientService extends Disposable {
-  readonly state$ = new BehaviorSubject<SftpState>('idle');
-  readonly lastError$ = new BehaviorSubject<string | null>(null);
+  private readonly _state$ = new BehaviorSubject<SftpState>('idle');
+  readonly state$: Observable<SftpState> = this._state$.asObservable();
+
+  private readonly _lastError$ = new BehaviorSubject<string | null>(null);
+  readonly lastError$: Observable<string | null> = this._lastError$.asObservable();
 
   private _session: ISftpSession | null = null;
 
   constructor(private readonly _ssh: IMobileSshSession) {
     super();
+  }
+
+  get state(): SftpState {
+    return this._state$.getValue();
+  }
+
+  get lastError(): string | null {
+    return this._lastError$.getValue();
   }
 
   override dispose(): void {
@@ -53,9 +59,9 @@ export class MobileSftpClientService extends Disposable {
         // Best-effort.
       });
     }
-    this.state$.next('idle');
-    this.state$.complete();
-    this.lastError$.complete();
+    this._state$.next('idle');
+    this._state$.complete();
+    this._lastError$.complete();
     super.dispose();
   }
 
@@ -63,10 +69,10 @@ export class MobileSftpClientService extends Disposable {
     if (this._session) {
       return;
     }
-    this.state$.next('connecting');
+    this._state$.next('connecting');
     try {
       this._session = await this._ssh.openSftp();
-      this.state$.next('ready');
+      this._state$.next('ready');
     } catch (err) {
       this._failWith(err);
       throw err;
@@ -107,14 +113,14 @@ export class MobileSftpClientService extends Disposable {
     opts?: { onProgress?: (bytesDone: bigint, total?: bigint) => void }
   ): ISftpTransferHandle {
     const session = this._requireSession();
-    this.state$.next('transferring');
+    this._state$.next('transferring');
     const handle = session.upload(localFilePath, remoteFilePath, {
       onProgress: opts?.onProgress
         ? (p) => opts.onProgress!(p.bytesDone, p.total)
         : undefined,
     });
     handle.done
-      .then(() => this.state$.next('ready'))
+      .then(() => this._state$.next('ready'))
       .catch((err) => this._failWith(err));
     return handle;
   }
@@ -125,14 +131,14 @@ export class MobileSftpClientService extends Disposable {
     opts?: { onProgress?: (bytesDone: bigint, total?: bigint) => void }
   ): ISftpTransferHandle {
     const session = this._requireSession();
-    this.state$.next('transferring');
+    this._state$.next('transferring');
     const handle = session.download(remoteFilePath, localFilePath, {
       onProgress: opts?.onProgress
         ? (p) => opts.onProgress!(p.bytesDone, p.total)
         : undefined,
     });
     handle.done
-      .then(() => this.state$.next('ready'))
+      .then(() => this._state$.next('ready'))
       .catch((err) => this._failWith(err));
     return handle;
   }
@@ -155,7 +161,7 @@ export class MobileSftpClientService extends Disposable {
   }
 
   private _failWith(err: unknown): void {
-    this.lastError$.next(err instanceof Error ? err.message : String(err));
-    this.state$.next('error');
+    this._lastError$.next(err instanceof Error ? err.message : String(err));
+    this._state$.next('error');
   }
 }
