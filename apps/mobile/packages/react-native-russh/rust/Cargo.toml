@@ -9,4 +9,4 @@ members = [
 # Shared uniffi version — also matches the `uniffi-bindgen-react-native` SHA
 # pinned in ../package.json. Bumping this needs to land alongside that bump.
 [workspace.dependencies]
-uniffi = "0.29"
+uniffi = "=0.31.0"

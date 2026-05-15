@@ -240,6 +240,28 @@ extern "C" {
         /*handle*/ uint64_t ptr, 
         RustBuffer server_key_info
     );
+    /*handle*/ uint64_t uniffi_uniffi_russh_fn_clone_sshconnection(
+        /*handle*/ uint64_t handle, 
+        RustCallStatus *uniffi_out_err
+    );
+    void uniffi_uniffi_russh_fn_free_sshconnection(
+        /*handle*/ uint64_t handle, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_uniffi_russh_fn_method_sshconnection_disconnect(
+        /*handle*/ uint64_t ptr
+    );
+    RustBuffer uniffi_uniffi_russh_fn_method_sshconnection_get_info(
+        /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(
+        /*handle*/ uint64_t ptr
+    );
+    /*handle*/ uint64_t uniffi_uniffi_russh_fn_method_sshconnection_start_shell(
+        /*handle*/ uint64_t ptr, 
+        RustBuffer opts
+    );
     /*handle*/ uint64_t uniffi_uniffi_russh_fn_clone_sftpprogresscallback(
         /*handle*/ uint64_t handle, 
         RustCallStatus *uniffi_out_err
@@ -405,31 +427,6 @@ extern "C" {
         /*handle*/ uint64_t ptr, 
         RustBuffer data
     );
-    /*handle*/ uint64_t uniffi_uniffi_russh_fn_clone_sshconnection(
-        /*handle*/ uint64_t handle, 
-        RustCallStatus *uniffi_out_err
-    );
-    void uniffi_uniffi_russh_fn_free_sshconnection(
-        /*handle*/ uint64_t handle, 
-        RustCallStatus *uniffi_out_err
-    );
-    /*handle*/ uint64_t uniffi_uniffi_russh_fn_method_sshconnection_disconnect(
-        /*handle*/ uint64_t ptr
-    );
-    RustBuffer uniffi_uniffi_russh_fn_method_sshconnection_get_info(
-        /*handle*/ uint64_t ptr, 
-        RustCallStatus *uniffi_out_err
-    );
-    /*handle*/ uint64_t uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(
-        /*handle*/ uint64_t ptr
-    );
-    /*handle*/ uint64_t uniffi_uniffi_russh_fn_method_sshconnection_start_shell(
-        /*handle*/ uint64_t ptr, 
-        RustBuffer opts
-    );
-    /*handle*/ uint64_t uniffi_uniffi_russh_fn_func_connect(
-        RustBuffer options
-    );
     RustBuffer uniffi_uniffi_russh_fn_func_generate_key_pair(
         RustBuffer key_type, 
         RustCallStatus *uniffi_out_err
@@ -437,6 +434,9 @@ extern "C" {
     RustBuffer uniffi_uniffi_russh_fn_func_validate_private_key(
         RustBuffer private_key_content, 
         RustCallStatus *uniffi_out_err
+    );
+    /*handle*/ uint64_t uniffi_uniffi_russh_fn_func_connect(
+        RustBuffer options
     );
     RustBuffer ffi_uniffi_russh_rustbuffer_alloc(
         uint64_t size, 
@@ -635,17 +635,25 @@ extern "C" {
         /*handle*/ uint64_t handle, 
         RustCallStatus *uniffi_out_err
     );
-    uint16_t uniffi_uniffi_russh_checksum_func_connect(
-    );
     uint16_t uniffi_uniffi_russh_checksum_func_generate_key_pair(
     );
     uint16_t uniffi_uniffi_russh_checksum_func_validate_private_key(
+    );
+    uint16_t uniffi_uniffi_russh_checksum_func_connect(
     );
     uint16_t uniffi_uniffi_russh_checksum_method_connectprogresscallback_on_change(
     );
     uint16_t uniffi_uniffi_russh_checksum_method_connectiondisconnectedcallback_on_change(
     );
     uint16_t uniffi_uniffi_russh_checksum_method_serverkeycallback_on_change(
+    );
+    uint16_t uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(
+    );
+    uint16_t uniffi_uniffi_russh_checksum_method_sshconnection_get_info(
+    );
+    uint16_t uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(
+    );
+    uint16_t uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(
     );
     uint16_t uniffi_uniffi_russh_checksum_method_sftpprogresscallback_on_progress(
     );
@@ -694,14 +702,6 @@ extern "C" {
     uint16_t uniffi_uniffi_russh_checksum_method_shellsession_remove_listener(
     );
     uint16_t uniffi_uniffi_russh_checksum_method_shellsession_send_data(
-    );
-    uint16_t uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(
-    );
-    uint16_t uniffi_uniffi_russh_checksum_method_sshconnection_get_info(
-    );
-    uint16_t uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(
-    );
-    uint16_t uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(
     );
     uint32_t ffi_uniffi_russh_uniffi_contract_version(
     );
@@ -4709,6 +4709,54 @@ NativeUniffiRussh::NativeUniffiRussh(
             return this->cpp_uniffi_uniffi_russh_fn_method_serverkeycallback_on_change(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_uniffi_russh_fn_clone_sshconnection"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_clone_sshconnection"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_fn_clone_sshconnection(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_fn_free_sshconnection"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_free_sshconnection"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_fn_free_sshconnection(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_fn_method_sshconnection_disconnect"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_method_sshconnection_disconnect"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_fn_method_sshconnection_disconnect(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_fn_method_sshconnection_get_info"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_method_sshconnection_get_info"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_fn_method_sshconnection_get_info(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_shell"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_shell"),
+        2,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_fn_method_sshconnection_start_shell(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_uniffi_russh_fn_clone_sftpprogresscallback"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_clone_sftpprogresscallback"),
@@ -5005,62 +5053,6 @@ NativeUniffiRussh::NativeUniffiRussh(
             return this->cpp_uniffi_uniffi_russh_fn_method_shellsession_send_data(rt, thisVal, args, count);
         }
     );
-    props["ubrn_uniffi_uniffi_russh_fn_clone_sshconnection"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_clone_sshconnection"),
-        1,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_fn_clone_sshconnection(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_fn_free_sshconnection"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_free_sshconnection"),
-        1,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_fn_free_sshconnection(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_fn_method_sshconnection_disconnect"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_method_sshconnection_disconnect"),
-        1,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_fn_method_sshconnection_disconnect(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_fn_method_sshconnection_get_info"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_method_sshconnection_get_info"),
-        1,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_fn_method_sshconnection_get_info(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp"),
-        1,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_shell"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_shell"),
-        2,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_fn_method_sshconnection_start_shell(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_fn_func_connect"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_func_connect"),
-        1,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_fn_func_connect(rt, thisVal, args, count);
-        }
-    );
     props["ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair"),
@@ -5075,6 +5067,14 @@ NativeUniffiRussh::NativeUniffiRussh(
         1,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_uniffi_russh_fn_func_validate_private_key(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_fn_func_connect"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_func_connect"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_fn_func_connect(rt, thisVal, args, count);
         }
     );
     props["ubrn_ffi_uniffi_russh_rust_future_poll_u8"] = jsi::Function::createFromHostFunction(
@@ -5461,14 +5461,6 @@ NativeUniffiRussh::NativeUniffiRussh(
             return this->cpp_ffi_uniffi_russh_rust_future_complete_void(rt, thisVal, args, count);
         }
     );
-    props["ubrn_uniffi_uniffi_russh_checksum_func_connect"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_func_connect"),
-        0,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_checksum_func_connect(rt, thisVal, args, count);
-        }
-    );
     props["ubrn_uniffi_uniffi_russh_checksum_func_generate_key_pair"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_func_generate_key_pair"),
@@ -5483,6 +5475,14 @@ NativeUniffiRussh::NativeUniffiRussh(
         0,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_uniffi_russh_checksum_func_validate_private_key(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_checksum_func_connect"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_func_connect"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_checksum_func_connect(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_uniffi_russh_checksum_method_connectprogresscallback_on_change"] = jsi::Function::createFromHostFunction(
@@ -5507,6 +5507,38 @@ NativeUniffiRussh::NativeUniffiRussh(
         0,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_uniffi_russh_checksum_method_serverkeycallback_on_change(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_get_info"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_get_info"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_checksum_method_sshconnection_get_info(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_uniffi_russh_checksum_method_sftpprogresscallback_on_progress"] = jsi::Function::createFromHostFunction(
@@ -5701,38 +5733,6 @@ NativeUniffiRussh::NativeUniffiRussh(
             return this->cpp_uniffi_uniffi_russh_checksum_method_shellsession_send_data(rt, thisVal, args, count);
         }
     );
-    props["ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect"),
-        0,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_get_info"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_get_info"),
-        0,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_checksum_method_sshconnection_get_info(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp"),
-        0,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell"),
-        0,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(rt, thisVal, args, count);
-        }
-    );
     props["ubrn_ffi_uniffi_russh_uniffi_contract_version"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_ffi_uniffi_russh_uniffi_contract_version"),
@@ -5763,6 +5763,14 @@ NativeUniffiRussh::NativeUniffiRussh(
         1,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_internal_fn_method_serverkeycallback_ffi__bless_pointer(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_internal_fn_method_sshconnection_ffi__bless_pointer"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_internal_fn_method_sshconnection_ffi__bless_pointer"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_internal_fn_method_sshconnection_ffi__bless_pointer(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_internal_fn_method_sftpprogresscallback_ffi__bless_pointer"] = jsi::Function::createFromHostFunction(
@@ -5803,14 +5811,6 @@ NativeUniffiRussh::NativeUniffiRussh(
         1,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_internal_fn_method_shellsession_ffi__bless_pointer(rt, thisVal, args, count);
-        }
-    );
-    props["ubrn_uniffi_internal_fn_method_sshconnection_ffi__bless_pointer"] = jsi::Function::createFromHostFunction(
-        rt,
-        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_internal_fn_method_sshconnection_ffi__bless_pointer"),
-        1,
-        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
-            return this->cpp_uniffi_internal_fn_method_sshconnection_ffi__bless_pointer(rt, thisVal, args, count);
         }
     );
 }
@@ -5910,6 +5910,15 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_internal_fn_func_ffi__read_string_from_
     auto ptrObj = std::make_shared<uniffi_jsi::DestructibleObject>(pointer, destructor);
     auto obj = jsi::Object::createFromHostObject(rt, ptrObj);
     return jsi::Value(rt, obj);
+}jsi::Value NativeUniffiRussh::cpp_uniffi_internal_fn_method_sshconnection_ffi__bless_pointer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+    auto pointer = uniffi_jsi::Bridging<uint64_t>::fromJs(rt, callInvoker, args[0]);
+    auto static destructor = [](uint64_t p) {
+        RustCallStatus status = {0};
+        uniffi_uniffi_russh_fn_free_sshconnection(p, &status);
+    };
+    auto ptrObj = std::make_shared<uniffi_jsi::DestructibleObject>(pointer, destructor);
+    auto obj = jsi::Object::createFromHostObject(rt, ptrObj);
+    return jsi::Value(rt, obj);
 }jsi::Value NativeUniffiRussh::cpp_uniffi_internal_fn_method_sftpprogresscallback_ffi__bless_pointer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
     auto pointer = uniffi_jsi::Bridging<uint64_t>::fromJs(rt, callInvoker, args[0]);
     auto static destructor = [](uint64_t p) {
@@ -5951,15 +5960,6 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_internal_fn_func_ffi__read_string_from_
     auto static destructor = [](uint64_t p) {
         RustCallStatus status = {0};
         uniffi_uniffi_russh_fn_free_shellsession(p, &status);
-    };
-    auto ptrObj = std::make_shared<uniffi_jsi::DestructibleObject>(pointer, destructor);
-    auto obj = jsi::Object::createFromHostObject(rt, ptrObj);
-    return jsi::Value(rt, obj);
-}jsi::Value NativeUniffiRussh::cpp_uniffi_internal_fn_method_sshconnection_ffi__bless_pointer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-    auto pointer = uniffi_jsi::Bridging<uint64_t>::fromJs(rt, callInvoker, args[0]);
-    auto static destructor = [](uint64_t p) {
-        RustCallStatus status = {0};
-        uniffi_uniffi_russh_fn_free_sshconnection(p, &status);
     };
     auto ptrObj = std::make_shared<uniffi_jsi::DestructibleObject>(pointer, destructor);
     auto obj = jsi::Object::createFromHostObject(rt, ptrObj);
@@ -6100,6 +6100,57 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_init_callback_vtable_se
 }
 jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_serverkeycallback_on_change(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_uniffi_russh_fn_method_serverkeycallback_on_change(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1])
+        );
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_clone_sshconnection(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_uniffi_russh_fn_clone_sshconnection(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::uniffi_russh::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_free_sshconnection(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
+        uniffi_uniffi_russh_fn_free_sshconnection(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::uniffi_russh::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return jsi::Value::undefined();
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_sshconnection_disconnect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_fn_method_sshconnection_disconnect(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0])
+        );
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_sshconnection_get_info(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_uniffi_russh_fn_method_sshconnection_get_info(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::uniffi_russh::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::uniffi_russh::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0])
+        );
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_sshconnection_start_shell(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_fn_method_sshconnection_start_shell(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1])
         );
 
         
@@ -6457,64 +6508,6 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_shellsession_sen
         
         return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
 }
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_clone_sshconnection(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
-        auto value = uniffi_uniffi_russh_fn_clone_sshconnection(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
-            &status
-        );
-        uniffi::uniffi_russh::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
-
-        
-        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_free_sshconnection(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
-        uniffi_uniffi_russh_fn_free_sshconnection(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
-            &status
-        );
-        uniffi::uniffi_russh::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
-
-        
-        return jsi::Value::undefined();
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_sshconnection_disconnect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_fn_method_sshconnection_disconnect(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0])
-        );
-
-        
-        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_sshconnection_get_info(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
-        auto value = uniffi_uniffi_russh_fn_method_sshconnection_get_info(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
-            &status
-        );
-        uniffi::uniffi_russh::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
-
-        
-        return uniffi::uniffi_russh::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0])
-        );
-
-        
-        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_sshconnection_start_shell(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_fn_method_sshconnection_start_shell(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1])
-        );
-
-        
-        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_func_connect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_fn_func_connect(uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0])
-        );
-
-        
-        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
-}
 jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_func_generate_key_pair(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
         auto value = uniffi_uniffi_russh_fn_func_generate_key_pair(uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
@@ -6534,6 +6527,13 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_func_validate_private_k
 
         
         return uniffi::uniffi_russh::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_func_connect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_fn_func_connect(uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0])
+        );
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeUniffiRussh::cpp_ffi_uniffi_russh_rust_future_poll_u8(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         ffi_uniffi_russh_rust_future_poll_u8(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::uniffi_russh::Bridging<UniffiRustFutureContinuationCallback>::fromJs(rt, callInvoker, args[1]), uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[2])
@@ -6907,13 +6907,6 @@ jsi::Value NativeUniffiRussh::cpp_ffi_uniffi_russh_rust_future_complete_void(jsi
         
         return jsi::Value::undefined();
 }
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_func_connect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_checksum_func_connect(
-        );
-
-        
-        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
 jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_func_generate_key_pair(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_uniffi_russh_checksum_func_generate_key_pair(
         );
@@ -6923,6 +6916,13 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_func_generate_key
 }
 jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_func_validate_private_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_uniffi_russh_checksum_func_validate_private_key(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_func_connect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_checksum_func_connect(
         );
 
         
@@ -6944,6 +6944,34 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_connection
 }
 jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_serverkeycallback_on_change(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_uniffi_russh_checksum_method_serverkeycallback_on_change(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_sshconnection_get_info(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_checksum_method_sshconnection_get_info(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(
         );
 
         
@@ -7112,34 +7140,6 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_shellsessi
 }
 jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_shellsession_send_data(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_uniffi_russh_checksum_method_shellsession_send_data(
-        );
-
-        
-        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(
-        );
-
-        
-        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_sshconnection_get_info(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_checksum_method_sshconnection_get_info(
-        );
-
-        
-        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(
-        );
-
-        
-        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
-}
-jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
-        auto value = uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(
         );
 
         

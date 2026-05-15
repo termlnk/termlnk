@@ -43,6 +43,8 @@ import {
   validatePrivateKey,
 } from './ssh';
 
+export { RusshError } from './errors';
+
 export const RnRussh = {
   uniffiInitAsync,
   connect,

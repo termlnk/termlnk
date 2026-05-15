@@ -4877,7 +4877,7 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
-    nativeModule().ubrn_uniffi_uniffi_russh_checksum_func_connect() !== 33247
+    nativeModule().ubrn_uniffi_uniffi_russh_checksum_func_connect() !== 10986
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_func_connect",
@@ -4885,7 +4885,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_func_generate_key_pair() !==
-    37501
+    46144
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_func_generate_key_pair",
@@ -4893,7 +4893,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_func_validate_private_key() !==
-    49309
+    25326
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_func_validate_private_key",
@@ -4901,7 +4901,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_connectprogresscallback_on_change() !==
-    17699
+    27405
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_connectprogresscallback_on_change",
@@ -4909,7 +4909,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_connectiondisconnectedcallback_on_change() !==
-    43914
+    39703
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_connectiondisconnectedcallback_on_change",
@@ -4917,7 +4917,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_serverkeycallback_on_change() !==
-    5111
+    10806
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_serverkeycallback_on_change",
@@ -4925,7 +4925,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpprogresscallback_on_progress() !==
-    47963
+    36355
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpprogresscallback_on_progress",
@@ -4933,7 +4933,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_cancel_transfer() !==
-    39937
+    51924
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_cancel_transfer",
@@ -4941,7 +4941,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_chmod() !==
-    11112
+    41677
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_chmod",
@@ -4949,7 +4949,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_close() !==
-    37301
+    2095
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_close",
@@ -4957,7 +4957,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_download() !==
-    28709
+    13374
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_download",
@@ -4965,7 +4965,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_get_info() !==
-    4982
+    36617
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_get_info",
@@ -4973,7 +4973,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_list() !==
-    22681
+    28155
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_list",
@@ -4981,7 +4981,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_mkdir() !==
-    23911
+    34907
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_mkdir",
@@ -4989,7 +4989,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_realpath() !==
-    42247
+    18111
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_realpath",
@@ -4997,7 +4997,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_remove() !==
-    58229
+    54210
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_remove",
@@ -5005,7 +5005,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_rename() !==
-    60856
+    50687
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_rename",
@@ -5013,7 +5013,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_rmdir() !==
-    28469
+    38030
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_rmdir",
@@ -5021,7 +5021,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_stat() !==
-    28942
+    38271
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_stat",
@@ -5029,7 +5029,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_upload() !==
-    49511
+    61549
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sftpsession_upload",
@@ -5037,7 +5037,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellclosedcallback_on_change() !==
-    56252
+    56671
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellclosedcallback_on_change",
@@ -5045,7 +5045,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shelllistener_on_event() !==
-    12161
+    9688
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shelllistener_on_event",
@@ -5053,7 +5053,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_add_listener() !==
-    43852
+    47020
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_add_listener",
@@ -5061,7 +5061,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_buffer_stats() !==
-    11878
+    13471
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_buffer_stats",
@@ -5069,7 +5069,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_close() !==
-    22391
+    62325
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_close",
@@ -5077,7 +5077,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_current_seq() !==
-    5967
+    40616
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_current_seq",
@@ -5085,7 +5085,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_get_info() !==
-    45659
+    22791
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_get_info",
@@ -5093,7 +5093,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_read_buffer() !==
-    52380
+    57122
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_read_buffer",
@@ -5101,7 +5101,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_remove_listener() !==
-    24718
+    21954
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_remove_listener",
@@ -5109,7 +5109,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_send_data() !==
-    12893
+    62843
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_send_data",
@@ -5117,7 +5117,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect() !==
-    1510
+    1012
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sshconnection_disconnect",
@@ -5125,7 +5125,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_get_info() !==
-    31556
+    44339
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sshconnection_get_info",
@@ -5133,7 +5133,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp() !==
-    40200
+    63745
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp",
@@ -5141,7 +5141,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell() !==
-    21163
+    18186
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_sshconnection_start_shell",

@@ -11,11 +11,13 @@
 // fresh object that's safe to ferry across the JS bridge.
 
 import * as GeneratedRussh from '../index';
+import { callRusshAsync, callRusshSync, toRusshError } from './errors';
 import { wrapSftpSession } from './sftp';
 import type {
   IBufferReadResult,
   IBufferStats,
   IConnectOptions,
+  IRusshError,
   IServerPublicKeyInfo,
   IShellListenerOptions,
   IStartShellOptions,
@@ -111,157 +113,172 @@ export interface ISshConnection {
 }
 
 function wrapShellSession(shell: GeneratedRussh.ShellSessionLike): ISshShell {
-  const info = shell.getInfo();
+  const info = callRusshSync(() => shell.getInfo());
   return {
     channelId: info.channelId,
     createdAtMs: info.createdAtMs,
     connectionId: info.connectionId,
     sendData: (data, o) =>
-      shell.sendData(data, o?.signal ? { signal: o.signal } : undefined),
-    close: (o) => shell.close(o?.signal ? { signal: o.signal } : undefined),
-    bufferStats: () => {
-      const stats = shell.bufferStats();
-      return {
-        ringBytesCount: stats.ringBytesCount,
-        usedBytes: stats.usedBytes,
-        headSeq: stats.headSeq,
-        tailSeq: stats.tailSeq,
-        droppedBytesTotal: stats.droppedBytesTotal,
-        chunksCount: stats.chunksCount,
-      };
-    },
-    currentSeq: () => Number(shell.currentSeq()),
-    readBuffer: (cursor, maxBytes) => {
-      const res = shell.readBuffer(cursorToGenerated(cursor), maxBytes);
-      return {
-        chunks: res.chunks.map(toTerminalChunk),
-        nextSeq: res.nextSeq,
-        dropped: res.dropped,
-      };
-    },
-    addListener: (cb, opts) => {
-      const listener: GeneratedRussh.ShellListener = {
-        onEvent: (ev: GeneratedRussh.ShellEvent) => {
-          if (GeneratedRussh.ShellEvent.Chunk.instanceOf(ev)) {
-            cb(toTerminalChunk(ev.inner[0]));
-          } else if (GeneratedRussh.ShellEvent.Dropped.instanceOf(ev)) {
-            cb({
-              kind: 'dropped',
-              fromSeq: ev.inner.fromSeq,
-              toSeq: ev.inner.toSeq,
-            });
-          }
-        },
-      };
-      const id = shell.addListener(listener, {
-        cursor: cursorToGenerated(opts.cursor),
-        coalesceMs: opts.coalesceMs,
-      });
-      if (id === 0n) {
-        throw new Error('Failed to attach shell listener (id=0)');
-      }
-      return id;
-    },
-    removeListener: (id) => shell.removeListener(id),
+      callRusshAsync(() =>
+        shell.sendData(data, o?.signal ? { signal: o.signal } : undefined),
+      ),
+    close: (o) =>
+      callRusshAsync(() =>
+        shell.close(o?.signal ? { signal: o.signal } : undefined),
+      ),
+    bufferStats: () =>
+      callRusshSync(() => {
+        const stats = shell.bufferStats();
+        return {
+          ringBytesCount: stats.ringBytesCount,
+          usedBytes: stats.usedBytes,
+          headSeq: stats.headSeq,
+          tailSeq: stats.tailSeq,
+          droppedBytesTotal: stats.droppedBytesTotal,
+          chunksCount: stats.chunksCount,
+        };
+      }),
+    currentSeq: () => callRusshSync(() => Number(shell.currentSeq())),
+    readBuffer: (cursor, maxBytes) =>
+      callRusshSync(() => {
+        const res = shell.readBuffer(cursorToGenerated(cursor), maxBytes);
+        return {
+          chunks: res.chunks.map(toTerminalChunk),
+          nextSeq: res.nextSeq,
+          dropped: res.dropped,
+        };
+      }),
+    addListener: (cb, opts) =>
+      callRusshSync(() => {
+        const listener: GeneratedRussh.ShellListener = {
+          onEvent: (ev: GeneratedRussh.ShellEvent) => {
+            if (GeneratedRussh.ShellEvent.Chunk.instanceOf(ev)) {
+              cb(toTerminalChunk(ev.inner[0]));
+            } else if (GeneratedRussh.ShellEvent.Dropped.instanceOf(ev)) {
+              cb({
+                kind: 'dropped',
+                fromSeq: ev.inner.fromSeq,
+                toSeq: ev.inner.toSeq,
+              });
+            }
+          },
+        };
+        const id = shell.addListener(listener, {
+          cursor: cursorToGenerated(opts.cursor),
+          coalesceMs: opts.coalesceMs,
+        });
+        if (id === 0n) {
+          throw new Error('Failed to attach shell listener (id=0)');
+        }
+        return id;
+      }),
+    removeListener: (id) => callRusshSync(() => shell.removeListener(id)),
   };
 }
 
 function wrapConnection(conn: GeneratedRussh.SshConnectionLike): ISshConnection {
-  const info = conn.getInfo();
+  const info = callRusshSync(() => conn.getInfo());
   return {
     connectionId: info.connectionId,
     createdAtMs: info.createdAtMs,
     connectedAtMs: info.connectedAtMs,
-    startShell: async (opts) => {
-      const shell = await conn.startShell(
-        {
-          term: terminalLiteralToEnum[opts.term],
-          terminalMode: opts.terminalMode
-            ? opts.terminalMode.map((m) => ({ opcode: m.opcode, value: m.value }))
-            : undefined,
-          terminalSize: opts.terminalSize
-            ? {
-                rowHeight: opts.terminalSize.rowHeight,
-                colWidth: opts.terminalSize.colWidth,
-              }
-            : undefined,
-          terminalPixelSize: opts.terminalPixelSize
-            ? {
-                pixelWidth: opts.terminalPixelSize.pixelWidth,
-                pixelHeight: opts.terminalPixelSize.pixelHeight,
-              }
-            : undefined,
-          onClosedCallback: opts.onClosed
-            ? { onChange: (channelId: number) => opts.onClosed!(channelId) }
-            : undefined,
-        },
-        opts.abortSignal ? { signal: opts.abortSignal } : undefined,
-      );
-      return wrapShellSession(shell);
-    },
-    startSftp: async () => {
-      const sftp = await conn.startSftp();
-      return wrapSftpSession(sftp);
-    },
-    disconnect: (o) => conn.disconnect(o?.signal ? { signal: o.signal } : undefined),
+    startShell: (opts) =>
+      callRusshAsync(async () => {
+        const shell = await conn.startShell(
+          {
+            term: terminalLiteralToEnum[opts.term],
+            terminalMode: opts.terminalMode
+              ? opts.terminalMode.map((m) => ({ opcode: m.opcode, value: m.value }))
+              : undefined,
+            terminalSize: opts.terminalSize
+              ? {
+                  rowHeight: opts.terminalSize.rowHeight,
+                  colWidth: opts.terminalSize.colWidth,
+                }
+              : undefined,
+            terminalPixelSize: opts.terminalPixelSize
+              ? {
+                  pixelWidth: opts.terminalPixelSize.pixelWidth,
+                  pixelHeight: opts.terminalPixelSize.pixelHeight,
+                }
+              : undefined,
+            onClosedCallback: opts.onClosed
+              ? { onChange: (channelId: number) => opts.onClosed!(channelId) }
+              : undefined,
+          },
+          opts.abortSignal ? { signal: opts.abortSignal } : undefined,
+        );
+        return wrapShellSession(shell);
+      }),
+    startSftp: () =>
+      callRusshAsync(async () => {
+        const sftp = await conn.startSftp();
+        return wrapSftpSession(sftp);
+      }),
+    disconnect: (o) =>
+      callRusshAsync(() =>
+        conn.disconnect(o?.signal ? { signal: o.signal } : undefined),
+      ),
   };
 }
 
-export async function connect(opts: IConnectOptions): Promise<ISshConnection> {
-  const security =
-    opts.security.type === 'password'
-      ? GeneratedRussh.Security.Password.new({ password: opts.security.password })
-      : GeneratedRussh.Security.Key.new({ privateKeyContent: opts.security.privateKey });
+export function connect(opts: IConnectOptions): Promise<ISshConnection> {
+  return callRusshAsync(async () => {
+    const security =
+      opts.security.type === 'password'
+        ? GeneratedRussh.Security.Password.new({ password: opts.security.password })
+        : GeneratedRussh.Security.Key.new({ privateKeyContent: opts.security.privateKey });
 
-  const conn = await GeneratedRussh.connect(
-    {
-      connectionDetails: {
-        host: opts.host,
-        port: opts.port,
-        username: opts.username,
-        security,
+    const conn = await GeneratedRussh.connect(
+      {
+        connectionDetails: {
+          host: opts.host,
+          port: opts.port,
+          username: opts.username,
+          security,
+        },
+        onConnectionProgressCallback: opts.onConnectionProgress
+          ? {
+              onChange: (status: GeneratedRussh.SshConnectionProgressEvent) =>
+                opts.onConnectionProgress!(progressEnumToLiteral[status]),
+            }
+          : undefined,
+        onDisconnectedCallback: opts.onDisconnected
+          ? { onChange: (connectionId: string) => opts.onDisconnected!(connectionId) }
+          : undefined,
+        onServerKeyCallback: {
+          onChange: (serverKeyInfo: GeneratedRussh.ServerPublicKeyInfo) =>
+            opts.onServerKey(toServerKeyInfo(serverKeyInfo), opts.abortSignal),
+        },
       },
-      onConnectionProgressCallback: opts.onConnectionProgress
-        ? {
-            onChange: (status: GeneratedRussh.SshConnectionProgressEvent) =>
-              opts.onConnectionProgress!(progressEnumToLiteral[status]),
-          }
-        : undefined,
-      onDisconnectedCallback: opts.onDisconnected
-        ? { onChange: (connectionId: string) => opts.onDisconnected!(connectionId) }
-        : undefined,
-      onServerKeyCallback: {
-        onChange: (serverKeyInfo: GeneratedRussh.ServerPublicKeyInfo) =>
-          opts.onServerKey(toServerKeyInfo(serverKeyInfo), opts.abortSignal),
-      },
-    },
-    opts.abortSignal ? { signal: opts.abortSignal } : undefined,
-  );
-  return wrapConnection(conn);
+      opts.abortSignal ? { signal: opts.abortSignal } : undefined,
+    );
+    return wrapConnection(conn);
+  });
 }
 
-export async function generateKeyPair(
+export function generateKeyPair(
   type: 'rsa' | 'ecdsa' | 'ed25519',
-): Promise<string> {
+): string {
   const map: Record<typeof type, GeneratedRussh.KeyType> = {
     rsa: GeneratedRussh.KeyType.Rsa,
     ecdsa: GeneratedRussh.KeyType.Ecdsa,
     ed25519: GeneratedRussh.KeyType.Ed25519,
   };
-  return GeneratedRussh.generateKeyPair(map[type]);
+  return callRusshSync(() => GeneratedRussh.generateKeyPair(map[type]));
 }
 
 export function validatePrivateKey(
   key: string,
-): { valid: true; error?: never } | { valid: false; error: GeneratedRussh.SshError } {
+): { valid: true; error?: never } | { valid: false; error: IRusshError } {
   try {
     GeneratedRussh.validatePrivateKey(key);
     return { valid: true };
   } catch (e) {
-    return { valid: false, error: e as GeneratedRussh.SshError };
+    return { valid: false, error: toRusshError(e) };
   }
 }
 
-export async function uniffiInitAsync(): Promise<void> {
-  await GeneratedRussh.uniffiInitAsync();
+export function uniffiInitAsync(): Promise<void> {
+  return callRusshAsync(() => GeneratedRussh.uniffiInitAsync());
 }

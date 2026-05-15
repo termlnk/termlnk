@@ -14,7 +14,7 @@ use crate::ssh_shell::{
     DEFAULT_TERMINAL_MODES, DEFAULT_TERM_COALESCE_MS, DEFAULT_TERM_COL_WIDTH,
     DEFAULT_TERM_PIXEL_HEIGHT, DEFAULT_TERM_PIXEL_WIDTH, DEFAULT_TERM_ROW_HEIGHT,
 };
-use crate::utils::{now_ms, SshError};
+use crate::utils::{clear_last_panic, install_panic_hook_once, now_ms, SshError};
 use russh::keys::PublicKeyBase64;
 use std::sync::atomic::AtomicUsize;
 
@@ -188,6 +188,8 @@ impl SshConnection {
         &self,
         opts: StartShellOptions,
     ) -> Result<Arc<ShellSession>, SshError> {
+        install_panic_hook_once();
+        clear_last_panic();
         let started_at_ms = now_ms();
 
         let term = opts.term;
@@ -352,6 +354,8 @@ impl SshConnection {
     pub async fn start_sftp(
         &self,
     ) -> Result<Arc<crate::ssh_sftp::SftpSession>, SshError> {
+        install_panic_hook_once();
+        clear_last_panic();
         let client_handle = self.client_handle.lock().await;
         let channel = client_handle.channel_open_session().await?;
         channel.request_subsystem(true, "sftp").await?;
@@ -410,6 +414,8 @@ impl SshConnection {
 
 #[uniffi::export(async_runtime = "tokio")]
 pub async fn connect(options: ConnectOptions) -> Result<Arc<SshConnection>, SshError> {
+    install_panic_hook_once();
+    clear_last_panic();
     let started_at_ms = now_ms();
     let details = ConnectionDetails {
         host: options.connection_details.host.clone(),

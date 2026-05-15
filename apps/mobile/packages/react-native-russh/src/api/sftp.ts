@@ -10,6 +10,7 @@
 // the long-running transfer; the underlying Rust call runs as `done` Promise.
 
 import * as GeneratedRussh from '../index';
+import { callRusshAsync, callRusshSync } from './errors';
 import type {
   ISftpEntry,
   ISftpStat,
@@ -102,75 +103,64 @@ function makeTransferHandle(
     remotePath,
     localPath,
     total: undefined,
-    cancel: () => sftp.cancelTransfer(transferId),
-    done: donePromise.then(() => {
-      // discard the SftpTransferInfo — caller already has remotePath/localPath
-      // and we expose total via progress callback. The handle's `done` is
-      // void so a missing transfer doesn't leak Rust types into the UI.
-    }),
+    cancel: () => callRusshSync(() => sftp.cancelTransfer(transferId)),
+    done: callRusshAsync(() =>
+      donePromise.then(() => {
+        // discard the SftpTransferInfo — caller already has remotePath/localPath
+        // and we expose total via progress callback. The handle's `done` is
+        // void so a missing transfer doesn't leak Rust types into the UI.
+      }),
+    ),
+  };
+}
+
+function toProgressCallback(
+  onProgress: ((p: ISftpTransferProgress) => void) | undefined,
+): GeneratedRussh.SftpProgressCallback | undefined {
+  if (!onProgress) {
+    return undefined;
+  }
+  return {
+    onProgress: (transferId, bytesDone, total) =>
+      onProgress({ transferId, bytesDone, total }),
   };
 }
 
 export function wrapSftpSession(sftp: GeneratedRussh.SftpSessionLike): ISftpSession {
-  const info = sftp.getInfo();
+  const info = callRusshSync(() => sftp.getInfo());
   return {
     sessionId: info.sessionId,
-    list: async (path) => (await sftp.list(path)).map(toEntry),
-    stat: async (path) => toStat(await sftp.stat(path)),
-    mkdir: (path, mode) => sftp.mkdir(path, mode),
-    rmdir: (path) => sftp.rmdir(path),
-    remove: (path) => sftp.remove(path),
-    rename: (from, to) => sftp.rename(from, to),
-    chmod: (path, mode) => sftp.chmod(path, mode),
-    realpath: (path) => sftp.realpath(path),
+    list: (path) =>
+      callRusshAsync(async () => (await sftp.list(path)).map(toEntry)),
+    stat: (path) => callRusshAsync(async () => toStat(await sftp.stat(path))),
+    mkdir: (path, mode) => callRusshAsync(() => sftp.mkdir(path, mode)),
+    rmdir: (path) => callRusshAsync(() => sftp.rmdir(path)),
+    remove: (path) => callRusshAsync(() => sftp.remove(path)),
+    rename: (from, to) => callRusshAsync(() => sftp.rename(from, to)),
+    chmod: (path, mode) => callRusshAsync(() => sftp.chmod(path, mode)),
+    realpath: (path) => callRusshAsync(() => sftp.realpath(path)),
     upload: (localPath, remotePath, opts) => {
       const transferId = uuid();
-      const progress = opts?.onProgress;
-      const callback: GeneratedRussh.SftpProgressCallback | undefined = progress
-        ? {
-            onProgress: (id: string, bytesDone: bigint, total: bigint | undefined) => {
-              const evt: ISftpTransferProgress = {
-                transferId: id,
-                bytesDone,
-                total,
-              };
-              progress(evt);
-            },
-          }
-        : undefined;
       const donePromise = sftp.upload(
         transferId,
         localPath,
         remotePath,
         opts?.chunkSize,
-        callback,
+        toProgressCallback(opts?.onProgress),
       );
       return makeTransferHandle(transferId, remotePath, localPath, donePromise, sftp);
     },
     download: (remotePath, localPath, opts) => {
       const transferId = uuid();
-      const progress = opts?.onProgress;
-      const callback: GeneratedRussh.SftpProgressCallback | undefined = progress
-        ? {
-            onProgress: (id: string, bytesDone: bigint, total: bigint | undefined) => {
-              const evt: ISftpTransferProgress = {
-                transferId: id,
-                bytesDone,
-                total,
-              };
-              progress(evt);
-            },
-          }
-        : undefined;
       const donePromise = sftp.download(
         transferId,
         remotePath,
         localPath,
         opts?.chunkSize,
-        callback,
+        toProgressCallback(opts?.onProgress),
       );
       return makeTransferHandle(transferId, remotePath, localPath, donePromise, sftp);
     },
-    close: () => sftp.close(),
+    close: () => callRusshAsync(() => sftp.close()),
   };
 }
