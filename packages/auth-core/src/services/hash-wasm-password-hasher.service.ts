@@ -16,9 +16,7 @@
 import type { IArgon2idParams, IPasswordHasher } from '@termlnk/auth';
 import { argon2id } from 'hash-wasm';
 
-// Default IPasswordHasher backend for environments with WebAssembly (Electron main/renderer,
-// Node.js, browsers). React Native/Hermes overrides this through MobilePlatformPlugin since
-// Hermes does not ship a WebAssembly runtime.
+// Default backend; requires WebAssembly. Platforms without WASM must override this.
 export class HashWasmPasswordHasher implements IPasswordHasher {
   async argon2id(password: string, salt: Uint8Array, params: IArgon2idParams): Promise<Uint8Array> {
     return await argon2id({

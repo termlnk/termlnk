@@ -15,20 +15,8 @@
 
 import { createIdentifier } from '@termlnk/core';
 
-// Supplies a human-readable device name for cloud registration without forcing auth-core
-// to depend on `node:os`.
-//
-// Typical impls:
-// - Electron main: wraps `os.hostname()`, falls back to 'Unknown device'.
-// - Browser SPA:   parses navigator.userAgent or prompts the user, persisted in localStorage.
-// - React Native:  expo-device + AsyncStorage.
-//
-// Used via Quantity.OPTIONAL injection — missing impl resolves to 'Unknown device'.
-// Must be synchronous so register/login is not blocked.
 export interface IDeviceNameProvider {
   getName(): string;
 }
 
-export const IDeviceNameProvider = createIdentifier<IDeviceNameProvider>(
-  'auth.device-name-provider'
-);
+export const IDeviceNameProvider = createIdentifier<IDeviceNameProvider>('auth.device-name-provider');

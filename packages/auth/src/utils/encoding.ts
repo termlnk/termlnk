@@ -13,10 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-// Cross-platform base64 / hex encoding helpers. Pure functions; works identically on
-// Node 22+, browsers, and React Native (with `react-native-get-random-values` polyfill).
-// auth-core / sync-core deliberately avoid `node:buffer` / `undici` so the same wire
-// format opens vaults on every runtime.
+// Cross-platform base64 / hex encoding helpers. Pure functions; works on Node 22+,
+// browsers, and React Native (with `react-native-get-random-values` polyfill). Avoids
+// `node:buffer` / `undici` so the same wire format opens vaults on every runtime.
 
 /** Convert raw bytes to standard base64 (with padding `=`). */
 export function bytesToBase64(bytes: Uint8Array): string {

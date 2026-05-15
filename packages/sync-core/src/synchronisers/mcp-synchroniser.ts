@@ -25,19 +25,11 @@ const RESOURCE_ID = 'mcp_server' as const;
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
-/**
- * MCP Server synchroniser — row-level LWW.
- *
- * Scope: full `IMcpServerEntity` rows.
- * - Sensitive fields inside `config` (stdio.env / http.headers value) are
- *   already decrypted by `McpServerRepository` on read; the synchroniser
- *   re-encrypts the row with the sync E2EE master key. On the receiving side
- *   the repository re-encrypts the same fields with the local `SecretCipher`.
- * - `mcp_oauth_token` is **not** synced — each device re-runs the OAuth flow.
- * - Patch overwrites runtime fields like `status` / `lastError`. That is
- *   intentional; `MCPClientService` writes the real status back on next
- *   connect.
- */
+// Row-level LWW for IMcpServerEntity. Repository decrypts sensitive `config` fields on
+// read; sync re-encrypts them under the master key, and the receiver re-encrypts with
+// the local SecretCipher. mcp_oauth_token is not synced — each device re-runs OAuth.
+// Patches overwrite runtime fields like status/lastError; MCPClientService rewrites
+// them on next connect.
 export class McpSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
 
@@ -101,8 +93,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
-    // See HostSynchroniser.buildInitialSnapshot — only enqueue rows without a sync_row_meta
-    // record so re-running enable() never produces redundant outbox traffic.
+    // Skip rows that already have sync_row_meta so re-enable() never re-pushes.
     const rows = await this._mcpRepo.getAll();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
@@ -199,7 +190,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
 
       const existing = await this._mcpRepo.getById(item.entityId);
       if (existing) {
-        // Update everything except `id`; the repository re-encrypts the sensitive `config` fields.
+        // Repository re-encrypts sensitive `config` fields on write.
         const { id: _id, ...rest } = row;
         await this._mcpRepo.update(item.entityId, rest);
       } else {

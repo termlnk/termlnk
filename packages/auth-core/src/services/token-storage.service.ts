@@ -19,10 +19,8 @@ import { Disposable, ILogService, Inject } from '@termlnk/core';
 
 const TOKENS_KEY = 'tokens';
 
-// Serializes the ITokenPair as a single JSON blob under the `tokens` key in whatever
-// IAuthKeyValueStorage the host platform binds — desktop/web wrap ConfigRepository +
-// SecretCipher; React Native uses expo-secure-store. Parsing failures (corruption,
-// schema drift) treat the user as logged out instead of crashing.
+// Serializes ITokenPair under the `tokens` key. Parsing failures (corruption, schema
+// drift) treat the user as logged out instead of crashing.
 export class TokenStorageService extends Disposable implements ITokenStorageService {
   constructor(
     @Inject(IAuthKeyValueStorage) private readonly _storage: IAuthKeyValueStorage,

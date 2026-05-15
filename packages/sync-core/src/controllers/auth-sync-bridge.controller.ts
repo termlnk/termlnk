@@ -21,36 +21,10 @@ import { SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
 import { distinctUntilChanged, takeUntil } from 'rxjs';
 import { SyncService } from '../services/sync.service';
 
-/**
- * Auth → sync state bridge (**main process only**).
- *
- * On successful sign-in: enable if `ISyncPluginConfig.autoEnableOnLogin`
- * permits. On sign-out: always disable — without auth, sync cannot run.
- *
- * Manual override: even with `autoEnableOnLogin=false`, the user can still
- * flip the SyncStatusPanel switch. This controller only decides the
- * "moment-of-sign-in" auto-enable; it never overrides a manual choice
- * afterwards.
- *
- * Design notes:
- * - `IAuthService` is `Quantity.OPTIONAL`: without `cloudBaseUrl` the
- *   service is unbound and `_authService` is null. `_initListeners` then
- *   no-ops and `SyncService` stays Disabled — the user can still use
- *   offline features such as encrypted backup.
- * - `distinctUntilChanged` filters duplicate emissions that can briefly
- *   occur in error-recovery flows.
- * - Every `Authenticated` transition **re-reads** the config so a config
- *   change picked up after restart-less re-login takes effect.
- * - `enable` / `disable` are idempotent (`SyncService` guards on
- *   `_enabled$`), but we still prefer `distinctUntilChanged` to spare an
- *   RPC round-trip.
- *
- * Out of scope here:
- * - We don't read `currentUser$` — `authState` is sufficient.
- * - We don't handle implicit sign-out from refresh failures; `TokenManager`
- *   already pushes `Unauthenticated` on fail-soft, and we disable in
- *   reaction.
- */
+// Auto-enables sync on sign-in (subject to autoEnableOnLogin) and always disables on
+// sign-out. Decides only the moment-of-sign-in transition; manual SyncStatusPanel toggles
+// downstream are never overridden. IAuthService is optional — without it, the listener
+// no-ops and SyncService stays Disabled so offline features still work.
 export class AuthSyncBridgeController extends RxDisposable {
   private readonly _authService: IAuthService | null;
 

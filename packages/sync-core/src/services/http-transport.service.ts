@@ -16,32 +16,24 @@
 import type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse, ISyncMutation, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { base64ToBytes, bytesToBase64, HttpRequestError } from '@termlnk/auth';
-// Deep import: @termlnk/auth-core/index.ts re-exports AuthCorePlugin, which
-// transitively pulls in better-sqlite3 via @termlnk/database. This service is
-// shared across desktop/web/mobile, so we take the .ts subpath to keep
-// SQLite out of browser bundles.
+// Deep import keeps better-sqlite3 (transitively pulled in by @termlnk/auth-core's barrel)
+// out of browser/mobile bundles.
 import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { SYNC_TRIGGER_INTERVALS } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
 
-/** Reconnect backoff cap; we keep retrying past it but stop growing. */
 const MAX_RECONNECT_BACKOFF_MS = 30_000;
-
-/** Initial reconnect backoff (exponential base). */
 const INITIAL_RECONNECT_BACKOFF_MS = 1_000;
-
-/** WebSocket heartbeat interval; keeps NAT/proxy paths from silently dropping. */
 const HEARTBEAT_INTERVAL_MS = SYNC_TRIGGER_INTERVALS.heartbeatMs;
 
-/** Subset of `fetch` we depend on; lets tests inject a fake without binding to undici types. */
+// Narrow subsets of fetch / WebSocket so tests inject fakes without binding to undici types.
 export type HttpFetchFn = (url: string, init: {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
 }) => Promise<{ ok: boolean; status: number; statusText: string; json: () => Promise<unknown>; text: () => Promise<string> }>;
 
-/** Subset of `WebSocket` we depend on; lets tests inject a fake without binding to undici types. */
 export interface IHttpWebSocket {
   send: (data: string) => void;
   close: (code?: number, reason?: string) => void;
@@ -50,31 +42,14 @@ export interface IHttpWebSocket {
 
 export type HttpWebSocketCtor = new (url: string, protocols?: string[]) => IHttpWebSocket;
 
-/**
- * Constructor config for HttpSyncTransportService.
- *
- * `baseUrl` is the cloud root (e.g. `https://cloud.termlnk.io/v1` or a
- * self-hosted address). Paths are appended directly:
- * `{baseUrl}/sync/push`, `{baseUrl}/sync/pull`,
- * `wss://...{baseUrl path}/sync/poke`.
- *
- * `fetchFn` / `webSocketCtor` are injection points; production uses the
- * defaults (`DEFAULT_FETCH_FN` / `DEFAULT_WEBSOCKET_CTOR`), tests inject fakes.
- */
 export interface IHttpSyncTransportConfig {
   readonly baseUrl: string;
-  /** WebSocket URL; derived from `baseUrl` when omitted (http→ws / https→wss + /sync/poke). */
+  // Derived from `baseUrl` when omitted (http→ws / https→wss + /sync/poke).
   readonly websocketUrl?: string;
-  /** `fetch` implementation; defaults to `globalThis.fetch`. */
   readonly fetchFn?: HttpFetchFn;
-  /** `WebSocket` constructor; defaults to `globalThis.WebSocket`. */
   readonly webSocketCtor?: HttpWebSocketCtor;
 }
 
-/**
- * Default fetch: `globalThis.fetch`. Provided natively by Node 22+, browsers
- * and React Native — no polyfill needed.
- */
 const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   const resp = await globalThis.fetch(url, init as RequestInit);
   return {
@@ -86,34 +61,10 @@ const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   };
 };
 
-/**
- * Default WebSocket: `globalThis.WebSocket`. Provided natively by Node 22+,
- * browsers and React Native; conforms to RFC 6455. Passing the token via
- * subprotocol is a portable idiom across all three runtimes.
- */
 const DEFAULT_WEBSOCKET_CTOR: HttpWebSocketCtor = globalThis.WebSocket as unknown as HttpWebSocketCtor;
 
-/**
- * Wire format (matches cloud-sync-architecture.md §4.3):
- *
- * ```
- * POST {baseUrl}/sync/push
- *   Body: { clientId, mutations: [{ id, resource, op, entityId, payload, baseVersion, createdAt }] }
- *   Response: { accepted: number[], rejected: { id, reason }[], lastServerVersion: number }
- *
- * POST {baseUrl}/sync/pull
- *   Body: { clientId, resource, cursor }
- *   Response: { cursor, patch: PatchItem[], lastMutationId }
- *   PatchItem: { op: 'put'|'del'|'clear', resource, entityId, payload, version }
- *
- * WS  {baseUrl}/sync/poke
- *   Server → Client: { type: 'poke', resource, cursor }
- *   Client → Server: { type: 'ping' } every 30s
- * ```
- *
- * Uint8Array → JSON is base64. `payload` is `string | null` on the wire; on
- * deserialization a string is base64-decoded back to `Uint8Array`.
- */
+// Wire payloads. Field names are part of the server contract — renames require a
+// coordinated server change. Uint8Array travels over the wire as base64.
 interface IWirePushBody {
   clientId: string;
   mutations: IWireMutation[];
@@ -161,23 +112,8 @@ interface IWirePokeMessage {
   cursor: string;
 }
 
-/**
- * HTTP + WebSocket transport.
- *
- * Design notes:
- * - Auth: every request fetches an access token via `TokenManager.getAccessToken`
- *   and sets the `Bearer` header. If the token is expired and refresh fails the
- *   manager returns null; we throw "unauthenticated" so `SyncService`'s
- *   push/pull catch path can map it to `SyncErrorCode.unauthenticated`.
- * - Serialization: `Uint8Array ↔ base64` (JSON cannot carry binary). Field
- *   names are locked to architecture §4.3 — any rename requires a server-side
- *   change too.
- * - Reconnect: `connect()` opens the socket; on `onclose` we retry with
- *   exponential backoff (1s, 2s, 4s, …, 30s) until `disconnect()` is called.
- *   Heartbeat fires every 30s; if the peer closes, `onclose` runs.
- * - The WebSocket only emits `IPokeMessage`; the patch itself goes through
- *   HTTP `pull`.
- */
+// HTTP + WebSocket transport. WebSocket only emits IPokeMessage; the patch itself goes
+// through HTTP pull. Reconnect uses exponential backoff (1s..30s) until disconnect().
 export class HttpSyncTransportService extends Disposable implements ISyncTransportService {
   private readonly _connected$ = new BehaviorSubject<boolean>(false);
   readonly connected$: Observable<boolean> = this._connected$.asObservable();
@@ -188,9 +124,8 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
   private _ws: IHttpWebSocket | null = null;
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  /** Set true after `disconnect()`; suppresses further reconnect attempts. */
+  // Set true after disconnect(); suppresses further reconnect attempts.
   private _stopped = false;
-  /** Current exponential backoff (ms). */
   private _reconnectBackoff = INITIAL_RECONNECT_BACKOFF_MS;
 
   private readonly _fetchFn: HttpFetchFn;
@@ -297,9 +232,6 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      // SyncService maps this onto SyncErrorCode via .status / .serverCode — e.g.
-      // 401+`unauthorized` → access token rejected; 401+`invalid_refresh` → caller must
-      // re-auth. Without the typed payload the upper layer had no way to differentiate.
       throw new HttpRequestError(`${method} ${url}`, resp.status, resp.statusText, text);
     }
 
@@ -340,8 +272,7 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
     }
 
     const url = this._websocketUrl();
-    // Pass the token via the RFC 6455 subprotocol field rather than a query
-    // string, so server access logs do not record it.
+    // Pass token via RFC 6455 subprotocol so access logs do not record it.
     const ws = new this._webSocketCtor(url, [`Bearer.${token}`]);
 
     ws.addEventListener('open', () => {
@@ -366,7 +297,7 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
 
     ws.addEventListener('error', (event) => {
       this._logService.warn('[HttpSyncTransportService] WebSocket error:', event);
-      // Reconnect is handled in `onclose`, which fires right after `onerror`.
+      // Reconnect runs from `onclose`, which fires right after `onerror`.
     });
 
     this._ws = ws;
@@ -386,7 +317,7 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
       const poke = parsed as IWirePokeMessage;
       this._poke$.next({ type: 'poke', resource: poke.resource, cursor: poke.cursor });
     }
-    // Pong is ignored — its only purpose is to keep `onclose` from firing.
+    // Pong only keeps `onclose` from firing.
   }
 
   private _startHeartbeat(): void {

@@ -25,11 +25,8 @@ const RESOURCE_ID = 'ai_provider' as const;
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
-/**
- * EntityId namespace prefixes. They fold three related tables
- * (provider / model_config / custom_model) onto the single `ai_provider`
- * resource ID, instead of expanding the `SyncResourceId` enum.
- */
+// EntityId prefixes that fold three related tables onto a single `ai_provider` resource
+// id, instead of expanding the SyncResourceId enum.
 const KIND_PREFIX = {
   provider: 'prov:',
   modelConfig: 'pmod:',
@@ -43,23 +40,9 @@ interface IProviderPayload {
   readonly row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity;
 }
 
-/**
- * AI Provider synchroniser — row-level LWW spanning three related tables.
- *
- * Scope:
- * - `ai_provider` (main table); `apiKey` is decrypted by the repository on
- *   read and re-encrypted by sync E2EE for transport.
- * - `ai_provider_model` (per-model enabled/overrides for built-in models).
- * - `ai_custom_model` (full user-defined model definitions).
- *
- * One mutation per row; the entityId prefix (`prov:` / `pmod:` / `cmod:`)
- * tells `applyPatch` which repository upsert to dispatch.
- *
- * Cascade delete: local `deleteProvider` cascades to children at the SQL
- * layer but only emits one `provider` delete event. We do not try to
- * reconstruct child delete events (would require scanning old state); the
- * receiver's `deleteProvider` cascades the same way, so both ends converge.
- */
+// Row-level LWW across three tables (ai_provider / ai_provider_model / ai_custom_model).
+// EntityId prefix dispatches applyPatch to the right upsert. deleteProvider cascades on
+// both sides, so a single provider-delete mutation converges both ends.
 export class ProviderSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
 
@@ -127,8 +110,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
-    // See HostSynchroniser.buildInitialSnapshot — only enqueue rows without a sync_row_meta
-    // record so re-running enable() never produces redundant outbox traffic.
+    // Skip rows that already have sync_row_meta so re-enable() never re-pushes.
     const out: ISyncMutation[] = [];
 
     const providers = await this._providerRepo.getProviders();
@@ -246,7 +228,6 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
 
   private async _applyOne(item: ISyncPatchItem): Promise<void> {
     if (item.op === 'clear') {
-      // Full reset: every provider + cascaded children.
       const providers = await this._providerRepo.getProviders();
       for (const p of providers) {
         await this._providerRepo.deleteProvider(p.id);

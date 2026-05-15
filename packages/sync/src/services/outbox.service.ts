@@ -42,9 +42,9 @@ export interface ISyncOutboxService {
   // Used by forceFullResync.
   clearResource(resource: SyncResourceId): Promise<void>;
 
-  // Remove rows whose resource matches and entityId starts with any of the given prefixes.
-  // Returns the number of deleted rows. SyncService runs this at startup to evict mutations
-  // for device-specific config keys (the historical self-referential enqueue bug).
+  // Remove rows whose resource matches and entityId starts with any of the given prefixes;
+  // returns the deleted count. Used at startup to evict mutations targeting device-specific
+  // config keys.
   purgeByEntityIdPrefixes(resource: SyncResourceId, prefixes: readonly string[]): Promise<number>;
 }
 

@@ -45,9 +45,8 @@ export function AuthGate() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('login');
   const [hideErrorOnSwitch, setHideErrorOnSwitch] = useState(false);
-  // Surfaces errors that don't make it into IAuthService.lastError$ — e.g. tRPC route-level
-  // failures when the main process refuses the call ("cloud auth service is not configured")
-  // or transport faults. lastError$ wins when both are present so we don't show stale text.
+  // Surfaces transport/route-level errors that bypass lastError$ (e.g. cloud unconfigured).
+  // lastError$ wins when both are present so we never show stale text.
   const [localError, setLocalError] = useState<string | null>(null);
 
   if (!authClient) {
@@ -96,9 +95,6 @@ export function AuthGate() {
     setLocalError(null);
   };
 
-  // The auth router throws when cloud is unconfigured ("cloud auth service is not
-  // configured"). HttpAuthService failures land in lastError$ instead, so prefer that
-  // when available and only fall back to err.message for transport/route-level errors.
   const handleSubmitError = (context: 'login' | 'register', err: unknown): void => {
     logService.error(`[AuthGate] ${context} failed:`, err);
     const message = err instanceof Error ? err.message : String(err);

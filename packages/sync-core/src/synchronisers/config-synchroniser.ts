@@ -33,25 +33,9 @@ interface IFieldPayload {
   readonly updatedAt: number;
 }
 
-/**
- * Config synchroniser — **field-level** LWW.
- *
- * Unlike the four row-level synchronisers, `config.value` is nested JSON. Row
- * LWW would let two devices clobber each other's unrelated subKeys, so the
- * unit of synchronisation is `(key, subKey)` with a per-field timestamp.
- *
- * Push:
- * - subKey event → one mutation
- * - whole-key `set` (no subKey) → fan out one mutation per existing subKey
- * - whole-key `delete` (no subKey) → one delete mutation with empty subKey
- *
- * Pull:
- * - decode entityId → `(key, subKey)`
- * - compare `payload.updatedAt` with local `sync_field_meta.updatedAt`
- * - apply only when the remote is strictly newer
- *
- * Does not use `sync_row_meta` (that is for row-level synchronisers).
- */
+// Field-level LWW (other synchronisers are row-level). Unit is (key, subKey) with a
+// per-field timestamp so two devices editing unrelated subKeys do not clobber each other.
+// Uses sync_field_meta, not sync_row_meta.
 export class ConfigSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
 
@@ -86,10 +70,9 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
         if (this._applyingPatch) {
           return;
         }
-        // Device-specific plugin config (sync internals, auth tokens, window state, …) must
-        // never enter the outbox. Skipping here also breaks the self-referential loop where
-        // SyncOutboxService.enqueue persists `sync.config.lastClientMutId`, which would
-        // otherwise re-enter this handler and enqueue another mutation ad infinitum.
+        // Device-specific keys (sync internals, auth tokens, window state, …) must never
+        // enter the outbox; this also breaks the self-reference where enqueue persists
+        // sync.config.lastClientMutId.
         if (NON_SYNCABLE_CONFIG_KEYS.has(event.key)) {
           return;
         }
@@ -122,10 +105,8 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
-    // Only enqueue fields without a sync_field_meta record — those are the ones that have
-    // never been touched by the sync write path (i.e. existed before the first enable()).
-    // _enqueueFieldUpsert already writes the meta as a side effect, so subsequent enable()
-    // calls naturally short-circuit here.
+    // Skip fields that already have sync_field_meta; _enqueueFieldUpsert writes meta so
+    // subsequent enable() calls short-circuit.
     const out: ISyncMutation[] = [];
     const all = await this._configRepo.getAll();
     const now = Date.now();
@@ -260,18 +241,14 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
     }
     const { key, subKey } = decoded;
 
-    // Defense-in-depth: refuse to apply device-specific keys even if the server returned them
-    // (older client may have pushed garbage before the outbound filter shipped).
+    // Refuse device-specific keys on apply too, in case a peer pushes them.
     if (NON_SYNCABLE_CONFIG_KEYS.has(key)) {
       return;
     }
 
     if (item.op === 'del') {
-      // Field-level delete. Ideally we would compare the remote `updatedAt`
-      // with the local `sync_field_meta.updatedAt`, but delete payloads are
-      // null and cannot carry a timestamp — so we apply unconditionally. This
-      // means "delete wins" on conflicts, which is the documented edge case
-      // for field-level LWW.
+      // Delete payloads carry no timestamp, so we apply unconditionally — "delete wins"
+      // on conflict, the documented edge case for field-level LWW.
       if (subKey === '') {
         await this._configRepo.delete(key);
         // Drop every field-meta row under this key.

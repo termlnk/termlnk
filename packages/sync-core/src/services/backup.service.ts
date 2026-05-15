@@ -22,26 +22,9 @@ const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 const PREFIX_BYTES = TEXT_ENCODER.encode(BACKUP_PAYLOAD_PREFIX);
 
-/**
- * Encrypted-backup orchestrator.
- *
- * Export:
- *   BackupRepository.exportSnapshot()  → IBackupSnapshot with plaintext creds
- *   → JSON.stringify → utf8 bytes
- *   → SyncCryptoService.encrypt        → tmsync1: frame
- *   → prepend BACKUP_PAYLOAD_PREFIX     → tmbak1: bytes (written to file)
- *
- * Import:
- *   tmbak1: bytes
- *   → validate + strip BACKUP_PAYLOAD_PREFIX
- *   → SyncCryptoService.decrypt        → utf8 bytes
- *   → JSON.parse                       → IBackupSnapshot
- *   → BackupRepository.importSnapshot  → DB (re-encrypted with local key)
- *
- * Requires an unlocked master key (`SyncCryptoService.available === true`).
- * When locked we throw rather than report a misleading "success" with no work
- * done.
- */
+// Encrypted-backup orchestrator. File layout: BACKUP_PAYLOAD_PREFIX wraps a tmsync1: frame
+// so files and wire payloads stay distinguishable. Throws when the master key is locked
+// rather than reporting misleading success.
 export class BackupService extends Disposable implements IBackupService {
   constructor(
     @Inject(BackupRepository) private readonly _backupRepo: BackupRepository,
@@ -78,7 +61,7 @@ export class BackupService extends Disposable implements IBackupService {
       throw new Error('[BackupService] master key is locked; cannot import backup');
     }
 
-    if (payload.length < PREFIX_BYTES.length || !startsWithBytes(payload, PREFIX_BYTES)) {
+    if (payload.length < PREFIX_BYTES.length || !PREFIX_BYTES.every((b, i) => payload[i] === b)) {
       throw new Error('[BackupService] payload missing tmbak1: prefix; not a termlnk backup file');
     }
 
@@ -114,18 +97,6 @@ export class BackupService extends Disposable implements IBackupService {
       skill: resources.skill.length,
     };
   }
-}
-
-function startsWithBytes(buf: Uint8Array, prefix: Uint8Array): boolean {
-  if (buf.length < prefix.length) {
-    return false;
-  }
-  for (let i = 0; i < prefix.length; i++) {
-    if (buf[i] !== prefix[i]) {
-      return false;
-    }
-  }
-  return true;
 }
 
 function describeCounts(counts: Record<string, number>): string {

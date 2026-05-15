@@ -20,7 +20,6 @@ import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { computeArgon2Salt, deriveSubKeys, zeroize } from '../crypto/kdf';
 
-// State machine: starts Locked; derive() flips to Unlocked, lock()/dispose() return to Locked.
 export class MasterKeyService extends Disposable implements IMasterKeyService {
   private readonly _state$ = new BehaviorSubject<MasterKeyState>(MasterKeyState.Locked);
   readonly state$: Observable<MasterKeyState> = this._state$.asObservable();

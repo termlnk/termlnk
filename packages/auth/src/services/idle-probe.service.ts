@@ -15,14 +15,7 @@
 
 import { createIdentifier } from '@termlnk/core';
 
-// Returns the number of seconds since the last user input, so IdleLockController can run
-// without depending on Electron directly.
-//
-// Implementations:
-// - @termlnk/auth-core         — NoopIdleProbe (always 0 = "never idle"; for tests / non-Electron).
-// - @termlnk/electron-main     — wraps electron.powerMonitor.getSystemIdleTime().
-//
-// 0 means input just happened; N means N seconds without input.
+// Returns seconds since the last user input. 0 means input just happened.
 //
 // Implementations must not throw — fall back to 0 on platform errors so a probe failure
 // cannot accidentally lock the user out.

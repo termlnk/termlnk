@@ -114,30 +114,8 @@ function friendlyMessageFor(code: AuthErrorCode): string {
   return FRIENDLY_MESSAGES[code];
 }
 
-// Wire format:
-//
-//   POST {baseUrl}/auth/register
-//     Body: { email, argon2SaltB64, srpSalt, srpVerifier, displayName?, deviceName? }
-//     Resp: { user, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt }
-//
-//   POST {baseUrl}/auth/srp/init
-//     Body: { email }
-//     Resp: { argon2SaltB64, srpSalt, srpServerEphemeralPublic }
-//
-//   POST {baseUrl}/auth/srp/verify
-//     Body: { email, clientPublicEphemeral, clientSessionProof, deviceName? }
-//     Resp: { serverSessionProof, user, accessToken, refreshToken, ...expires }
-//
-//   POST {baseUrl}/auth/logout    (Bearer auth, best-effort)
-//     Resp: 204
-//
-//   GET  {baseUrl}/auth/me        (Bearer auth)
-//     Resp: { user }
-//     Used at startup to self-heal stale cached user fields (displayName, avatarUrl,
-//     emailVerified). 404 = endpoint not deployed yet → graceful keep-cached fallback.
-//
-// Server MUST validate srpM1 before issuing tokens; otherwise an attacker that guessed
-// the password could observe a token leak alongside the SRP rejection.
+// Server MUST validate srpM1 before issuing tokens; otherwise a password-guessing attacker
+// could observe a token leak alongside the SRP rejection.
 interface IRegisterRequestBody {
   email: string;
   displayName?: string;
@@ -195,14 +173,7 @@ interface ISrpVerifyResponseBody {
   refreshTokenExpiresAt: number;
 }
 
-// Main-process IAuthService over HTTP.
-//
-// Register: derive master key, enroll SRP verifier, POST /auth/register, store tokens.
-// Login:    POST /auth/srp/init, derive master key, deriveSession, POST /auth/srp/verify,
-//           verify M2 (rejects MITM), store tokens.
-// Logout:   POST /auth/logout (best-effort), lock master key, clear tokens.
-//
-// Trust boundaries: plaintext password is consumed inside register/login only; master key
+// Trust boundary: plaintext password is consumed inside register/login only; master key
 // and tokens never leave the main process.
 export class HttpAuthService extends Disposable implements IAuthService {
   private readonly _currentUser$ = new BehaviorSubject<IUserAccount | null>(null);
@@ -383,9 +354,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
     this._lastError$.next(null);
   }
 
-  // Rehydrates currentUser$/authState$ from the locally persisted user + token pair.
-  // Called once at plugin onReady. Idempotent: subsequent calls re-derive from current
-  // storage state. Fail-soft on every step — never throws to the caller.
+  // Idempotent and fail-soft; never throws to the caller.
   async restore(): Promise<void> {
     const cachedUser = await this._userStorage.load();
     if (cachedUser) {
@@ -558,14 +527,8 @@ export class HttpAuthService extends Disposable implements IAuthService {
     return `${this._config.baseUrl.replace(/\/+$/, '')}${path}`;
   }
 
-  // Loads the stable per-device id from IAuthKeyValueStorage, or generates and persists a
-  // fresh one if none exists. Cached in-memory after the first call so register/login
-  // don't hit the keystore on every attempt.
-  //
-  // Failure mode: if the keystore throws (e.g. OS keychain locked) we still return a
-  // deterministic value for this process — better than blocking sign-in. The next process
-  // start will retry persistence. The downside is the server may see a one-off "new" device
-  // for that crashed-keystore window; acceptable trade-off versus a hard auth outage.
+  // Cached in-memory after the first call. If the keystore throws we still return a fresh
+  // id for this process so sign-in is not blocked; persistence retries on next launch.
   private async _loadOrCreateDeviceId(): Promise<string> {
     if (this._deviceIdCache) {
       return this._deviceIdCache;

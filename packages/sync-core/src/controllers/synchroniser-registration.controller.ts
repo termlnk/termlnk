@@ -23,23 +23,10 @@ import { McpSynchroniser } from '../synchronisers/mcp-synchroniser';
 import { ProviderSynchroniser } from '../synchronisers/provider-synchroniser';
 import { SkillSynchroniser } from '../synchronisers/skill-synchroniser';
 
-/**
- * Registers the available synchronisers with `SyncService` at startup.
- *
- * Registration happens in a controller, not directly in the plugin: the
- * controller is touched at `onReady`, by which time every dependency is
- * constructed. Plugin `onStarting` runs too early — services don't exist yet.
- *
- * `start()` is what subscribes the synchroniser to `Repository.changed$`;
- * construction is side-effect free. So filtering at the register step is
- * sufficient — an excluded synchroniser never has `start()` called and never
- * pushes anything into the outbox.
- *
- * Exclusion source: `ISyncPluginConfig.excludedResources` (user preference,
- * default empty). Architecturally non-syncable resources (chat,
- * terminal_session_backup, mcp_oauth_token) simply have no synchroniser and
- * are independent of this list.
- */
+// Registers synchronisers at onReady (plugin onStarting is too early — dependencies
+// are not yet constructed). Synchroniser construction is side-effect free; start()
+// subscribes to Repository.changed$, so filtering here keeps excluded resources from
+// ever pushing into the outbox.
 export class SynchroniserRegistrationController extends Disposable {
   constructor(
     @Inject(SyncService) private readonly _syncService: SyncService,

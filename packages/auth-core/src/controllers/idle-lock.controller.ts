@@ -18,20 +18,12 @@ import { AUTH_PLUGIN_CONFIG_KEY, IAuthService as IAuthServiceId, IIdleProbe as I
 import { IConfigService, ILogService, Inject, Optional, RxDisposable } from '@termlnk/core';
 import { takeUntil } from 'rxjs';
 
-// Polling cadence: tight enough that the lock window approximates the configured threshold,
-// loose enough to not burden the CPU.
 const IDLE_POLL_INTERVAL_MS = 15_000;
 
-// Auto-locks the master key after the user has been idle for `autoLockIdleMinutes` minutes
-// (0 disables). Prefers IAuthService.logout() when available — that path clears tokens and
-// flips authState back to Unauthenticated so the renderer's BackupCard etc. transition
-// cleanly. Falls back to IMasterKeyService.lock() when cloudBaseUrl is unset (there are no
-// tokens to clear in that mode anyway).
-//
-// Polling only runs while master key is Unlocked: when state flips Locked we stop polling,
-// when derive() flips it back we resume. Config is re-read every tick so the user does not
-// need to restart after changing the threshold. Idle-probe exceptions are swallowed —
-// failing closed (forced lock) would punish users when the OS API hiccups.
+// Auto-locks the master key after `autoLockIdleMinutes` of inactivity (0 disables).
+// Prefers IAuthService.logout() when bound so tokens + authState are cleared together;
+// falls back to a bare master-key lock. Polling runs only while Unlocked. Probe
+// exceptions are swallowed — failing closed would punish users when the OS API hiccups.
 export class IdleLockController extends RxDisposable {
   private _intervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -101,8 +93,8 @@ export class IdleLockController extends RxDisposable {
         await this._authService.logout();
         return;
       } catch (err) {
-        // logout() already absorbs network errors; reaching this branch means the local
-        // state machine itself failed. Fall back to bare lock to at least clear the key.
+        // logout() absorbs network errors; reaching here means the local state machine
+        // itself failed. Fall back to bare lock so the key is still cleared.
         this._logService.warn('[IdleLockController] logout failed; falling back to bare master-key lock:', err);
       }
     }

@@ -18,15 +18,8 @@ import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 
-/**
- * Placeholder transport — stays "disconnected"; push/pull throw.
- *
- * Used when no cloud backend is configured. `SyncCorePlugin` always binds a
- * transport so `SyncService.enable()` works (instead of failing DI). After
- * `enable()` the service immediately enters Offline; once the user logs in or
- * configures a backend, desktop main overrides this with the real HTTP/WS
- * implementation.
- */
+// Placeholder bound when no cloud backend is configured so SyncService.enable() does
+// not fail DI; stays disconnected and push/pull throw.
 export class NoopSyncTransportService extends Disposable implements ISyncTransportService {
   private readonly _connected$ = new BehaviorSubject<boolean>(false);
   readonly connected$: Observable<boolean> = this._connected$.asObservable();
@@ -49,7 +42,7 @@ export class NoopSyncTransportService extends Disposable implements ISyncTranspo
   }
 
   async connect(): Promise<void> {
-    // No error, but stay disconnected so `SyncService` enters Offline.
+    // Stay disconnected so SyncService enters Offline rather than throwing.
   }
 
   async disconnect(): Promise<void> {

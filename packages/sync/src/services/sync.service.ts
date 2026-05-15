@@ -18,11 +18,7 @@ import type { ISyncError, ISyncStats, SyncState } from '../models/state';
 import { createIdentifier } from '@termlnk/core';
 
 // Top-level sync coordinator (main-process only). Registers ResourceSynchronisers, manages
-// the global sync lifecycle, drives push/pull cadence (debounce + poll + poke) and exposes
-// state for the renderer via tRPC subscriptions.
-//
-// Out of scope: payload decryption (handled per-synchroniser), SQLite merging (per-synchroniser
-// via Repositories), token management (IAuthService — the transport interceptor pulls them in).
+// the global lifecycle and push/pull cadence, and exposes state for the renderer via tRPC.
 export interface ISyncService {
   readonly state$: Observable<SyncState>;
   readonly stats$: Observable<ISyncStats>;

@@ -42,16 +42,7 @@ const DEFAULT_FETCH_FN: HttpFetchFn = async (url, init) => {
   };
 };
 
-// Wire format:
-//   POST {baseUrl}/auth/refresh
-//     Body:     { refreshToken: string }
-//     Response: { accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt }
-//
-// The server MUST rotate refreshToken on every refresh (single-use) to defeat replay.
-// Status semantics:
-//   401 — refresh token invalid or expired (TokenManager will clear).
-//   429 — rate limited.
-//   5xx — server error.
+// Server MUST rotate refreshToken on every refresh (single-use) to defeat replay.
 interface IRefreshRequestBody {
   refreshToken: string;
 }
@@ -63,8 +54,7 @@ interface IRefreshResponseBody {
   refreshTokenExpiresAt: number;
 }
 
-// Calls /auth/refresh. This class never holds the master key or the password — its sole
-// job is exchanging a refreshToken for a new pair. A failed refresh propagates upward so
+// Never holds the master key or password. A failed refresh propagates upward so
 // TokenManager can fail-soft into "logged out".
 export class HttpTokenRefresher extends Disposable implements ITokenRefresher {
   private readonly _fetchFn: HttpFetchFn;
@@ -95,9 +85,6 @@ export class HttpTokenRefresher extends Disposable implements ITokenRefresher {
       this._logService.warn(
         `[HttpTokenRefresher] refresh failed: ${resp.status} ${resp.statusText}${text ? ` — ${text.slice(0, 200)}` : ''}`
       );
-      // Surfaces server's `invalid_refresh` (single-use replay or expired) vs transient
-      // failures via .serverCode/.status — TokenManager decides whether to clear tokens
-      // (force re-sign-in) or retry.
       throw new HttpRequestError('POST /auth/refresh', resp.status, resp.statusText, text);
     }
 

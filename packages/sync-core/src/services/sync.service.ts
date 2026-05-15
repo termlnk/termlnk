@@ -23,23 +23,15 @@ import { BehaviorSubject, debounceTime, filter, interval, merge, Subject, Subscr
 
 const CLIENT_ID_FIELD = 'clientId';
 
-// `config` resource entityIds are `${key}::${subKey}`. Garbage left by the pre-fix
-// self-referential enqueue bug all sits under the non-syncable plugin config keys, so we
-// purge by these prefixes at first enable() on a process.
+// `config` entityIds are `${key}::${subKey}`. Outbox rows under non-syncable plugin keys
+// must never reach the server; purge them at first enable() on each process.
 const CONFIG_GARBAGE_ENTITY_PREFIXES: readonly string[] = Array.from(NON_SYNCABLE_CONFIG_KEYS).map(
   (key) => `${key}::`
 );
 
-// Top-level sync coordinator (main-process only). Registers ResourceSynchronisers and
-// drives the push/pull/poke cadence:
-//   - local change      -> debounce 500 ms -> push
-//   - server poke       -> debounce 200 ms -> pull
-//   - every 5 min       -> poll pull (catches silent WS drops)
-//   - syncNow() / poke  -> push + pull immediately
-// Out of scope: payload encryption (per-synchroniser via ISyncCryptoService), Repository
-// writes (also per-synchroniser), token / reconnect handling (transport implementation).
-//
-// register() lives on the concrete class only; ISyncService consumers cannot reach it.
+// Top-level sync coordinator. Registers ResourceSynchronisers and drives the
+// push/pull/poke cadence. register() lives on the concrete class only so ISyncService
+// consumers cannot reach it.
 export class SyncService extends Disposable implements ISyncService {
   private readonly _state$ = new BehaviorSubject<SyncState>(SyncState.Disabled);
   readonly state$: Observable<SyncState> = this._state$.asObservable();
@@ -56,16 +48,14 @@ export class SyncService extends Disposable implements ISyncService {
   // Indexed by resourceId so applyPatch can route incoming patches in O(1).
   private readonly _synchronisers: Map<SyncResourceId, IResourceSynchroniser> = new Map();
 
-  // Subscriptions live only between enable() and disable().
+  // Lives only between enable() and disable().
   private _runtimeSub: Subscription | null = null;
-  // Kept separate from _runtimeSub because we still want to observe reconnects after disable.
+  // Kept separate so reconnects remain observable after disable.
   private _transportSub: Subscription | null = null;
 
-  // Per-device client id; loaded or generated at first enable().
   private _clientId: string | null = null;
 
-  // Garbage purge runs once per process — it scans persistent outbox rows that exist purely
-  // because of an earlier bug. After the first sweep further work is wasted disk I/O.
+  // One-shot per process; subsequent sweeps would just be wasted disk I/O.
   private _garbagePurged = false;
 
   private readonly _pushTrigger$ = new Subject<void>();
@@ -97,8 +87,7 @@ export class SyncService extends Disposable implements ISyncService {
     super.dispose();
   }
 
-  // Registers a synchroniser; returns an IDisposable for explicit unregistration.
-  // Production flows rely on the plugin dispose chain; tests use the disposable directly.
+  // Production flows rely on the plugin dispose chain; the returned disposable is for tests.
   register(synchroniser: IResourceSynchroniser): IDisposable {
     const existing = this._synchronisers.get(synchroniser.resourceId);
     if (existing) {
@@ -124,12 +113,9 @@ export class SyncService extends Disposable implements ISyncService {
     }
     this._clientId = await this._loadOrCreateClientId();
     await this._purgeConfigGarbageOnce();
-    // First-enable for this user-on-device: walk every synchroniser and enqueue rows that
-    // have never been pushed before (those without a sync_row_meta / sync_field_meta entry).
-    // Each synchroniser implements its own de-dup so re-enable on subsequent sessions is a
-    // cheap no-op. Seeded before the trigger pipeline subscribes — outbox.pendingCount$ is
-    // a BehaviorSubject and will replay its current (now non-zero) value at subscribe time,
-    // so the first debounce window fires push without any extra trigger plumbing.
+    // Seed before the trigger pipeline subscribes — outbox.pendingCount$ is a
+    // BehaviorSubject and replays its (now non-zero) value at subscribe time, so the
+    // first debounce window fires push without extra trigger plumbing.
     await this._seedInitialSnapshots();
 
     // Disconnect -> Offline; reconnect -> Idle + immediate pull.
@@ -170,8 +156,7 @@ export class SyncService extends Disposable implements ISyncService {
       })
     );
 
-    // Connect failures fall through to Offline; do not throw.
-    // The initial pull is triggered by transportSub when connected$ flips true; an explicit
+    // Initial pull is fired by transportSub when connected$ flips true; an explicit
     // trigger here would double-fire.
     try {
       await this._transport.connect();
@@ -223,11 +208,9 @@ export class SyncService extends Disposable implements ISyncService {
     }
     try {
       this._state$.next(SyncState.Syncing);
-      // Drain the outbox in fixed-size batches so a single push never has to serialise
-      // the entire queue. Each iteration is bounded by SYNC_PUSH_BATCH_SIZE; the loop
-      // exits when the outbox is empty or no row in the latest batch was accepted (the
-      // remaining rows would just be replayed indefinitely — let the next pull/push tick
-      // retry after baseVersion conflicts resolve).
+      // Drain in fixed-size batches. Exit when the outbox empties or when no row in the
+      // latest batch was accepted — the rejected rows still sit at the FIFO head; let the
+      // next pull/push tick retry after baseVersion conflicts resolve.
       while (this._enabled$.getValue()) {
         const mutations = await this._outbox.peek(SYNC_PUSH_BATCH_SIZE);
         if (mutations.length === 0) {
@@ -246,8 +229,6 @@ export class SyncService extends Disposable implements ISyncService {
           this._pullTrigger$.next();
         }
         if (resp.accepted.length === 0) {
-          // Nothing made progress this round — the rejected rows still occupy the FIFO head
-          // and a tight loop would just resubmit them. Stop and wait for the next trigger.
           break;
         }
       }
@@ -259,12 +240,9 @@ export class SyncService extends Disposable implements ISyncService {
     }
   }
 
-  // Runs every enable(): walks each registered synchroniser and seeds the outbox with rows
-  // that have never been synced. Synchronisers gate their own emit by sync_row_meta / sync_field_meta
-  // so this is a no-op on subsequent enable() once the first push has been ack'd and
-  // the resulting pull echo has filled meta. A per-synchroniser failure is logged and skipped —
-  // a half-seeded outbox still pushes what it has, and the next pull/push cycle keeps the
-  // session alive while the broken synchroniser surfaces its own error.
+  // Synchronisers gate their own emit by sync_row_meta / sync_field_meta, so this is a
+  // cheap no-op once the first push round-trip has filled meta. Per-synchroniser failures
+  // are logged and skipped: a half-seeded outbox still pushes what it has.
   private async _seedInitialSnapshots(): Promise<void> {
     for (const synchroniser of this._synchronisers.values()) {
       try {
@@ -278,10 +256,8 @@ export class SyncService extends Disposable implements ISyncService {
     }
   }
 
-  // Runs once per process during enable(): drops outbox rows for `config` resource whose
-  // entityId belongs to a non-syncable plugin config key. These rows are residue from the
-  // pre-fix self-referential enqueue loop (see ConfigSynchroniser); pushing them upstream
-  // would be wasted bandwidth and pollute server-side history.
+  // Drops outbox rows whose entityId points at a non-syncable config key. Pushing them
+  // upstream would waste bandwidth and pollute server-side history.
   private async _purgeConfigGarbageOnce(): Promise<void> {
     if (this._garbagePurged) {
       return;
@@ -352,9 +328,8 @@ export class SyncService extends Disposable implements ISyncService {
       const cursor = await this._cursors.get(resource);
       const pending = await this._outbox.countByResource(resource);
       pendingTotal += pending;
-      const syncer = this._synchronisers.get(resource);
       perResource[resource] = {
-        status: syncer ? SynchroniserStatus.Idle : SynchroniserStatus.Idle,
+        status: SynchroniserStatus.Idle,
         pendingCount: pending,
         lastSyncedAt: cursor?.lastPulledAt ?? null,
         cursor: cursor?.cursor ?? null,

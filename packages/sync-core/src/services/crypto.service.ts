@@ -15,11 +15,8 @@
 
 import type { IMasterKey, IMasterKeyService } from '@termlnk/auth';
 import type { ISyncCryptoService } from '@termlnk/sync';
-// eslint-disable-next-line penetrating/no-penetrating-import -- @noble/ciphers 2.x exports only `.js` subpaths
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
-// eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { hmac } from '@noble/hashes/hmac.js';
-// eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { sha256 } from '@noble/hashes/sha2.js';
 import { IMasterKeyService as IMasterKeyServiceId, randomBytes } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
@@ -27,42 +24,10 @@ import { SYNC_PAYLOAD_PREFIX } from '@termlnk/sync';
 
 const TEXT_ENCODER = new TextEncoder();
 
-/**
- * Magic header for the ciphertext frame: the ASCII bytes of `tmsync1:`.
- *
- * Distinguishes sync E2EE frames from local SafeStorage frames (`tmenc1:`),
- * so an unknown blob can be routed to the right cipher by prefix.
- */
 const PREFIX_BYTES = TEXT_ENCODER.encode(SYNC_PAYLOAD_PREFIX);
-
-/** XChaCha20 nonce length (bytes). */
 const NONCE_LEN = 24;
-
-/** Poly1305 authentication tag length (bytes). */
 const POLY1305_TAG_LEN = 16;
 
-/**
- * Sync-layer E2EE cipher.
- *
- * Frame layout:
- * ```
- *   [PREFIX_BYTES (8)] [nonce (24)] [ciphertext + tag]
- * ```
- *
- * Contract:
- * - When the master key is locked, every operation throws — callers must
- *   never treat a missing key as silent success.
- * - Callers should check `available === true` up front, or translate the
- *   exception into the `cipher_mismatch` / `master_key_locked` error code.
- *
- * Boundary vs. `ISecretCipherService`:
- * - SecretCipher (`tmenc1:`): local at-rest; key from OS keystore / device
- *   fingerprint; defends against "SQLite file stolen".
- * - SyncCryptoService (`tmsync1:`): cross-device E2EE; key derived from the
- *   user master password; defends against a curious server.
- * - Defense in depth: sensitive fields are first wrapped in `tmenc1:` for
- *   local storage, then the whole row is wrapped in `tmsync1:` for upload.
- */
 export class SyncCryptoService extends Disposable implements ISyncCryptoService {
   constructor(
     @Inject(IMasterKeyServiceId) private readonly _masterKeyService: IMasterKeyService,
@@ -93,7 +58,7 @@ export class SyncCryptoService extends Disposable implements ISyncCryptoService 
     if (payload.length < PREFIX_BYTES.length + NONCE_LEN + POLY1305_TAG_LEN) {
       throw new Error('[SyncCryptoService] payload too short to be a valid tmsync1 frame');
     }
-    if (!startsWithBytes(payload, PREFIX_BYTES)) {
+    if (!PREFIX_BYTES.every((b, i) => payload[i] === b)) {
       throw new Error('[SyncCryptoService] payload missing tmsync1: prefix');
     }
 
@@ -116,16 +81,4 @@ export class SyncCryptoService extends Disposable implements ISyncCryptoService 
     }
     return key;
   }
-}
-
-function startsWithBytes(buf: Uint8Array, prefix: Uint8Array): boolean {
-  if (buf.length < prefix.length) {
-    return false;
-  }
-  for (let i = 0; i < prefix.length; i++) {
-    if (buf[i] !== prefix[i]) {
-      return false;
-    }
-  }
-  return true;
 }

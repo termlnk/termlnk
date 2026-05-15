@@ -16,8 +16,6 @@
 import { Disposable, ICommandService } from '@termlnk/core';
 import { AUTH_COMMANDS } from '../commands/auth.commands';
 
-// Registers auth.command.* with ICommandService. Handlers resolve IAuthClientService via
-// Quantity.OPTIONAL so commands return false (rather than throw) when the cloud is unconfigured.
 export class AuthUIController extends Disposable {
   constructor(
     @ICommandService private readonly _commandService: ICommandService

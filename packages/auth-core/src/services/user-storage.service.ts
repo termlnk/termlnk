@@ -19,11 +19,8 @@ import { Disposable, ILogService, Inject } from '@termlnk/core';
 
 const USER_KEY = 'user';
 
-// Serializes IUserAccount as a single JSON blob under the `user` key in whatever
-// IAuthKeyValueStorage the host platform binds — desktop/web wrap ConfigRepository +
-// SecretCipher; React Native uses expo-secure-store. Parsing failures (corruption,
-// schema drift) treat the user as logged out instead of crashing — same fail-soft
-// posture as TokenStorageService.
+// Serializes IUserAccount under the `user` key. Parsing failures (corruption, schema
+// drift) treat the user as logged out instead of crashing.
 export class UserStorageService extends Disposable implements IUserStorageService {
   constructor(
     @Inject(IAuthKeyValueStorage) private readonly _storage: IAuthKeyValueStorage,

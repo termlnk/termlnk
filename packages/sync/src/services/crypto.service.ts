@@ -15,14 +15,9 @@
 
 import { createIdentifier } from '@termlnk/core';
 
-// Sync-layer E2EE cipher (main-process only). Distinct from @termlnk/database's
-// SecretCipher: that one defends "stolen SQLite file" by deriving a key from the OS
-// keystore; this one defends "server zero-knowledge" by deriving from the user's master
-// password. Sensitive rows therefore travel double-encrypted — already `tmenc1:` at rest,
-// then wrapped in `tmsync1:` for upload, so a leaked SafeStorage key still cannot decrypt
-// cloud payloads.
-//
-// Algorithm: XChaCha20-Poly1305 with a 24-byte random nonce.
+// Sync-layer E2EE cipher (main-process only). Distinct from SecretCipher (`tmenc1:`,
+// defends local-at-rest): this one derives from the user's master password to defend
+// server zero-knowledge. Algorithm: XChaCha20-Poly1305 with a 24-byte random nonce.
 export interface ISyncCryptoService {
   // True only when the master key is unlocked; encrypt/decrypt throw otherwise.
   readonly available: boolean;

@@ -17,18 +17,9 @@ import { createIdentifier } from '@termlnk/core';
 
 // Key/value storage abstraction for auth-core's persistent state (token pairs, recovery
 // blobs, anything that must survive a restart but never cross IPC). The contract is
-// deliberately minimal — auth-core does not need iteration, prefix queries, or atomic
-// multi-write semantics. Implementations are responsible for whatever encryption the
-// platform requires:
-//
-//   - Electron main / web server: wrap ConfigRepository + ISecretCipherService so values
-//     land in SQLite as ciphertext.
-//   - React Native: SecureStore / Keystore-backed adapter; the OS keystore handles
-//     encryption transparently.
-//   - Tests: pure in-memory Map.
-//
-// `key` is the canonical identifier (e.g. `tokens`). Implementations may namespace it
-// under their own scheme; auth-core treats the storage as opaque.
+// deliberately minimal — no iteration, prefix queries, or atomic multi-write semantics.
+// Implementations own whatever encryption their platform requires and treat the storage
+// as opaque to auth-core.
 export interface IAuthKeyValueStorage {
   // Returns null when the key is absent. Implementations MUST NOT return an empty string
   // as a synonym for "missing"; downstream JSON.parse('') would throw.

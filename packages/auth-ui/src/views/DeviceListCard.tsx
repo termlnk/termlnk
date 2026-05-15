@@ -174,7 +174,7 @@ function DeviceListItem({ device, revoking, onRevoke }: IDeviceListItemProps) {
     : localeService.t('auth-ui.devices.unnamed-device');
 
   const lastSeen = formatRelativeTime(device.lastSeenAt, localeService);
-  const created = formatAbsoluteDate(device.createdAt, localeService);
+  const created = formatAbsoluteDate(device.createdAt);
 
   return (
     <li
@@ -278,11 +278,11 @@ function formatRelativeTime(iso: string, localeService: LocaleService): string {
   return localeService.t('auth-ui.devices.time.days-ago', String(days));
 }
 
-function formatAbsoluteDate(iso: string, localeService: LocaleService): string {
+// Use the OS locale; LocaleService handles only translatable strings.
+function formatAbsoluteDate(iso: string): string {
   const ts = Date.parse(iso);
   if (!Number.isFinite(ts)) {
     return iso;
   }
-  // Follow the OS locale for date formatting; LocaleService is for translatable strings only.
   return new Date(ts).toLocaleDateString();
 }

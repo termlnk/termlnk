@@ -25,31 +25,11 @@ const RESOURCE_ID = 'host' as const;
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
-/**
- * Host synchroniser — row-level LWW, including group nodes.
- *
- * Scope: full `IHostEntity` rows, including `tree` / `pid` / `sort`. The
- * server holds the canonical tree topology; locally we just upsert per row.
- *
- * Security:
- * - `HostRepository.getInfoById` returns **decrypted** credential/proxy
- *   fields. We re-encrypt with sync E2EE for upload; the receiving side
- *   re-encrypts with the local `SecretCipher` on `syncUpsertRow`.
- * - `hostChainIds` validation is **skipped** in the apply path — the source
- *   device already validated, and rejecting locally would keep the two ends
- *   permanently divergent.
- *
- * Cascade delete: `HostRepository.delete` cascades to descendants at the SQL
- * level, so we only enqueue one delete mutation. The receiving side cascades
- * the same way; both ends converge.
- *
- * Known limits:
- * - No topological sort of incoming patches. If the server delivers
- *   `[child, parent]`, the child briefly references a missing parent in
- *   `tree`. There is no FK to fail the write; the next pull repairs it.
- * - `move` events are treated as plain updates (the row's `pid`/`tree` are
- *   already correct in the DB).
- */
+// Row-level LWW over full IHostEntity (server holds the canonical tree topology).
+// Credentials/proxy fields travel re-encrypted under sync E2EE; the receiving side
+// re-encrypts with the local SecretCipher on syncUpsertRow. Incoming patches are not
+// topologically sorted — a child may briefly reference a missing parent; no FK fails
+// the write and the next pull repairs it.
 export class HostSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
 
@@ -115,10 +95,7 @@ export class HostSynchroniser extends RxDisposable implements IResourceSynchroni
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
-    // Only enqueue rows that have never been synced before — sync_row_meta is upserted on
-    // both push.accepted and applyPatch. A pre-existing meta row means the row is already
-    // represented on the server (with whatever version meta records), so re-enqueuing would
-    // just create redundant outbox traffic on every enable().
+    // Skip rows with sync_row_meta — they are already represented on the server.
     const rows = await this._collectAllHosts();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
@@ -133,9 +110,7 @@ export class HostSynchroniser extends RxDisposable implements IResourceSynchroni
   }
 
   private async _collectAllHosts(): Promise<IHostEntity[]> {
-    // Walk the tree → collect every id → fetch each full `IHostEntity`
-    // (credential/proxy get decrypted along the way). This is N+1, but it
-    // only runs in the snapshot path and host counts are small (typically <100).
+    // N+1 fetch is fine: snapshot path only, host counts typically <100.
     const tree = await this._hostRepo.getTree();
     const ids: string[] = [];
     const collectIds = (nodes: typeof tree): void => {
@@ -238,8 +213,7 @@ export class HostSynchroniser extends RxDisposable implements IResourceSynchroni
       }
       const decrypted = this._crypto.decrypt(item.payload);
       const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as IHostEntity;
-      // Defensive: the server should never change `id`, but if it does, the
-      // patch's `entityId` is the source of truth.
+      // entityId is the source of truth if payload.id ever drifts.
       const normalised: IHostEntity = { ...row, id: item.entityId };
       await this._hostRepo.syncUpsertRow(normalised);
       await this._rowMeta.upsert({

@@ -23,29 +23,18 @@ import { BehaviorSubject } from 'rxjs';
 
 const LAST_CLIENT_MUT_ID_FIELD = 'lastClientMutId';
 
-/**
- * Monotonic `client_mut_id` allocator and outbox writer.
- *
- * - `clientMutId` must be **strictly monotonic** or the server's
- *   `(clientId, clientMutId)` dedupe breaks.
- * - Startup recovery: next ID = `max(persistedHighWaterMark, max(outbox.client_mut_id)) + 1`.
- *   The persisted high-water guards against an empty outbox resetting the
- *   sequence; the outbox max guards against a config write that never landed.
- * - Single instance in the main process, so the in-memory counter is the
- *   source of truth. DB writes and persistence are async; a crash loses at
- *   most a few IDs and never causes reuse.
- *
- * `pendingCount$` is updated only by enqueue / ack / clearResource — server
- * rejection does not change "pending" because the row stays for retry.
- */
+// `clientMutId` must be strictly monotonic or the server's (clientId, clientMutId)
+// dedupe breaks. Startup recovery uses max(persistedHighWater, max(outbox)) so an
+// empty outbox cannot reset the sequence and a lost config write cannot reuse ids.
+// Server rejection leaves the row in place for retry, so pendingCount$ moves only on
+// enqueue / ack / clearResource.
 export class SyncOutboxService extends Disposable implements ISyncOutboxService {
   private readonly _pendingCount$ = new BehaviorSubject<number>(0);
   readonly pendingCount$: Observable<number> = this._pendingCount$.asObservable();
 
-  /** Largest allocated `clientMutId`; starts at 0; next = `_lastClientMutId + 1`. */
   private _lastClientMutId = 0;
 
-  /** Resolves when initial hydrate (count + counter) finishes; enqueues await it. */
+  // Enqueues await this so the in-memory counter has caught up with persisted state.
   private _hydratePromise: Promise<void> | null = null;
 
   constructor(
@@ -149,11 +138,6 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
     return deleted;
   }
 
-  /**
-   * One-shot startup hydration:
-   * 1. publish the current pending count to `pendingCount$`
-   * 2. realign the in-memory `clientMutId` counter
-   */
   private async _hydrate(): Promise<void> {
     try {
       const [count, persistedHighWater, dbMax] = await Promise.all([
@@ -165,10 +149,9 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
       this._lastClientMutId = Math.max(persistedHighWater ?? 0, dbMax);
       this._pendingCount$.next(count);
     } catch (err) {
+      // Non-fatal: construction proceeds with _lastClientMutId = 0. If the outbox
+      // already holds higher ids, the next hydrate run will overtake via dbMax.
       this._logService.error('[SyncOutboxService] hydrate failed:', err);
-      // Hydrate failure does not block construction; later enqueues fall back
-      // to `_lastClientMutId = 0`. If the outbox already holds higher IDs,
-      // the next `_hydrate` run will overtake them via `dbMax`.
     }
   }
 

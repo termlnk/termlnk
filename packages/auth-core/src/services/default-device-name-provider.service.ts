@@ -15,13 +15,8 @@
 
 import type { IDeviceNameProvider } from '@termlnk/auth';
 
-// Platform-agnostic fallback. AuthCorePlugin binds this by default so the package never
-// imports node-only APIs (which would break Metro for React Native). Each app owns its
-// own provider in its platform/ layer and registers it via DI override:
-//
-//   - apps/desktop/main, apps/web/server: hostname()-backed provider (node:os)
-//   - apps/mobile: ExpoDeviceNameProvider (expo-device modelName)
-//   - Browser SPA: anything navigator-derived (currently no override)
+// Platform-agnostic fallback bound by default; apps register a real provider via DI
+// override so this package never imports node-only APIs.
 export class DefaultDeviceNameProvider implements IDeviceNameProvider {
   getName(): string {
     return 'Unknown device';

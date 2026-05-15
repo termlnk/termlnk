@@ -25,32 +25,16 @@ const RESOURCE_ID = 'skill' as const;
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
-/**
- * Skill synchroniser — row-level LWW.
- *
- * Scope: full `ISkillEntity` rows, including `path`.
- * - On the receiving device the synced `path` points at a non-existent local
- *   file; `SkillDiscoveryService` repairs it on the next scan.
- * - `checksum` lets `SkillDiscovery` decide whether to re-parse a file.
- * - The skill files themselves are **not** synced — users manage those via
- *   git / dotfiles.
- *
- * Push: `SkillRepository.changed$` → read full row → E2EE encrypt →
- *   `SyncOutboxService.enqueue`
- * Pull: `ISyncPatchItem` → E2EE decrypt → `SkillRepository.upsert/delete` +
- *   `sync_row_meta` update
- *
- * **Self-reflection guard**: while `applyPatch` is running we ignore
- * `changed$` to avoid the loop "server pull → local write → `changed$` →
- * push the same change back to the server".
- */
+// Row-level LWW for ISkillEntity. The skill files themselves are not synced — users
+// manage those via git / dotfiles; SkillDiscoveryService repairs `path` on next scan
+// and `checksum` lets it decide whether to re-parse. While applyPatch runs we ignore
+// changed$ to avoid the self-reflection loop (server pull → local write → push back).
 export class SkillSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
 
   private readonly _status$ = new BehaviorSubject<SynchroniserStatus>(SynchroniserStatus.Idle);
   readonly status$: Observable<SynchroniserStatus> = this._status$.asObservable();
 
-  /** Suppress self-reflection: while `applyPatch` writes to `SkillRepository`, the resulting `changed$` event must not feed back into the outbox. */
   private _applyingPatch = false;
   private _started = false;
 
@@ -104,13 +88,11 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
   }
 
   async buildMutations(): Promise<ISyncMutation[]> {
-    // Incremental push is driven by `changed$`; explicit batches go through `buildInitialSnapshot`.
     return [];
   }
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
-    // See HostSynchroniser.buildInitialSnapshot — only enqueue rows without a sync_row_meta
-    // record so re-running enable() never produces redundant outbox traffic.
+    // Skip rows that already have sync_row_meta so re-enable() never re-pushes.
     const rows = await this._skillRepo.getAll();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
@@ -181,7 +163,6 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
 
   private async _applyOne(item: ISyncPatchItem): Promise<void> {
     if (item.op === 'clear') {
-      // Full reset — local `SkillDiscovery` will re-scan and re-upsert.
       const rows = await this._skillRepo.getAll();
       for (const r of rows) {
         await this._skillRepo.delete(r.id);
@@ -208,8 +189,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
       }
       const decrypted = this._crypto.decrypt(item.payload);
       const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISkillEntity;
-      // Defensive: the server should never change `id`, but if it does the
-      // patch's `entityId` is the source of truth.
+      // entityId is the source of truth if payload.id ever drifts.
       const normalised: ISkillEntity = { ...row, id: item.entityId };
       await this._skillRepo.upsert(normalised);
       await this._rowMeta.upsert({

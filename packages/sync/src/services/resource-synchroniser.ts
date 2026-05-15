@@ -19,12 +19,9 @@ import type { SyncResourceId } from '../common/constants';
 import type { ISyncMutation, ISyncPatchItem } from '../models/mutation';
 import type { SynchroniserStatus } from '../models/state';
 
-// One synchroniser instance per resource type. Modeled on VSCode's IUserDataSynchroniser
-// and Replicache's mutator hooks. Responsibilities:
-//   - subscribe to the matching Repository.changed$ and queue mutations into the outbox (push)
-//   - decrypt incoming patches and apply them to the Repository (pull)
-//   - maintain per-resource cursor and metadata
-// Field-level LWW (only `config`) is each synchroniser's internal concern.
+// One instance per resource type. Owns the changed$ subscription that pushes mutations
+// to the outbox and the applyPatch that consumes pulls. Field-level LWW (only `config`)
+// is an internal concern of the synchroniser.
 export interface IResourceSynchroniser extends IDisposable {
   readonly resourceId: SyncResourceId;
   readonly status$: Observable<SynchroniserStatus>;

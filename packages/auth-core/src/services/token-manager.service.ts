@@ -21,12 +21,9 @@ import { Disposable, ILogService, Inject } from '@termlnk/core';
 // drift plus typical RTT so concurrent callers do not race the deadline.
 const ACCESS_TOKEN_REFRESH_MARGIN_MS = 30_000;
 
-// Provides the single "give me a still-valid access token" entry point used by both
-// IAuthService and the future RPC interceptor. Keeps three responsibilities together so
-// they cannot drift: in-memory cache, proactive refresh, single-flight coalescing.
-//
-// fail-soft on refresh failure: clears local state and returns null so the UI can drive a
-// re-login rather than throw out of an RPC call site. The cache is dropped on dispose.
+// In-memory cache + proactive refresh + single-flight coalescing. Fail-soft on refresh
+// failure: clears local state and returns null so the UI drives a re-login rather than
+// having an RPC throw at the call site.
 export class TokenManager extends Disposable {
   private _cache: ITokenPair | null = null;
   private _refreshPromise: Promise<ITokenPair> | null = null;

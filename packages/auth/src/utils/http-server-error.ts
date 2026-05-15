@@ -13,17 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-/**
- * Shared HTTP transport error decoding for termlnk-server's response envelope.
- *
- * Wire format (mirrors @termlnk/protocol errorResponseSchema):
- *   { "error": { "code": string, "message"?: string, "details"?: [...] } }
- *
- * This module is intentionally neutral about which domain enum (AuthErrorCode,
- * SyncErrorCode, ...) a given `serverCode` should map to — that's a caller-side
- * concern. The job here is only to (1) parse the envelope safely and (2) carry
- * the typed result through `throw`.
- */
+// Decodes the server's `{ error: { code, message?, details? } }` response envelope into
+// a typed HttpRequestError. Domain mapping of `serverCode` is a caller concern.
 
 export interface IServerErrorDetail {
   readonly path: ReadonlyArray<string | number>;
@@ -36,11 +27,8 @@ export interface IServerErrorBody {
   readonly details?: ReadonlyArray<IServerErrorDetail>;
 }
 
-/**
- * Parse a raw response body into the envelope's `error` object.
- * Returns an empty object when the body is missing, not JSON, or doesn't carry
- * an `error` key — caller falls back to status-based classification.
- */
+// Returns an empty object when the body is missing, not JSON, or lacks an `error` key —
+// callers then fall back to status-based classification.
 export function parseServerError(rawBody: string): IServerErrorBody {
   if (!rawBody) {
     return {};
@@ -53,14 +41,7 @@ export function parseServerError(rawBody: string): IServerErrorBody {
   }
 }
 
-/**
- * Typed error raised by transports when an HTTP call returned non-2xx.
- *
- * Carries the parsed envelope (`serverCode`, `serverMessage`, `details`) plus
- * the raw HTTP `status` so callers can branch precisely. The `Error.message`
- * is a short diagnostic suitable for logs; UI layers should branch on
- * `serverCode` / `status`, never regex `.message`.
- */
+// UI layers should branch on `serverCode` / `status`, never regex `.message`.
 export class HttpRequestError extends Error {
   readonly status: number;
   readonly statusText: string;

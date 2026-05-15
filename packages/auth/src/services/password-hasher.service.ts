@@ -15,13 +15,9 @@
 
 import { createIdentifier } from '@termlnk/core';
 
-// Argon2id input parameters. Field names mirror the algorithm rather than any single library
-// (hash-wasm calls them iterations/memorySize, libsodium calls them opsLimit/memLimit) so the
-// contract is implementation-agnostic.
-//
-// `parallelism` is included even though the current MASTER_KEY_DERIVATION pins it to 1, so
-// future KDF versions can raise it without breaking the contract — implementations should
-// reject values they cannot honour (libsodium's `crypto_pwhash` hard-codes p=1).
+// Argon2id input parameters. Field names mirror the algorithm so the contract is
+// implementation-agnostic. Implementations should reject values they cannot honour
+// (some bindings hard-code parallelism=1).
 export interface IArgon2idParams {
   readonly memoryKiB: number;
   readonly iterations: number;
@@ -29,13 +25,8 @@ export interface IArgon2idParams {
   readonly outputBytes: number;
 }
 
-// Pluggable Argon2id backend. Default implementation in `@termlnk/auth-core` uses hash-wasm
-// (WebAssembly); platforms without WASM support (React Native / Hermes) override with a
-// native binding such as react-native-libsodium's `crypto_pwhash`.
-//
-// Two implementations producing different outputs for the same (password, salt, params) is
-// a contract violation — KAT vectors live in `auth-core/__tests__/kdf.spec.ts` to anchor
-// cross-implementation parity.
+// Pluggable Argon2id backend. Two implementations producing different outputs for the
+// same (password, salt, params) is a contract violation.
 export interface IPasswordHasher {
   argon2id(password: string, salt: Uint8Array, params: IArgon2idParams): Promise<Uint8Array>;
 }

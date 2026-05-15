@@ -22,9 +22,6 @@ import { createIdentifier } from '@termlnk/core';
 // The key never persists; users re-derive it on every login. lock() zeroes the in-memory key
 // (called on explicit logout or after long inactivity). Derivation runs entirely client-side:
 // email + server-issued salt -> Argon2id -> HKDF into auth/enc/index sub-keys.
-//
-// Consumers: SyncCryptoService (encKey for payload encryption), AuthService (authKey for SRP6a
-// verifier / JWT auth hash), backup export/import (encKey for archive encryption).
 export interface IMasterKeyService {
   readonly state$: Observable<MasterKeyState>;
 

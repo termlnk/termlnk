@@ -13,9 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-// eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { hkdf } from '@noble/hashes/hkdf.js';
-// eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { sha256 } from '@noble/hashes/sha2.js';
 import { base64ToBytes, HKDF_INFO, MASTER_KEY_DERIVATION } from '@termlnk/auth';
 
@@ -33,14 +31,9 @@ export interface IDerivedSubKeys {
 }
 
 // Produces the 16-byte Argon2id salt as `HKDF-SHA256(IKM=email, salt=serverSalt, info)`.
-// HKDF gives us a deterministic, fixed-length compression of `(email, serverSalt)` while
-// preserving cross-account isolation: different emails feed into different IKM, so two
-// accounts on the same server salt still derive distinct master keys. Email is normalized
-// (trim + lowercase) so case differences cannot derive different keys for the same login.
-//
-// History: prior to KDF v1 this returned `utf8(email) || base64decode(serverSalt)` —
-// variable length, which broke under libsodium. The compression is a one-way function so
-// the shape change requires a re-derivation; see KDF_VERSION.
+// Email is normalized (trim + lowercase) so case differences cannot derive different keys
+// for the same login; different emails feed distinct IKM, preserving cross-account
+// isolation even on a shared server salt.
 export function computeArgon2Salt(email: string, saltB64: string): Uint8Array {
   const emailBytes = TEXT_ENCODER.encode(email.trim().toLowerCase());
   const serverSaltBytes = base64ToBytes(saltB64);

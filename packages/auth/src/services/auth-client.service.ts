@@ -19,9 +19,6 @@ import type { AuthState, IAuthError } from '../models/session';
 import type { ILoginInput, IRegisterInput, IUserAccount } from '../models/user';
 import { createIdentifier } from '@termlnk/core';
 
-// Renderer-side facade. Mirrors IAuthService for triggering actions and observing state,
-// but the renderer never holds the master key or any token. The password transits inside
-// the register/login tRPC call stack only.
 export interface IAuthClientService {
   readonly currentUser$: Observable<IUserAccount | null>;
   readonly authState$: Observable<AuthState>;

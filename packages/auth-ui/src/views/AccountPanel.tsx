@@ -24,15 +24,7 @@ export interface IAccountPanelProps {
   readonly busy?: boolean;
 }
 
-/**
- * Signed-in account panel — shows the account details and a sign-out button.
- *
- * Intentionally hidden:
- * - `userId`: internal UUID, no user-facing value.
- * - `createdAt` / `updatedAt`: timestamps belong on a detail page.
- *
- * Display-name fallback: `displayName` → email prefix.
- */
+// Hides `userId` and timestamps; display-name falls back to the email prefix.
 export function AccountPanel(props: IAccountPanelProps) {
   const localeService = useDependency(LocaleService);
   const { user, onLogout, busy } = props;

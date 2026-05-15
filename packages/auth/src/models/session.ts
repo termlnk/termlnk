@@ -35,13 +35,13 @@ export type AuthErrorCode =
   | 'invalid_credentials'
   | 'email_already_registered'
   | 'email_not_verified'
-  | 'registration_closed'  // server has open registration disabled
-  | 'session_expired'      // refresh token revoked / replayed — must sign in again
-  | 'invalid_request'      // server-side validation rejected the request (zod)
+  | 'registration_closed' // server has open registration disabled
+  | 'session_expired' // refresh token revoked / replayed — must sign in again
+  | 'invalid_request' // server-side validation rejected the request (zod)
   | 'rate_limited'
   | 'network'
   | 'server_error'
-  | 'token_expired'        // access token expired but refresh may still succeed
+  | 'token_expired' // access token expired but refresh may still succeed
   | 'unknown';
 
 export interface IAuthError {
