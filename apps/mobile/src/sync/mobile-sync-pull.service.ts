@@ -15,11 +15,13 @@
 
 import type { IMasterKeyService, ITokenPair, ITokenStorageService } from '@termlnk/auth';
 import type { ILogService } from '@termlnk/core';
+import type { Observable } from 'rxjs';
+import type { IMobileHost, IMobileHostFull } from '../storage/types';
 // eslint-disable-next-line penetrating/no-penetrating-import -- @noble/ciphers 2.x exports only `.js` subpaths
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
-import { base64ToBytes, bytesToBase64, IMasterKeyService as IMasterKeyServiceId, ITokenStorageService as ITokenStorageServiceId } from '@termlnk/auth';
+import { base64ToBytes, IMasterKeyService as IMasterKeyServiceId, ITokenStorageService as ITokenStorageServiceId } from '@termlnk/auth';
 import { Disposable, ILogService as ILogServiceId, Inject } from '@termlnk/core';
-import { BehaviorSubject } from 'rxjs';
+import { IMobileHostRepository } from '../storage/mobile-host-repository';
 
 // `tmsync1:` magic — must match SyncCryptoService in @termlnk/sync-core. ASCII 8 bytes
 // followed by 24-byte XChaCha20 nonce and the Poly1305-tagged ciphertext.
@@ -27,6 +29,7 @@ const SYNC_PAYLOAD_PREFIX = 'tmsync1:';
 const PREFIX_BYTES = new TextEncoder().encode(SYNC_PAYLOAD_PREFIX);
 const NONCE_LEN = 24;
 const POLY1305_TAG_LEN = 16;
+const HOST_RESOURCE = 'host' as const;
 
 // Resource IDs that the mobile pull recognises. P6.1 only renders `host`; the
 // pull endpoint returns whatever the server has — we keep the others around so the
@@ -51,25 +54,25 @@ interface WirePullResponse {
   lastMutationId: number;
 }
 
-// Decrypted host record. The server stores the whole HostRepository row JSON as one
-// encrypted payload; we only surface the read-mostly fields the mobile UI shows.
-export interface IMobileHost {
-  readonly id: string;
-  readonly pid: string;
-  readonly label: string;
-  readonly type: 'host' | 'group' | 'unknown';
-  readonly addr?: string;
-  readonly port?: number;
-  readonly sort?: number;
-  readonly tree?: string;
+// Shape of a decrypted host JSON from the sync payload. Mirrors the desktop's
+// IHostEntity row JSON — see HostSynchroniser._buildUpsertMutation. Any field we don't
+// recognise here flows through to MobileHostRepository as-is.
+interface WireHostEntity {
+  id?: string;
+  pid?: string;
+  tree?: string;
+  label?: string;
+  type?: 'host' | 'group' | 'unknown';
+  addr?: string;
+  port?: number;
+  sort?: number;
+  credential?: IMobileHostFull['credential'];
+  proxy?: IMobileHostFull['proxy'];
+  settings?: IMobileHostFull['settings'];
+  hostChainIds?: string[] | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
-
-export interface IMobileVaultSnapshot {
-  readonly hosts: readonly IMobileHost[];
-  readonly cursor: string | null;
-}
-
-const EMPTY_SNAPSHOT: IMobileVaultSnapshot = { hosts: [], cursor: null };
 
 interface IMobileSyncPullConfig {
   readonly cloudBaseUrl: string | undefined;
@@ -77,24 +80,48 @@ interface IMobileSyncPullConfig {
 }
 
 export class MobileSyncPullService extends Disposable {
-  private readonly _snapshot$ = new BehaviorSubject<IMobileVaultSnapshot>(EMPTY_SNAPSHOT);
-  readonly snapshot$ = this._snapshot$.asObservable();
-
-  private readonly _hosts = new Map<string, IMobileHost>();
+  // Cursor in memory mirrors the persisted sync_meta cursor — kept in sync via _loadCursor
+  // / _persistCursor. The previous in-memory hosts Map is gone; the repository owns state.
   private _cursor: string | null = null;
+  private _cursorLoaded = false;
+
+  // Re-export the repo's hosts$ so callers (terminal.tsx / sftp.tsx) don't have to import
+  // the repo identifier directly. Snapshot semantics match the previous IMobileVaultSnapshot
+  // but flat — UI only ever wanted the hosts list.
+  readonly hosts$: Observable<readonly IMobileHost[]>;
+
+  // Field declarations are separated from constructor parameters because
+  // babel-plugin-parameter-decorator cannot pair a parameter decorator with a TypeScript
+  // parameter property — see apps/mobile/babel.config.js. Non-decorated parameters share
+  // the same convention here for consistency.
+  private readonly _config: IMobileSyncPullConfig;
+  private readonly _masterKeyService: IMasterKeyService;
+  private readonly _tokenStorage: ITokenStorageService;
+  private readonly _logService: ILogService;
+  private readonly _hostRepo: IMobileHostRepository;
 
   constructor(
-    private readonly _config: IMobileSyncPullConfig,
-    @Inject(IMasterKeyServiceId) private readonly _masterKeyService: IMasterKeyService,
-    @Inject(ITokenStorageServiceId) private readonly _tokenStorage: ITokenStorageService,
-    @Inject(ILogServiceId) private readonly _logService: ILogService
+    config: IMobileSyncPullConfig,
+    @Inject(IMasterKeyServiceId) masterKeyService: IMasterKeyService,
+    @Inject(ITokenStorageServiceId) tokenStorage: ITokenStorageService,
+    @Inject(ILogServiceId) logService: ILogService,
+    @Inject(IMobileHostRepository) hostRepo: IMobileHostRepository
   ) {
     super();
+    this._config = config;
+    this._masterKeyService = masterKeyService;
+    this._tokenStorage = tokenStorage;
+    this._logService = logService;
+    this._hostRepo = hostRepo;
+    this.hosts$ = this._hostRepo.hosts$;
+    // Fire off repository read so persisted hosts surface in hosts$ before the first pull
+    // resolves. Errors are logged but non-fatal — the worst case is an empty list until pull.
+    void this._hostRepo.ready().catch((err) => {
+      this._logService.warn('[MobileSyncPullService] repo ready failed:', err);
+    });
   }
 
   override dispose(): void {
-    this._snapshot$.complete();
-    this._hosts.clear();
     super.dispose();
   }
 
@@ -114,8 +141,17 @@ export class MobileSyncPullService extends Disposable {
       throw new Error('No access token — log in first');
     }
 
-    const total = await this._pullResource('host', tokens);
+    await this._ensureCursorLoaded();
+    const total = await this._pullResource(HOST_RESOURCE, tokens);
     return total;
+  }
+
+  private async _ensureCursorLoaded(): Promise<void> {
+    if (this._cursorLoaded) {
+      return;
+    }
+    this._cursor = await this._hostRepo.getCursor(HOST_RESOURCE);
+    this._cursorLoaded = true;
   }
 
   private async _pullResource(resource: MobileResourceId, tokens: ITokenPair): Promise<number> {
@@ -145,54 +181,60 @@ export class MobileSyncPullService extends Disposable {
         // Other resources land in the cursor stream but P6.1 only renders hosts.
         continue;
       }
-      if (item.op === 'del' && item.entityId) {
-        this._hosts.delete(item.entityId);
-        continue;
-      }
       if (item.op === 'clear') {
-        this._hosts.clear();
+        await this._hostRepo.clearFromSync();
         continue;
       }
-      if (item.op === 'put' && item.entityId && item.payload) {
-        const host = this._decryptHost(item.payload);
+      if (!item.entityId) {
+        continue;
+      }
+      if (item.op === 'del') {
+        await this._hostRepo.deleteFromSync(item.entityId);
+        continue;
+      }
+      if (item.op === 'put' && item.payload) {
+        const host = this._decryptHost(item.entityId, item.payload);
         if (host) {
-          this._hosts.set(item.entityId, host);
+          await this._hostRepo.upsertFromSync(host);
         }
       }
     }
 
-    this._publish();
+    await this._hostRepo.setCursor(HOST_RESOURCE, this._cursor);
     return body.patch.length;
   }
 
-  private _publish(): void {
-    this._snapshot$.next({
-      hosts: Array.from(this._hosts.values()).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)),
-      cursor: this._cursor,
-    });
-  }
-
-  private _decryptHost(payloadB64: string): IMobileHost | null {
+  private _decryptHost(entityId: string, payloadB64: string): IMobileHostFull | null {
     try {
       const ciphertext = base64ToBytes(payloadB64);
       const plaintext = this._decrypt(ciphertext);
       const decoded = new TextDecoder().decode(plaintext);
-      const record = JSON.parse(decoded) as Partial<IMobileHost> & { id?: string };
-      if (!record.id || !record.label) {
+      const record = JSON.parse(decoded) as WireHostEntity;
+      if (!record.label) {
         return null;
       }
+      const id = record.id ?? entityId;
       return {
-        id: record.id,
+        id,
         pid: record.pid ?? 'root',
+        tree: record.tree,
         label: record.label,
         type: record.type ?? 'host',
         addr: record.addr,
         port: record.port,
-        sort: record.sort,
-        tree: record.tree,
+        sort: record.sort ?? 0,
+        // hasCredential is derived in the repo's rowToHost; it's set here for downstream
+        // upserts that don't go through the row mapper.
+        hasCredential: record.credential != null,
+        credential: record.credential ?? null,
+        proxy: record.proxy ?? null,
+        settings: record.settings ?? null,
+        hostChainIds: record.hostChainIds ?? null,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
       };
     } catch (err) {
-      this._logService.warn('[MobileSyncPullService] failed to decrypt host:', err);
+      this._logService.warn(`[MobileSyncPullService] failed to decrypt host ${entityId}:`, err);
       return null;
     }
   }
@@ -221,6 +263,5 @@ export class MobileSyncPullService extends Disposable {
   }
 }
 
-// Silence unused-import warnings when only the type side is referenced.
-export type { ITokenPair };
-export { bytesToBase64 };
+// Re-export the public host shape so screens don't have to import from ../storage/types.
+export type { IMobileHost, IMobileHostFull } from '../storage/types';

@@ -21,6 +21,7 @@ import { AuthState, IAuthService as IAuthServiceId, IMasterKeyService as IMaster
 import { ILogService as ILogServiceId, Quantity } from '@termlnk/core';
 import Constants from 'expo-constants';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { IMobileHostRepository } from '../storage/mobile-host-repository';
 import { MobileSyncPullService } from '../sync/mobile-sync-pull.service';
 import { createMobileCore } from './create-mobile-core';
 
@@ -50,13 +51,6 @@ export function CoreProvider({ children }: { children: ReactNode }): ReactNode {
     return _moduleCore;
   }, []);
 
-  useEffect(() => {
-    return () => {
-      // Hot reload only — leave the singleton untouched on dev refreshes; production
-      // builds never reach this branch because the layout never unmounts.
-    };
-  }, []);
-
   const authService = useMemo(() => {
     return core.getInjector().get(IAuthServiceId, Quantity.OPTIONAL) ?? null;
   }, [core]);
@@ -77,11 +71,13 @@ export function CoreProvider({ children }: { children: ReactNode }): ReactNode {
           const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
           const fromExtra = typeof extra.cloudBaseUrl === 'string' ? extra.cloudBaseUrl : undefined;
           const cloudBaseUrl = fromExtra ?? process.env.EXPO_PUBLIC_CLOUD_BASE_URL;
+          const hostRepo = injector.get(IMobileHostRepository);
           syncPull = new MobileSyncPullService(
             { cloudBaseUrl, clientId: CLIENT_ID },
             masterKey,
             tokenStorage,
-            logService
+            logService,
+            hostRepo
           );
         }
         return syncPull;
