@@ -77,10 +77,10 @@ export const IHostService = createIdentifier<IHostService>('terminal.host.servic
 
 ### 2.2 构造函数注入
 
-使用装饰器进行依赖注入，注入的依赖必须标记为 `private readonly`：
+使用装饰器进行依赖注入。**Service / Controller 中注入参数标记为 `private readonly`；Plugin 类中 `_injector` 与 `_configService` 标记为 `protected readonly`**（让生命周期钩子和潜在子类访问，且与 `@termlnk/core` `Plugin` 基类成员可见性对齐）：
 
 ```typescript
-// ✅ 正确：构造函数注入
+// ✅ Service / Controller：所有注入参数 private readonly
 export class TerminalSessionService extends Disposable implements ITerminalSessionService {
   constructor(
     @ICommandService private readonly _commandService: ICommandService,
@@ -91,15 +91,54 @@ export class TerminalSessionService extends Disposable implements ITerminalSessi
     super();
   }
 }
+
+// ✅ Plugin：_injector / _configService 用 protected readonly
+@DependentOn(UIPlugin, RPCClientPlugin)
+export class TerminalUIPlugin extends Plugin {
+  static override pluginName = TERMINAL_UI_PLUGIN_NAME;
+
+  constructor(
+    private readonly _config: Partial<ITerminalUIConfig> = defaultPluginConfig,
+    @Inject(Injector) protected readonly _injector: Injector,
+    @IConfigService protected readonly _configService: IConfigService
+  ) {
+    super();
+  }
+}
 ```
 
 注入规则：
 - 接口标识符直接用作装饰器：`@ICommandService`
 - 具体类使用 `@Inject()`：`@Inject(Injector)`, `@Inject(LocaleService)`
-- 所有注入参数使用 `private readonly`
-- 命名以 `_` 开头
+- **可选依赖**使用 `@Optional()`：`@Optional(SomeService) private readonly _maybe?: SomeService`
+- Service / Controller 注入参数：**`private readonly`** + `_` 前缀
+- Plugin 类的 `_injector`、`_configService`：**`protected readonly`** + `_` 前缀
+- 业务字段如 `_config`：保持 `private readonly`
 
-### 2.3 服务注册
+### 2.3 `@Optional` 装饰器 — 可选依赖
+
+注入可能不存在的依赖时使用 `@Optional()`。若依赖未注册，参数为 `undefined`，不会抛错：
+
+```typescript
+import { Optional } from '@termlnk/core';
+
+export class SyncController extends Disposable {
+  constructor(
+    @ICommandService private readonly _commandService: ICommandService,
+    @Optional(DataSyncPrimaryController)
+    private readonly _dataSyncPrimaryController?: DataSyncPrimaryController
+  ) {
+    super();
+
+    // 使用前判空，或用可选链
+    this._dataSyncPrimaryController?.registerSyncingMutations(SaveMutation);
+  }
+}
+```
+
+> 标准依赖用 `@Inject(X)`，可选依赖用 `@Optional(X)`，接口标识符直接 `@IXxxService`。三者不可混用。
+
+### 2.4 服务注册
 
 ```typescript
 // 接口到实现的映射
@@ -522,13 +561,16 @@ export function fromEventSubject<T>(subject$: EventSubject<T>): Observable<T> {
 
 ### 4.1 Disposable 体系
 
-项目提供三层 Disposable 基类，根据需要选择：
+`@termlnk/core` 提供四层 Disposable 基类，根据需要选择：
 
 | 基类 | 用途 | 特性 |
 |-----|------|------|
-| `Disposable` | 通用基类 | `disposeWithMe()` 管理子资源 |
-| `RxDisposable` | 需要 `dispose$` 信号 | 继承 Disposable，增加 `dispose$` Subject |
-| `DisposableCollection` | 批量管理 | 集合式管理多个 disposable |
+| `Disposable` | **首选** 通用基类 | `disposeWithMe()` 管理子资源 |
+| `RxDisposable` | 多个流需要 `takeUntil(dispose$)` 短路时 | 继承 Disposable，多一个 `protected dispose$ = new Subject<void>()` |
+| `RCDisposable` | 引用计数共享资源 | `inc()/dec()` 管理引用，归零时释放根资源 |
+| `DisposableCollection` | 批量管理多个 disposable | 集合式接口 |
+
+**默认选 `Disposable`。** 实际项目里绝大多数 Service 和 Controller 都用 `Disposable` + `disposeWithMe(observable$.subscribe(...))` 模式即可。`RxDisposable` 只在需要在 pipe 中通过 `takeUntil(this.dispose$)` 同时短路多条流时才有价值。
 
 ### 4.2 Disposable 基类
 
@@ -575,42 +617,64 @@ export class RxDisposable extends Disposable {
 
 ### 4.4 DisposableLike 与 toDisposable
 
-`disposeWithMe()` 接受 `DisposableLike` 类型，可直接传入以下三种类型，无需 `toDisposable()` 包装：
+`disposeWithMe()` 接受 `DisposableLike`，**包括函数、RxJS Subscription 和 IDisposable**，无需 `toDisposable()` 包装：
 
 ```typescript
-// RxJS Subscription → IDisposable
-this.disposeWithMe(toDisposable(someObservable.subscribe(handler)));
+// ✅ RxJS Subscription 直接传入
+this.disposeWithMe(someObservable$.subscribe(handler));
 
-// 回调函数 → IDisposable
-this.disposeWithMe(toDisposable(() => {
+// ✅ 回调函数直接传入（用于清理 DOM 事件、定时器等）
+this.disposeWithMe(() => {
   element.removeEventListener('click', handler);
-}));
+});
 
-// 已有 IDisposable
+// ✅ 已有 IDisposable
 this.disposeWithMe(someService.registerCommand(command));
 ```
 
-当需要将 `DisposableLike` 显式转换为 `IDisposable`（如函数返回值类型要求）时，使用 `toDisposable()`：
+仅当需要把 `DisposableLike` **显式转换**为 `IDisposable`（如函数返回值类型要求）时，使用 `toDisposable()`：
 
 ```typescript
-// ✅ 需要返回 IDisposable 时使用 toDisposable
+// ✅ 函数返回值类型是 IDisposable 时
 function registerHandler(observable$: Observable<unknown>): IDisposable {
   return toDisposable(observable$.subscribe(handler));
 }
+
+// ✅ 也可以用 toDisposable 显式包装回调，让意图更清晰
+this.disposeWithMe(toDisposable(() => this._cache.clear()));
 ```
 
-### 4.5 订阅清理规范（必须遵守）
+> 历史代码中 `disposeWithMe(toDisposable(() => ...))` 包装风格仍然合法；新代码倾向于直接 `disposeWithMe(() => ...)`。
 
-**所有 Observable 订阅都必须被清理**，有两种方式：
+### 4.5 RCDisposable — 引用计数
 
-#### 方式一：`disposeWithMe`（推荐用于 Disposable 子类）
+`RCDisposable` 用于多个消费方共享同一个底层资源，引用归零时统一释放：
+
+```typescript
+import { RCDisposable } from '@termlnk/core';
+
+const shared = new RCDisposable(rootResource);
+shared.inc(); // 引用 +1，第一次 inc 不重复创建
+shared.inc(); // 引用 +1
+shared.dec(); // 引用 -1
+shared.dec(); // 引用 -1 → 归零，自动 dispose 内部 rootResource
+```
+
+适用场景：终端会话池、共享 WebSocket、共享 PTY 等。
+
+### 4.6 订阅清理规范（必须遵守）
+
+**所有 Observable 订阅都必须被清理**。
+
+#### 默认模式：`disposeWithMe(observable$.subscribe(...))`
+
+绝大多数场景用这个，Service / Controller / Plugin 都适用：
 
 ```typescript
 export class MyService extends Disposable {
   constructor(@IThemeService private readonly _themeService: IThemeService) {
     super();
 
-    // ✅ 订阅通过 disposeWithMe 注册
     this.disposeWithMe(
       this._themeService.currentTheme$.subscribe((theme) => {
         this._applyTheme(theme);
@@ -620,24 +684,27 @@ export class MyService extends Disposable {
 }
 ```
 
-#### 方式二：`takeUntil(this.dispose$)`（推荐用于 RxDisposable 子类）
+#### 进阶模式：`RxDisposable + takeUntil(this.dispose$)`
+
+**仅在 pipe 内需要同时短路多条流时使用**。例如 `merge()` / `switchMap` 组合需要在 dispose 时整体停下，用 `takeUntil` 表达更清晰：
 
 ```typescript
-export class MyController extends RxDisposable {
-  constructor(@IThemeService private readonly _themeService: IThemeService) {
-    super();
-
-    // ✅ 使用 takeUntil 自动取消
-    this._themeService.currentTheme$.pipe(
-      takeUntil(this.dispose$)
-    ).subscribe((theme) => {
-      this._applyTheme(theme);
-    });
+export class CFRenderController extends RxDisposable {
+  private _initSkeleton(): void {
+    this.disposeWithMe(
+      merge(this._rule$, this._viewModel.markDirty$).pipe(
+        bufferTime(16),
+        filter((v) => v.length > 0),
+        takeUntil(this.dispose$),
+      ).subscribe(() => this._markDirty())
+    );
   }
 }
 ```
 
-### 4.6 Subject 完成规范
+> 单一 Observable 订阅不要用 `takeUntil`，直接 `disposeWithMe(...subscribe(...))` 更直接。
+
+### 4.7 Subject 完成规范
 
 **在 `dispose()` 中必须 `complete()` 所有 Subject**：
 
@@ -802,19 +869,28 @@ export class SessionService extends Disposable implements ISessionService {
 
 ### 6.2 完整控制器模板
 
+**默认基类为 `Disposable`**（不是 `RxDisposable`）。订阅 Observable 优先使用 `disposeWithMe(observable$.subscribe(...))`，简洁直接、无需 `takeUntil` 噪音。仅当需要在 `pipe()` 中通过 `takeUntil(this.dispose$)` 同时短路多条流，或派生 Observable 的工厂返回值时，才用 `RxDisposable`。
+
+构造函数中按业务顺序调用 `_initXxx()` 私有方法：**Commands → Shortcuts → Components → Menus → Views → Listeners**：
+
 ```typescript
-export class TerminalUIController extends RxDisposable {
+export class TerminalUIController extends Disposable {
   constructor(
+    @Inject(Injector) private readonly _injector: Injector,
+    @Inject(ComponentManagerService) private readonly _componentManagerService: ComponentManagerService,
     @ICommandService private readonly _commandService: ICommandService,
-    @ITerminalService private readonly _terminalService: ITerminalService,
+    @IMenuManagerService private readonly _menuManagerService: IMenuManagerService,
     @IShortcutService private readonly _shortcutService: IShortcutService,
-    @Inject(ComponentManager) private readonly _componentManager: ComponentManager
+    @IUIPartsService private readonly _uiPartsService: IUIPartsService,
+    @ITerminalViewRegistry private readonly _viewRegistry: ITerminalViewRegistry
   ) {
     super();
 
     this._initCommands();
     this._initShortcuts();
-    this._initUI();
+    this._initComponents();
+    this._initMenus();
+    this._initViews();
     this._initListeners();
   }
 
@@ -824,58 +900,78 @@ export class TerminalUIController extends RxDisposable {
       CreateSessionCommand,
       CloseSessionCommand,
       ToggleHostDialogOperation,
-    ].forEach((c) => {
-      this.disposeWithMe(this._commandService.registerCommand(c));
+    ].forEach((command) => {
+      this.disposeWithMe(this._commandService.registerCommand(command));
     });
   }
 
   // ===== 注册快捷键 =====
   private _initShortcuts(): void {
-    [
-      NewSessionShortcut,
-      CloseSessionShortcut,
-    ].forEach((s) => {
-      this.disposeWithMe(this._shortcutService.registerShortcut(s));
-    });
+    this.disposeWithMe(this._shortcutService.registerShortcut({
+      id: CreateSessionCommand.id,
+      description: 'terminal-ui.shortcuts.new-session',
+      binding: KeyCode.N | MetaKeys.CTRL_COMMAND,
+    }));
   }
 
-  // ===== 注册 UI 组件 =====
-  private _initUI(): void {
-    ([
-      ['TerminalTabBar', TerminalTabBar],
-      ['HostDialog', HostDialog],
-    ] as const).forEach(([key, comp]) => {
-      this.disposeWithMe(this._componentManager.register(key, comp));
-    });
+  // ===== 注册 UI 组件（ComponentManager 全局注册 + UIPartsService 嵌入位置） =====
+  private _initComponents(): void {
+    this.disposeWithMe(this._componentManagerService.register(IconKey, IconComponent));
+    this.disposeWithMe(
+      this._uiPartsService.registerComponent(BuiltInUIPart.CONTENT,
+        () => connectInjector(TerminalContainer, this._injector))
+    );
   }
 
-  // ===== 监听事件 =====
+  // ===== 注册菜单 schema =====
+  private _initMenus(): void {
+    this._menuManagerService.mergeMenu(menuSchema);
+  }
+
+  // ===== 注册视图类型 =====
+  private _initViews(): void {
+    this.disposeWithMe(this._viewRegistry.registerView('ssh', TerminalView));
+    this.disposeWithMe(this._viewRegistry.registerView('local', LocalTerminalView));
+  }
+
+  // ===== 订阅服务事件 =====
   private _initListeners(): void {
-    // 使用 takeUntil(this.dispose$) 自动清理
-    this._terminalService.sessionCreated$.pipe(
-      takeUntil(this.dispose$)
-    ).subscribe((session) => {
-      this._handleSessionCreated(session);
-    });
+    // ✅ 默认模式：disposeWithMe(observable$.subscribe(...))
+    this.disposeWithMe(
+      this._terminalService.sessionCreated$.subscribe((session) => {
+        this._handleSessionCreated(session);
+      })
+    );
 
-    this._terminalService.activeSession$.pipe(
-      takeUntil(this.dispose$)
-    ).subscribe((session) => {
-      this._handleActiveSessionChanged(session);
-    });
+    this.disposeWithMe(
+      this._terminalService.activeSession$.subscribe((session) => {
+        this._handleActiveSessionChanged(session);
+      })
+    );
   }
 
   private _handleSessionCreated(session: ISession): void {
-    // 处理逻辑...
+    // ...
   }
 
   private _handleActiveSessionChanged(session: Nullable<ISession>): void {
-    // 处理逻辑...
+    // ...
   }
+}
+```
 
-  override dispose(): void {
-    super.dispose();
-    // 额外清理...
+**何时改用 `RxDisposable`** — 当一条 pipe 内需要 `takeUntil(this.dispose$)` 提前终止时：
+
+```typescript
+export class CFRenderController extends RxDisposable {
+  private _initSkeleton(): void {
+    this.disposeWithMe(
+      merge(this._rule$, this._viewModel.markDirty$).pipe(
+        bufferTime(16),
+        filter((v) => v.length > 0),
+        takeUntil(this.dispose$),     // ← pipe 内短路才用 RxDisposable
+      ).subscribe(() => this._markDirty())
+    );
   }
 }
 ```
@@ -1025,6 +1121,40 @@ export function getMenuHiddenObservable(
 }
 ```
 
+### 6.6 菜单 Schema 模式 — `mergeMenu(menuSchema)`
+
+菜单**不是**散落在 controller 内逐条 `addMenuItem`，而是集中在 `controllers/menu.schema.ts` 内声明 schema，由 controller 通过 `_menuManagerService.mergeMenu(menuSchema)` 一次注册：
+
+```typescript
+// controllers/menu.schema.ts
+import type { MenuSchemaType } from '@termlnk/ui';
+import { ContextMenuPosition, RibbonStartGroup } from '@termlnk/ui';
+
+export const menuSchema: MenuSchemaType = {
+  [RibbonStartGroup.OTHERS]: {
+    [ToggleHostDialogOperation.id]: {
+      order: 0,
+      menuItemFactory: ToggleHostDialogMenuItemFactory,
+    },
+  },
+  [ContextMenuPosition.MAIN_AREA]: {
+    [CloseSessionCommand.id]: {
+      order: 10,
+      menuItemFactory: CloseSessionMenuItemFactory,
+    },
+  },
+};
+```
+
+```typescript
+// controllers/terminal-ui.controller.ts
+private _initMenus(): void {
+  this._menuManagerService.mergeMenu(menuSchema);
+}
+```
+
+> 单文件集中声明优势：菜单结构一眼可见、order 冲突易发现、不需要 disposeWithMe 包装（schema 注入是一次性的）。
+
 ---
 
 ## 7. 插件（Plugin）编写规范
@@ -1032,62 +1162,131 @@ export function getMenuHiddenObservable(
 ### 7.1 插件结构
 
 ```typescript
+import type { Dependency } from '@termlnk/core';
+import type { ITerminalUIConfig } from './controllers/config.schema';
+import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { RPCClientPlugin } from '@termlnk/rpc-client';
+import { UIPlugin } from '@termlnk/ui';
+import { defaultPluginConfig, TERMINAL_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
+
+export const TERMINAL_UI_PLUGIN_NAME = 'TERMINAL_UI_PLUGIN';
+
+@DependentOn(UIPlugin, RPCClientPlugin)
 export class TerminalUIPlugin extends Plugin {
   static override pluginName = TERMINAL_UI_PLUGIN_NAME;
-  static override packageName = pkg.name;
-  static override version = pkg.version;
 
   constructor(
-    private readonly _config: Partial<ITerminalUIConfig> = defaultConfig,
-    @Inject(Injector) override readonly _injector: Injector,
-    @IConfigService private readonly _configService: IConfigService
+    private readonly _config: Partial<ITerminalUIConfig> = defaultPluginConfig,
+    @Inject(Injector) protected readonly _injector: Injector,
+    @IConfigService protected readonly _configService: IConfigService
   ) {
     super();
 
-    // 合并配置
-    const mergedConfig = { ...defaultConfig, ...this._config };
-    this._configService.setConfig(TERMINAL_UI_CONFIG_KEY, mergedConfig);
+    // Deep merge with lodash `merge` — defaults must NOT be overwritten by nested config.
+    const config = merge({}, defaultPluginConfig, this._config);
+    this._configService.setConfig(TERMINAL_UI_PLUGIN_CONFIG_KEY, config);
   }
 
   override onStarting(): void {
-    // 注册 DI 依赖
-    registerDependencies(this._injector, [
-      [ITerminalSessionService, { useClass: TerminalSessionService }],
-      [TerminalUIController],
-    ]);
+    registerDependencies(
+      this._injector,
+      mergeOverrideWithDependencies(
+        [
+          // services
+          [IHostExplorerService, { useClass: HostExplorerService }],
+          [ITerminalUIService, { useClass: TerminalUIService }],
+
+          // controllers
+          [HostDialogController],
+          [TerminalUIController],
+        ] as Dependency[],
+        this._config.override
+      )
+    );
   }
 
   override onReady(): void {
-    // 服务初始化后的设置
+    // services 就绪后，可注册拦截器、订阅命令执行等
   }
 
   override onRendered(): void {
-    // UI 渲染后触发控制器初始化
+    // UI 渲染后触发控制器实例化（让控制器能立即注册组件）
     touchDependencies(this._injector, [
+      [HostDialogController],
       [TerminalUIController],
     ]);
   }
 
   override onSteady(): void {
-    // 所有初始化完成后的操作
+    // 重型 / 非关键控制器延迟激活
+    touchDependencies(this._injector, [
+      [TerminalPersistenceController],
+    ]);
   }
 }
 ```
 
-### 7.2 生命周期钩子使用规范
+### 7.2 关键工具与装饰器
+
+| API | 来源 | 用途 |
+|-----|------|------|
+| `@DependentOn(P1, P2, ...)` | `@termlnk/core` | 声明插件级依赖；启动时若被依赖插件未注册，会自动报错 |
+| `@Inject(X)` | `@termlnk/core` | 注入具体类（非接口标识符） |
+| `@Optional(X)` | `@termlnk/core` | 注入可选依赖，未注册时为 `undefined` |
+| `merge(...)` | `@termlnk/core`（来自 `lodash-es`） | 深合并配置，避免嵌套对象被浅 spread 覆盖 |
+| `registerDependencies(injector, deps)` | `@termlnk/core` | 批量注册依赖（语义化封装 `deps.forEach(d => injector.add(d))`） |
+| `touchDependencies(injector, deps)` | `@termlnk/core` | 批量触发实例化（用于 controller 等需要立即激活的类） |
+| `mergeOverrideWithDependencies(deps, override)` | `@termlnk/core` | 配合 `_config.override` 让上层覆盖默认服务实现 |
+
+#### 配置合并：**必须** `merge()` 而不是 spread
+
+```typescript
+// ❌ 错误：浅 spread 会让嵌套配置整体覆盖默认值
+const cfg = { ...defaultPluginConfig, ...this._config };
+
+// ✅ 正确：lodash merge 深合并
+const cfg = merge({}, defaultPluginConfig, this._config);
+```
+
+#### override 配置：让消费方替换默认实现
+
+```typescript
+// 插件接口允许传入 override
+export interface ITerminalUIConfig {
+  override?: DependencyOverride;
+  // ...
+}
+
+// 注册时通过 mergeOverrideWithDependencies 应用
+registerDependencies(this._injector, mergeOverrideWithDependencies([
+  [IHostExplorerService, { useClass: HostExplorerService }],   // default
+  [TerminalUIController],
+], this._config.override));
+
+// 消费方
+new TerminalUIPlugin({
+  override: [
+    [IHostExplorerService, { useClass: CustomHostExplorerService }],  // 替换默认实现
+  ],
+});
+```
+
+### 7.3 生命周期钩子使用规范
 
 | 钩子 | 时机 | 适合做什么 |
 |-----|------|----------|
-| `onStarting()` | 插件启动前 | 注册 DI 依赖、注册服务 |
-| `onReady()` | 核心服务就绪 | 初始化配置、设置拦截器 |
-| `onRendered()` | 首次渲染完成 | 触发控制器实例化、注册 UI |
-| `onSteady()` | 完全稳定 | 延迟任务、非关键初始化 |
+| `onStarting()` | 插件启动前 | 注册 DI 依赖、注册命令 |
+| `onReady()` | 核心服务就绪 | 注册拦截器、订阅命令执行、初始化跨插件协作 |
+| `onRendered()` | 首次渲染完成 | `touchDependencies` 激活 UI 相关控制器（让组件第一时间可见） |
+| `onSteady()` | 完全稳定 | `touchDependencies` 激活重型 / 非关键控制器（持久化、统计、Agent 等） |
 
-### 7.3 插件配置键规范（必须遵守）
+**典型分配**：UI 关键路径（菜单、视图注册、快捷键控制器）→ `onRendered`；后台任务、磁盘 IO、网络订阅 → `onSteady`。
+
+### 7.4 插件配置键规范（必须遵守）
 
 > **核心约束：每个插件只能拥有一个顶级配置键。** 运行时配置（`IConfigService`，内存）与持久化字段（`ConfigRepository`，数据库 `configEntity` 表）**共用该键**；所有持久化字段作为 subKey 声明在 `IXxxPluginConfig` 接口上，由 `ConfigRepository.getField / setField` 按字段读写。
 
-#### 7.3.1 命名与定位
+#### 7.4.1 命名与定位
 
 | 项目 | 规则 | 示例 |
 |-----|------|------|
@@ -1096,7 +1295,7 @@ export class TerminalUIPlugin extends Plugin {
 | 类型接口 | `IXxxPluginConfig`（或 `IXxxConfig`）— 聚合所有字段 | `IElectronMainConfig` |
 | 文件位置 | `packages/<plugin>/src/controllers/config.schema.ts` 或 `config/config.ts` | — |
 
-#### 7.3.2 接口定义模板
+#### 7.4.2 接口定义模板
 
 ```typescript
 // packages/electron-main/src/controllers/config.schema.ts
@@ -1120,7 +1319,7 @@ export const defaultPluginConfig: IElectronMainConfig = {};
 
 运行时字段与持久化字段**同一个接口**声明，仅通过访问路径（`IConfigService` vs `ConfigRepository`）区分用途。
 
-#### 7.3.3 双重访问方式
+#### 7.4.3 双重访问方式
 
 ```typescript
 // ① 内存运行时配置 — 插件构造时调用
@@ -1143,7 +1342,7 @@ const stored = await this._configRepository.getField<IMainWindowState>(
 );
 ```
 
-#### 7.3.4 监听外部变更
+#### 7.4.4 监听外部变更
 
 ```typescript
 this.disposeWithMe(
@@ -1158,7 +1357,7 @@ this.disposeWithMe(
 
 `e.subKey === undefined` 覆盖整键 `set()`（如导入/重置）的场景。
 
-#### 7.3.5 禁止事项
+#### 7.4.5 禁止事项
 
 | 禁止 | 原因 |
 |-----|------|
@@ -1167,14 +1366,14 @@ this.disposeWithMe(
 | ❌ 跨插件直接读写他人的 config key | 越过服务边界；跨插件交互必须经 Service API |
 | ❌ 在持久化字段的存取路径里使用 `set(KEY, ...)` 覆盖整键 | 会清掉其他 subKey；持久化字段必须用 `setField` |
 
-#### 7.3.6 新增持久化字段流程
+#### 7.4.6 新增持久化字段流程
 
 1. 在 `IXxxPluginConfig` 接口中加一个可选字段（类型须独立定义）
 2. 提供 `normalizeXxx(value): IXxx` 帮助函数处理 null / 非法值回退到默认
 3. 消费方（Controller/Service）通过 `ConfigRepository.getField / setField` 读写
 4. 如有跨进程/跨控制器响应需求，订阅 `ConfigRepository.changed$` 并 `filter` 对应 subKey
 
-#### 7.3.7 已落地示例
+#### 7.4.7 已落地示例
 
 | 插件 | Config Key | 运行时字段 | 持久化字段 |
 |-----|-----------|-----------|-----------|
@@ -1718,18 +1917,34 @@ packages/[package-name]/src/
 │  有当前值 → BehaviorSubject    纯事件 → Subject                   │
 ├─────────────────────────────────────────────────────────────────┤
 │  订阅清理                                                        │
-│  Disposable  → this.disposeWithMe(subscription)                 │
-│  RxDisposable → .pipe(takeUntil(this.dispose$))                 │
+│  默认 → this.disposeWithMe(observable$.subscribe(...))          │
+│  pipe 多流短路才用 RxDisposable + takeUntil(this.dispose$)       │
+│  disposeWithMe() 接受函数,无需 toDisposable                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  dispose 清理                                                    │
-│  this._xxx$.complete()  // 所有 Subject                          │
-│  this._map.clear()      // 所有集合                               │
-│  super.dispose()        // 调用父类                               │
+│  super.dispose()        // 先调用父类                            │
+│  this._xxx$.complete()  // complete 所有 Subject                 │
+│  this._map.clear()      // 清理所有集合                          │
 ├─────────────────────────────────────────────────────────────────┤
-│  DI 标识符                                                       │
-│  export const IXxxService = createIdentifier<IXxxService>('...')│
+│  DI 标识符 (接口与同名常量)                                       │
+│  export const IXxxService = createIdentifier<IXxxService>(      │
+│    '<包名>.<服务名>.service'                                    │
+│  );                                                             │
+├─────────────────────────────────────────────────────────────────┤
+│  构造函数注入                                                    │
+│  Service/Controller: @X private readonly _x: X                  │
+│  Plugin:             @Inject(Injector) protected readonly      │
+│                      _injector / _configService                 │
+│  可选依赖:           @Optional(X) ... ?: X                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  命令 ID                                                         │
 │  '<包名>.<command|mutation|operation>.<kebab-case-动作>'          │
+├─────────────────────────────────────────────────────────────────┤
+│  Plugin 工具 (from @termlnk/core)                                │
+│  @DependentOn(P1, P2) — 声明插件依赖                             │
+│  merge({}, default, this._config) — 深合并配置                   │
+│  registerDependencies(injector, deps) — 批量注册                 │
+│  touchDependencies(injector, deps) — 批量激活                    │
+│  mergeOverrideWithDependencies(deps, override) — 应用 override   │
 └─────────────────────────────────────────────────────────────────┘
 ```
