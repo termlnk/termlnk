@@ -1,6 +1,12 @@
-// Expo SDK 55 + RN 0.83 Babel preset.
-// `babel-preset-expo` ships New Architecture support, automatic JSX runtime, decorator
-// transforms (needed by @wendellhu/redi DI), and Reanimated 4 worklets out of the box.
+// Expo SDK 55 + RN 0.83 + NativeWind v5 Babel preset.
+//
+// `nativewind/babel` re-exports the react-native-css transform used by v5. It
+// rewrites React Native primitive imports to className-aware components while
+// Metro compiles imported CSS files through the Tailwind v4 pipeline.
+// Reanimated v4 (the version Expo SDK 55 ships) bundles `react-native-worklets/plugin`
+// internally; do NOT add it to plugins or you'll get duplicate-plugin errors at
+// transform time. The Reanimated Babel plugin itself is also auto-configured by
+// babel-preset-expo for SDK 50+, so it doesn't need an explicit entry here either.
 //
 // `babel-plugin-parameter-decorator` patches Babel's well-known blind spot: legacy
 // `@babel/plugin-proposal-decorators` does not transform parameter decorators
@@ -22,6 +28,7 @@ module.exports = function (api) {
           unstable_transformImportMeta: true,
         },
       ],
+      'nativewind/babel',
     ],
     plugins: ['babel-plugin-parameter-decorator'],
   };

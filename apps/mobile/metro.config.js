@@ -12,6 +12,7 @@
 
 const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativewind } = require('nativewind/metro');
 
 const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
@@ -33,4 +34,9 @@ config.resolver.unstable_enablePackageExports = true;
 // database token storage, so blocking the resolver here prevents accidental drag-in.
 config.resolver.blockList = [/packages\/database\/src\/.*/, /packages\/database\/lib\/.*/];
 
-module.exports = config;
+// NativeWind v5 delegates CSS handling to react-native-css. The wrapper keeps
+// the global React Native className polyfill enabled so existing JSX does not
+// need to import styled primitives one file at a time.
+module.exports = withNativewind(config, {
+  typescriptEnvPath: './nativewind-env.d.ts',
+});

@@ -13,8 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-// xterm.js loaded inside a react-native-webview. The CDN URL is pinned to a major
-// version so an upstream update cannot break the bridge contract.
+// xterm.js renders inside a react-native-webview. Its UMD bundle and matching
+// CSS are inlined from the npm packages at app build time (see
+// scripts/generate-xterm-bundle.cjs and xterm-bundle.generated.ts) so the
+// runtime never depends on a CDN reachable from the device.
 //
 // Bridge protocol between RN and the WebView:
 //   Native → WebView : injectJavaScript("__termlnkTerm.write(<base64>)")
@@ -25,27 +27,42 @@
 //
 // Base64 framing keeps multi-byte UTF-8 sequences intact through string-only postMessage.
 
-const XTERM_VERSION = '5.5.0'; // last stable xterm v5; xterm v6 is in beta as of 2026-05.
-const ADDON_FIT_VERSION = '0.10.0';
-const BOOT_TIMEOUT_MS = 8000;
+import {
+  XTERM_ADDON_FIT_JS,
+  XTERM_ADDON_FIT_VERSION,
+  XTERM_CSS,
+  XTERM_JS,
+  XTERM_VERSION,
+} from './xterm-bundle.generated';
+
+// Defensive escape for content embedded inside <script> / <style>. xterm's
+// minified UMD currently contains no `</script>` sequence, but masking `</` to
+// `<\/` keeps the HTML parser safe if a future bundle introduces one — the
+// backslash is a no-op inside a JS string literal.
+function escapeForHtmlInline(source: string): string {
+  return source.replace(/<\//g, '<\\/');
+}
 
 export function buildXtermHtml(): string {
+  const css = escapeForHtmlInline(XTERM_CSS);
+  const xtermJs = escapeForHtmlInline(XTERM_JS);
+  const addonFitJs = escapeForHtmlInline(XTERM_ADDON_FIT_JS);
+
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <script>
-    // Error-bridge first — must be installed before any other script so that a
-    // CDN failure / inline-script crash surfaces to the RN host instead of
-    // leaving the user with an unrecoverable black screen.
+    // Error-bridge first — installed before xterm scripts run so an init crash
+    // surfaces to the RN host instead of leaving the user with a black screen.
     (function () {
       function report(payload) {
         try {
           if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
             window.ReactNativeWebView.postMessage(JSON.stringify(payload));
           }
-        } catch (_) { /* swallow — postMessage failure is non-fatal here */ }
+        } catch (_) { /* postMessage failure is non-fatal here */ }
       }
       window.__termlnkReport = report;
       window.addEventListener('error', function (ev) {
@@ -66,23 +83,9 @@ export function buildXtermHtml(): string {
           stack: reason && reason.stack ? String(reason.stack).slice(0, 2000) : '',
         });
       });
-      // Surface a useful error when the UMD bundles never attached (CDN blocked /
-      // ATS blocked / timed out). Without this we'd silently sit on a black page.
-      setTimeout(function () {
-        if (!window.Terminal) {
-          report({
-            type: 'error',
-            message: 'xterm boot timeout (' + ${BOOT_TIMEOUT_MS} + 'ms): window.Terminal undefined — script load failed',
-          });
-        } else if (!window.__termlnkTerm) {
-          report({ type: 'error', message: 'xterm UMD loaded but inline init did not run' });
-        }
-      }, ${BOOT_TIMEOUT_MS});
     })();
   </script>
-  <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/@xterm/xterm@${XTERM_VERSION}/css/xterm.min.css"
-        onerror="window.__termlnkReport && window.__termlnkReport({ type: 'error', message: 'failed to load xterm.min.css from jsdelivr' })" />
+  <style>${css}</style>
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #0a0a0a; }
     #t { position: absolute; inset: 0; padding: 8px; }
@@ -90,19 +93,19 @@ export function buildXtermHtml(): string {
 </head>
 <body>
   <div id="t"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@${XTERM_VERSION}/lib/xterm.min.js"
-          onerror="window.__termlnkReport && window.__termlnkReport({ type: 'error', message: 'failed to load xterm.min.js from jsdelivr' })"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@${ADDON_FIT_VERSION}/lib/addon-fit.min.js"
-          onerror="window.__termlnkReport && window.__termlnkReport({ type: 'error', message: 'failed to load addon-fit.min.js from jsdelivr' })"></script>
+  <!-- xterm ${XTERM_VERSION} (UMD, inlined) -->
+  <script>${xtermJs}</script>
+  <!-- @xterm/addon-fit ${XTERM_ADDON_FIT_VERSION} (UMD, inlined) -->
+  <script>${addonFitJs}</script>
   <script>
     (function () {
       try {
         if (!window.Terminal) {
-          window.__termlnkReport({ type: 'error', message: 'window.Terminal not defined — xterm.min.js did not execute' });
+          window.__termlnkReport({ type: 'error', message: 'window.Terminal not defined — inlined xterm UMD did not execute' });
           return;
         }
         if (!window.FitAddon || !window.FitAddon.FitAddon) {
-          window.__termlnkReport({ type: 'error', message: 'window.FitAddon.FitAddon not defined — addon-fit.min.js did not execute' });
+          window.__termlnkReport({ type: 'error', message: 'window.FitAddon.FitAddon not defined — inlined addon-fit UMD did not execute' });
           return;
         }
         var term = new window.Terminal({
@@ -174,9 +177,8 @@ export function buildXtermHtml(): string {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'input', data: b64 }));
         });
 
-        // Tell RN the WebView side is fully wired. This is the explicit "boot ok"
-        // signal — without it, a missing size message could mean either "fit failed"
-        // or "xterm never started" and the host couldn't tell the two apart.
+        // Tell RN the WebView side is fully wired. Without this the host couldn't
+        // distinguish "fit failed silently" from "xterm never started".
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
       } catch (e) {
         window.__termlnkReport({
