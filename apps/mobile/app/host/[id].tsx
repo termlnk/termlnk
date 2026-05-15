@@ -27,8 +27,8 @@ export default function HostDetail() {
   const [host, setHost] = useState<IMobileHost | null>(null);
 
   useEffect(() => {
-    const sub = pull.snapshot$.subscribe((snap) => {
-      setHost(snap.hosts.find((h) => h.id === id) ?? null);
+    const sub = pull.hosts$.subscribe((hosts) => {
+      setHost(hosts.find((h) => h.id === id) ?? null);
     });
     return () => sub.unsubscribe();
   }, [pull, id]);
@@ -70,8 +70,9 @@ export default function HostDetail() {
       </View>
 
       <Text style={styles.note}>
-        Credentials are entered when you connect. They are kept in memory only and never
-        written to disk; the underlying SSH library erases them when the session closes.
+        Credentials sync from your desktop vault end-to-end encrypted and live in this
+        device's OS keystore. Tap Open terminal / Browse files to connect — no extra
+        entry needed when a credential is on file.
       </Text>
     </View>
   );

@@ -41,7 +41,7 @@ export default function Hosts() {
   }, [pullService]);
 
   useEffect(() => {
-    const sub = pullService.snapshot$.subscribe((snap) => setHosts(snap.hosts));
+    const sub = pullService.hosts$.subscribe((next) => setHosts(next));
     onRefresh();
     // Pull service is a singleton inside CoreContext — do NOT dispose here, other
     // screens (host detail, settings) share the same snapshot stream.

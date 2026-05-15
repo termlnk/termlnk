@@ -29,6 +29,7 @@ import type {
   ITerminalChunk,
   ShellListenerEvent,
 } from '@termlnk/react-native-russh';
+import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { RnRussh } from '@termlnk/react-native-russh';
 import { BehaviorSubject, Subject } from 'rxjs';
@@ -45,14 +46,24 @@ export interface IMobileSshConnectOptions {
   readonly hostId?: string; // optional — when provided drives the TOFU store
 }
 
+export interface IShellStartOptions {
+  // One-shot PTY size. The russh wrapper has no window-change yet, so this
+  // value must be measured before startShell() — otherwise the remote falls
+  // back to ~80x24 and wraps lines on phone-shaped WebViews.
+  readonly terminalSize?: {
+    readonly cols: number;
+    readonly rows: number;
+  };
+}
+
 export interface IMobileSshSession {
   readonly host: string;
   readonly state: SshConnectionState;
-  readonly state$: BehaviorSubject<SshConnectionState>;
-  readonly shellOutput$: Subject<string>;
+  readonly state$: Observable<SshConnectionState>;
+  readonly shellOutput$: Observable<string>;
 
   exec: (command: string) => Promise<string>;
-  startShell: () => Promise<void>;
+  startShell: (opts?: IShellStartOptions) => Promise<void>;
   writeToShell: (data: string) => Promise<void>;
   closeShell: () => void;
   disconnect: () => void;
@@ -63,8 +74,11 @@ const utf8Decoder = new TextDecoder('utf-8');
 const utf8Encoder = new TextEncoder();
 
 class MobileSshSession extends Disposable implements IMobileSshSession {
-  readonly state$ = new BehaviorSubject<SshConnectionState>('connected');
-  readonly shellOutput$ = new Subject<string>();
+  private readonly _state$ = new BehaviorSubject<SshConnectionState>('connected');
+  readonly state$: Observable<SshConnectionState> = this._state$.asObservable();
+
+  private readonly _shellOutput$ = new Subject<string>();
+  readonly shellOutput$: Observable<string> = this._shellOutput$.asObservable();
 
   private _shell: ISshShell | null = null;
   private _listenerId: bigint | null = null;
@@ -78,13 +92,13 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
 
   override dispose(): void {
     this.disconnect();
-    this.state$.complete();
-    this.shellOutput$.complete();
+    this._state$.complete();
+    this._shellOutput$.complete();
     super.dispose();
   }
 
   get state(): SshConnectionState {
-    return this.state$.getValue();
+    return this._state$.getValue();
   }
 
   async exec(_command: string): Promise<string> {
@@ -93,12 +107,15 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
     );
   }
 
-  async startShell(): Promise<void> {
+  async startShell(opts?: IShellStartOptions): Promise<void> {
     if (this._shell) {
       return;
     }
     const shell = await this._connection.startShell({
       term: 'Xterm256',
+      terminalSize: opts?.terminalSize
+        ? { colWidth: opts.terminalSize.cols, rowHeight: opts.terminalSize.rows }
+        : undefined,
       onClosed: () => {
         this._shell = null;
         this._listenerId = null;
@@ -143,7 +160,7 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
     void this._connection.disconnect().catch(() => {
       // Transport is already torn down on the network side; swallow.
     });
-    this.state$.next('disconnected');
+    this._state$.next('disconnected');
   }
 
   async openSftp(): Promise<ISftpSession> {
@@ -162,11 +179,11 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
       // Dropped notice — surface as control message in the output stream so
       // the UI can render a "lost N..M bytes" banner if it wants. v1 just
       // forwards the seq range as text.
-      this.shellOutput$.next(`\r\n[termlnk] dropped seq ${ev.fromSeq}..${ev.toSeq}\r\n`);
+      this._shellOutput$.next(`\r\n[termlnk] dropped seq ${ev.fromSeq}..${ev.toSeq}\r\n`);
       return;
     }
     const chunk = ev as ITerminalChunk;
-    this.shellOutput$.next(utf8Decoder.decode(new Uint8Array(chunk.bytes), { stream: true }));
+    this._shellOutput$.next(utf8Decoder.decode(new Uint8Array(chunk.bytes), { stream: true }));
   };
 }
 

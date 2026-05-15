@@ -3,27 +3,36 @@
  *
  * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
  * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
  */
 
-// SFTP screen — P6.9-7 rebuild. Opens its own SSH session and multiplexes
-// an SFTP subsystem onto it via IMobileSshSession.openSftp(). No shared
-// SSH-session bus needed; each tab paints a fresh handshake. v1.1 may
-// hoist this into a per-host session manager if power users open both
-// terminal and SFTP on the same host frequently.
+// SFTP screen. Opens its own SSH session and multiplexes an SFTP subsystem onto it
+// via IMobileSshSession.openSftp(). Auto-connects from the vault credential when
+// available; falls back to manual entry when missing.
 
 import type { ISftpEntry } from '../../../src/sftp/mobile-sftp-client.service';
 import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.service';
 import type { IMobileHost } from '../../../src/sync/mobile-sync-pull.service';
+import type { IHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSyncPullService } from '../../../src/core/core-context';
+import { useCoreContext, useSyncPullService } from '../../../src/core/core-context';
 import { MobileSftpClientService } from '../../../src/sftp/mobile-sftp-client.service';
+import { autoConnectArgsFromVault } from '../../../src/ssh/auto-connect-from-vault';
 import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
+import { IMobileHostRepository } from '../../../src/storage/mobile-host-repository';
 
-type Stage = 'awaiting-credentials' | 'connecting' | 'ready' | 'error';
+type Stage = 'loading-host' | 'awaiting-credentials' | 'connecting' | 'ready' | 'error';
 
-interface Credentials {
+interface ManualCredentials {
   username: string;
   password: string;
 }
@@ -50,56 +59,41 @@ function joinPath(base: string, segment: string): string {
 export default function SftpScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const pull = useSyncPullService();
+  const coreContext = useCoreContext();
+  const hostRepo = useMemo(
+    () => coreContext.core.getInjector().get(IMobileHostRepository),
+    [coreContext]
+  );
 
   const sshClient = useMemo(() => new MobileSshClientService(), []);
   const [host, setHost] = useState<IMobileHost | null>(null);
-  const [stage, setStage] = useState<Stage>('awaiting-credentials');
+  const [stage, setStage] = useState<Stage>('loading-host');
   const [error, setError] = useState<string | null>(null);
-  const [creds, setCreds] = useState<Credentials>({ username: '', password: '' });
+  const [manualCreds, setManualCreds] = useState<ManualCredentials>({ username: '', password: '' });
   const [path, setPath] = useState('.');
   const [entries, setEntries] = useState<readonly ISftpEntry[]>([]);
 
   const [session, setSession] = useState<IMobileSshSession | null>(null);
   const [sftp, setSftp] = useState<MobileSftpClientService | null>(null);
 
+  const autoConnectedRef = useRef(false);
+
   useEffect(() => {
-    const sub = pull.snapshot$.subscribe((snap) => {
-      setHost(snap.hosts.find((h) => h.id === id) ?? null);
+    const sub = pull.hosts$.subscribe((hosts) => {
+      setHost(hosts.find((h) => h.id === id) ?? null);
     });
     return () => sub.unsubscribe();
   }, [pull, id]);
 
-  useEffect(() => {
-    return () => {
-      if (sftp) {
-        sftp.dispose();
-      }
-      if (session) {
-        session.disconnect();
-      }
-      sshClient.dispose();
-    };
-  }, [sftp, session, sshClient]);
-
-  const onConnect = async () => {
-    if (!host || !host.addr) {
-      setError('Host has no address');
-      setStage('error');
-      return;
-    }
-    if (!creds.username || !creds.password) {
-      setError('Username and password are required');
-      setStage('error');
+  const connect = useCallback(async (args: IHostConnectArgs) => {
+    if (!host) {
       return;
     }
     setStage('connecting');
     setError(null);
     try {
       const next = await sshClient.connect({
-        host: host.addr,
-        port: host.port ?? 22,
-        username: creds.username,
-        password: creds.password,
+        ...args,
         hostId: host.id,
       });
       const client = new MobileSftpClientService(next);
@@ -113,7 +107,72 @@ export default function SftpScreen() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection failed');
       setStage('error');
+      autoConnectedRef.current = false;
     }
+  }, [sshClient, host]);
+
+  useEffect(() => {
+    if (!host || autoConnectedRef.current) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const full = await hostRepo.getInfo(id);
+        if (cancelled) {
+          return;
+        }
+        if (full) {
+          const auto = autoConnectArgsFromVault(full);
+          if (auto) {
+            autoConnectedRef.current = true;
+            void connect(auto);
+            return;
+          }
+        }
+        setStage('awaiting-credentials');
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        setError(err instanceof Error ? err.message : 'Failed to read host');
+        setStage('error');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [host, hostRepo, id, connect]);
+
+  useEffect(() => {
+    return () => {
+      if (sftp) {
+        sftp.dispose();
+      }
+      if (session) {
+        session.disconnect();
+      }
+      sshClient.dispose();
+    };
+  }, [sftp, session, sshClient]);
+
+  const onConnectManual = async () => {
+    if (!host || !host.addr) {
+      setError('Host has no address');
+      setStage('error');
+      return;
+    }
+    if (!manualCreds.username || !manualCreds.password) {
+      setError('Username and password are required');
+      setStage('error');
+      return;
+    }
+    await connect({
+      host: host.addr,
+      port: host.port ?? 22,
+      username: manualCreds.username,
+      password: manualCreds.password,
+    });
   };
 
   const onEnter = async (entry: ISftpEntry) => {
@@ -147,49 +206,53 @@ export default function SftpScreen() {
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Stack.Screen options={{ title: host ? `${host.label} • SFTP` : 'SFTP' }} />
-      {stage !== 'ready' && (
+      {(stage === 'loading-host' || stage === 'connecting') && (
+        <View style={styles.center}>
+          <ActivityIndicator color="#3b82f6" />
+          <Text style={styles.note}>
+            {stage === 'loading-host' ? 'Loading host…' : `Opening SFTP on ${host?.label ?? 'host'}…`}
+          </Text>
+        </View>
+      )}
+      {(stage === 'awaiting-credentials' || stage === 'error') && (
         <View style={styles.credentials}>
+          <Text style={styles.note}>
+            {stage === 'error'
+              ? 'Connection failed. Enter credentials manually to retry.'
+              : 'No credential on file for this host. Enter manually to connect.'}
+          </Text>
           <Text style={styles.label}>Username</Text>
           <TextInput
-            value={creds.username}
-            onChangeText={(username) => setCreds((c) => ({ ...c, username }))}
+            value={manualCreds.username}
+            onChangeText={(username) => setManualCreds((c) => ({ ...c, username }))}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="root"
             placeholderTextColor="#6b7280"
             style={styles.input}
-            editable={stage === 'awaiting-credentials' || stage === 'error'}
           />
           <Text style={styles.label}>Password</Text>
           <TextInput
-            value={creds.password}
-            onChangeText={(password) => setCreds((c) => ({ ...c, password }))}
+            value={manualCreds.password}
+            onChangeText={(password) => setManualCreds((c) => ({ ...c, password }))}
             secureTextEntry
             autoCapitalize="none"
             placeholder="••••••••"
             placeholderTextColor="#6b7280"
             style={styles.input}
-            editable={stage === 'awaiting-credentials' || stage === 'error'}
           />
           {error && <Text style={styles.error}>{error}</Text>}
           <Pressable
-            onPress={onConnect}
-            disabled={stage === 'connecting' || creds.username.length === 0 || creds.password.length === 0}
+            onPress={onConnectManual}
+            disabled={manualCreds.username.length === 0 || manualCreds.password.length === 0}
             style={({ pressed }) => [
               styles.button,
-              (stage === 'connecting' || creds.username.length === 0 || creds.password.length === 0) && styles.buttonDisabled,
+              (manualCreds.username.length === 0 || manualCreds.password.length === 0) && styles.buttonDisabled,
               pressed && { opacity: 0.85 },
             ]}
           >
-            {stage === 'connecting'
-              ? <ActivityIndicator color="#0a0a0a" />
-              : <Text style={styles.buttonLabel}>Open SFTP browser</Text>}
+            <Text style={styles.buttonLabel}>Open SFTP browser</Text>
           </Pressable>
-          <Text style={styles.note}>
-            Opens an SFTP subsystem on a fresh SSH connection; the same connection
-            multiplexes both terminal and SFTP via russh channels. File upload via
-            the system file picker ships in v1.1.
-          </Text>
         </View>
       )}
       {stage === 'ready' && (
@@ -228,6 +291,7 @@ export default function SftpScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0a0a0a' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   credentials: { padding: 16, gap: 8 },
   label: { color: '#9ca3af', fontSize: 12 },
   input: { backgroundColor: '#262626', color: '#e5e7eb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
@@ -235,7 +299,7 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.5 },
   buttonLabel: { color: '#0a0a0a', fontSize: 15, fontWeight: '600' },
   error: { color: '#f87171', fontSize: 13 },
-  note: { color: '#6b7280', fontSize: 12, marginTop: 8, lineHeight: 17 },
+  note: { color: '#9ca3af', fontSize: 13, marginTop: 4, lineHeight: 18 },
   browser: { flex: 1 },
   pathBar: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomColor: '#1f1f1f', borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
   pathLabel: { color: '#e5e7eb', fontSize: 14, flex: 1 },
