@@ -21,7 +21,7 @@ import { Quantity } from '@termlnk/core';
 // password as input, so there is no parameter-less login command we could expose.
 // Returns false when IAuthClientService is unbound (cloud not configured).
 export const LogoutCommand: ICommand = {
-  id: 'auth.command.logout',
+  id: 'auth-ui.command.logout',
   handler: async (accessor: IAccessor): Promise<boolean> => {
     const auth = accessor.get(IAuthClientService, Quantity.OPTIONAL);
     if (!auth) {
