@@ -15,7 +15,7 @@
 
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 interface ParsedInvite {
   readonly inviteId: string;
@@ -54,69 +54,67 @@ export default function InviteScreen() {
   }, [params.id, params.frag]);
 
   return (
-    <View style={styles.root}>
+    <View className="flex-1 justify-center bg-black px-4">
       <Stack.Screen options={{ title: 'Invitation' }} />
 
       {!invite && (
-        <View style={styles.card}>
-          <Text style={styles.title}>Invalid invitation</Text>
-          <Text style={styles.body}>
+        <View className="rounded-xl bg-one-bg p-5">
+          <Text className="mb-3 text-[20px] font-semibold text-light-grey">
+            Invalid invitation
+          </Text>
+          <Text className="text-[14px] leading-5 text-grey-fg">
             This screen expects an invitation URL of the form
             {' '}
-            <Text style={styles.code}>termlnk://invite/&lt;id&gt;#&lt;key&gt;</Text>
+            <Text className="text-blue">termlnk://invite/&lt;id&gt;#&lt;key&gt;</Text>
             .
+            {' '}
             The link you opened did not carry a valid session identifier.
           </Text>
-          <Pressable onPress={() => router.replace('/hosts')} style={styles.button}>
-            <Text style={styles.buttonLabel}>Go back</Text>
+          <Pressable
+            onPress={() => router.replace('/(tabs)/hosts')}
+            className="mt-5 items-center rounded-lg bg-one-bg2 py-3 active:bg-one-bg3"
+          >
+            <Text className="text-[14px] font-medium text-light-grey">Go back</Text>
           </Pressable>
         </View>
       )}
 
       {invite && (
-        <View style={styles.card}>
-          <Text style={styles.title}>Collaborative session</Text>
-          <Text style={styles.body}>
+        <View className="rounded-xl bg-one-bg p-5">
+          <Text className="mb-3 text-[20px] font-semibold text-light-grey">
+            Collaborative session
+          </Text>
+          <Text className="text-[14px] leading-5 text-grey-fg">
             You have been invited to join session
             {' '}
-            <Text style={styles.code}>
+            <Text className="text-blue">
               {invite.inviteId.slice(0, 8)}
               …
             </Text>
             {' '}
-            as a peer of
-            the inviter's terminal.
+            as a peer of the inviter&apos;s terminal.
           </Text>
-          <Text style={styles.note}>
+          <Text className="mt-3.5 text-[12px] leading-[18px] text-grey">
             Path-B receiver wiring (NaCl box + relay attach + xterm rendering) ships in
             v1.1 of the mobile client. The desktop and termlnk-web clients support it
             today via the shared-terminal-core relay endpoint. Use one of those to
             accept the invitation for now.
           </Text>
           {!invite.hasFragment && (
-            <Text style={styles.warning}>
+            <Text className="mt-3 text-[12px] leading-[18px] text-yellow">
               Note: the secret fragment was stripped from this deep link. iOS / Android
               URL handlers drop the `#` portion in some launch paths — open the link
               from a browser that preserves the fragment to keep it E2EE.
             </Text>
           )}
-          <Pressable onPress={() => router.replace('/hosts')} style={styles.button}>
-            <Text style={styles.buttonLabel}>Back to hosts</Text>
+          <Pressable
+            onPress={() => router.replace('/(tabs)/hosts')}
+            className="mt-5 items-center rounded-lg bg-one-bg2 py-3 active:bg-one-bg3"
+          >
+            <Text className="text-[14px] font-medium text-light-grey">Back to hosts</Text>
           </Pressable>
         </View>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0a0a0a', padding: 16, justifyContent: 'center' },
-  card: { backgroundColor: '#171717', borderRadius: 12, padding: 20 },
-  title: { color: '#e5e7eb', fontSize: 20, fontWeight: '600', marginBottom: 12 },
-  body: { color: '#9ca3af', fontSize: 14, lineHeight: 20 },
-  code: { color: '#3b82f6', fontFamily: 'Menlo' },
-  note: { color: '#6b7280', fontSize: 12, lineHeight: 18, marginTop: 14 },
-  warning: { color: '#fbbf24', fontSize: 12, lineHeight: 18, marginTop: 12 },
-  button: { backgroundColor: '#262626', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 20 },
-  buttonLabel: { color: '#e5e7eb', fontSize: 14, fontWeight: '500' },
-});

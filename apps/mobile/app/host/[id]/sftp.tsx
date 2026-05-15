@@ -18,13 +18,14 @@
 // available; falls back to manual entry when missing.
 
 import type { ISftpEntry } from '../../../src/sftp/mobile-sftp-client.service';
+import type { IHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.service';
 import type { IMobileHost } from '../../../src/sync/mobile-sync-pull.service';
-import type { IHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { ArrowUp, File as FileIcon, Folder as FolderIcon } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useCoreContext, useSyncPullService } from '../../../src/core/core-context';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useCoreContext, useRecentSessionsRepository, useSyncPullService } from '../../../src/core/core-context';
 import { MobileSftpClientService } from '../../../src/sftp/mobile-sftp-client.service';
 import { autoConnectArgsFromVault } from '../../../src/ssh/auto-connect-from-vault';
 import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
@@ -60,6 +61,7 @@ export default function SftpScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const pull = useSyncPullService();
   const coreContext = useCoreContext();
+  const recentRepo = useRecentSessionsRepository();
   const hostRepo = useMemo(
     () => coreContext.core.getInjector().get(IMobileHostRepository),
     [coreContext]
@@ -104,12 +106,13 @@ export default function SftpScreen() {
       setPath('.');
       setEntries(initial);
       setStage('ready');
+      void recentRepo.touch(host.id, 'sftp').catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection failed');
       setStage('error');
       autoConnectedRef.current = false;
     }
-  }, [sshClient, host]);
+  }, [sshClient, host, recentRepo]);
 
   useEffect(() => {
     if (!host || autoConnectedRef.current) {
@@ -203,66 +206,83 @@ export default function SftpScreen() {
     }
   };
 
+  const submitDisabled = manualCreds.username.length === 0 || manualCreds.password.length === 0;
+
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      className="flex-1 bg-black"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <Stack.Screen options={{ title: host ? `${host.label} • SFTP` : 'SFTP' }} />
+
       {(stage === 'loading-host' || stage === 'connecting') && (
-        <View style={styles.center}>
-          <ActivityIndicator color="#3b82f6" />
-          <Text style={styles.note}>
-            {stage === 'loading-host' ? 'Loading host…' : `Opening SFTP on ${host?.label ?? 'host'}…`}
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#61afef" />
+          <Text className="mt-3 text-[13px] text-grey-fg">
+            {stage === 'loading-host'
+              ? 'Loading host…'
+              : `Opening SFTP on ${host?.label ?? 'host'}…`}
           </Text>
         </View>
       )}
+
       {(stage === 'awaiting-credentials' || stage === 'error') && (
-        <View style={styles.credentials}>
-          <Text style={styles.note}>
+        <View className="p-4">
+          <Text className="text-[13px] leading-[18px] text-grey-fg">
             {stage === 'error'
               ? 'Connection failed. Enter credentials manually to retry.'
               : 'No credential on file for this host. Enter manually to connect.'}
           </Text>
-          <Text style={styles.label}>Username</Text>
+          <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">Username</Text>
           <TextInput
             value={manualCreds.username}
             onChangeText={(username) => setManualCreds((c) => ({ ...c, username }))}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="root"
-            placeholderTextColor="#6b7280"
-            style={styles.input}
+            placeholderTextColor="#42464e"
+            className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
           />
-          <Text style={styles.label}>Password</Text>
+          <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">Password</Text>
           <TextInput
             value={manualCreds.password}
             onChangeText={(password) => setManualCreds((c) => ({ ...c, password }))}
             secureTextEntry
             autoCapitalize="none"
             placeholder="••••••••"
-            placeholderTextColor="#6b7280"
-            style={styles.input}
+            placeholderTextColor="#42464e"
+            className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
           />
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error != null && (
+            <Text className="mt-3 text-[13px] text-red">{error}</Text>
+          )}
           <Pressable
             onPress={onConnectManual}
-            disabled={manualCreds.username.length === 0 || manualCreds.password.length === 0}
-            style={({ pressed }) => [
-              styles.button,
-              (manualCreds.username.length === 0 || manualCreds.password.length === 0) && styles.buttonDisabled,
-              pressed && { opacity: 0.85 },
-            ]}
+            disabled={submitDisabled}
+            className={`mt-4 items-center rounded-lg py-3 active:opacity-80 ${submitDisabled ? 'bg-one-bg3 opacity-50' : 'bg-blue'}`}
           >
-            <Text style={styles.buttonLabel}>Open SFTP browser</Text>
+            <Text className="text-[15px] font-semibold text-black">
+              Open SFTP browser
+            </Text>
           </Pressable>
         </View>
       )}
+
       {stage === 'ready' && (
-        <View style={styles.browser}>
-          <View style={styles.pathBar}>
-            <Text style={styles.pathLabel}>{path}</Text>
-            <Pressable onPress={onGoUp} style={({ pressed }) => [styles.upButton, pressed && { opacity: 0.85 }]}>
-              <Text style={styles.upLabel}>..</Text>
+        <View className="flex-1">
+          <View className="flex-row items-center gap-3 border-b border-line px-3 py-2.5">
+            <Text numberOfLines={1} className="flex-1 text-[14px] text-light-grey">
+              {path}
+            </Text>
+            <Pressable
+              onPress={onGoUp}
+              className="flex-row items-center rounded-md bg-one-bg2 px-3 py-1.5 active:bg-one-bg3"
+            >
+              <ArrowUp size={14} color="#6f737b" />
+              <Text className="ml-1 text-[13px] font-semibold text-light-grey">Up</Text>
             </Pressable>
           </View>
+
           <FlatList
             data={entries}
             keyExtractor={(item) => entryKey(path, item)}
@@ -270,43 +290,29 @@ export default function SftpScreen() {
               <Pressable
                 onPress={() => onEnter(item)}
                 disabled={!item.isDirectory}
-                style={({ pressed }) => [styles.row, pressed && item.isDirectory && { backgroundColor: '#1f1f1f' }]}
+                className={`flex-row items-center border-b border-line px-4 py-3 ${item.isDirectory ? 'active:bg-one-bg' : ''}`}
               >
-                <Text style={styles.rowLabel}>
-                  {item.isDirectory ? '📁 ' : '📄 '}
-                  {item.filename}
-                </Text>
-                <Text style={styles.rowMeta}>
-                  {item.isDirectory ? 'Directory' : `${item.size.toString()} B`}
-                </Text>
+                {item.isDirectory
+                  ? <FolderIcon size={18} color="#61afef" />
+                  : <FileIcon size={18} color="#565c64" />}
+                <View className="ml-3 flex-1">
+                  <Text numberOfLines={1} className="text-[14px] text-light-grey">
+                    {item.filename}
+                  </Text>
+                  <Text className="mt-0.5 text-[12px] text-grey-fg">
+                    {item.isDirectory ? 'Directory' : `${item.size.toString()} B`}
+                  </Text>
+                </View>
               </Pressable>
             )}
-            ListEmptyComponent={<Text style={styles.empty}>Directory is empty.</Text>}
+            ListEmptyComponent={(
+              <Text className="p-8 text-center text-[13px] text-grey-fg">
+                Directory is empty.
+              </Text>
+            )}
           />
         </View>
       )}
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0a0a0a' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  credentials: { padding: 16, gap: 8 },
-  label: { color: '#9ca3af', fontSize: 12 },
-  input: { backgroundColor: '#262626', color: '#e5e7eb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
-  button: { backgroundColor: '#3b82f6', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 8 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonLabel: { color: '#0a0a0a', fontSize: 15, fontWeight: '600' },
-  error: { color: '#f87171', fontSize: 13 },
-  note: { color: '#9ca3af', fontSize: 13, marginTop: 4, lineHeight: 18 },
-  browser: { flex: 1 },
-  pathBar: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomColor: '#1f1f1f', borderBottomWidth: StyleSheet.hairlineWidth, gap: 12 },
-  pathLabel: { color: '#e5e7eb', fontSize: 14, flex: 1 },
-  upButton: { backgroundColor: '#262626', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  upLabel: { color: '#e5e7eb', fontSize: 13, fontWeight: '600' },
-  row: { paddingHorizontal: 16, paddingVertical: 12, borderBottomColor: '#1f1f1f', borderBottomWidth: StyleSheet.hairlineWidth },
-  rowLabel: { color: '#e5e7eb', fontSize: 14 },
-  rowMeta: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
-  empty: { color: '#9ca3af', textAlign: 'center', padding: 32 },
-});

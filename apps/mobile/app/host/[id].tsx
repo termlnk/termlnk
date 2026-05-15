@@ -13,82 +13,100 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMobileHost } from '../../src/sync/mobile-sync-pull.service';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSyncPullService } from '../../src/core/core-context';
+import { FileText, Terminal as TerminalIcon } from 'lucide-react-native';
+import { Pressable, Text, View } from 'react-native';
+import { useHostById } from '../../src/hosts/use-host-tree';
+import { HostAvatar } from '../../src/ui/host-avatar';
+import { ScreenContainer } from '../../src/ui/screen-container';
 
 export default function HostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const pull = useSyncPullService();
-
-  const [host, setHost] = useState<IMobileHost | null>(null);
-
-  useEffect(() => {
-    const sub = pull.hosts$.subscribe((hosts) => {
-      setHost(hosts.find((h) => h.id === id) ?? null);
-    });
-    return () => sub.unsubscribe();
-  }, [pull, id]);
+  const host = useHostById(id);
 
   if (!host) {
     return (
-      <View style={styles.root}>
+      <ScreenContainer>
         <Stack.Screen options={{ title: 'Host' }} />
-        <Text style={styles.error}>Host not found in current vault snapshot. Pull on the Hosts screen.</Text>
-      </View>
+        <View className="flex-1 items-center justify-center px-8">
+          <Text className="text-center text-[14px] leading-5 text-red">
+            Host not found in current vault snapshot. Pull on the Hosts screen.
+          </Text>
+        </View>
+      </ScreenContainer>
     );
   }
 
   return (
-    <View style={styles.root}>
+    <ScreenContainer>
       <Stack.Screen options={{ title: host.label }} />
-      <View style={styles.card}>
-        <Text style={styles.label}>Address</Text>
-        <Text style={styles.value}>{host.addr ?? '—'}</Text>
-        <Text style={styles.label}>Port</Text>
-        <Text style={styles.value}>{host.port ?? 22}</Text>
-        <Text style={styles.label}>Type</Text>
-        <Text style={styles.value}>{host.type}</Text>
-      </View>
 
-      <View style={styles.actions}>
-        <Pressable
-          style={({ pressed }) => [styles.actionPrimary, pressed && styles.pressed]}
-          onPress={() => router.push({ pathname: '/host/[id]/terminal', params: { id: host.id } })}
-        >
-          <Text style={styles.actionPrimaryLabel}>Open terminal</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.actionSecondary, pressed && styles.pressed]}
-          onPress={() => router.push({ pathname: '/host/[id]/sftp', params: { id: host.id } })}
-        >
-          <Text style={styles.actionSecondaryLabel}>Browse files (SFTP)</Text>
-        </Pressable>
-      </View>
+      <View className="px-4 pt-6">
+        <View className="items-center pb-4">
+          <HostAvatar id={host.id} label={host.label} type={host.type} size={64} />
+          <Text className="mt-3 text-[18px] font-semibold text-light-grey">
+            {host.label}
+          </Text>
+          {host.type !== 'group' && (
+            <Text className="mt-1 text-[13px] text-grey-fg">
+              {host.addr ?? '—'}
+              {host.port != null ? `:${host.port}` : ''}
+            </Text>
+          )}
+        </View>
 
-      <Text style={styles.note}>
-        Credentials sync from your desktop vault end-to-end encrypted and live in this
-        device's OS keystore. Tap Open terminal / Browse files to connect — no extra
-        entry needed when a credential is on file.
+        <View className="rounded-xl bg-one-bg p-4">
+          <DetailRow label="Address" value={host.addr ?? '—'} />
+          <DetailRow label="Port" value={String(host.port ?? 22)} />
+          <DetailRow label="Type" value={host.type} />
+          <DetailRow
+            label="Credential"
+            value={host.hasCredential ? 'Stored in keystore' : 'Manual entry required'}
+          />
+        </View>
+
+        <View className="mt-5 gap-3">
+          <Pressable
+            className="flex-row items-center justify-center rounded-lg bg-blue py-3.5 active:opacity-80"
+            onPress={() => router.push({ pathname: '/host/[id]/terminal', params: { id: host.id } })}
+          >
+            <TerminalIcon size={18} color="#1e222a" />
+            <Text className="ml-2 text-[15px] font-semibold text-black">
+              Open terminal
+            </Text>
+          </Pressable>
+          <Pressable
+            className="flex-row items-center justify-center rounded-lg bg-one-bg2 py-3.5 active:bg-one-bg3"
+            onPress={() => router.push({ pathname: '/host/[id]/sftp', params: { id: host.id } })}
+          >
+            <FileText size={18} color="#6f737b" />
+            <Text className="ml-2 text-[15px] font-medium text-light-grey">
+              Browse files (SFTP)
+            </Text>
+          </Pressable>
+        </View>
+
+        <Text className="mt-5 text-[12px] leading-[18px] text-grey">
+          Credentials sync from your desktop vault end-to-end encrypted and live in
+          this device&apos;s OS keystore. Tap Open terminal / Browse files to connect —
+          no extra entry needed when a credential is on file.
+        </Text>
+      </View>
+    </ScreenContainer>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-row items-center justify-between py-2">
+      <Text className="text-[13px] text-grey-fg">{label}</Text>
+      <Text
+        numberOfLines={1}
+        className="ml-3 max-w-[65%] text-right text-[13px] font-medium text-light-grey"
+      >
+        {value}
       </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0a0a0a', padding: 16 },
-  card: { backgroundColor: '#171717', borderRadius: 12, padding: 16, marginTop: 12 },
-  label: { color: '#9ca3af', fontSize: 12, marginTop: 8 },
-  value: { color: '#e5e7eb', fontSize: 16, marginTop: 2 },
-  actions: { marginTop: 20, gap: 12 },
-  actionPrimary: { backgroundColor: '#3b82f6', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
-  actionPrimaryLabel: { color: '#0a0a0a', fontSize: 15, fontWeight: '600' },
-  actionSecondary: { backgroundColor: '#262626', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
-  actionSecondaryLabel: { color: '#e5e7eb', fontSize: 15, fontWeight: '500' },
-  pressed: { opacity: 0.85 },
-  note: { color: '#6b7280', fontSize: 12, marginTop: 16, lineHeight: 17 },
-  error: { color: '#f87171', textAlign: 'center', padding: 24 },
-});

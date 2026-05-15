@@ -18,9 +18,9 @@ import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.servi
 import type { IMobileHost, IMobileHostFull } from '../../../src/sync/mobile-sync-pull.service';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useCoreContext, useSyncPullService } from '../../../src/core/core-context';
+import { useCoreContext, useRecentSessionsRepository, useSyncPullService } from '../../../src/core/core-context';
 import { autoConnectArgsFromVault } from '../../../src/ssh/auto-connect-from-vault';
 import { buildShellResumptionCommand } from '../../../src/ssh/mobile-shell-resumption';
 import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
@@ -38,6 +38,7 @@ export default function TerminalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const pull = useSyncPullService();
   const coreContext = useCoreContext();
+  const recentRepo = useRecentSessionsRepository();
   const hostRepo = useMemo(
     () => coreContext.core.getInjector().get(IMobileHostRepository),
     [coreContext]
@@ -69,6 +70,27 @@ export default function TerminalScreen() {
     });
     return () => sub.unsubscribe();
   }, [pull, id]);
+
+  const connect = useCallback(async (args: IHostConnectArgs) => {
+    setState('connecting');
+    setError(null);
+    shellStartedRef.current = false;
+    try {
+      const next = await sshClient.connect({
+        ...args,
+        hostId: id,
+      });
+      setSession(next);
+      setState('connected');
+      // Land in the Recent tab. Best-effort — a failed touch must not break the
+      // session that already succeeded.
+      void recentRepo.touch(id, 'terminal').catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Connection failed');
+      setState('error');
+      autoConnectedRef.current = false;
+    }
+  }, [sshClient, id, recentRepo]);
 
   // Resolve full record with plaintext credential, then auto-connect when possible.
   useEffect(() => {
@@ -103,26 +125,7 @@ export default function TerminalScreen() {
     return () => {
       cancelled = true;
     };
-    // connect closes over sshClient (stable) — exclude from deps to avoid stale-ref churn.
-  }, [host, hostRepo, id]);
-
-  const connect = useCallback(async (args: IHostConnectArgs) => {
-    setState('connecting');
-    setError(null);
-    shellStartedRef.current = false;
-    try {
-      const next = await sshClient.connect({
-        ...args,
-        hostId: id,
-      });
-      setSession(next);
-      setState('connected');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection failed');
-      setState('error');
-      autoConnectedRef.current = false;
-    }
-  }, [sshClient, id]);
+  }, [host, hostRepo, id, connect]);
 
   useEffect(() => {
     if (!session) {
@@ -185,74 +188,82 @@ export default function TerminalScreen() {
     [host, session]
   );
 
+  const submitDisabled = manualCreds.username.length === 0 || manualCreds.password.length === 0;
+
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      className="flex-1 bg-black"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <Stack.Screen options={{ title: host ? `${host.label} • Terminal` : 'Terminal' }} />
+
       {state === 'loading-host' && (
-        <View style={styles.center}>
-          <ActivityIndicator color="#3b82f6" />
-          <Text style={styles.note}>Loading host…</Text>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#61afef" />
+          <Text className="mt-3 text-[13px] text-grey-fg">Loading host…</Text>
         </View>
       )}
+
       {state === 'connecting' && (
-        <View style={styles.center}>
-          <ActivityIndicator color="#3b82f6" />
-          <Text style={styles.note}>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color="#61afef" />
+          <Text className="mt-3 text-[13px] text-grey-fg">
             Connecting to
+            {' '}
             {host?.label ?? 'host'}
             …
           </Text>
         </View>
       )}
+
       {(state === 'awaiting-credentials' || state === 'error') && (
-        <View style={styles.credentials}>
-          <Text style={styles.note}>
+        <View className="p-4">
+          <Text className="text-[13px] leading-[18px] text-grey-fg">
             {state === 'error'
               ? 'Connection failed. Enter credentials manually to retry.'
               : 'No credential on file for this host. Enter manually to connect.'}
           </Text>
-          <Text style={styles.label}>Username</Text>
+          <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">Username</Text>
           <TextInput
             value={manualCreds.username}
             onChangeText={(username) => setManualCreds((c) => ({ ...c, username }))}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="root"
-            placeholderTextColor="#6b7280"
-            style={styles.input}
+            placeholderTextColor="#42464e"
+            className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
           />
-          <Text style={styles.label}>Password</Text>
+          <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">Password</Text>
           <TextInput
             value={manualCreds.password}
             onChangeText={(password) => setManualCreds((c) => ({ ...c, password }))}
             secureTextEntry
             autoCapitalize="none"
             placeholder="••••••••"
-            placeholderTextColor="#6b7280"
-            style={styles.input}
+            placeholderTextColor="#42464e"
+            className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
           />
-          {error && <Text style={styles.error}>{error}</Text>}
+          {error != null && (
+            <Text className="mt-3 text-[13px] text-red">{error}</Text>
+          )}
           <Pressable
             onPress={onConnectManual}
-            disabled={manualCreds.password.length === 0 || manualCreds.username.length === 0}
-            style={({ pressed }) => [
-              styles.button,
-              (manualCreds.password.length === 0 || manualCreds.username.length === 0) && styles.buttonDisabled,
-              pressed && { opacity: 0.85 },
-            ]}
+            disabled={submitDisabled}
+            className={`mt-4 items-center rounded-lg py-3 active:opacity-80 ${submitDisabled ? 'bg-one-bg3 opacity-50' : 'bg-blue'}`}
           >
-            <Text style={styles.buttonLabel}>Connect</Text>
+            <Text className="text-[15px] font-semibold text-black">Connect</Text>
           </Pressable>
         </View>
       )}
+
       {state === 'connected' && (
         <WebView
           ref={webviewRef}
           originWhitelist={['*']}
-          source={{ html: xtermHtml, baseUrl: 'https://cdn.jsdelivr.net' }}
+          source={{ html: xtermHtml }}
           javaScriptEnabled
           domStorageEnabled
-          style={styles.webview}
+          className="flex-1 bg-black"
           onError={(e) => {
             const desc = e.nativeEvent.description || 'Unknown WebView error';
             setError(`WebView failed to load: ${desc}`);
@@ -290,17 +301,3 @@ export default function TerminalScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0a0a0a' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  credentials: { padding: 16, gap: 8 },
-  label: { color: '#9ca3af', fontSize: 12 },
-  input: { backgroundColor: '#262626', color: '#e5e7eb', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
-  button: { backgroundColor: '#3b82f6', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 8 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonLabel: { color: '#0a0a0a', fontSize: 15, fontWeight: '600' },
-  error: { color: '#f87171', fontSize: 13 },
-  note: { color: '#9ca3af', fontSize: 13, marginTop: 4, lineHeight: 18 },
-  webview: { flex: 1, backgroundColor: '#0a0a0a' },
-});
