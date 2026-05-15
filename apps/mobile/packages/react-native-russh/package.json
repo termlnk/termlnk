@@ -3,10 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "description": "Self-vendored React Native binding for Rust russh + russh-sftp via uniffi-bindgen-react-native. Replaces the NMSSH/JSch bridge in termlnk-mobile.",
+  "homepage": "https://github.com/termlnk/termlnk#readme",
   "author": "telan <telanflow@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
-    "url": "https://github.com/termlnk/termlnk",
+    "url": "git+https://github.com/termlnk/termlnk.git",
     "type": "git"
   },
   "main": "./src/api/index.ts",
