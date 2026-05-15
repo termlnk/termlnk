@@ -47,6 +47,8 @@ const locale = {
         username: 'Username',
         password: 'Password',
         privateKey: 'Private Key',
+        passwordKeepBlank: 'Leave blank to keep current password',
+        privateKeyKeepBlank: 'Leave blank to keep current private key',
         parentGroup: 'Group',
         rootGroup: 'Root',
       },

@@ -16,7 +16,7 @@
 import { HostRepository } from '@termlnk/database';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { z } from 'zod';
-import { sanitizeHostEntities, sanitizeHostEntity, sanitizeHostTree } from '../../common/sanitize-secrets';
+import { sanitizeHostEntities, sanitizeHostTree } from '../../common/sanitize-secrets';
 import { createHostSchema, updateHostSchema } from '../schema/host.schema';
 import { publicProcedure, router } from '../trpc';
 
@@ -33,10 +33,14 @@ export const hostRouter = router({
     const tree = await repo.getTree(input);
     return sanitizeHostTree(tree as any);
   }),
+  // Single-host lookup used by host editor + SSH/SFTP connect path. Returns the full
+  // decrypted entity (credential / proxy plaintext) so the renderer can render the
+  // current secret behind the design Input's eye toggle and submit "no-change" diffs.
+  // Batch endpoints (tree / getChildrenList) still sanitize — keep the IPC attack
+  // surface narrow when the value isn't needed.
   getInfo: publicProcedure.input(z.string()).query(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);
-    const entity = await repo.getInfoById(input);
-    return entity ? sanitizeHostEntity(entity) : entity;
+    return repo.getInfoById(input);
   }),
   create: publicProcedure.input(createHostSchema).mutation(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);

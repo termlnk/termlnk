@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ICredential, IHost } from '@termlnk/terminal';
+import type { IHost } from '@termlnk/terminal';
 import type { ITerminalViewProps } from '../../services/terminal/terminal-view-registry.service';
 import { LocaleService } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
@@ -193,10 +193,8 @@ export function TerminalView(props: ITerminalViewProps) {
         if (host?.type === HostType.HOST) {
           const normalized = host as IHost;
           setHostInfo(normalized);
-          // tRPC strips secrets, so credential carries only type/username plus
-          // hasPassword/hasPrivateKey placeholders. IHost still types the original shape, hence the cast.
-          const cred = normalized.credential as (ICredential & { hasPassword?: boolean }) | null;
-          const needsPassword = cred?.type === 'password' && !cred.hasPassword;
+          const cred = normalized.credential;
+          const needsPassword = cred?.type === 'password' && !cred.password;
           setRequiresPassword(needsPassword);
         }
       })

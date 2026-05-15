@@ -49,6 +49,8 @@ const locale: typeof enUS = {
         username: '使用者名稱',
         password: '密碼',
         privateKey: '私鑰',
+        passwordKeepBlank: '留空保留目前密碼',
+        privateKeyKeepBlank: '留空保留目前私鑰',
         parentGroup: '群組',
         rootGroup: '根目錄',
       },

@@ -17,11 +17,18 @@ import type { IProviderUserConfig } from '@termlnk/agent';
 import type { IAIProviderEntity, IHostEntity } from '@termlnk/database';
 import type { ICredential, IProxy } from '@termlnk/terminal';
 
-// tRPC boundary sanitizers. Plaintext secrets may circulate inside the main process but must
-// not cross the IPC boundary; every renderer-facing query/subscription pipes through here.
-// Non-sensitive fields (type / username / addr / port) stay so list views render without the
-// cipher; sensitive fields collapse to `hasXxx` boolean placeholders. Renderer types are
-// derived via tRPC `inferRouterOutputs` — these IPublic* aliases stay file-private.
+// tRPC boundary sanitizers for *batch* endpoints (host.tree / host.getChildrenList /
+// ai providers list). Plaintext secrets may circulate inside the main process; batch
+// queries don't need them, so we collapse passwords / private keys to `hasXxx` boolean
+// placeholders. Non-sensitive fields (type / username / addr / port) stay so list views
+// render without the cipher.
+//
+// NOTE: host.getInfo (single-host edit + connect path) bypasses these and returns the
+// full decrypted entity — the renderer needs the plaintext to render the design Input's
+// eye-toggle and to submit "no-change" diffs. See host router for context.
+//
+// Renderer types are derived via tRPC `inferRouterOutputs` — these IPublic* aliases stay
+// file-private.
 
 interface IPublicCredential {
   type: ICredential['type'];
