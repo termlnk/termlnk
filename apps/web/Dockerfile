@@ -9,7 +9,7 @@
 # vault state in /data, single port 3000 (HTTP/WS shared), no embedded
 # reverse proxy. Place nginx / caddy in front for TLS termination.
 
-ARG NODE_VERSION=22-bookworm-slim
+ARG NODE_VERSION=24-bookworm-slim
 ARG PNPM_VERSION=10.33.3
 
 # ---------- Stage 1: base node + pnpm ----------
