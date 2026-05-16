@@ -14,16 +14,28 @@
  */
 
 import type { ISyncError, ISyncStats } from '@termlnk/sync';
-import type { ReactElement } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { Badge, Button, cn, Switch, useDependency, useObservable } from '@termlnk/design';
+import { Button, cn, Switch, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { ISyncService, SyncState } from '@termlnk/sync';
-import { CloudCheckIcon, CloudOffIcon, RefreshCwIcon, RotateCcwIcon, TriangleAlertIcon } from 'lucide-react';
+import {
+  CloudCheckIcon,
+  CloudOffIcon,
+  CloudUploadIcon,
+  RefreshCwIcon,
+  TriangleAlertIcon,
+} from 'lucide-react';
 import { useState } from 'react';
 
-// Renders state$ / stats$ / lastError$ from ISyncService and offers Sync Now / Resync
-// buttons. Returns null when ISyncService is unbound (cloud unconfigured) — host pages
-// must provide their own "cloud not configured" placeholder.
+interface IStateVisual {
+  readonly Icon: LucideIcon;
+  readonly iconBgClass: string;
+  readonly iconColorClass: string;
+  readonly label: string;
+  readonly spin?: boolean;
+}
+
+// forceFullResync stays UI-hidden — recovery-only, reachable via sync.command.force-full-resync.
 export function SyncStatusPanel() {
   const syncService = useDependency(ISyncService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);
@@ -63,17 +75,6 @@ export function SyncStatusPanel() {
     }
   };
 
-  const handleForceFullResync = async (): Promise<void> => {
-    setBusy(true);
-    try {
-      await syncService.forceFullResync();
-    } catch (err) {
-      logService.error('[SyncStatusPanel] forceFullResync failed:', err);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const handleToggleEnabled = async (next: boolean): Promise<void> => {
     setBusy(true);
     try {
@@ -89,57 +90,73 @@ export function SyncStatusPanel() {
     }
   };
 
-  const stateBadge = renderStateBadge(state, localeService);
+  const visual = getStateVisual(state, localeService);
   const lastSyncedText = stats?.lastSyncedAt
     ? formatLastSynced(stats.lastSyncedAt, localeService)
     : localeService.t('sync-ui.status.never-synced');
+  const pendingCount = stats?.pendingMutations ?? 0;
 
   return (
-    <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
-      <div className={cn('tm:flex tm:items-center tm:justify-between tm:gap-4')}>
-        <div className={cn('tm:flex tm:flex-col tm:gap-1')}>
-          <div className={cn('tm:flex tm:items-center tm:gap-2')}>
-            {stateBadge}
-            <span className={cn('tm:text-xs tm:text-grey-fg')}>
-              {lastSyncedText}
-            </span>
-            {stats && stats.pendingMutations > 0 && (
-              <span className={cn('tm:text-xs tm:text-yellow')}>
-                {localeService.t('sync-ui.status.pending', String(stats.pendingMutations))}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className={cn('tm:flex tm:items-center tm:gap-3')}>
-          <div className={cn('tm:flex tm:items-center tm:gap-2')}>
-            <span className={cn('tm:text-xs tm:text-grey-fg')}>
-              {localeService.t('sync-ui.status.toggle-label')}
-            </span>
-            <Switch
-              size="sm"
-              checked={enabled}
-              disabled={busy}
-              onCheckedChange={(next) => {
-                void handleToggleEnabled(next);
-              }}
-              aria-label={localeService.t('sync-ui.status.toggle-label')}
+    <div className={cn('tm:flex tm:flex-col tm:gap-4')}>
+      <div
+        className={cn('tm:flex tm:items-center tm:justify-between tm:gap-4 tm:rounded-lg tm:bg-black/25 tm:px-4 tm:py-3')}
+      >
+        <div className={cn('tm:flex tm:min-w-0 tm:items-center tm:gap-3')}>
+          <div className={cn('tm:flex tm:size-10 tm:items-center tm:justify-center tm:rounded-full', visual.iconBgClass)}>
+            <visual.Icon
+              className={cn('tm:size-5', visual.iconColorClass, { 'tm:animate-spin': visual.spin })}
             />
           </div>
-          <Button
-            variant="outline"
+          <div className={cn('tm:flex tm:min-w-0 tm:flex-col tm:gap-0.5')}>
+            <span className={cn('tm:truncate tm:text-sm tm:font-semibold tm:text-light-grey')}>
+              {visual.label}
+            </span>
+            <span className={cn('tm:truncate tm:text-xs tm:text-grey-fg')}>
+              {lastSyncedText}
+            </span>
+          </div>
+        </div>
+        <div className={cn('tm:flex tm:items-center tm:gap-2')}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={state === SyncState.Disabled || busy}
+                onClick={() => {
+                  void handleSyncNow();
+                }}
+                aria-label={localeService.t('sync-ui.status.sync-now')}
+              >
+                <RefreshCwIcon
+                  className={cn('tm:size-4', { 'tm:animate-spin': state === SyncState.Syncing })}
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{localeService.t('sync-ui.status.sync-now')}</TooltipContent>
+          </Tooltip>
+          <Switch
             size="sm"
-            disabled={state === SyncState.Disabled || busy}
-            onClick={() => {
-              void handleSyncNow();
+            checked={enabled}
+            disabled={busy}
+            onCheckedChange={(next) => {
+              void handleToggleEnabled(next);
             }}
-            className={cn('tm:gap-1.5')}
-          >
-            <RefreshCwIcon className={cn('tm:size-3.5', { 'tm:animate-spin': state === SyncState.Syncing })} />
-            {localeService.t('sync-ui.status.sync-now')}
-          </Button>
+            aria-label={localeService.t('sync-ui.status.toggle-label')}
+          />
         </div>
       </div>
+
+      {pendingCount > 0 && (
+        <div
+          className={cn(`
+            tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:bg-yellow/10 tm:px-3 tm:py-2 tm:text-xs tm:text-yellow
+          `)}
+        >
+          <CloudUploadIcon className={cn('tm:size-3.5 tm:shrink-0')} />
+          <span>{localeService.t('sync-ui.status.pending', String(pendingCount))}</span>
+        </div>
+      )}
 
       {lastError && (
         <div
@@ -159,66 +176,47 @@ export function SyncStatusPanel() {
           </div>
         </div>
       )}
-
-      <div className={cn('tm:flex tm:items-center tm:justify-between tm:border-t tm:border-line tm:pt-3')}>
-        <span className={cn('tm:text-xs tm:text-grey-fg')}>
-          {localeService.t('sync-ui.status.force-resync-hint')}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={state === SyncState.Disabled || busy}
-          onClick={() => {
-            void handleForceFullResync();
-          }}
-          className={cn('tm:gap-1.5 tm:text-xs')}
-        >
-          <RotateCcwIcon className={cn('tm:size-3.5')} />
-          {localeService.t('sync-ui.status.force-resync')}
-        </Button>
-      </div>
     </div>
   );
 }
 
-function renderStateBadge(state: SyncState, localeService: LocaleService): ReactElement {
-  if (state === SyncState.Idle) {
-    return (
-      <Badge variant="secondary" className={cn('tm:gap-1 tm:bg-green/10 tm:text-green')}>
-        <CloudCheckIcon className={cn('tm:size-3')} />
-        {localeService.t('sync-ui.state.idle')}
-      </Badge>
-    );
-  }
-  if (state === SyncState.Syncing) {
-    return (
-      <Badge variant="secondary" className={cn('tm:gap-1 tm:bg-blue/10 tm:text-blue')}>
-        <RefreshCwIcon className={cn('tm:size-3 tm:animate-spin')} />
-        {localeService.t('sync-ui.state.syncing')}
-      </Badge>
-    );
-  }
-  if (state === SyncState.Offline) {
-    return (
-      <Badge variant="secondary" className={cn('tm:gap-1 tm:bg-yellow/10 tm:text-yellow')}>
-        <CloudOffIcon className={cn('tm:size-3')} />
-        {localeService.t('sync-ui.state.offline')}
-      </Badge>
-    );
-  }
-  if (state === SyncState.Error) {
-    return (
-      <Badge variant="secondary" className={cn('tm:gap-1 tm:bg-red/10 tm:text-red')}>
-        <TriangleAlertIcon className={cn('tm:size-3')} />
-        {localeService.t('sync-ui.state.error')}
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="secondary" className={cn('tm:gap-1 tm:bg-grey-fg/20 tm:text-grey-fg')}>
-      {localeService.t('sync-ui.state.disabled')}
-    </Badge>
-  );
+const STATE_VISUALS = {
+  [SyncState.Idle]: {
+    Icon: CloudCheckIcon,
+    iconBgClass: 'tm:bg-green/15',
+    iconColorClass: 'tm:text-green',
+    labelKey: 'sync-ui.state.idle',
+  },
+  [SyncState.Syncing]: {
+    Icon: RefreshCwIcon,
+    iconBgClass: 'tm:bg-blue/15',
+    iconColorClass: 'tm:text-blue',
+    labelKey: 'sync-ui.state.syncing',
+    spin: true,
+  },
+  [SyncState.Offline]: {
+    Icon: CloudOffIcon,
+    iconBgClass: 'tm:bg-yellow/15',
+    iconColorClass: 'tm:text-yellow',
+    labelKey: 'sync-ui.state.offline',
+  },
+  [SyncState.Error]: {
+    Icon: TriangleAlertIcon,
+    iconBgClass: 'tm:bg-red/15',
+    iconColorClass: 'tm:text-red',
+    labelKey: 'sync-ui.state.error',
+  },
+  [SyncState.Disabled]: {
+    Icon: CloudOffIcon,
+    iconBgClass: 'tm:bg-grey-fg/15',
+    iconColorClass: 'tm:text-grey-fg',
+    labelKey: 'sync-ui.state.disabled',
+  },
+} satisfies Record<SyncState, Omit<IStateVisual, 'label'> & { labelKey: string }>;
+
+function getStateVisual(state: SyncState, localeService: LocaleService): IStateVisual {
+  const { labelKey, ...rest } = STATE_VISUALS[state];
+  return { ...rest, label: localeService.t(labelKey) };
 }
 
 function formatLastSynced(epochMs: number, localeService: LocaleService): string {

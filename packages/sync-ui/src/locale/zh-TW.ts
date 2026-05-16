@@ -19,8 +19,6 @@ export default {
       title: '雲端同步',
       'toggle-label': '同步',
       'sync-now': '立即同步',
-      'force-resync': '從頭同步',
-      'force-resync-hint': '清空游標重新拉取全部資料。懷疑本地落後或資料損壞時使用。',
       'never-synced': '從未同步',
       'just-now': '剛剛同步過',
       'minutes-ago': '{0} 分鐘前同步',

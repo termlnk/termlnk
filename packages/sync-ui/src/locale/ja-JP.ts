@@ -19,8 +19,6 @@ export default {
       title: 'クラウド同期',
       'toggle-label': '同期',
       'sync-now': '今すぐ同期',
-      'force-resync': '最初から再同期',
-      'force-resync-hint': 'カーソルをリセットして全件を再取得します。ローカルデータが古い／破損している疑いがある場合に使用します。',
       'never-synced': '未同期',
       'just-now': 'たった今同期しました',
       'minutes-ago': '{0} 分前に同期',

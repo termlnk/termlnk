@@ -19,8 +19,6 @@ export default {
       title: '云同步',
       'toggle-label': '同步',
       'sync-now': '立即同步',
-      'force-resync': '从头同步',
-      'force-resync-hint': '清空游标重新拉取全部数据。怀疑本地落后或数据损坏时使用。',
       'never-synced': '从未同步',
       'just-now': '刚刚同步过',
       'minutes-ago': '{0} 分钟前同步',

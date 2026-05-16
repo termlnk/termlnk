@@ -18,12 +18,9 @@ import { Quantity } from '@termlnk/core';
 import { ISyncService } from '@termlnk/sync';
 import { firstValueFrom } from 'rxjs';
 
-// Sync command set, invokable by extensions / shortcuts / scripts via
-// ICommandService.executeCommand. Each command silently returns false when ISyncService is
-// unbound (cloud not configured), so callers can detect "unavailable in this build"
-// without an RPC exception.
+// Each handler returns false (not throws) when ISyncService is unbound so callers can
+// detect "cloud not configured in this build" without an exception path.
 
-// Equivalent to SyncStatusPanel's "Sync now" button.
 export const SyncNowCommand: ICommand = {
   id: 'sync.command.sync-now',
   handler: async (accessor: IAccessor): Promise<boolean> => {
@@ -36,7 +33,6 @@ export const SyncNowCommand: ICommand = {
   },
 };
 
-// Enables the sync engine (registers synchronisers on first enable).
 export const EnableSyncCommand: ICommand = {
   id: 'sync.command.enable',
   handler: async (accessor: IAccessor): Promise<boolean> => {
@@ -49,7 +45,7 @@ export const EnableSyncCommand: ICommand = {
   },
 };
 
-// Stops the sync engine; local data is preserved.
+// Local data is preserved on disable; only the engine stops.
 export const DisableSyncCommand: ICommand = {
   id: 'sync.command.disable',
   handler: async (accessor: IAccessor): Promise<boolean> => {
@@ -62,8 +58,7 @@ export const DisableSyncCommand: ICommand = {
   },
 };
 
-// One-shot toggle based on enabled$. Friendlier for keyboard shortcuts than separate
-// enable/disable commands.
+// Single-binding alternative to enable/disable — friendlier for keyboard shortcuts.
 export const ToggleSyncEnabledCommand: ICommand = {
   id: 'sync.command.toggle-enabled',
   handler: async (accessor: IAccessor): Promise<boolean> => {
@@ -81,7 +76,8 @@ export const ToggleSyncEnabledCommand: ICommand = {
   },
 };
 
-// Equivalent to the "Resync from scratch" button: clears every cursor before the next pull.
+// UI-hidden recovery action: clears every cursor before the next pull. Only reachable
+// via this command so users can't trigger a full resync by mistake.
 export const ForceFullResyncCommand: ICommand = {
   id: 'sync.command.force-full-resync',
   handler: async (accessor: IAccessor): Promise<boolean> => {

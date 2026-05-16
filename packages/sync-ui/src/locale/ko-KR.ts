@@ -19,8 +19,6 @@ export default {
       title: '클라우드 동기화',
       'toggle-label': '동기화',
       'sync-now': '지금 동기화',
-      'force-resync': '처음부터 재동기화',
-      'force-resync-hint': '커서를 비우고 모든 레코드를 다시 가져옵니다. 로컬 데이터가 오래되었거나 손상되었다고 의심될 때 사용합니다.',
       'never-synced': '동기화한 적 없음',
       'just-now': '방금 전 동기화됨',
       'minutes-ago': '{0}분 전 동기화',
