@@ -19,7 +19,7 @@ import process from 'node:process';
 const isSigningEnabled = !!process.env.CSC_LINK;
 
 const config: Configuration = {
-  appId: 'termlnk.termlnk',
+  appId: 'com.termlnk.desktop',
   productName: 'Termlnk',
   buildVersion: process.env.BUILD_VERSION,
   directories: {
