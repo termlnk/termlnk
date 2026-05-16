@@ -36,8 +36,8 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
+    "@earendil-works/pi-agent-core": "^0.74.0",
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
-    "@mariozechner/pi-agent-core": "^0.73.0",
     "@sinclair/typebox": "^0.34.49",
     "@termlnk/agent": "workspace:*",
     "@termlnk/auth": "workspace:*",

@@ -15,7 +15,7 @@
 
 /**
  * Truncation utilities for tool outputs.
- * Inspired by @mariozechner/pi-coding-agent truncation patterns.
+ * Inspired by @earendil-works/pi-coding-agent truncation patterns.
  *
  * Based on two limits -- whichever is hit first wins:
  * - Line limit (default: 2000 lines)

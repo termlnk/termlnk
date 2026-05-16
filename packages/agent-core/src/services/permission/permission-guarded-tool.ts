@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
+import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core';
 import type { AgentToolCategory, IAgentToolPermissionService, IGuardMetadata } from '@termlnk/agent';
 
 /** Lookup back from a wrapped tool to its raw counterpart for D1 user-initiated bypass. */
