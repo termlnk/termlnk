@@ -66,31 +66,18 @@ export interface IWebServerConfig {
   /**
    * Master password injection — required for the server to derive the master
    * key and the browser-login access verifier. Browser never sees the master
-   * password through this knob: it lives in the deployer's environment / docker
-   * secrets, gets read once at startup, and is wiped from memory after Argon2id
-   * runs.
+   * password through this knob: it lives in the deployer's environment, gets
+   * read once at startup, and is wiped from memory after Argon2id runs.
    *
    * Resolution order on startup:
    *   1. `masterPassword` (literal — only for tests; never set in production).
-   *   2. `masterPasswordFile` (file path — recommended; works with docker secrets).
-   *   3. `masterPasswordEnv` env-var name (defaults to `TERMLNK_MASTER_PASSWORD`).
-   *
-   * Deployment shape (recommended):
-   * ```yaml
-   * services:
-   *   termlnk-web:
-   *     environment:
-   *       TERMLNK_MASTER_PASSWORD_FILE: /run/secrets/master_password
-   *     secrets:
-   *       - master_password
-   * ```
+   *   2. `masterPasswordEnv` env-var name (defaults to `TERMLNK_MASTER_PASSWORD`).
    *
    * Without any source available the server starts in `error` state with a
    * clear message; nothing else can come up because RPC procedures need the
    * master key to decrypt vault rows.
    */
   masterPassword?: string;
-  masterPasswordFile?: string;
   masterPasswordEnv?: string;
 
   /**
@@ -108,7 +95,7 @@ export interface IWebServerConfig {
   override?: DependencyOverride;
 }
 
-/** Default env var name to pull the master password from when masterPasswordFile / masterPassword aren't set. */
+/** Default env var name to pull the master password from when `masterPassword` literal isn't set. */
 export const DEFAULT_MASTER_PASSWORD_ENV = 'TERMLNK_MASTER_PASSWORD';
 
 // Default browser-session idle timeout: 30 minutes.

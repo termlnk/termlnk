@@ -15,9 +15,6 @@
 
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { IWebServerConfig } from '../controllers/config.schema';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { ConfigService, IConfigService, ILogService as ILogServiceId, Injector } from '@termlnk/core';
 import { initTRPC } from '@trpc/server';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -56,7 +53,7 @@ function createMinimalRouter() {
   });
 }
 
-async function setupBed(opts: { masterPassword?: string; masterPasswordFile?: string; sessionIdleTimeoutMs?: number } = {}): Promise<ITestBed> {
+async function setupBed(opts: { masterPassword?: string; sessionIdleTimeoutMs?: number } = {}): Promise<ITestBed> {
   const port = pickPort();
   const injector = new Injector();
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
@@ -71,7 +68,6 @@ async function setupBed(opts: { masterPassword?: string; masterPasswordFile?: st
     host: '127.0.0.1',
     port,
     masterPassword: opts.masterPassword,
-    masterPasswordFile: opts.masterPasswordFile,
     masterPasswordEnv: 'TERMLNK_TEST_PWD_NONEXISTENT',
     sessionIdleTimeoutMs: opts.sessionIdleTimeoutMs,
   };
@@ -118,7 +114,7 @@ describe('p7.1c — auth routes (login / logout / status, session cookie, idle t
     expect(status1.holderStatus).toBe('pending');
     expect(status1.authenticated).toBe(false);
 
-    // Initialize: must fail because no env / file / literal supplied.
+    // Initialize: must fail because no env / literal supplied.
     await expect(bed.holder.initialize()).rejects.toThrow(/no master password source/);
 
     const status2 = await fetch(`${bed.origin}${TERMLNK_WEB_AUTH_PATH_PREFIX}/status`).then((r) => r.json()) as any;
@@ -227,19 +223,6 @@ describe('p7.1c — auth routes (login / logout / status, session cookie, idle t
     });
     const status: any = await statusResp.json();
     expect(status.authenticated).toBe(false);
-  });
-
-  it('reads master password from a file when masterPasswordFile is set', { timeout: 30000 }, async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'termlnk-web-pwd-'));
-    const file = join(dir, 'master_password');
-    writeFileSync(file, 'file-sourced-password\n');
-
-    bed = await setupBed({ masterPasswordFile: file });
-    await bed.holder.initialize();
-
-    // Newline is trimmed when reading the file.
-    const ok = await bed.holder.verifyAccess('file-sourced-password');
-    expect(ok).toBe(true);
   });
 
   it('rejects login bodies larger than 4 KiB', { timeout: 30000 }, async () => {

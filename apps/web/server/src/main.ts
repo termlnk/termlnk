@@ -18,8 +18,8 @@
 // HTTP/WS adapters instead of Electron IPC. Deliberately imports no @termlnk/electron*
 // package.
 //
-// Master password sourcing is delegated entirely to WebServerPlugin
-// (TERMLNK_MASTER_PASSWORD / TERMLNK_MASTER_PASSWORD_FILE).
+// Master password sourcing is delegated entirely to WebServerPlugin via
+// the TERMLNK_MASTER_PASSWORD env var.
 //
 // Known dev-launch limitation: tsx's esbuild integration does not load the tsconfig
 // `extends` chain across npm-package boundaries, so direct `tsx ./src/main.ts` trips
@@ -123,7 +123,6 @@ async function bootstrap(): Promise<void> {
     staticRoot,
     tlsCert,
     tlsKey,
-    masterPasswordFile: process.env.TERMLNK_MASTER_PASSWORD_FILE,
     override: [
       [IWebServerRouterProvider, {
         useValue: { getRouter: () => appRouter },

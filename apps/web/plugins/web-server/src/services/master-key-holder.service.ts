@@ -65,7 +65,7 @@ export interface IMasterKeyHolderService {
 
   /**
    * Run the boot-time master-password handshake:
-   *   1. Resolve plaintext password from masterPassword > masterPasswordFile > env.
+   *   1. Resolve plaintext password from masterPassword > env.
    *   2. Derive master key (Argon2id with shared MASTER_KEY_DERIVATION params).
    *   3. Derive sub-keys (auth / enc / index) with HKDF-SHA256.
    *   4. Compute access verifier (independent Argon2id with a fresh per-boot salt).
@@ -230,12 +230,6 @@ export class MasterKeyHolderService extends Disposable implements IMasterKeyHold
     if (cfg.masterPassword && cfg.masterPassword.length > 0) {
       return cfg.masterPassword;
     }
-    if (cfg.masterPasswordFile && cfg.masterPasswordFile.length > 0) {
-      const { readFile } = await import('node:fs/promises');
-      const raw = await readFile(cfg.masterPasswordFile, 'utf8');
-      // Trim trailing newlines deployers commonly add when echoing into a secret file.
-      return raw.replace(/\r?\n$/, '');
-    }
     const envName = cfg.masterPasswordEnv ?? 'TERMLNK_MASTER_PASSWORD';
     const fromEnv = process.env[envName];
     if (fromEnv && fromEnv.length > 0) {
@@ -243,7 +237,7 @@ export class MasterKeyHolderService extends Disposable implements IMasterKeyHold
     }
     throw new Error(
       '[MasterKeyHolderService] no master password source available — '
-      + `set masterPasswordFile, masterPassword, or env "${envName}"`
+      + `set masterPassword or env "${envName}"`
     );
   }
 
