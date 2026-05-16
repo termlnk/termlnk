@@ -15,7 +15,20 @@
 
 import type { ILoginInput } from '@termlnk/auth';
 import { LocaleService } from '@termlnk/core';
-import { Button, Checkbox, cn, Field, FieldContent, FieldGroup, FieldLabel, Input, Label, useDependency } from '@termlnk/design';
+import {
+  Button,
+  Checkbox,
+  cn,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  Input,
+  Label,
+  useDependency,
+} from '@termlnk/design';
+import { ShieldCheckIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
 
 export interface ILoginFormProps {
@@ -86,32 +99,49 @@ export function LoginForm(props: ILoginFormProps) {
               placeholder={localeService.t('auth-ui.login.password-placeholder')}
               disabled={props.busy}
             />
+            <FieldDescription>
+              {localeService.t('auth-ui.login.password-helper')}
+            </FieldDescription>
           </FieldContent>
         </Field>
-
-        <div className={cn('tm:flex tm:items-center tm:gap-2')}>
-          <Checkbox
-            id="auth-ui-login-remember"
-            checked={rememberMe}
-            onCheckedChange={(checked) => setRememberMe(checked === true)}
-            disabled={props.busy}
-          />
-          <Label htmlFor="auth-ui-login-remember" className={cn('tm:text-sm tm:text-grey-fg')}>
-            {localeService.t('auth-ui.login.remember-me')}
-          </Label>
-        </div>
       </FieldGroup>
+
+      {/* Trust banner: the master key never crosses IPC nor reaches the server (see packages/auth). */}
+      <div
+        className={cn(`
+          tm:flex tm:items-start tm:gap-2 tm:rounded-md tm:border tm:border-blue/20 tm:bg-blue/8 tm:px-3 tm:py-2
+          tm:text-xs tm:text-grey-fg
+        `)}
+      >
+        <ShieldCheckIcon className={cn('tm:mt-0.5 tm:size-3.5 tm:shrink-0 tm:text-blue')} />
+        <span>{localeService.t('auth-ui.login.trust-banner')}</span>
+      </div>
+
+      <div className={cn('tm:flex tm:items-center tm:gap-2')}>
+        <Checkbox
+          id="auth-ui-login-remember"
+          checked={rememberMe}
+          onCheckedChange={(checked) => setRememberMe(checked === true)}
+          disabled={props.busy}
+        />
+        <Label htmlFor="auth-ui-login-remember" className={cn('tm:text-sm tm:text-grey-fg')}>
+          {localeService.t('auth-ui.login.remember-me')}
+        </Label>
+      </div>
 
       {props.errorMessage && (
         <div
           role="alert"
-          className={cn('tm:rounded-md tm:bg-red/10 tm:px-3 tm:py-2 tm:text-sm tm:text-red')}
+          className={cn(`
+            tm:flex tm:items-start tm:gap-2 tm:rounded-md tm:bg-red/10 tm:px-3 tm:py-2 tm:text-sm tm:text-red
+          `)}
         >
-          {props.errorMessage}
+          <TriangleAlertIcon className={cn('tm:mt-0.5 tm:size-4 tm:shrink-0')} />
+          <span>{props.errorMessage}</span>
         </div>
       )}
 
-      <Button type="submit" disabled={!canSubmit} className={cn('tm:w-full')}>
+      <Button type="submit" disabled={!canSubmit} className={cn('tm:w-full tm:font-semibold')}>
         {props.busy
           ? localeService.t('auth-ui.login.submitting')
           : localeService.t('auth-ui.login.submit')}
