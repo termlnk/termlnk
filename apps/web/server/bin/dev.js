@@ -13,33 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-/**
- * termlnk-web dev / start bootstrap.
- *
- * Vite 8 ships its successor to vite-node directly under `vite/module-runner`.
- * The CLI wrapper that vite-node provided is no longer published as a built-in,
- * so this ~40-line ESM bootstrap is the equivalent: spin up an in-process Vite
- * dev server, hand the server's SSR environment to a ModuleRunner via the
- * direct in-process transport, and let the runner execute main.ts.
- *
- * Why not tsx:
- * - tsx hands files to esbuild file-by-file; cross-package decorator config
- *   gets lost the moment a workspace import crosses an npm boundary.
- * - Workspace packages have no `type: "module"`, so Node treats them as CJS
- *   and any ESM-only third-party dep (e.g. @mariozechner/pi-ai) breaks the
- *   require chain.
- *
- * Vite's ModuleRunner side-steps both: the entire workspace is transformed by
- * Vite plugins (decorator metadata + ESM/CJS interop are part of the plugin
- * pipeline), and the bundled tsconfig path resolution is consistent with how
- * the desktop main process already runs under electron-vite.
- */
-
-import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { createServer, loadEnv } from 'vite';
-import { ESModulesEvaluator, ModuleRunner, createNodeImportMeta } from 'vite/module-runner';
+import { createNodeImportMeta, ESModulesEvaluator, ModuleRunner } from 'vite/module-runner';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(here, '..');
