@@ -6,7 +6,7 @@
 @source "../../../../packages/ui/src";
 @source "../../../../packages/themes-ui/src";
 @source "../../../../packages/terminal-ui/src";
-@source "../../../../packages/electron-renderer/src";
+@source "../../plugins/electron-renderer/src";
 @source "../../../../packages/sftp-ui/src";
 @source "../../../../packages/settings-ui/src";
 @source "../../../../packages/extension-ui/src";

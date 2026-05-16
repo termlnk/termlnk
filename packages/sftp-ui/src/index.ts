@@ -20,3 +20,5 @@ export { SFTP_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { ISFTPUIConfig } from './controllers/config.schema';
 export { SFTPUIController } from './controllers/sftp-ui.controller';
 export { SFTP_UI_PLUGIN_NAME, SFTPUIPlugin } from './plugin';
+export { IBrowserFileTransferService } from './services/transfer/browser-file-transfer.service';
+export type { IBrowserFileTransferService as IBrowserFileTransferServiceContract } from './services/transfer/browser-file-transfer.service';

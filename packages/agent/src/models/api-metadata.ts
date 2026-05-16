@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { KnownApi } from '@mariozechner/pi-ai';
+import type { KnownApi } from '@earendil-works/pi-ai';
 
 export interface IApiTypeMetadata {
   id: KnownApi;

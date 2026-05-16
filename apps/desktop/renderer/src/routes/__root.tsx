@@ -47,8 +47,6 @@ const RootLayout = () => {
   return (
     <div className="tm:flex tm:size-full tm:bg-black">
       <Outlet />
-
-      {/*<TanStackRouterDevtools initialIsOpen={false} />*/}
     </div>
   );
 };

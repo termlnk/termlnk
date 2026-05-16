@@ -16,10 +16,16 @@
 import type { Observable } from 'rxjs';
 import type { ISettingsState } from '../../models/settings.state';
 import { Disposable } from '@termlnk/core';
+import { distinctUntilChanged, map } from 'rxjs';
 import { SettingsStateModel, SettingsTab } from '../../models/settings.state';
 
 export class SettingsService extends Disposable {
   private readonly _model = new SettingsStateModel();
+
+  readonly activeTab$: Observable<string> = this._model.state$.pipe(
+    map((state) => state.activeTab),
+    distinctUntilChanged()
+  );
 
   get stateUpdate$(): Observable<Partial<ISettingsState>> {
     return this._model.stateUpdate$;
@@ -41,8 +47,8 @@ export class SettingsService extends Disposable {
     });
   }
 
-  setActiveTab(tab: SettingsTab): void {
-    this._model.changeState({ activeTab: tab });
+  setActiveTab(tabId: string): void {
+    this._model.changeState({ activeTab: tabId });
   }
 
   changeState(newState: Partial<ISettingsState>): void {

@@ -339,6 +339,8 @@ export const penetratingPreset = (): Linter.Config => {
       'examples/**/*',
       'packages/mcp/**/*',
       'packages/agent-core/**/*',
+      'packages/auth-core/**/*',
+      'packages/sync-core/**/*',
     ],
     rules: {
       'penetrating/no-penetrating-import': 2,

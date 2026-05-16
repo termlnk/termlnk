@@ -16,6 +16,7 @@
 import { HostRepository } from '@termlnk/database';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { z } from 'zod';
+import { sanitizeHostEntities, sanitizeHostTree } from '../../common/sanitize-secrets';
 import { createHostSchema, updateHostSchema } from '../schema/host.schema';
 import { publicProcedure, router } from '../trpc';
 
@@ -24,12 +25,19 @@ export type HostRouter = typeof hostRouter;
 export const hostRouter = router({
   getChildrenList: publicProcedure.input(z.string().optional()).query(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);
-    return repo.getListByPid(input);
+    const list = await repo.getListByPid(input);
+    return sanitizeHostEntities(list as any[]);
   }),
   tree: publicProcedure.input(z.string().optional()).query(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);
-    return repo.getTree(input);
+    const tree = await repo.getTree(input);
+    return sanitizeHostTree(tree as any);
   }),
+  // Single-host lookup used by host editor + SSH/SFTP connect path. Returns the full
+  // decrypted entity (credential / proxy plaintext) so the renderer can render the
+  // current secret behind the design Input's eye toggle and submit "no-change" diffs.
+  // Batch endpoints (tree / getChildrenList) still sanitize — keep the IPC attack
+  // surface narrow when the value isn't needed.
   getInfo: publicProcedure.input(z.string()).query(async ({ input, ctx }) => {
     const repo = ctx.injector.get(HostRepository);
     return repo.getInfoById(input);

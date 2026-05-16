@@ -97,7 +97,7 @@ export default {
   'lucide-react': {
     global: 'lucide-react',
     name: 'lucide-react',
-    version: '^1.14.0',
+    version: '^1.16.0',
   },
   dayjs: {
     global: 'dayjs',
@@ -107,11 +107,11 @@ export default {
   nanoid: {
     global: 'nanoid',
     name: 'nanoid',
-    version: '^5.1.9',
+    version: '^5.1.11',
   },
   'react-resizable-panels': {
     global: 'react-resizable-panels',
     name: 'react-resizable-panels',
-    version: '^4.11.0',
+    version: '^4.11.1',
   },
 };

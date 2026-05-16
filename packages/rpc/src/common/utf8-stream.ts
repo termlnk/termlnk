@@ -15,21 +15,8 @@
 
 import { map, Observable } from 'rxjs';
 
-/**
- * 将 base64 编码的终端数据流解码为 UTF-8 字符串流。
- * 使用流式 TextDecoder 正确处理跨 chunk 的多字节字符（如 CJK、emoji 等）。
- *
- * @param source$ - base64 编码的数据流（来自 tRPC subscription）
- * @returns UTF-8 解码后的字符串流
- *
- * @example
- * ```typescript
- * const decoded$ = decodeBase64Utf8Stream(
- *   trpcSubscriptionToObservable((opts) => client.pty.data$.subscribe(sessionId, opts))
- * );
- * decoded$.subscribe((text) => terminal.write(text));
- * ```
- */
+// Decode a base64-encoded terminal stream into UTF-8 strings. Uses TextDecoder in
+// streaming mode so multi-byte sequences (CJK, emoji, …) split across chunks decode correctly.
 export function decodeBase64Utf8Stream(source$: Observable<string>): Observable<string> {
   return new Observable<string>((subscriber) => {
     const decoder = new TextDecoder('utf-8');

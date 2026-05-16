@@ -23,13 +23,16 @@ import { Subject } from 'rxjs';
 import { generateId } from '../entities/base';
 import { mcpServerEntity } from '../entities/mcp-server';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
+import { ISecretCipherService } from '../services/secret-cipher.service';
+import { decryptMcpConfig, encryptMcpConfig } from '../services/secret-cipher/credential-masker';
 
 export class McpServerRepository extends Disposable {
   private readonly _changed$ = new Subject<IMcpServerChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 
   constructor(
-    @Inject(IDBAdaptorService) private readonly _dbService: IDBAdaptorService
+    @Inject(IDBAdaptorService) private readonly _dbService: IDBAdaptorService,
+    @Inject(ISecretCipherService) private readonly _cipher: ISecretCipherService
   ) {
     super();
   }
@@ -38,30 +41,51 @@ export class McpServerRepository extends Disposable {
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
+  private _decryptEntity(entity: IMcpServerEntity): IMcpServerEntity {
+    return {
+      ...entity,
+      config: decryptMcpConfig(entity.config, this._cipher),
+    };
+  }
+
   async getAll(): Promise<IMcpServerEntity[]> {
-    return this._db.select().from(mcpServerEntity);
+    const rows = await this._db.select().from(mcpServerEntity);
+    return rows.map((row) => this._decryptEntity(row));
   }
 
   async getById(id: string): Promise<IMcpServerEntity | undefined> {
     const result = await this._db.select().from(mcpServerEntity).where(eq(mcpServerEntity.id, id)).limit(1);
-    return result[0];
+    return result[0] ? this._decryptEntity(result[0]) : undefined;
   }
 
   async getEnabled(): Promise<IMcpServerEntity[]> {
-    return this._db.select().from(mcpServerEntity).where(eq(mcpServerEntity.enabled, true));
+    const rows = await this._db.select().from(mcpServerEntity).where(eq(mcpServerEntity.enabled, true));
+    return rows.map((row) => this._decryptEntity(row));
   }
 
   async create(record: Omit<IMcpServerEntityInsert, 'id'> & { id?: string }): Promise<string> {
     const id = record.id || generateId();
-    await this._db.insert(mcpServerEntity).values({ ...record, id });
+    const payload: IMcpServerEntityInsert = {
+      ...record,
+      id,
+      config: record.config ? encryptMcpConfig(record.config, this._cipher) : record.config,
+    };
+    await this._db.insert(mcpServerEntity).values(payload);
     this._changed$.next({ type: 'add', id });
     return id;
   }
 
   async update(id: string, updates: Partial<Omit<IMcpServerEntityInsert, 'id'>>): Promise<void> {
+    const payload: Partial<Omit<IMcpServerEntityInsert, 'id'>> & { updatedAt: string } = {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    if (Object.hasOwn(updates, 'config') && updates.config != null) {
+      payload.config = encryptMcpConfig(updates.config, this._cipher);
+    }
     await this._db
       .update(mcpServerEntity)
-      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .set(payload)
       .where(eq(mcpServerEntity.id, id));
     this._changed$.next({ type: 'update', id });
   }

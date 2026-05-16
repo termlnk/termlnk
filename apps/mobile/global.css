@@ -1,0 +1,38 @@
+@import 'nativewind/theme';
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@source './app/**/*.{ts,tsx}';
+@source './src/**/*.{ts,tsx}';
+
+@theme {
+  --color-darker-black: #1b1f27;
+  --color-black: #1e222a;
+  --color-black2: #252931;
+  --color-one-bg: #282c34;
+  --color-one-bg2: #353b45;
+  --color-one-bg3: #3e4451;
+  --color-grey: #42464e;
+  --color-grey-fg: #565c64;
+  --color-grey-fg2: #6b727f;
+  --color-light-grey: #6f737b;
+  --color-line: #31353d;
+  --color-red: #e06c75;
+  --color-baby-pink: #de8c92;
+  --color-pink: #ff75a0;
+  --color-green: #98c379;
+  --color-vibrant-green: #7eca9c;
+  --color-blue: #61afef;
+  --color-nord-blue: #81a1c1;
+  --color-yellow: #e7c787;
+  --color-sun: #e5c07b;
+  --color-purple: #de98fd;
+  --color-dark-purple: #c882e7;
+  --color-teal: #519aba;
+  --color-orange: #fca2aa;
+  --color-cyan: #56b6c2;
+  --color-statusline-bg: #22262e;
+  --color-lightbg: #2d313a;
+  --color-folder-bg: #61afef;
+}

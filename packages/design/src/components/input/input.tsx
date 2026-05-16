@@ -28,7 +28,7 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
           data-slot="input"
           className={cn(
             `
-              tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:px-3 tm:py-2
+              tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:pr-3 tm:pl-3 tm:py-2
               tm:pr-9 tm:text-sm tm:text-white tm:outline-hidden tm:transition-colors
               tm:file:border-0 tm:file:bg-black tm:file:text-sm tm:file:font-medium tm:file:text-white
               tm:placeholder:text-grey-fg
@@ -66,7 +66,7 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
       data-slot="input"
       className={cn(
         `
-          tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:px-3 tm:py-2
+          tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:pr-3 tm:pl-3 tm:py-2
           tm:text-sm tm:text-white tm:outline-hidden tm:transition-colors
           tm:file:border-0 tm:file:bg-black tm:file:text-sm tm:file:font-medium tm:file:text-white
           tm:placeholder:text-grey-fg

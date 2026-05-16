@@ -16,15 +16,21 @@
 import type { ICoreConfig } from '@termlnk/core';
 import type { ITerminalUIConfig } from '@termlnk/terminal-ui';
 import { AgentUIPlugin } from '@termlnk/agent-ui';
+import { AuthPlugin } from '@termlnk/auth';
+import { AuthUIPlugin } from '@termlnk/auth-ui';
 import { Core, LocaleType, LogLevel, merge } from '@termlnk/core';
 import { ElectronPlugin } from '@termlnk/electron';
-import { ElectronRendererPlugin, UpdaterUIPlugin } from '@termlnk/electron-renderer';
+import { ElectronRendererPlugin } from '@termlnk/electron-renderer';
 import { ExtensionPlugin } from '@termlnk/extension';
 import { ExtensionUIPlugin } from '@termlnk/extension-ui';
 import { RPCPlugin } from '@termlnk/rpc';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { SettingsUIPlugin } from '@termlnk/settings-ui';
 import { SFTPUIPlugin } from '@termlnk/sftp-ui';
+import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { SharedTerminalUIPlugin } from '@termlnk/shared-terminal-ui';
+import { SyncPlugin } from '@termlnk/sync';
+import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
 import { TerminalUIPlugin } from '@termlnk/terminal-ui';
 import { chadracula } from '@termlnk/themes';
@@ -63,12 +69,19 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   const core = new Core(defaultOptions);
   core.registerPlugin(RPCPlugin);
   core.registerPlugin(RPCClientPlugin);
+  // Auth/Sync views resolve IAuthClientService as OPTIONAL so AuthGate falls back to a
+  // placeholder when cloudBaseUrl is unset.
+  core.registerPlugin(AuthPlugin);
+  core.registerPlugin(AuthUIPlugin);
+  core.registerPlugin(SyncPlugin);
+  core.registerPlugin(SyncUIPlugin);
+  core.registerPlugin(SharedTerminalPlugin);
+  core.registerPlugin(SharedTerminalUIPlugin);
   core.registerPlugin(UIPlugin, {
     container: ref!,
   });
   core.registerPlugin(ElectronPlugin);
   core.registerPlugin(ElectronRendererPlugin);
-  core.registerPlugin(UpdaterUIPlugin);
   core.registerPlugin(TerminalPlugin);
   core.registerPlugin(TerminalUIPlugin, terminalUIConfig);
   core.registerPlugin(SFTPUIPlugin);

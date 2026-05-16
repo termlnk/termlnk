@@ -193,7 +193,8 @@ export function TerminalView(props: ITerminalViewProps) {
         if (host?.type === HostType.HOST) {
           const normalized = host as IHost;
           setHostInfo(normalized);
-          const needsPassword = normalized.credential?.type === 'password' && !normalized.credential.password;
+          const cred = normalized.credential;
+          const needsPassword = cred?.type === 'password' && !cred.password;
           setRequiresPassword(needsPassword);
         }
       })

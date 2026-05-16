@@ -4,7 +4,7 @@
   "private": false,
   "description": "RPC client types and plugin for termlnk",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"
@@ -50,17 +50,21 @@
   },
   "peerDependencies": {
     "@termlnk/agent": "workspace:*",
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/rpc": "workspace:*",
+    "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
     "@termlnk/agent": "workspace:*",
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/rpc": "workspace:*",
+    "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
-    "@trpc/client": "^11.16.0"
+    "@trpc/client": "^11.17.0"
   },
   "devDependencies": {
     "@termlnk/agent": "workspace:*",
@@ -70,7 +74,7 @@
     "@termlnk/terminal": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
   }
 }

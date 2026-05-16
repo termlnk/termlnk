@@ -1,0 +1,36 @@
+/**
+ * Copyright 2026-present Termlnk
+ *
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+
+import { describe, expect, it } from 'vitest';
+import { isWriterRole, requiresMandatoryRecording, SharedTerminalRole } from '../models/role';
+
+describe('SharedTerminalRole helpers', () => {
+  it('owner and co-pilot are writers', () => {
+    expect(isWriterRole(SharedTerminalRole.Owner)).toBe(true);
+    expect(isWriterRole(SharedTerminalRole.CoPilot)).toBe(true);
+  });
+
+  it('observer and auditor are read-only', () => {
+    expect(isWriterRole(SharedTerminalRole.Observer)).toBe(false);
+    expect(isWriterRole(SharedTerminalRole.Auditor)).toBe(false);
+  });
+
+  it('only auditor triggers mandatory recording', () => {
+    expect(requiresMandatoryRecording(SharedTerminalRole.Auditor)).toBe(true);
+    expect(requiresMandatoryRecording(SharedTerminalRole.Owner)).toBe(false);
+    expect(requiresMandatoryRecording(SharedTerminalRole.CoPilot)).toBe(false);
+    expect(requiresMandatoryRecording(SharedTerminalRole.Observer)).toBe(false);
+  });
+});

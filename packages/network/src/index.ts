@@ -15,6 +15,7 @@
 
 export type { INetworkConfig } from './controllers/config.schema';
 export { NetworkPlugin } from './plugin';
+export { DefaultFetchProvider, IFetchProvider } from './services/http/fetch-provider/fetch-provider.service';
 export { HTTPHeaders } from './services/http/headers';
 export { type HTTPResponseType, HTTPStatusCode } from './services/http/http';
 export { HTTPService } from './services/http/http.service';

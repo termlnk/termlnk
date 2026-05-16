@@ -49,6 +49,8 @@ const locale: typeof enUS = {
         username: '用户名',
         password: '密码',
         privateKey: '私钥',
+        passwordKeepBlank: '留空保留当前密码',
+        privateKeyKeepBlank: '留空保留当前私钥',
         parentGroup: '分组',
         rootGroup: '根目录',
       },

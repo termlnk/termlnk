@@ -19,6 +19,7 @@ import type { HTTPEvent, HTTPResponseBody } from '../response';
 import type { IHTTPImplementation } from './implementation';
 import { ILogService } from '@termlnk/core';
 import { Observable } from 'rxjs';
+import { IFetchProvider } from '../fetch-provider/fetch-provider.service';
 import { HTTPHeaders } from '../headers';
 import { HTTPStatusCode } from '../http';
 import { HTTPProgress, HTTPResponse, HTTPResponseError } from '../response';
@@ -27,12 +28,22 @@ import { parseFetchParamsFromRequest } from './util';
 /**
  * An HTTP implementation using Fetch API. This implementation can both run in browser and Node.js.
  *
- * It does not support streaming response yet (May 12, 2024).
+ * The actual `fetch` call is routed through `IFetchProvider`, an injectable
+ * indirection that lets node-only deployments swap in a proxy-aware
+ * implementation (e.g. undici + socks) without dragging those dependencies
+ * into the @termlnk/network bundle. The default `DefaultFetchProvider` forwards
+ * to `globalThis.fetch`, preserving browser/Node-isomorphic behaviour for
+ * deployments that don't need a proxy.
  */
 export class FetchHTTPImplementation implements IHTTPImplementation {
+  private readonly _fetch: typeof fetch;
+
   constructor(
-    @ILogService private readonly _logService: ILogService
-  ) { }
+    @ILogService private readonly _logService: ILogService,
+    @IFetchProvider fetchProvider: IFetchProvider
+  ) {
+    this._fetch = fetchProvider.fetch.bind(fetchProvider);
+  }
 
   send(request: HTTPRequest): Observable<HTTPEvent<any>> {
     return new Observable((subscriber) => {
@@ -54,7 +65,7 @@ export class FetchHTTPImplementation implements IHTTPImplementation {
     try {
       const fetchParams = parseFetchParamsFromRequest(request);
       const urlWithParams = request.getUrlWithParams();
-      const fetchPromise = fetch(urlWithParams, {
+      const fetchPromise = this._fetch(urlWithParams, {
         signal: abortController.signal,
         ...fetchParams,
       });

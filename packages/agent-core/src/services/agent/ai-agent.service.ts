@@ -13,13 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentEvent, AgentTool } from '@mariozechner/pi-agent-core';
-import type { Api, AssistantMessage, Model, UserMessage } from '@mariozechner/pi-ai';
+import type { AgentEvent, AgentTool } from '@earendil-works/pi-agent-core';
+import type { Api, AssistantMessage, Model, UserMessage } from '@earendil-works/pi-ai';
 import type { AgentStatus, IAgentToolPermissionRequest, IAgentToolPermissionService, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import type { IPendingDeliveryMode } from '../../common/pending-message-queue';
-import { Agent } from '@mariozechner/pi-agent-core';
-import { getModel, streamSimple } from '@mariozechner/pi-ai';
+import { Agent } from '@earendil-works/pi-agent-core';
+import { getModel, streamSimple } from '@earendil-works/pi-ai';
 import { DEFAULT_COMPACT_CONFIG, DEFAULT_THINKING_LEVEL, IAgentToolPermissionService as IAgentToolPermissionServiceId, ILLMProviderService, normalizeCompactConfig } from '@termlnk/agent';
 import { Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
@@ -28,16 +28,7 @@ import { PendingMessageQueue } from '../../common/pending-message-queue';
 import { buildCompactUserPrompt, buildSummaryUserMessage, formatMessagesForCompaction } from '../compact/compact-prompt';
 import { getLatestContextTokens, shouldAutoCompact } from '../compact/compact-token';
 import { invokeWithUserIntent } from '../permission/permission-guarded-tool';
-import {
-  appendErrorPart,
-  appendTextDelta,
-  appendThinkingDelta,
-  finalizeToolPart,
-  getErrorFromParts,
-  getTextFromParts,
-  getToolPartsFromParts,
-  upsertToolPartInputDelta,
-} from './message-parts';
+import { appendErrorPart, appendTextDelta, appendThinkingDelta, finalizeToolPart, getErrorFromParts, getTextFromParts, getToolPartsFromParts, upsertToolPartInputDelta } from './message-parts';
 
 const COMPACT_MAX_OUTPUT_TOKENS = 20000;
 const MAX_RETRY_ATTEMPTS = 3;

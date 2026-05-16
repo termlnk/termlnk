@@ -4,7 +4,7 @@
   "private": false,
   "description": "Themes for termlnk",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"
@@ -47,6 +47,6 @@
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
-    "vite": "^8.0.10"
+    "vite": "^8.0.13"
   }
 }

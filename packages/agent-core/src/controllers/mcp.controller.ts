@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
+import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core';
 import type { AgentToolCategory, IAgentTool, IGuardMetadata, IMcpRemoteTool } from '@termlnk/agent';
 import { Type } from '@sinclair/typebox';
 import { IAgentToolPermissionService, IAgentToolRegistryService, IAIAgentService, IMcpService } from '@termlnk/agent';

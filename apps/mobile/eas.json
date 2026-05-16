@@ -1,0 +1,62 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium",
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://cloud.termlnk.com/v1"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium",
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://cloud.termlnk.com/v1"
+      }
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "m-medium",
+        "autoIncrement": "buildNumber"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "autoIncrement": "versionCode"
+      },
+      "env": {
+        "EXPO_PUBLIC_CLOUD_BASE_URL": "https://cloud.termlnk.com/v1"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "PROVIDE_VIA_EAS_SECRET",
+        "ascAppId": "PROVIDE_VIA_EAS_SECRET",
+        "appleTeamId": "PROVIDE_VIA_EAS_SECRET"
+      },
+      "android": {
+        "serviceAccountKeyPath": "PROVIDE_VIA_EAS_SECRET",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}

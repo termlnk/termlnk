@@ -21,6 +21,7 @@ import { ISSHService } from '@termlnk/rpc-client';
 import { Loader2Icon } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { getFieldError, hostSchema } from '../../models/host-dialog.schema';
+import { HostDialogMode } from '../../models/host-dialog.state';
 import { HostDialogService } from '../../services/host-dialog/host-dialog.service';
 import { AdvancedTab, BasicInfoTab, HostChainTab, ProxyTab } from './components';
 
@@ -56,7 +57,7 @@ export function HostDialog() {
 
   const state = useObservable<IHostDialogState | null>(hostDialogService.state$, null);
   const formData = state?.item ?? null;
-  const mode = state?.mode ?? 'create';
+  const mode: HostDialogMode = state?.mode ?? HostDialogMode.CREATE;
 
   const { errors, getError, isValid } = useHostValidation(formData);
 
@@ -246,7 +247,7 @@ export function HostDialog() {
         <div className="tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:overflow-hidden">
           <div className="tm:flex-1 tm:overflow-y-auto tm:px-4 tm:py-3">
             <TabsContent value="basic" className="tm:m-0">
-              <BasicInfoTab data={formData} onChange={handleChange} getError={translateError} />
+              <BasicInfoTab data={formData} mode={mode} onChange={handleChange} getError={translateError} />
             </TabsContent>
             <TabsContent value="proxy" className="tm:m-0">
               <ProxyTab data={formData} onChange={handleChange} getError={translateError} />

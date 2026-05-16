@@ -14,10 +14,15 @@
  */
 
 export * from './chat';
+export * from './collab-invite-token';
 export * from './config';
 export * from './host';
 export * from './mcp-oauth-token';
 export * from './mcp-server';
 export * from './provider';
 export * from './skill';
+export * from './sync-cursor';
+export * from './sync-field-meta';
+export * from './sync-outbox';
+export * from './sync-row-meta';
 export * from './terminal-session-backup';

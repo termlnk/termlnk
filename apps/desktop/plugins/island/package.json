@@ -1,0 +1,40 @@
+{
+  "name": "@termlnk/island",
+  "version": "0.0.2",
+  "private": true,
+  "description": "Dynamic Island shared contracts — session phase, animation state, island service interfaces.",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "peerDependencies": {
+    "@termlnk/agent": "workspace:*",
+    "@termlnk/core": "workspace:*"
+  },
+  "dependencies": {
+    "@termlnk/agent": "workspace:*",
+    "@termlnk/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
+  }
+}

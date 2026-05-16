@@ -1,9 +1,0 @@
-{
-  "extends": "@termlnk/shared/tsconfig/base",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "lib/types"
-  },
-  "references": [{ "path": "./tsconfig.node.json" }],
-  "include": ["src"]
-}

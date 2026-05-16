@@ -63,6 +63,17 @@ export default antfu(
   facadePreset(),
   noBarrelImportPreset(),
   tailwindcssPreset(),
+  // apps/mobile uses NativeWind v5 with its own Tailwind config and palette.
+  // The shared tailwindcssPreset's entry CSS doesn't know mobile classes, so
+  // disable class-membership checks here. Layout/wrapping rules also relax —
+  // RN doesn't follow the desktop's `tm:` prefix convention.
+  {
+    files: ['apps/mobile/**/*.{ts,tsx}'],
+    rules: {
+      'better-tailwindcss/no-unknown-classes': 'off',
+      'better-tailwindcss/enforce-consistent-line-wrapping': 'off',
+    },
+  },
   specPreset(),
   headerPreset()
 );

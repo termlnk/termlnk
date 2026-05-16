@@ -19,6 +19,11 @@ import agentuijaJP from '@termlnk/agent-ui/locale/ja-JP';
 import agentuikoKR from '@termlnk/agent-ui/locale/ko-KR';
 import agentuizhCN from '@termlnk/agent-ui/locale/zh-CN';
 import agentuizhTW from '@termlnk/agent-ui/locale/zh-TW';
+import authuienUS from '@termlnk/auth-ui/locale/en-US';
+import authuijaJP from '@termlnk/auth-ui/locale/ja-JP';
+import authuikoKR from '@termlnk/auth-ui/locale/ko-KR';
+import authuizhCN from '@termlnk/auth-ui/locale/zh-CN';
+import authuizhTW from '@termlnk/auth-ui/locale/zh-TW';
 import { merge } from '@termlnk/core';
 import designenUS from '@termlnk/design/locale/en-US';
 import designjaJP from '@termlnk/design/locale/ja-JP';
@@ -50,6 +55,16 @@ import sftpuijaJP from '@termlnk/sftp-ui/locale/ja-JP';
 import sftpuikoKR from '@termlnk/sftp-ui/locale/ko-KR';
 import sftpuizhCN from '@termlnk/sftp-ui/locale/zh-CN';
 import sftpuizhTW from '@termlnk/sftp-ui/locale/zh-TW';
+import sharedterminaluienUS from '@termlnk/shared-terminal-ui/locale/en-US';
+import sharedterminaluijaJP from '@termlnk/shared-terminal-ui/locale/ja-JP';
+import sharedterminaluikoKR from '@termlnk/shared-terminal-ui/locale/ko-KR';
+import sharedterminaluizhCN from '@termlnk/shared-terminal-ui/locale/zh-CN';
+import sharedterminaluizhTW from '@termlnk/shared-terminal-ui/locale/zh-TW';
+import syncuienUS from '@termlnk/sync-ui/locale/en-US';
+import syncuijaJP from '@termlnk/sync-ui/locale/ja-JP';
+import syncuikoKR from '@termlnk/sync-ui/locale/ko-KR';
+import syncuizhCN from '@termlnk/sync-ui/locale/zh-CN';
+import syncuizhTW from '@termlnk/sync-ui/locale/zh-TW';
 import terminaluienUS from '@termlnk/terminal-ui/locale/en-US';
 import terminaluijaJP from '@termlnk/terminal-ui/locale/ja-JP';
 import terminaluikoKR from '@termlnk/terminal-ui/locale/ko-KR';
@@ -64,60 +79,75 @@ import uizhTW from '@termlnk/ui/locale/zh-TW';
 export const enUS = merge(
   {},
   agentuienUS,
+  authuienUS,
   designenUS,
   electronrendererenUS,
   extensionuienUS,
   islanduienUS,
   settingsuienUS,
   sftpuienUS,
+  sharedterminaluienUS,
+  syncuienUS,
   terminaluienUS,
   uienUS
 );
 export const zhCN = merge(
   {},
   agentuizhCN,
+  authuizhCN,
   designzhCN,
   electronrendererzhCN,
   extensionuizhCN,
   islanduizhCN,
   settingsuizhCN,
   sftpuizhCN,
+  sharedterminaluizhCN,
+  syncuizhCN,
   terminaluizhCN,
   uizhCN
 );
 export const jaJP = merge(
   {},
   agentuijaJP,
+  authuijaJP,
   designjaJP,
   electronrendererjaJP,
   extensionuijaJP,
   islanduijaJP,
   settingsuijaJP,
   sftpuijaJP,
+  sharedterminaluijaJP,
+  syncuijaJP,
   terminaluijaJP,
   uijaJP
 );
 export const koKR = merge(
   {},
   agentuikoKR,
+  authuikoKR,
   designkoKR,
   electronrendererkoKR,
   extensionuikoKR,
   islanduikoKR,
   settingsuikoKR,
   sftpuikoKR,
+  sharedterminaluikoKR,
+  syncuikoKR,
   terminaluikoKR,
   uikoKR
 );
 export const zhTW = merge(
   {},
   agentuizhTW,
+  authuizhTW,
   designzhTW,
   electronrendererzhTW,
   extensionuizhTW,
   islanduizhTW,
   settingsuizhTW,
   sftpuizhTW,
+  sharedterminaluizhTW,
+  syncuizhTW,
   terminaluizhTW,
   uizhTW
 );

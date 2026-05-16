@@ -1,0 +1,75 @@
+{
+  "name": "@termlnk/shared-terminal-core",
+  "version": "0.0.1",
+  "private": false,
+  "description": "Shared terminal core implementations for termlnk - NaCl box crypto, frame codec, PTY multiplexer with xterm-headless, ring buffer, pairing, and asciicast recording",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "types": "./lib/types/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "main": "./lib/es/index.js",
+    "module": "./lib/es/index.js",
+    "exports": {
+      ".": {
+        "import": "./lib/es/index.js",
+        "require": "./lib/cjs/index.js",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./*": {
+        "import": "./lib/es/*",
+        "require": "./lib/cjs/*",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./lib/*": "./lib/*"
+    }
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build": "termlnk-cli build"
+  },
+  "peerDependencies": {
+    "@termlnk/auth-core": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
+    "@termlnk/shared-terminal": "workspace:*",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@termlnk/auth-core": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
+    "@termlnk/shared-terminal": "workspace:*",
+    "@xterm/addon-serialize": "^0.15.0-beta.204",
+    "@xterm/headless": "^6.1.0-beta.204",
+    "tweetnacl": "^1.0.3",
+    "undici": "^8.3.0"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
+  }
+}

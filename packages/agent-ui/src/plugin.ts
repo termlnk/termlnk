@@ -16,10 +16,12 @@
 import type { Dependency } from '@termlnk/core';
 import type { IAgentUIPluginConfig } from './controllers/config.schema';
 import { IProviderRegistryService } from '@termlnk/agent';
-import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IContributionPointRegistry } from '@termlnk/extension';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
+import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
 import { UIPlugin } from '@termlnk/ui';
+import { MessageSquare, Sparkles } from 'lucide-react';
 import { AGENT_UI_PLUGIN_NAME } from './common/constants';
 import { ProvidersPoint } from './contributions/providers.point';
 import { AIAgentController } from './controllers/ai-agent.controller';
@@ -27,6 +29,8 @@ import { ChatPanelController } from './controllers/chat-panel.controller';
 import { AGENT_UI_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { GenerativeUIRegistryService, IGenerativeUIRegistryService } from './services/generative-ui/generative-ui-registry.service';
 import { ProviderRegistryService } from './services/provider-registry.service';
+import { AgentTab } from './views/settings/AgentTab';
+import { AiProviderTab } from './views/settings/AiProviderTab';
 
 @DependentOn(UIPlugin, RPCClientPlugin)
 export class AgentUIPlugin extends Plugin {
@@ -59,6 +63,37 @@ export class AgentUIPlugin extends Plugin {
 
   override onReady(): void {
     this._injector.get(ChatPanelController).registerBuiltinGenerativeUIComponents();
+    this._registerSettingsTabs();
+  }
+
+  // CHAT and AI_PROVIDER tabs are agent-ui's responsibility — settings-ui owns
+  // only the registry. Register through OPTIONAL injection so headless / agent-
+  // only deployments without SettingsUIPlugin still boot cleanly.
+  private _registerSettingsTabs(): void {
+    const registry = this._injector.get(ISettingsTabRegistryService, Quantity.OPTIONAL);
+    if (!registry) {
+      return;
+    }
+    this.disposeWithMe(
+      registry.register({
+        id: 'ai-provider',
+        labelKey: 'settings-ui.tab.ai-provider',
+        descriptionKey: 'settings-ui.tab-description.ai-provider',
+        icon: Sparkles,
+        component: AiProviderTab,
+        order: 70,
+      })
+    );
+    this.disposeWithMe(
+      registry.register({
+        id: 'chat',
+        labelKey: 'settings-ui.tab.chat',
+        descriptionKey: 'settings-ui.tab-description.chat',
+        icon: MessageSquare,
+        component: AgentTab,
+        order: 80,
+      })
+    );
   }
 
   private _initDependencies(): void {

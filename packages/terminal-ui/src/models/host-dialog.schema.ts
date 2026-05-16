@@ -52,7 +52,11 @@ export const passwordCredentialSchema = z.object({
 export const rsaCredentialSchema = z.object({
   type: z.literal('rsa'),
   username: z.string().min(1, 'validation.usernameRequired'),
-  privateKey: z.string().min(1, 'validation.privateKeyRequired'),
+  // Empty string is allowed: in EDIT mode the server's _mergeCredentialKeepingOldSecrets
+  // treats "" as "keep the existing private key". A CREATE-mode submit without a key
+  // still gets rejected server-side ("RSA credential changed type but no privateKey
+  // provided"); the renderer catches and surfaces that error.
+  privateKey: z.string(),
 });
 
 export const credentialSchema = z.discriminatedUnion('type', [

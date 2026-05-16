@@ -15,6 +15,8 @@
 
 import { IAIAgentService, ILLMProviderService, ITerminalSuggestService } from '@termlnk/agent';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
+import { map } from 'rxjs/operators';
+import { sanitizeProviderUserConfig } from '../../common/sanitize-secrets';
 import { addCustomModelSchema, addProviderSchema, applyTerminalErrorFixSchema, cancelPendingSchema, cancelTerminalSuggestionSchema, compactConversationSchema, editUserMessageSchema, getProviderConfigSchema, invokeToolSchema, refreshProviderModelsSchema, removeCustomModelSchema, removeProviderSchema, resetModelOverridesSchema, retryMessageSchema, sendMessageSchema, setActiveModelSchema, setApiKeySchema, setModelSchema, setSystemPromptSchema, setThinkingLevelSchema, testProviderModelSchema, toggleModelSchema, updateModelOverridesSchema, updateProviderConfigSchema } from '../schema/ai.schema';
 import { publicProcedure, router } from '../trpc';
 
@@ -227,6 +229,9 @@ export const aiRouter = router({
     .input(getProviderConfigSchema)
     .query(async ({ ctx, input }) => {
       const providerService = ctx.injector.get(ILLMProviderService);
+      // Single-provider query returns the full plaintext config (apiKey included) so the
+      // settings form can populate the Input's password-eye toggle — mirrors host.getInfo's
+      // sanitize bypass. Batch endpoints (`providers$`, `activeProvider$`) keep redacting.
       return providerService.getProviderConfig(input.providerId);
     }),
 
@@ -265,7 +270,9 @@ export const aiRouter = router({
   activeProvider$: publicProcedure
     .subscription(async function* ({ ctx }) {
       const providerService = ctx.injector.get(ILLMProviderService);
-      yield* observableToAsyncGenerator(providerService.activeProvider$);
+      yield* observableToAsyncGenerator(
+        providerService.activeProvider$.pipe(map(sanitizeProviderUserConfig))
+      );
     }),
 
   isCompacting$: publicProcedure

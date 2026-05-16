@@ -21,6 +21,7 @@ import { LeftSidebarController } from './controllers/left-sidebar/left-sidebar.c
 import { RightSidebarController } from './controllers/right-sidebar/right-sidebar.controller';
 import { DesktopUIController } from './controllers/ui/desktop-ui.controller';
 import { IUIController } from './controllers/ui/ui.controller';
+import { UpdaterUIController } from './controllers/updater/updater-ui.controller';
 import { ComponentManagerService } from './services/component/component-manager.service';
 import { ContentRouterService, IContentRouterService } from './services/content-router/content-router.service';
 import { ContextMenuService, IContextMenuService } from './services/contextmenu/contextmenu.service';
@@ -68,6 +69,16 @@ export class UIPlugin extends Plugin {
     ]);
   }
 
+  // Defer UpdaterUIController until onReady because IUpdaterService is bound by
+  // host plugins (electron-renderer / web-renderer / mobile) in their own
+  // onStarting. Plugin lifecycle runs all onStarting hooks before any onReady,
+  // so by the time we touch the controller, the service token is resolvable.
+  override onReady(): void {
+    touchDependencies(this._injector, [
+      [UpdaterUIController],
+    ]);
+  }
+
   private _initDependencies() {
     const dependencies: Dependency[] = [
       [ComponentManagerService],
@@ -93,6 +104,7 @@ export class UIPlugin extends Plugin {
       }],
       [LeftSidebarController],
       [RightSidebarController],
+      [UpdaterUIController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
   }

@@ -32,6 +32,8 @@ export type { IContextMenuHandler } from './services/contextmenu/contextmenu.ser
 export { DialogService, IDialogService } from './services/dialog/dialog.service';
 export { DOMEventObserver } from './services/event/dom-event-observer';
 export type { IIMEState } from './services/event/dom-event-observer';
+export { ElectronHostEnvironmentService, IHostEnvironmentService, MobileHostEnvironmentService, WebHostEnvironmentService } from './services/host-environment/host-environment.service';
+export type { HostEnvironment } from './services/host-environment/host-environment.service';
 export { SIDE_TAB_BAR_WIDTH_REM } from './services/layout/layout.constants';
 export { DesktopLayoutService, ILayoutService } from './services/layout/layout.service';
 export { MenuItemType, MenuPosition } from './services/menu/menu';
@@ -56,3 +58,8 @@ export { CustomWrapper } from './views/components/custom-wrapper';
 export { NotificationIcon, NotificationPanel } from './views/components/notification';
 export { TooltipWrapper } from './views/components/tooltip/TooltipWrapper';
 export type { ITooltipWrapperProps } from './views/components/tooltip/TooltipWrapper';
+export { ReleaseNotesMarkdown } from './views/updater/ReleaseNotesMarkdown';
+export type { IReleaseNotesMarkdownProps } from './views/updater/ReleaseNotesMarkdown';
+export { UpdateButton } from './views/updater/UpdateButton';
+export { UpdateDialog } from './views/updater/UpdateDialog';
+export { UPDATE_DIALOG_COMPONENT_NAME, UPDATE_DIALOG_ID } from './views/updater/updater-constants';

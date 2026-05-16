@@ -49,6 +49,8 @@ const locale: typeof enUS = {
         username: 'ユーザー名',
         password: 'パスワード',
         privateKey: '秘密鍵',
+        passwordKeepBlank: '空欄のままで現在のパスワードを保持',
+        privateKeyKeepBlank: '空欄のままで現在の秘密鍵を保持',
         parentGroup: 'グループ',
         rootGroup: 'ルート',
       },

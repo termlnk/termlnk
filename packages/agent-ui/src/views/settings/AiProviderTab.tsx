@@ -49,6 +49,8 @@ export function AiProviderTab() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [providerQuery, setProviderQuery] = useState('');
   const [modelQuery, setModelQuery] = useState('');
+  // Seeded from server with the plaintext apiKey so the Input's password-eye toggle can
+  // reveal it; empty submission means "unchanged" (main-process smart-merge).
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<string, string>>({});
   const [baseUrlInputs, setBaseUrlInputs] = useState<Record<string, string>>({});
   const [syncingProviderId, setSyncingProviderId] = useState<string | null>(null);
@@ -77,9 +79,15 @@ export function AiProviderTab() {
       const baseUrls: Record<string, string> = {};
 
       for (const [providerId, config] of entries) {
-        if (!config) continue;
-        if (config.apiKey) apiKeys[providerId] = config.apiKey;
-        if (config.baseUrl) baseUrls[providerId] = config.baseUrl;
+        if (!config) {
+          continue;
+        }
+        if (config.apiKey) {
+          apiKeys[providerId] = config.apiKey;
+        }
+        if (config.baseUrl) {
+          baseUrls[providerId] = config.baseUrl;
+        }
       }
 
       setApiKeyInputs((prev) => ({ ...apiKeys, ...prev }));
@@ -273,7 +281,7 @@ export function AiProviderTab() {
     <div
       className="
         tm:flex tm:h-full tm:min-h-0 tm:flex-col tm:gap-4
-        tm:md:flex-row tm:md:items-stretch
+        tm:md:flex-row! tm:md:items-stretch
       "
     >
       {/* Left: Provider list */}
@@ -528,9 +536,6 @@ export function AiProviderTab() {
                       onChange={(e) => handleApiKeyChange(selectedProvider.id, e.target.value)}
                       onBlur={() => void handleSaveProvider(selectedProvider.id)}
                     />
-                    <p className="tm:mt-2 tm:text-[11px] tm:text-white/80">
-                      {localeService.t('agent-ui.provider.api-key-hint')}
-                    </p>
                   </div>
 
                   {/* Base URL */}

@@ -13,41 +13,83 @@
  * governing permissions and limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { extname, isAbsolute, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
-import { AgentCorePlugin } from '@termlnk/agent-core';
-import { Core, LocaleType, LogLevel } from '@termlnk/core';
-import { DatabasePlugin, IDBAdaptorService, SQLiteAdaptor } from '@termlnk/database';
-import { ElectronPlugin, IUpdaterService } from '@termlnk/electron';
-import { ElectronMainPlugin, FileDialogService, MockUpdaterService } from '@termlnk/electron-main';
+import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
+import { AuthPlugin, IDeviceNameProvider, IIdleProbe } from '@termlnk/auth';
+import { AuthCorePlugin } from '@termlnk/auth-core';
+import { Core, ILogService, IUpdaterService, LocaleType, LogLevel } from '@termlnk/core';
+import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
+import { ElectronPlugin } from '@termlnk/electron';
+import { ElectronIdleProbe, ElectronMainPlugin, FileDialogService, MockUpdaterService, SafeStorageCipher } from '@termlnk/electron-main';
 import { IExtensionStateService, IExtensionStorageService } from '@termlnk/extension';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IslandCorePlugin } from '@termlnk/island-core';
+import { IFetchProvider, NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { IFileDialogService, RPCServerPlugin } from '@termlnk/rpc-server';
+import { SyncPlugin } from '@termlnk/sync';
+import { SyncCorePlugin } from '@termlnk/sync-core';
 import { chadracula } from '@termlnk/themes';
 import { app, protocol } from 'electron';
 import { dirname, join, relative } from 'pathe';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
+import { OsHostnameDeviceNameProvider } from './platform/os-hostname-device-name-provider.service';
 import { fixProcessPath } from './shell-path';
+
+// Load apps/desktop/.env into process.env in unpackaged runs. Vite's `define` doesn't
+// rewrite `process.env.*` in Node-target main bundles, and we don't ship dotenv as a
+// runtime dependency — this tiny loader covers TERMLNK_* style flags the same way
+// EAS/Expo handles `.env` on the mobile side. Packaged builds skip it (no .env on disk).
+function loadDotenv(): void {
+  if (app.isPackaged) {
+    return;
+  }
+  const envPath = resolve(process.cwd(), '.env');
+  let content: string;
+  try {
+    content = readFileSync(envPath, 'utf-8');
+  } catch {
+    return;
+  }
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+    const eq = line.indexOf('=');
+    if (eq <= 0) {
+      continue;
+    }
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (value.length >= 2 && ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\'')))) {
+      value = value.slice(1, -1);
+    }
+    // Shell-provided values win over .env so `TERMLNK_X=... pnpm dev` overrides the file.
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadDotenv();
 
 // Must run before any child-process spawning (PTY, MCP stdio, etc.)
 fixProcessPath();
 
-// Single-instance lock — Windows/Linux fork a new process on each launch
-// while macOS LaunchServices already deduplicates GUI launches; the lock
-// covers CLI launches uniformly. Must run before app.whenReady().
-// SingleInstanceController handles the 'second-instance' event.
+// Must run before app.whenReady(); covers Windows/Linux fork-per-launch and CLI launches
+// uniformly (macOS LaunchServices already dedupes GUI launches).
 if (!app.requestSingleInstanceLock()) {
   app.exit(0);
 }
 
-// GPU acceleration & rendering optimizations.
-// These must be set before app.whenReady() per Chromium requirements.
+// Must be set before app.whenReady() per Chromium requirements.
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -89,11 +131,9 @@ const configDir = join(homedir(), '.config', 'termlnk');
 const dbPath = join(configDir, 'termlnk.db');
 const dbAdaptor = new SQLiteAdaptor({ filename: dbPath, migrationsFolder });
 
-// Renderer dist directory (inside asar in production)
 const rendererDir = join(appRoot, '../renderer');
 
-// Production entry: app:// custom protocol URL served by the handler above.
-// Dev entry: localhost URL from ELECTRON_RENDERER_URL env.
+// Dev → ELECTRON_RENDERER_URL (localhost); prod → app:// served by the handler below.
 const url = is.dev && process.env.ELECTRON_RENDERER_URL ? process.env.ELECTRON_RENDERER_URL : 'app://termlnk/';
 
 const MIME_TYPES: Record<string, string> = {
@@ -140,6 +180,20 @@ function withAsarEnabled<T>(fn: () => Promise<T>): Promise<T> {
   return fn().finally(() => {
     (process as any).noAsar = prev;
   });
+}
+
+// Production cloud endpoint baked into the packaged build.
+const PRODUCTION_CLOUD_BASE_URL = 'https://cloud.termlnk.com/v1';
+
+// Dev/CI takes TERMLNK_CLOUD_BASE_URL (via shell or apps/desktop/.env loaded by
+// electron-vite). Packaged builds hit the hard-coded constant — env var only wins
+// in unpackaged runs so a stray shell variable can't redirect end-user traffic.
+function resolveCloudBaseUrl(): string | undefined {
+  const envValue = process.env.TERMLNK_CLOUD_BASE_URL?.trim();
+  if (envValue && !app.isPackaged) {
+    return envValue;
+  }
+  return PRODUCTION_CLOUD_BASE_URL;
 }
 
 function resolveRendererAssetPath(requestURL: string): string | null {
@@ -201,9 +255,38 @@ app.whenReady().then(async () => {
     migrationsFolder,
     override: [
       [IDBAdaptorService, { useValue: dbAdaptor }],
+      // OS keystore for sensitive creds; auto-falls back to LocalDerivedSecretCipher when unavailable.
+      [ISecretCipherService, { useClass: SafeStorageCipher }],
     ],
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
+
+  // Register before any plugin that issues HTTP traffic. NodeProxyFetchProvider routes
+  // every in-process HTTP call through the user's configured proxy. useFetchImpl forces
+  // Fetch in the main process — the default switch picks XHR when `window` is absent.
+  core.registerPlugin(NetworkPlugin, {
+    useFetchImpl: true,
+    override: [
+      [IFetchProvider, { useClass: NodeProxyFetchProvider }],
+    ],
+  });
+
+  // Cloud endpoint: TERMLNK_CLOUD_BASE_URL (dev) or PRODUCTION_CLOUD_BASE_URL (packaged).
+  // Empty/unset → cloud stays offline and AuthGate shows the "unavailable" placeholder.
+  const cloudBaseUrl = resolveCloudBaseUrl();
+  core.getInjector().get(ILogService).log(`[Bootstrap] cloudBaseUrl = ${cloudBaseUrl ?? '(unset — cloud features disabled)'}`);
+  core.registerPlugin(AuthPlugin);
+  core.registerPlugin(AuthCorePlugin, {
+    cloudBaseUrl,
+    // Electron-only overrides for IIdleProbe / IDeviceNameProvider; the adapters live in
+    // ./platform/ so auth-core stays free of node:os imports.
+    override: [
+      [IIdleProbe, { useClass: ElectronIdleProbe }],
+      [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
+    ],
+  });
+  core.registerPlugin(SyncPlugin);
+  core.registerPlugin(SyncCorePlugin, { cloudBaseUrl });
 
   // Bundled skills must live outside app.asar — Node's fs APIs throw ENOENT
   // on asar virtual directory entries; extraResources drops them into
@@ -213,11 +296,8 @@ app.whenReady().then(async () => {
     : join(process.resourcesPath, 'bundled-skills');
   const userSkillsDir = join(configDir, 'skills');
 
-  // Resolve the agent-hook-cli source bundle so HookLauncherService can
-  // copy the POSIX/Windows launchers + Node helper into ~/.config/termlnk/bin/.
-  // In dev, read straight from the monorepo; in prod, read from the vite-
-  // bundled copy inside the main process dist directory (see
-  // `copyAgentHookCliAssets` in configs/main.config.ts).
+  // Dev reads the agent-hook-cli source straight from the monorepo; prod reads from the
+  // vite-bundled copy inside the main process dist directory.
   const hookCliSrcDir = is.dev
     ? join(appRoot, '../../../../packages/agent-hook-cli/src')
     : join(appRoot, 'agent-hook-cli');
@@ -237,10 +317,9 @@ app.whenReady().then(async () => {
     ],
   });
 
-  // Dev-only: swap the real UpdaterService for a scripted mock when
-  // TERMLNK_MOCK_UPDATER is set, so the updater UI (button + dialog +
-  // progress bar) can be exercised without a packaged build. Accepts
-  // `normal`, `check-error`, `download-error`, or `no-update`.
+  // Dev-only: TERMLNK_MOCK_UPDATER swaps in a scripted mock so the updater UI can be
+  // exercised without a packaged build. Accepts `normal`, `check-error`, `download-error`,
+  // or `no-update`.
   const useMockUpdater = !app.isPackaged && process.env.TERMLNK_MOCK_UPDATER !== undefined;
   core.registerPlugin(ElectronMainPlugin, {
     url,
@@ -273,6 +352,7 @@ app.whenReady().then(async () => {
     }
   });
 }).catch((err) => {
+  // Bootstrap may fail before any ILogService is bound; stderr is the only sink left.
   console.error('[Bootstrap] Fatal initialization error:', err);
   app.exit(1);
 });

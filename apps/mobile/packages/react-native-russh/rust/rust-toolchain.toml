@@ -1,0 +1,28 @@
+# Toolchain pin for @termlnk/react-native-russh. UniFFI also pins its own
+# (see mozilla/uniffi-rs/blob/main/rust-toolchain.toml); we track stable
+# unless a new pin breaks. The target list mirrors fressh + mozilla's
+# rust-android-gradle reference, so `rustup target add` does the right thing
+# on a fresh machine before `ubrn build`.
+
+[toolchain]
+channel = "stable"
+targets = [
+    # iOS
+    "aarch64-apple-ios",
+    "x86_64-apple-ios",
+    "aarch64-apple-ios-sim",
+
+    # Android
+    "armv7-linux-androideabi",
+    "i686-linux-android",
+    "aarch64-linux-android",
+    "x86_64-linux-android",
+
+    # Host (dev/test on macOS/Linux/Windows)
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-msvc",
+]
+components = ["clippy", "rustfmt"]

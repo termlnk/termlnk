@@ -5,6 +5,13 @@ packages:
   - apps/desktop
   - apps/desktop/main
   - apps/desktop/renderer
+  - apps/desktop/plugins/*
+  - apps/web/server
+  - apps/web/renderer
+  - apps/web/plugins/*
+  - apps/mobile
+  - apps/mobile/packages/*
+  - apps/mobile/plugins/*
 
 ignoredBuiltDependencies:
   - javascript-obfuscator
@@ -17,13 +24,15 @@ onlyBuiltDependencies:
   - fs-xattr
   - macos-alias
   - protobufjs
+  - react-native-libsodium
   - sharp
+  - uniffi-bindgen-react-native
 
 overrides:
   '@types/react': ^19.2.14
   '@types/react-dom': ^19.2.3
-  react: ^19.2.5
-  react-dom: ^19.2.5
+  react: ^19.2.6
+  react-dom: ^19.2.6
   electron: 41.5.0
   tar: ^7.5.13
   undici: ^8.2.0
@@ -32,6 +41,7 @@ overrides:
   tmp: ^0.2.5
   defu: ^6.1.6
   lodash: ^4.18.1
+  lightningcss: 1.30.1
   # Dependabot security fixes (transitive)
   '@xmldom/xmldom': ^0.8.13
   protobufjs: ^7.5.5

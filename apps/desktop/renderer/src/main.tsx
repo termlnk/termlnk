@@ -15,17 +15,9 @@
 
 import { createHashHistory, createRouter, RouterProvider } from '@tanstack/react-router';
 import { createRoot } from 'react-dom/client';
-// import { scan } from 'react-scan';
 import { routeTree } from './routeTree.gen';
 
 import './index.css';
-
-// if (typeof window !== 'undefined') {
-//   scan({
-//     enabled: true,
-//     log: true,
-//   });
-// }
 
 const router = createRouter({
   routeTree,

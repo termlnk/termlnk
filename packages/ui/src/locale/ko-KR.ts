@@ -63,6 +63,17 @@ const locale: typeof enUS = {
       'open-title': '왼쪽 사이드바 표시',
       'close-title': '왼쪽 사이드바 숨기기',
     },
+    updater: {
+      'dialog-title': '새 버전 사용 가능',
+      'new-version-available': '새 버전 사용 가능',
+      'update-ready': '업데이트 준비 완료',
+      'release-notes': '릴리스 노트',
+      'download-update': '업데이트 다운로드',
+      downloading: '다운로드 중...',
+      'install-now': '지금 설치',
+      retry: '재시도',
+      'manual-update-hint': '새 버전이 있습니다. 최신 docker 이미지를 pull하거나 git pull을 실행하여 업데이트하십시오 - 브라우저 배포에서는 앱 내 설치가 지원되지 않습니다.',
+    },
   },
 };
 

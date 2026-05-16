@@ -63,6 +63,17 @@ const locale: typeof enUS = {
       'open-title': '顯示左側邊欄',
       'close-title': '隱藏左側邊欄',
     },
+    updater: {
+      'dialog-title': '發現新版本',
+      'new-version-available': '發現新版本可用',
+      'update-ready': '更新已就緒',
+      'release-notes': '更新內容',
+      'download-update': '下載更新',
+      downloading: '下載中...',
+      'install-now': '立即安裝',
+      retry: '重試',
+      'manual-update-hint': '發現新版本。請拉取最新 docker 鏡像或執行 git pull 進行更新——瀏覽器部署不支援應用內安裝。',
+    },
   },
 };
 

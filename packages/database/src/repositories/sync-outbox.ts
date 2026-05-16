@@ -1,0 +1,148 @@
+/**
+ * Copyright 2026-present Termlnk
+ *
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+
+import type { SyncResourceId } from '@termlnk/sync';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import type * as schema from '../entities';
+import type { ISyncOutboxEntity, ISyncOutboxEntityInsert } from '../entities/sync-outbox';
+import { Disposable } from '@termlnk/core';
+import { and, asc, eq, inArray, like, or, sql } from 'drizzle-orm';
+import { generateId } from '../entities/base';
+import { syncOutboxEntity } from '../entities/sync-outbox';
+import { IDBAdaptorService } from '../services/db-adaptor.service';
+
+/**
+ * Data access for the `sync_outbox` table.
+ *
+ * Pure CRUD — no business orchestration (no `clientMutId` allocation, no
+ * `changed$` notifications, no retry scheduling). Those live in
+ * `SyncOutboxService` (`@termlnk/sync-core`).
+ */
+export class SyncOutboxRepository extends Disposable {
+  constructor(
+    @IDBAdaptorService private readonly _dbService: IDBAdaptorService
+  ) {
+    super();
+  }
+
+  private get _db() {
+    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+  }
+
+  /**
+   * Persist one mutation. The repository assigns `id` (a business-agnostic
+   * PK) when the caller omits it. Returns the row as stored.
+   */
+  async insert(record: Omit<ISyncOutboxEntityInsert, 'id'> & { id?: string }): Promise<ISyncOutboxEntity> {
+    const id = record.id ?? generateId();
+    const inserted = await this._db
+      .insert(syncOutboxEntity)
+      .values({ ...record, id })
+      .returning();
+    return inserted[0];
+  }
+
+  /**
+   * Read pending mutations FIFO: `createdAt` asc, tie-break by `clientMutId`.
+   * Does not delete — rows stay until the server acks them.
+   */
+  async selectFifo(limit?: number): Promise<ISyncOutboxEntity[]> {
+    const query = this._db
+      .select()
+      .from(syncOutboxEntity)
+      .orderBy(asc(syncOutboxEntity.createdAt), asc(syncOutboxEntity.clientMutId));
+    return limit && limit > 0 ? query.limit(limit) : query;
+  }
+
+  /** Drop rows acknowledged by the server, by `clientMutId`. */
+  async deleteByClientMutIds(clientMutIds: number[]): Promise<void> {
+    if (clientMutIds.length === 0) {
+      return;
+    }
+    await this._db
+      .delete(syncOutboxEntity)
+      .where(inArray(syncOutboxEntity.clientMutId, clientMutIds));
+  }
+
+  /** Bump `retry_count` when the server rejects rows; the rows stay. */
+  async incrementRetry(clientMutIds: number[]): Promise<void> {
+    if (clientMutIds.length === 0) {
+      return;
+    }
+    await this._db
+      .update(syncOutboxEntity)
+      .set({ retryCount: sql`${syncOutboxEntity.retryCount} + 1` })
+      .where(inArray(syncOutboxEntity.clientMutId, clientMutIds));
+  }
+
+  async countAll(): Promise<number> {
+    const rows = await this._db
+      .select({ count: sql<number>`count(*)` })
+      .from(syncOutboxEntity);
+    return rows[0]?.count ?? 0;
+  }
+
+  async countByResource(resource: SyncResourceId): Promise<number> {
+    const rows = await this._db
+      .select({ count: sql<number>`count(*)` })
+      .from(syncOutboxEntity)
+      .where(eq(syncOutboxEntity.resource, resource));
+    return rows[0]?.count ?? 0;
+  }
+
+  async deleteByResource(resource: SyncResourceId): Promise<void> {
+    await this._db
+      .delete(syncOutboxEntity)
+      .where(eq(syncOutboxEntity.resource, resource));
+  }
+
+  /**
+   * Delete outbox rows whose `resource` matches and `entityId` starts with any of the given
+   * prefixes. Used to evict garbage written by historical bugs (e.g. self-referential
+   * `config` enqueue loops) without touching legitimate user data. Returns the number of
+   * deleted rows so callers can log the cleanup.
+   */
+  async deleteByResourceAndEntityIdPrefixes(
+    resource: SyncResourceId,
+    prefixes: readonly string[]
+  ): Promise<number> {
+    if (prefixes.length === 0) {
+      return 0;
+    }
+    // LIKE-escape `%` and `_` so a prefix containing them stays literal. Drizzle interpolates
+    // the bound value verbatim; the SQLite engine handles the escape character we declare.
+    const escapeLike = (input: string): string => input.replace(/[\\%_]/g, '\\$&');
+    const conditions = prefixes.map((prefix) =>
+      like(syncOutboxEntity.entityId, `${escapeLike(prefix)}%`)
+    );
+    const predicate = conditions.length === 1 ? conditions[0] : or(...conditions);
+    const result = await this._db
+      .delete(syncOutboxEntity)
+      .where(and(eq(syncOutboxEntity.resource, resource), predicate))
+      .returning({ clientMutId: syncOutboxEntity.clientMutId });
+    return result.length;
+  }
+
+  /**
+   * Largest stored `client_mut_id`; used by `SyncOutboxService` on startup to
+   * realign its in-memory counter. Returns 0 when the table is empty.
+   */
+  async maxClientMutId(): Promise<number> {
+    const rows = await this._db
+      .select({ max: sql<number | null>`max(${syncOutboxEntity.clientMutId})` })
+      .from(syncOutboxEntity);
+    return rows[0]?.max ?? 0;
+  }
+}

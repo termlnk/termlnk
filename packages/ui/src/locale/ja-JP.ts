@@ -63,6 +63,17 @@ const locale: typeof enUS = {
       'open-title': '左サイドバーを表示',
       'close-title': '左サイドバーを非表示',
     },
+    updater: {
+      'dialog-title': '新しいバージョンが利用可能',
+      'new-version-available': '新しいバージョンが利用可能です',
+      'update-ready': '更新の準備完了',
+      'release-notes': 'リリースノート',
+      'download-update': '更新をダウンロード',
+      downloading: 'ダウンロード中...',
+      'install-now': '今すぐインストール',
+      retry: '再試行',
+      'manual-update-hint': '新しいバージョンが利用可能です。最新の docker イメージを pull するか、git pull を実行して更新してください——ブラウザデプロイではアプリ内インストールはサポートされません。',
+    },
   },
 };
 

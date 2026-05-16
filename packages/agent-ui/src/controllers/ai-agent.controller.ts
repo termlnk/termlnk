@@ -13,14 +13,18 @@
  * governing permissions and limitations under the License.
  */
 
-import { RxDisposable } from '@termlnk/core';
+import { ILogService, RxDisposable } from '@termlnk/core';
 import { IAIAgentClientService, IProviderConfigClientService } from '@termlnk/rpc-client';
-import { combineLatest, distinctUntilChanged, filter } from 'rxjs';
+import { distinctUntilChanged, filter, takeUntil } from 'rxjs';
 
+// Forwards model selection (providerId / modelId) to the main process when the user
+// switches models. apiKey sync runs in the main process (AIKeySyncController), so the
+// renderer never sees plaintext credentials.
 export class AIAgentController extends RxDisposable {
   constructor(
     @IAIAgentClientService private readonly _aiAgentService: IAIAgentClientService,
-    @IProviderConfigClientService private readonly _providerConfigService: IProviderConfigClientService
+    @IProviderConfigClientService private readonly _providerConfigService: IProviderConfigClientService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
 
@@ -28,36 +32,17 @@ export class AIAgentController extends RxDisposable {
   }
 
   private _setupModelSync(): void {
-    const sub = combineLatest([
-      this._providerConfigService.activeModel$,
-      this._providerConfigService.activeProvider$,
-    ]).pipe(
-      filter(([model]) => model !== null),
-      distinctUntilChanged(
-        ([prevModel, prevProvider], [nextModel, nextProvider]) =>
-          prevModel?.id === nextModel?.id
-          && prevProvider?.apiKey === nextProvider?.apiKey
-          && prevProvider?.baseUrl === nextProvider?.baseUrl
-      )
-    ).subscribe(([model, providerConfig]) => {
-      if (!model) return;
-
-      // Set model on agent — extract provider and model ID from composite "provider/modelId"
-      const parts = model.id.split('/');
-      const providerId = parts[0];
-      const modelId = parts.slice(1).join('/');
+    this._providerConfigService.activeModel$.pipe(
+      filter((model): model is NonNullable<typeof model> => model !== null),
+      distinctUntilChanged((prev, next) => prev.id === next.id),
+      takeUntil(this.dispose$)
+    ).subscribe((model) => {
+      // Composite model id is `providerId/modelId`; modelId may itself contain '/'.
+      const [providerId, ...rest] = model.id.split('/');
+      const modelId = rest.join('/');
       this._aiAgentService.setModel(providerId, modelId).catch((err) => {
-        console.error('[AIAgentController] setModel failed:', err);
+        this._logService.error('[AIAgentController] setModel failed:', err);
       });
-
-      // Set API key if available
-      if (providerConfig?.apiKey) {
-        this._aiAgentService.setApiKey(providerId, providerConfig.apiKey).catch((err) => {
-          console.error('[AIAgentController] setApiKey failed:', err);
-        });
-      }
     });
-
-    this.disposeWithMe({ dispose: () => sub.unsubscribe() });
   }
 }

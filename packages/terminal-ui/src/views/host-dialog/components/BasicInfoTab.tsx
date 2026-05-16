@@ -20,9 +20,11 @@ import { Field, FieldContent, FieldError, FieldGroup, FieldLabel, Input, Select,
 import { IHostManagerService } from '@termlnk/rpc-client';
 import { DEFAULT_HOST_ROOT, HostType } from '@termlnk/terminal';
 import { useEffect, useState } from 'react';
+import { HostDialogMode } from '../../../models/host-dialog.state';
 
 export interface IBasicInfoTabProps {
   data: HostFormItem;
+  mode: HostDialogMode;
   onChange: (data: Partial<HostFormItem>) => void;
   getError: (path: string) => string | undefined;
 }
@@ -50,11 +52,16 @@ const compactInputCls = 'tm:h-8 tm:px-2 tm:py-1 tm:text-xs';
 const credentialTabTriggerCls = 'tm:px-2.5 tm:py-1 tm:text-xs tm:text-white tm:hover:text-blue';
 
 export function BasicInfoTab(props: IBasicInfoTabProps) {
-  const { data, onChange, getError } = props;
+  const { data, mode, onChange, getError } = props;
   const localeService = useDependency(LocaleService);
   const hostManagerService = useDependency(IHostManagerService);
 
   const credentialType = data.credential?.type ?? 'password';
+  const isEdit = mode === HostDialogMode.EDIT;
+  const passwordPlaceholder = isEdit ? localeService.t('terminal-ui.host-dialog.field.passwordKeepBlank') : '';
+  const privateKeyPlaceholder = isEdit
+    ? localeService.t('terminal-ui.host-dialog.field.privateKeyKeepBlank')
+    : '-----BEGIN RSA PRIVATE KEY-----';
 
   const [groups, setGroups] = useState<IGroupOption[]>([]);
 
@@ -192,6 +199,7 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
                   onChange={(e) => onChange({
                     credential: { ...data.credential, type: 'password', password: e.target.value } as ICredential,
                   })}
+                  placeholder={passwordPlaceholder}
                 />
                 <FieldError>{getError('credential.password')}</FieldError>
               </FieldContent>
@@ -228,7 +236,7 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
                     credential: { ...data.credential, type: 'rsa', privateKey: e.target.value } as ICredential,
                   })}
                   rows={4}
-                  placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                  placeholder={privateKeyPlaceholder}
                 />
                 <FieldError>{getError('credential.privateKey')}</FieldError>
               </FieldContent>

@@ -23,9 +23,16 @@ interface IDualPaneLayoutProps {
   onUploadDrop?: (localPaths: string[], remoteTargetPath: string, sourceType: DragSourceType) => void;
   onDownloadDrop?: (remotePaths: string[], localTargetPath: string) => void;
   refreshTrigger?: number;
+  /**
+   * Hide the LocalFilePane and let the RemoteFilePane span the full width.
+   * Used by termlnk-web where "local" means the user's browser, not the
+   * server filesystem — IBrowserFileTransferService picks up the slack via
+   * the upload / download buttons embedded in RemoteFilePane.
+   */
+  singlePane?: boolean;
 }
 
-export function DualPaneLayout({ sessionId, onUploadDrop, onDownloadDrop, refreshTrigger }: IDualPaneLayoutProps) {
+export function DualPaneLayout({ sessionId, onUploadDrop, onDownloadDrop, refreshTrigger, singlePane }: IDualPaneLayoutProps) {
   const [splitRatio, setSplitRatio] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -51,6 +58,19 @@ export function DualPaneLayout({ sessionId, onUploadDrop, onDownloadDrop, refres
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   }, []);
+
+  if (singlePane) {
+    // Web shell: only the remote side. Browser uploads / downloads flow
+    // through IBrowserFileTransferService, surfaced as buttons inside
+    // RemoteFilePane.
+    return (
+      <div ref={containerRef} className="tm:flex tm:size-full tm:overflow-hidden">
+        <div className="tm:size-full tm:overflow-hidden">
+          <RemoteFilePane sessionId={sessionId} onUploadDrop={onUploadDrop} refreshTrigger={refreshTrigger} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className="tm:flex tm:size-full tm:overflow-hidden">

@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Api, AssistantMessage, Model } from '@mariozechner/pi-ai';
+import type { Api, AssistantMessage, Model } from '@earendil-works/pi-ai';
 import type { ITerminalSuggestion, ITerminalSuggestionPhaseEvent } from '@termlnk/agent';
 import type { ITerminalCommand } from '@termlnk/terminal';
 import type { ICommandBlockService } from '../shell-integration/command-block.service';
@@ -25,7 +25,7 @@ import { TerminalSuggestService } from './terminal-suggest.service';
 
 // pi-ai is mocked so the service does not attempt real network calls.
 const completeSimpleMock = vi.fn<(...args: unknown[]) => Promise<AssistantMessage>>();
-vi.mock('@mariozechner/pi-ai', () => ({
+vi.mock('@earendil-works/pi-ai', () => ({
   completeSimple: (...args: unknown[]) => completeSimpleMock(...args),
 }));
 

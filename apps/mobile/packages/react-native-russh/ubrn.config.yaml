@@ -1,0 +1,3 @@
+rust:
+  directory: rust
+  manifestPath: uniffi-russh/Cargo.toml

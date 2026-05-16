@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Api, KnownProvider, Model } from '@mariozechner/pi-ai';
+import type { Api, KnownProvider, Model } from '@earendil-works/pi-ai';
 import type { ICustomModelDefinition, ILLMProvider, ILLMProviderService, IModelOption, IModelOverrides, IModelUserConfig, IProviderGroup, IProviderUserConfig } from '@termlnk/agent';
 import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity } from '@termlnk/database';
 import type { Observable } from 'rxjs';
-import { completeSimple, getModels, getProviders } from '@mariozechner/pi-ai';
+import { completeSimple, getModels, getProviders } from '@earendil-works/pi-ai';
 import { AGENT_PLUGIN_CONFIG_KEY, AI_STORAGE_PROVIDERS_KEY, formatProviderDisplayName, getDefaultProviderBaseUrl, getDefaultProviderSort, UNSUPPORTED_MODEL_SYNC_PROVIDERS } from '@termlnk/agent';
 import { Disposable, Inject } from '@termlnk/core';
 import { ConfigRepository, ProviderRepository } from '@termlnk/database';
@@ -197,7 +197,11 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
       name: patch.name ?? existing?.name,
       enabled: patch.enabled ?? existing?.enabled ?? false,
       api: patch.api ?? existing?.api,
-      apiKey: patch.apiKey ?? existing?.apiKey,
+      // Smart-merge: an empty string means "unchanged". The tRPC router
+      // redacts `apiKey` before sending it to the UI, so the edit form
+      // posts back an empty string when the user did not touch the field
+      // — we must keep the existing value in that case.
+      apiKey: (typeof patch.apiKey === 'string' && patch.apiKey !== '') ? patch.apiKey : existing?.apiKey,
       baseUrl: patch.baseUrl ?? existing?.baseUrl,
       headers: patch.headers ?? existing?.headers,
       sort: patch.sort ?? existing?.sort,

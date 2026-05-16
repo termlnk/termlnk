@@ -49,6 +49,8 @@ const locale: typeof enUS = {
         username: '사용자명',
         password: '비밀번호',
         privateKey: '개인 키',
+        passwordKeepBlank: '비워두면 현재 비밀번호 유지',
+        privateKeyKeepBlank: '비워두면 현재 개인 키 유지',
         parentGroup: '그룹',
         rootGroup: '루트',
       },

@@ -1,0 +1,120 @@
+/**
+ * Copyright 2026-present Termlnk
+ *
+ * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
+
+import type { Injector } from '@termlnk/core';
+import type { IRPCContext } from '@termlnk/rpc';
+import type { Buffer } from 'node:buffer';
+import type { IncomingMessage } from 'node:http';
+import type { Socket } from 'node:net';
+import type { AnyRouter } from './types';
+import { TRPCError } from '@trpc/server';
+import { applyWSSHandler } from '@trpc/server/adapters/ws';
+import { WebSocketServer } from 'ws';
+
+export interface ICreateTRPCWSHandlerOptions {
+  readonly router: AnyRouter;
+  readonly injector: Injector;
+  /**
+   * Heartbeat. Defaults to 30s ping / 5s pong-wait — recommended by
+   * `@trpc/server/adapters/ws`. NAT / proxy commonly drops idle TCP at 60s,
+   * so 30s ping keeps the connection alive.
+   */
+  readonly keepAlive?: { pingMs?: number; pongWaitMs?: number };
+  /**
+   * Optional gate evaluated on each upgrade — typically the cookie-based
+   * session check. Returning `false` rejects the upgrade *before* a
+   * WebSocket connection is established, so the unauthenticated peer never
+   * gets to send a single subscription frame. Same intent as the HTTP
+   * `authenticate` hook; keeps web-only `sessionId` out of `IRPCContext`.
+   */
+  readonly authenticate?: (req: IncomingMessage) => boolean;
+}
+
+/**
+ * Handle returned by createTRPCWSHandler — the owning service decides when to
+ * dispatch upgrade events here and when to release.
+ */
+export interface ITRPCWSHandlerHandle {
+  /** Apply a single HTTP `upgrade` event to this handler. Caller already filtered by URL. */
+  handleUpgrade(req: IncomingMessage, socket: Socket, head: Buffer): void;
+  /** Notify all clients to reconnect; useful when the server config changed mid-flight. */
+  broadcastReconnect(): void;
+  /** Tear down: terminate all clients and close the underlying WebSocketServer. */
+  close(): Promise<void>;
+}
+
+// Expose the appRouter as a WebSocket subscription endpoint. The factory does NOT
+// subscribe to server.upgrade itself — path routing is the owning service's job, so
+// multiple WS subsystems can coexist on a single port without racing upgrade
+// listeners. Authentication runs at upgrade time before handing the socket to the
+// WebSocketServer, so unauthenticated peers do not waste resources.
+export function createTRPCWSHandler(
+  opts: ICreateTRPCWSHandlerOptions
+): ITRPCWSHandlerHandle {
+  const wss = new WebSocketServer({ noServer: true });
+
+  const trpcHandle = applyWSSHandler({
+    wss,
+    router: opts.router,
+    keepAlive: {
+      enabled: true,
+      pingMs: opts.keepAlive?.pingMs ?? 30_000,
+      pongWaitMs: opts.keepAlive?.pongWaitMs ?? 5_000,
+    },
+    createContext: async ({ req }): Promise<IRPCContext> => {
+      // The connection-level upgrade gate already rejected unauthenticated
+      // peers, but we re-check here so the rejection layer is still correct
+      // when callers wire `authenticate` only to the WS factory and forget
+      // the upgrade-time pre-check (e.g. unit tests).
+      if (opts.authenticate && req && !opts.authenticate(req)) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
+      return { injector: opts.injector };
+    },
+  });
+
+  return {
+    handleUpgrade: (req, socket, head) => {
+      if (opts.authenticate && !opts.authenticate(req)) {
+        // Send a 401 status line on the raw socket before destroying it so the
+        // client sees a deterministic close instead of a generic ECONNRESET.
+        // This matches what the standard library does for failed handshakes.
+        try {
+          socket.write(
+            'HTTP/1.1 401 Unauthorized\r\n'
+            + 'Connection: close\r\n'
+            + 'Content-Length: 0\r\n'
+            + '\r\n'
+          );
+        } finally {
+          socket.destroy();
+        }
+        return;
+      }
+      wss.handleUpgrade(req, socket, head, (client) => {
+        wss.emit('connection', client, req);
+      });
+    },
+    broadcastReconnect: () => trpcHandle.broadcastReconnectNotification(),
+    close: async () => {
+      for (const client of wss.clients) {
+        client.terminate();
+      }
+      await new Promise<void>((resolve) => {
+        wss.close(() => resolve());
+      });
+    },
+  };
+}

@@ -1,0 +1,64 @@
+{
+  "name": "@termlnk/shared-terminal",
+  "version": "0.0.1",
+  "private": false,
+  "description": "Shared terminal contracts for termlnk - daemon-as-PTY-owner pairing, NaCl box encrypted relay channel, and multi-user collaboration interfaces",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "types": "./lib/types/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "main": "./lib/es/index.js",
+    "module": "./lib/es/index.js",
+    "exports": {
+      ".": {
+        "import": "./lib/es/index.js",
+        "require": "./lib/cjs/index.js",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./*": {
+        "import": "./lib/es/*",
+        "require": "./lib/cjs/*",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./lib/*": "./lib/*"
+    }
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build": "termlnk-cli build"
+  },
+  "peerDependencies": {
+    "@termlnk/core": "workspace:*"
+  },
+  "dependencies": {
+    "@termlnk/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
+  }
+}

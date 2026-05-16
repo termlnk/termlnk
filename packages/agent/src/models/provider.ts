@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Api, Model } from '@mariozechner/pi-ai';
+import type { Api, Model } from '@earendil-works/pi-ai';
 
 // ---------------------------------------------------------------------------
 // Runtime provider type — direct reuse of pi-ai Model<Api>

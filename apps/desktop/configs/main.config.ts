@@ -78,8 +78,8 @@ export default mergeConfig(baseConfig, {
         'dayjs',
         'lodash-es',
         '@modelcontextprotocol/sdk',
-        '@mariozechner/pi-ai',
-        '@mariozechner/pi-agent-core',
+        '@earendil-works/pi-ai',
+        '@earendil-works/pi-agent-core',
       ],
       include: [
         '@termlnk/shared',

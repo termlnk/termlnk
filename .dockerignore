@@ -1,0 +1,38 @@
+# Heavy / cache directories that bust Docker layer reuse.
+**/node_modules
+**/dist
+**/lib
+**/.turbo
+**/.tanstack
+**/.cache
+**/.vite
+
+# VCS / IDE / OS noise
+.git
+.idea
+.vscode
+**/.DS_Store
+
+# Repo-local logs / pids
+**/*.log
+**/pids
+
+# Per-package coverage / test artifacts
+**/coverage
+
+# Build outputs from incremental compiles
+**/tsconfig.tsbuildinfo
+
+# Local env files — never bake secrets into images
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Docs / supporting material we don't need at runtime
+docs
+
+# Electron desktop build outputs (never relevant to the web image)
+apps/desktop/build
+apps/desktop/dist
+apps/desktop/release

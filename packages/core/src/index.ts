@@ -65,3 +65,6 @@ export { DependentOn, DependentOnSymbol, Plugin, PluginService, PluginStore, Plu
 export type { PluginCtor } from './services/plugin/plugin.service';
 export type { IBase16Colors, IBase30Colors, ICustomTheme, ITheme } from './services/theme/theme';
 export { IThemeService, ThemeService } from './services/theme/theme.service';
+export type { IUpdateError, IUpdateInfo, IUpdateProgress } from './services/updater/type';
+export { UpdateStatus } from './services/updater/type';
+export { IUpdaterService } from './services/updater/updater.service';

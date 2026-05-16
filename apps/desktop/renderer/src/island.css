@@ -2,7 +2,7 @@
 @import 'tailwindcss/utilities' prefix(tm);
 @import '@termlnk/shared/tailwind/theme.css';
 
-@source "../../../../packages/island-ui/src";
+@source "../../plugins/island-ui/src";
 
 /* ---------------------------------------------------------------------------
  * Island window reset

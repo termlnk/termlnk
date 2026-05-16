@@ -15,7 +15,7 @@
 
 import type { ITheme } from '@termlnk/themes';
 import { IThemeService, LocaleService } from '@termlnk/core';
-import { Card, CardContent, CardDescription, CardHeader, useDependency } from '@termlnk/design';
+import { Card, CardContent, CardDescription, CardHeader, useDependency, useObservable } from '@termlnk/design';
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { ALL_THEMES } from '@termlnk/themes';
 import { ThemePicker } from '@termlnk/themes-ui';
@@ -23,14 +23,11 @@ import { UI_PLUGIN_CONFIG_KEY } from '@termlnk/ui';
 import { Moon, Sun } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
-export interface IColorSchemeTabProps {
-  currentTheme: ITheme | null;
-}
-
-export function ColorSchemeTab({ currentTheme }: IColorSchemeTabProps) {
+export function ColorSchemeTab() {
   const themeService = useDependency(IThemeService);
   const localeService = useDependency(LocaleService);
   const configManagerService = useDependency(IConfigManagerService);
+  const currentTheme = useObservable<ITheme | null>(themeService.currentTheme$, null);
 
   const darkThemes = useMemo(() => ALL_THEMES.filter((t) => t.type === 'dark'), []);
   const lightThemes = useMemo(() => ALL_THEMES.filter((t) => t.type === 'light'), []);
@@ -45,7 +42,7 @@ export function ColorSchemeTab({ currentTheme }: IColorSchemeTabProps) {
 
   return (
     <div className="tm:flex tm:flex-col tm:gap-6">
-      {/* 深色主题卡片 */}
+      {/* Dark themes */}
       <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <div className="tm:flex tm:items-center tm:gap-2">
@@ -67,7 +64,7 @@ export function ColorSchemeTab({ currentTheme }: IColorSchemeTabProps) {
         </CardContent>
       </Card>
 
-      {/* 浅色主题卡片 */}
+      {/* Light themes */}
       <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <div className="tm:flex tm:items-center tm:gap-2">

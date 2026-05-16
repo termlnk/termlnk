@@ -1,0 +1,28 @@
+{
+  "extends": "@termlnk/shared/tsconfig/base",
+  "compilerOptions": {
+    "jsx": "react-native",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "types": [
+      "node",
+      "react",
+      "react-native"
+    ],
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "src/**/*",
+    "app/**/*",
+    "*.ts",
+    "*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "./nativewind-env.d.ts"
+  ]
+}

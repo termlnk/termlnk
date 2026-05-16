@@ -4,7 +4,7 @@
   "private": false,
   "description": "Theme UI components for termlnk",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"
@@ -62,9 +62,9 @@
     "@termlnk/shared": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "rxjs": "^7.8.2",
-    "tailwindcss": "^4.2.4",
+    "tailwindcss": "^4.3.0",
     "tailwindcss-animate": "^1.0.7",
-    "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
   }
 }

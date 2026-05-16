@@ -4,7 +4,7 @@
   "private": false,
   "description": "RPC base definitions for termlnk",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"
@@ -57,9 +57,9 @@
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
-    "@trpc/server": "^11.16.0",
+    "@trpc/server": "^11.17.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
   }
 }

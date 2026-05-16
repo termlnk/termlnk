@@ -1,0 +1,40 @@
+{
+  "name": "@termlnk/web-app-server",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "description": "termlnk-web server entrypoint — Node.js + tRPC standalone HTTP/WS adapter (P7.3)",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "main": "./src/main.ts",
+  "scripts": {
+    "predev": "node ./scripts/ensure-node-abi.mjs",
+    "dev": "node ./bin/dev.js",
+    "prestart": "node ./scripts/ensure-node-abi.mjs",
+    "start": "node ./bin/dev.js",
+    "typecheck": "tsgo --noEmit",
+    "build": "echo 'apps/web/server has no compile step — main.ts runs through vite/module-runner; image build (apps/web/Dockerfile) bundles every workspace dependency to lib/es first.' && exit 0"
+  },
+  "dependencies": {
+    "@termlnk/agent-core": "workspace:*",
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/auth-core": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
+    "@termlnk/extension-core": "workspace:*",
+    "@termlnk/network": "workspace:*",
+    "@termlnk/rpc": "workspace:*",
+    "@termlnk/rpc-server": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "@termlnk/sync-core": "workspace:*",
+    "@termlnk/web-server": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "vite": "^8.0.13"
+  }
+}
