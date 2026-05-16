@@ -4,7 +4,7 @@
   "private": false,
   "description": "Auth core implementations for termlnk - master key derivation (Argon2id + HKDF), SRP6a client, and token management",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

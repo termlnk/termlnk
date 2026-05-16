@@ -4,7 +4,7 @@
   "private": false,
   "description": "Agent core services for termlnk - AI agent, MCP server/client, and skill management implementations",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

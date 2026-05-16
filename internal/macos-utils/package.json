@@ -3,7 +3,7 @@
   "version": "0.0.2",
   "private": true,
   "description": "Native macOS window utilities for Electron",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "main": "./index.cjs",
   "types": "./index.d.ts",
   "os": [

@@ -4,7 +4,7 @@
   "private": true,
   "description": "Dynamic Island shared contracts — session phase, animation state, island service interfaces.",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

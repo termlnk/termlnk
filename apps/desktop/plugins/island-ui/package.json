@@ -4,7 +4,7 @@
   "private": true,
   "description": "Dynamic Island UI — macOS notch overlay with session status and permission approval.",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

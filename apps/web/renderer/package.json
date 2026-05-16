@@ -5,7 +5,7 @@
   "private": true,
   "description": "termlnk-web browser SPA — desktop renderer mirror over HTTP/WS RPC (P7.4)",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

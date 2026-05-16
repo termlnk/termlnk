@@ -4,7 +4,7 @@
   "private": true,
   "description": "Web-private renderer plugin: tRPC httpBatchLink + wsLink wiring and web placeholders for Electron-only DI tokens. Not published — consumed only by apps/web/renderer.",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

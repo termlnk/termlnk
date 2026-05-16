@@ -4,7 +4,7 @@
   "private": false,
   "description": "Shared terminal contracts for termlnk - daemon-as-PTY-owner pairing, NaCl box encrypted relay channel, and multi-user collaboration interfaces",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

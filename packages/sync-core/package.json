@@ -4,7 +4,7 @@
   "private": false,
   "description": "Sync core implementations for termlnk - E2EE crypto (XChaCha20-Poly1305), outbox queue, transport, and per-resource synchronisers",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

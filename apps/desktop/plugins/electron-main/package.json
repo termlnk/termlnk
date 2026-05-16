@@ -4,7 +4,7 @@
   "private": true,
   "description": "Electron main process plugin (electron-builder, window manager, PTY, IPC).",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

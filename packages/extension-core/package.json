@@ -4,7 +4,7 @@
   "private": false,
   "description": "Extension core services for termlnk - extension storage, install, state persistence, and registry",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

@@ -5,7 +5,7 @@
   "private": true,
   "description": "Some infrastructures for termlnk",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": "https://github.com/termlnk/termlnk.git",
   "exports": {
     "./eslint": "./eslint/index.ts",

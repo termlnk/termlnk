@@ -5,7 +5,7 @@
   "private": true,
   "description": "termlnk-web server entrypoint — Node.js + tRPC standalone HTTP/WS adapter (P7.3)",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "https://github.com/termlnk/termlnk",
     "type": "git"

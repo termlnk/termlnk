@@ -5,7 +5,7 @@
   "description": "Self-vendored React Native binding for Rust russh + russh-sftp via uniffi-bindgen-react-native. Replaces the NMSSH/JSch bridge in termlnk-mobile.",
   "homepage": "https://github.com/termlnk/termlnk#readme",
   "author": "telan <telanflow@gmail.com>",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "url": "git+https://github.com/termlnk/termlnk.git",
     "type": "git"
