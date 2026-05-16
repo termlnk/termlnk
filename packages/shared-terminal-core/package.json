@@ -63,13 +63,13 @@
     "@xterm/addon-serialize": "^0.15.0-beta.204",
     "@xterm/headless": "^6.1.0-beta.204",
     "tweetnacl": "^1.0.3",
-    "undici": "^8.2.0"
+    "undici": "^8.3.0"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
   }
 }

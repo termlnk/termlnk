@@ -54,7 +54,7 @@
     "@termlnk/database": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "rxjs": ">=7.0.0",
-    "socks": "^2.8.7"
+    "socks": "^2.8.9"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "^0.74.0",
@@ -66,8 +66,8 @@
     "@termlnk/database": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "partial-json": "^0.1.7",
-    "socks": "^2.8.8",
-    "undici": "^8.2.0",
+    "socks": "^2.8.9",
+    "undici": "^8.3.0",
     "zod": "^4.4.3"
   },
   "optionalDependencies": {
@@ -77,7 +77,7 @@
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10",
-    "vitest": "^4.1.5"
+    "vite": "^8.0.13",
+    "vitest": "^4.1.6"
   }
 }
