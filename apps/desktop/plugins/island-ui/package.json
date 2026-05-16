@@ -1,8 +1,8 @@
 {
   "name": "@termlnk/island-ui",
   "version": "0.0.2",
-  "private": false,
-  "description": "Dynamic Island UI components for termlnk - macOS notch overlay with session status and permission approval",
+  "private": true,
+  "description": "Dynamic Island UI — macOS notch overlay with session status and permission approval.",
   "author": "telan <telanflow@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -16,44 +16,13 @@
     "./locale/*": "./src/locale/*.ts"
   },
   "main": "./src/index.ts",
-  "types": "./lib/types/index.d.ts",
-  "publishConfig": {
-    "access": "public",
-    "main": "./lib/es/index.js",
-    "module": "./lib/es/index.js",
-    "exports": {
-      ".": {
-        "import": "./lib/es/index.js",
-        "require": "./lib/cjs/index.js",
-        "types": "./lib/types/index.d.ts"
-      },
-      "./*": {
-        "import": "./lib/es/*",
-        "require": "./lib/cjs/*",
-        "types": "./lib/types/index.d.ts"
-      },
-      "./locale/*": {
-        "import": "./lib/es/locale/*.js",
-        "require": "./lib/cjs/locale/*.js",
-        "types": "./lib/types/locale/*.d.ts"
-      },
-      "./lib/*": "./lib/*"
-    }
-  },
-  "directories": {
-    "lib": "lib"
-  },
-  "files": [
-    "lib"
-  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsgo --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "build": "termlnk-cli build"
+    "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
     "@termlnk/core": "workspace:*",

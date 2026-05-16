@@ -250,7 +250,7 @@ importers:
         version: link:../../../packages/extension-core
       '@termlnk/island-core':
         specifier: workspace:*
-        version: link:../../../packages/island-core
+        version: link:../plugins/island-core
       '@termlnk/network':
         specifier: workspace:*
         version: link:../../../packages/network
@@ -311,7 +311,7 @@ importers:
         version: link:../../../../packages/electron
       '@termlnk/island':
         specifier: workspace:*
-        version: link:../../../../packages/island
+        version: link:../island
       '@termlnk/rpc':
         specifier: workspace:*
         version: link:../../../../packages/rpc
@@ -430,6 +430,102 @@ importers:
         specifier: ^4.1.5
         version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
 
+  apps/desktop/plugins/island:
+    dependencies:
+      '@termlnk/agent':
+        specifier: workspace:*
+        version: link:../../../../packages/agent
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../../../packages/core
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  apps/desktop/plugins/island-core:
+    dependencies:
+      '@termlnk/agent':
+        specifier: workspace:*
+        version: link:../../../../packages/agent
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../../../packages/core
+      '@termlnk/island':
+        specifier: workspace:*
+        version: link:../island
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+
+  apps/desktop/plugins/island-ui:
+    dependencies:
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../../../packages/core
+      '@termlnk/design':
+        specifier: workspace:*
+        version: link:../../../../packages/design
+      '@termlnk/island':
+        specifier: workspace:*
+        version: link:../island
+      '@termlnk/rpc':
+        specifier: workspace:*
+        version: link:../../../../packages/rpc
+      '@termlnk/rpc-client':
+        specifier: workspace:*
+        version: link:../../../../packages/rpc-client
+      '@termlnk/settings-ui':
+        specifier: workspace:*
+        version: link:../../../../packages/settings-ui
+      lucide-react:
+        specifier: ^1.14.0
+        version: 1.14.0(react@19.2.6)
+      react:
+        specifier: ^19.2.6
+        version: 19.2.6
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+
   apps/desktop/renderer:
     dependencies:
       '@tanstack/react-query':
@@ -470,10 +566,10 @@ importers:
         version: link:../../../packages/extension-ui
       '@termlnk/island':
         specifier: workspace:*
-        version: link:../../../packages/island
+        version: link:../plugins/island
       '@termlnk/island-ui':
         specifier: workspace:*
-        version: link:../../../packages/island-ui
+        version: link:../plugins/island-ui
       '@termlnk/rpc':
         specifier: workspace:*
         version: link:../../../packages/rpc
@@ -975,9 +1071,6 @@ importers:
       '@termlnk/extension-core':
         specifier: workspace:*
         version: link:../../../packages/extension-core
-      '@termlnk/island-core':
-        specifier: workspace:*
-        version: link:../../../packages/island-core
       '@termlnk/network':
         specifier: workspace:*
         version: link:../../../packages/network
@@ -1656,102 +1749,6 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@4.2.4)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.10
-        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-      vitest:
-        specifier: ^4.1.5
-        version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
-
-  packages/island:
-    dependencies:
-      '@termlnk/agent':
-        specifier: workspace:*
-        version: link:../agent
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../internal/shared
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.10
-        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-      vitest:
-        specifier: ^4.1.5
-        version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
-
-  packages/island-core:
-    dependencies:
-      '@termlnk/agent':
-        specifier: workspace:*
-        version: link:../agent
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../core
-      '@termlnk/island':
-        specifier: workspace:*
-        version: link:../island
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../internal/shared
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.10
-        version: 8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-      vitest:
-        specifier: ^4.1.5
-        version: 4.1.5(@types/node@25.5.0)(@vitest/coverage-istanbul@4.1.5)(happy-dom@20.8.9)(vite@8.0.10(@types/node@25.5.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
-
-  packages/island-ui:
-    dependencies:
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../core
-      '@termlnk/design':
-        specifier: workspace:*
-        version: link:../design
-      '@termlnk/island':
-        specifier: workspace:*
-        version: link:../island
-      '@termlnk/rpc':
-        specifier: workspace:*
-        version: link:../rpc
-      '@termlnk/rpc-client':
-        specifier: workspace:*
-        version: link:../rpc-client
-      '@termlnk/settings-ui':
-        specifier: workspace:*
-        version: link:../settings-ui
-      lucide-react:
-        specifier: ^1.14.0
-        version: 1.14.0(react@19.2.6)
-      react:
-        specifier: ^19.2.6
-        version: 19.2.6
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../internal/shared
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

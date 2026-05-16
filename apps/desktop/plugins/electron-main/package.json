@@ -2,7 +2,7 @@
   "name": "@termlnk/electron-main",
   "version": "0.0.2",
   "private": true,
-  "description": "Desktop-private Electron main process plugin (electron-builder, window manager, PTY, IPC). Not published — consumed only by apps/desktop/main.",
+  "description": "Electron main process plugin (electron-builder, window manager, PTY, IPC).",
   "author": "telan <telanflow@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {

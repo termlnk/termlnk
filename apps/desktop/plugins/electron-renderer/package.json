@@ -2,7 +2,7 @@
   "name": "@termlnk/electron-renderer",
   "version": "0.0.2",
   "private": true,
-  "description": "Desktop-private Electron renderer plugin (tRPC IPC client, window manager wrapper, PTY wrapper, header). Not published — consumed only by apps/desktop/renderer.",
+  "description": "Electron renderer plugin (tRPC IPC client, window manager wrapper, PTY wrapper, header).",
   "author": "telan <telanflow@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {

@@ -36,7 +36,6 @@ import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, LocalDerivedSecretCipher, SQLiteAdaptor } from '@termlnk/database';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
-import { IslandCorePlugin } from '@termlnk/island-core';
 import { IFetchProvider, NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { appRouter, RPCServerPlugin } from '@termlnk/rpc-server';
@@ -115,7 +114,6 @@ async function bootstrap(): Promise<void> {
     hookCliSrcDir,
   });
   core.registerPlugin(ExtensionCorePlugin);
-  core.registerPlugin(IslandCorePlugin);
   core.registerPlugin(RPCServerPlugin);
   core.registerPlugin(WebServerPlugin, {
     port,

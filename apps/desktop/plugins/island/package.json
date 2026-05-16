@@ -1,8 +1,8 @@
 {
   "name": "@termlnk/island",
   "version": "0.0.2",
-  "private": false,
-  "description": "Dynamic Island shared contracts for termlnk - session phase, animation state, and island service interfaces",
+  "private": true,
+  "description": "Dynamic Island shared contracts — session phase, animation state, island service interfaces.",
   "author": "telan <telanflow@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -14,39 +14,13 @@
     "./*": "./src/*"
   },
   "main": "./src/index.ts",
-  "types": "./lib/types/index.d.ts",
-  "publishConfig": {
-    "access": "public",
-    "main": "./lib/es/index.js",
-    "module": "./lib/es/index.js",
-    "exports": {
-      ".": {
-        "import": "./lib/es/index.js",
-        "require": "./lib/cjs/index.js",
-        "types": "./lib/types/index.d.ts"
-      },
-      "./*": {
-        "import": "./lib/es/*",
-        "require": "./lib/cjs/*",
-        "types": "./lib/types/index.d.ts"
-      },
-      "./lib/*": "./lib/*"
-    }
-  },
-  "directories": {
-    "lib": "lib"
-  },
-  "files": [
-    "lib"
-  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsgo --noEmit",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "build": "termlnk-cli build"
+    "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
     "@termlnk/agent": "workspace:*",
