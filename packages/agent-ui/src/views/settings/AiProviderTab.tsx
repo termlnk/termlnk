@@ -49,10 +49,9 @@ export function AiProviderTab() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [providerQuery, setProviderQuery] = useState('');
   const [modelQuery, setModelQuery] = useState('');
-  // Holds whatever the user is currently typing; the server never returns plaintext keys.
-  // An empty submission means "unchanged" (main process smart-merges); a new value replaces.
+  // Seeded from server with the plaintext apiKey so the Input's password-eye toggle can
+  // reveal it; empty submission means "unchanged" (main-process smart-merge).
   const [apiKeyInputs, setApiKeyInputs] = useState<Record<string, string>>({});
-  const [apiKeyConfigured, setApiKeyConfigured] = useState<Record<string, boolean>>({});
   const [baseUrlInputs, setBaseUrlInputs] = useState<Record<string, string>>({});
   const [syncingProviderId, setSyncingProviderId] = useState<string | null>(null);
   const [syncFeedback, setSyncFeedback] = useState<{ providerId: string; type: 'success' | 'error'; message: string } | null>(null);
@@ -76,17 +75,22 @@ export function AiProviderTab() {
 
       if (cancelled) return;
 
-      const configuredFlags: Record<string, boolean> = {};
+      const apiKeys: Record<string, string> = {};
       const baseUrls: Record<string, string> = {};
 
       for (const [providerId, config] of entries) {
-        if (!config) continue;
-        // Server returns only an `apiKeyConfigured` placeholder, never the plaintext key.
-        configuredFlags[providerId] = !!(config as { apiKeyConfigured?: boolean }).apiKeyConfigured;
-        if (config.baseUrl) baseUrls[providerId] = config.baseUrl;
+        if (!config) {
+          continue;
+        }
+        if (config.apiKey) {
+          apiKeys[providerId] = config.apiKey;
+        }
+        if (config.baseUrl) {
+          baseUrls[providerId] = config.baseUrl;
+        }
       }
 
-      setApiKeyConfigured(configuredFlags);
+      setApiKeyInputs((prev) => ({ ...apiKeys, ...prev }));
       setBaseUrlInputs((prev) => ({ ...baseUrls, ...prev }));
     };
 
@@ -116,7 +120,7 @@ export function AiProviderTab() {
         modelCount: provider.models.length,
         enabledModelCount: provider.models.filter((m) => m.enabled).length,
         isEnabled: provider.enabled,
-        hasApiKey: !!apiKeyConfigured[provider.id] || !!apiKeyInputs[provider.id],
+        hasApiKey: !!apiKeyInputs[provider.id],
         isBuiltin: provider.builtin,
       }))
       .filter((provider) => {
@@ -128,7 +132,7 @@ export function AiProviderTab() {
         if (a.isEnabled !== b.isEnabled) return a.isEnabled ? -1 : 1;
         return compareProviders(a, b);
       });
-  }, [providers, providerQuery, apiKeyInputs, apiKeyConfigured]);
+  }, [providers, providerQuery, apiKeyInputs]);
 
   const selectedProvider = useMemo(() => {
     return providers.find((p) => p.id === selectedProviderId) ?? null;
@@ -527,16 +531,11 @@ export function AiProviderTab() {
                     <Input
                       type="password"
                       className={cn(inputCls, 'tm:mt-2')}
-                      placeholder={apiKeyConfigured[selectedProvider.id] ? '••••••••' : 'sk-...'}
+                      placeholder="sk-..."
                       value={apiKeyInputs[selectedProvider.id] ?? ''}
                       onChange={(e) => handleApiKeyChange(selectedProvider.id, e.target.value)}
                       onBlur={() => void handleSaveProvider(selectedProvider.id)}
                     />
-                    <p className="tm:mt-2 tm:text-[11px] tm:text-white/80">
-                      {apiKeyConfigured[selectedProvider.id]
-                        ? localeService.t('agent-ui.provider.api-key-hint-configured')
-                        : localeService.t('agent-ui.provider.api-key-hint')}
-                    </p>
                   </div>
 
                   {/* Base URL */}

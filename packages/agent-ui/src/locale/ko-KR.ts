@@ -24,7 +24,6 @@ const locale: typeof enUS = {
       title: '프로바이더',
       'api-key': 'API 키',
       'api-key-hint': '이 프로바이더의 모델 동기화 및 요청 인증에 사용.',
-      'api-key-hint-configured': 'API 키가 설정되어 있습니다. 비워 두면 유지, 새 값을 입력하면 교체됩니다.',
       'base-url': '기본 URL (선택)',
       'base-url-hint': '커스텀 엔드포인트 또는 프록시 사용 시에만 설정.',
       'base-url-default': '기본 Base URL',

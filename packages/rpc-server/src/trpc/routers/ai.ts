@@ -229,7 +229,10 @@ export const aiRouter = router({
     .input(getProviderConfigSchema)
     .query(async ({ ctx, input }) => {
       const providerService = ctx.injector.get(ILLMProviderService);
-      return sanitizeProviderUserConfig(providerService.getProviderConfig(input.providerId));
+      // Single-provider query returns the full plaintext config (apiKey included) so the
+      // settings form can populate the Input's password-eye toggle — mirrors host.getInfo's
+      // sanitize bypass. Batch endpoints (`providers$`, `activeProvider$`) keep redacting.
+      return providerService.getProviderConfig(input.providerId);
     }),
 
   // --- Subscriptions ---

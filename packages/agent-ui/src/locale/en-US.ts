@@ -22,7 +22,6 @@ const locale = {
       title: 'Providers',
       'api-key': 'API Key',
       'api-key-hint': 'Used for model sync and requests to this provider.',
-      'api-key-hint-configured': 'API key configured. Leave blank to keep, or enter a new value to replace.',
       'base-url': 'Base URL (Optional)',
       'base-url-hint': 'Set only when using a custom endpoint or proxy.',
       'base-url-default': 'Default Base URL',

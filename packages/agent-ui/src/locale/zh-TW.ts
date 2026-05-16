@@ -24,7 +24,6 @@ const locale: typeof enUS = {
       title: '供應商',
       'api-key': 'API 金鑰',
       'api-key-hint': '用於該供應商的模型同步和請求驗證。',
-      'api-key-hint-configured': 'API Key 已配置。留空保留，輸入新值替換。',
       'base-url': '基礎 URL（選填）',
       'base-url-hint': '僅在使用自訂端點或代理時填寫。',
       'base-url-default': '預設基礎 URL',
