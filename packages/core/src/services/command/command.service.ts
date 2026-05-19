@@ -107,6 +107,8 @@ export const ICommandService = createIdentifier<ICommandService>('core.command-s
  * The service to register and execute commands.
  */
 export interface ICommandService {
+  disposed(): boolean;
+
   /**
    * Check if a command is already registered at the current command service.
    * @param commandId The id of the command.
@@ -235,6 +237,14 @@ export class CommandService extends Disposable implements ICommandService {
     this._beforeCommandExecutionListeners.length = 0;
   }
 
+  disposed(): boolean {
+    return this._disposed;
+  }
+
+  private _warnCommandSkippedAfterDisposed(id: string): void {
+    this._logService.warn('[CommandService]', `command "${id}" skipped because CommandService is disposed.`);
+  }
+
   hasCommand(commandId: string): boolean {
     return this._commandRegistry.hasCommand(commandId);
   }
@@ -283,6 +293,11 @@ export class CommandService extends Disposable implements ICommandService {
     params?: P,
     options?: IExecutionOptions
   ): Promise<R> {
+    if (this._disposed) {
+      this._warnCommandSkippedAfterDisposed(id);
+      return false as R;
+    }
+
     try {
       const item = this._commandRegistry.getCommand(id);
       if (item) {
@@ -296,6 +311,12 @@ export class CommandService extends Disposable implements ICommandService {
         const _options = options ?? {};
 
         this._beforeCommandExecutionListeners.forEach((listener) => listener(commandInfo, _options));
+        if (this._disposed) {
+          stackItemDisposable.dispose();
+          this._warnCommandSkippedAfterDisposed(id);
+          return false as R;
+        }
+
         const result = await this._execute<P, R>(command as ICommand<P, R>, params, _options);
         this._commandExecutedListeners.forEach((listener) => listener(commandInfo, _options));
 
@@ -307,7 +328,7 @@ export class CommandService extends Disposable implements ICommandService {
       throw new Error(`[CommandService]: command "${id}" is not registered.`);
     } catch (error) {
       if (error instanceof CustomCommandExecutionError) {
-                // If need custom logic, can add it here
+        // If need custom logic, can add it here
         return false as R;
       } else {
         throw error;
@@ -320,6 +341,11 @@ export class CommandService extends Disposable implements ICommandService {
     params?: P | undefined,
     options?: IExecutionOptions
   ): R {
+    if (this._disposed) {
+      this._warnCommandSkippedAfterDisposed(id);
+      return false as R;
+    }
+
     try {
       const item = this._commandRegistry.getCommand(id);
       if (item) {
@@ -333,6 +359,12 @@ export class CommandService extends Disposable implements ICommandService {
         const _options = options ?? {};
 
         this._beforeCommandExecutionListeners.forEach((listener) => listener(commandInfo, _options));
+        if (this._disposed) {
+          stackItemDisposable.dispose();
+          this._warnCommandSkippedAfterDisposed(id);
+          return false as R;
+        }
+
         const result = this._syncExecute<P, R>(command as ICommand<P, R>, params, _options);
         this._commandExecutedListeners.forEach((listener) => listener(commandInfo, _options));
 
