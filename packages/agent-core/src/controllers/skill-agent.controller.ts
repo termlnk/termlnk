@@ -58,7 +58,6 @@ export class SkillAgentController extends Disposable {
   }
 
   private async _rebuildSkillSections(): Promise<void> {
-    // Remove old skill sections
     for (const id of this._skillSectionIds) {
       this._systemPromptService.removeSection(id);
     }

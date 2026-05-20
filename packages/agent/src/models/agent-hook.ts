@@ -253,10 +253,6 @@ export interface IExternalAgentSession {
   externalMeta?: IAgentHookEventMeta;
 }
 
-// ---------------------------------------------------------------------------
-// Hook adapter definitions
-// ---------------------------------------------------------------------------
-
 /**
  * Hook format used by each agent's configuration.
  *
@@ -334,10 +330,6 @@ export interface IAgentHookDefinition {
   /** Event mappings: agent-specific event names -> termlnk unified events */
   readonly events: readonly IAgentHookEventMapping[];
 }
-
-// ---------------------------------------------------------------------------
-// Pending interactions (permission request / AskUserQuestion)
-// ---------------------------------------------------------------------------
 
 /**
  * Minimal descriptor for an AskUserQuestion hook event.
@@ -436,10 +428,6 @@ export interface IPermissionResponsePayload {
   readonly requestId: string;
   readonly decision: IPermissionDecision;
 }
-
-// ---------------------------------------------------------------------------
-// Agent hook configuration (persisted via IConfigService)
-// ---------------------------------------------------------------------------
 
 /**
  * User-facing configuration for agent hook system.

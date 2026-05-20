@@ -60,14 +60,12 @@ export class PlatformContextService extends Disposable implements IPlatformConte
       })
     );
 
-    // Refresh context when locale changes
     this.disposeWithMe(
       this._localeService.localeChanged$.subscribe(() => {
         this._refreshTrigger$.next();
       })
     );
 
-    // Emit initial context
     this._context$.next(this._buildContext());
   }
 

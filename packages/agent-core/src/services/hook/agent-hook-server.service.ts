@@ -241,10 +241,6 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Request handling
-  // ---------------------------------------------------------------------------
-
   private async _handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (req.method !== 'POST' || !req.url?.startsWith('/hook')) {
       res.writeHead(404);
@@ -412,10 +408,6 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
     return 'internal';
   }
 
-  // ---------------------------------------------------------------------------
-  // Response delivery (permission only)
-  // ---------------------------------------------------------------------------
-
   private _sendResponse(pending: IPendingRecord, decision: IPermissionDecision): void {
     const { res, payload } = pending;
     if (!res || res.headersSent) {
@@ -472,10 +464,7 @@ export class AgentHookServerService extends Disposable implements IAgentHookServ
     this._pendingInteractions$.next([]);
   }
 
-  // ---------------------------------------------------------------------------
-  // Runtime discovery file (published so external terminal agents can find us)
-  // ---------------------------------------------------------------------------
-
+  // Runtime discovery file is published so external terminal agents can find us.
   private _resolveConfigPath(): string | null {
     const cfg = this._configService.getConfig<IAgentCorePluginConfig>(AGENT_CORE_PLUGIN_CONFIG_KEY);
     return cfg?.configPath ?? null;

@@ -15,10 +15,6 @@
 
 import type { Api, Model } from '@earendil-works/pi-ai';
 
-// ---------------------------------------------------------------------------
-// Runtime provider type — direct reuse of pi-ai Model<Api>
-// ---------------------------------------------------------------------------
-
 /**
  * LLM 提供商运行时对象
  *
@@ -47,10 +43,6 @@ export interface ILLMProvider {
   /** 模型列表 — 直接使用 pi-ai 的 Model<Api> 类型 */
   models: Model<Api>[];
 }
-
-// ---------------------------------------------------------------------------
-// User config types — stored as delta in database
-// ---------------------------------------------------------------------------
 
 /**
  * 提供商用户配置（数据库持久化 + RPC 传输）
@@ -109,10 +101,6 @@ export interface ICustomModelDefinition {
   headers?: Record<string, string>;
   compat?: Model<Api>['compat'];
 }
-
-// ---------------------------------------------------------------------------
-// UI layer lightweight types — for RPC transport
-// ---------------------------------------------------------------------------
 
 /**
  * UI 层 - 模型选项

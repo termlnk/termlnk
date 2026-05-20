@@ -90,7 +90,6 @@ export const UserMessageBubble = memo(function UserMessageBubble({
     }
   }, [handleCancelEdit, handleSubmitEdit]);
 
-  // Focus + select-end on entering edit mode.
   useEffect(() => {
     if (editing && editTextareaRef.current) {
       editTextareaRef.current.focus();

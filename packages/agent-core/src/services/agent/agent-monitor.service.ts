@@ -211,10 +211,6 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Event handlers
-  // ---------------------------------------------------------------------------
-
   private _onSessionStart(event: IAgentHookEvent): void {
     const payload = event.payload ?? {};
     const source = resolveSource(event.sessionId);
@@ -415,10 +411,6 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Zombie detection
-  // ---------------------------------------------------------------------------
-
   private _startZombieDetection(): void {
     this._zombieCheckInterval = setInterval(() => {
       let changed = false;
@@ -462,10 +454,6 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
       return false;
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
 
   private _updateSessionStatus(
     status: AgentSessionStatus,

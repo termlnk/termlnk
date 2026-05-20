@@ -169,10 +169,6 @@ export class KimiCodeHookAdapter extends Disposable implements IAgentHookAdapter
     return mapping?.termlnkEvent;
   }
 
-  // ---------------------------------------------------------------------------
-  // TOML config block helpers
-  // ---------------------------------------------------------------------------
-
   private _readConfig(): string {
     if (!existsSync(KIMI_CONFIG_FILE)) {
       return '';

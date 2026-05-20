@@ -64,7 +64,6 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
     const panelRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    // Load skills
     useEffect(() => {
       let active = true;
 
@@ -106,13 +105,11 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
       };
     }, [skillService]);
 
-    // All items
     const allItems = useMemo<ISlashCommandItem[]>(
       () => [...BUILTIN_COMMANDS, ...skillItems],
       [skillItems]
     );
 
-    // Filtered items
     const filteredItems = useMemo(() => {
       if (!slashState.active) return [];
       const q = slashState.query.toLowerCase();
@@ -120,12 +117,10 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
       return allItems.filter((item) => item.name.toLowerCase().includes(q));
     }, [allItems, slashState.active, slashState.query]);
 
-    // Reset highlight when filtered items change
     useEffect(() => {
       setHighlightIndex(0);
     }, [filteredItems.length, slashState.query]);
 
-    // Scroll highlighted item into view
     useEffect(() => {
       if (!listRef.current) {
         return;
@@ -136,7 +131,6 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
       }
     }, [highlightIndex]);
 
-    // Click outside to close
     useEffect(() => {
       if (!slashState.active) return;
 
@@ -151,7 +145,6 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
       return () => document.removeEventListener('mousedown', handleMouseDown);
     }, [slashState.active, onClose, textareaRef]);
 
-    // Expose keyboard handler
     useImperativeHandle(ref, () => ({
       handleKeyDown(e: React.KeyboardEvent): boolean {
         if (!slashState.active || filteredItems.length === 0) return false;

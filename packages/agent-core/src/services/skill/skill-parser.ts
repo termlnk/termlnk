@@ -47,7 +47,6 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
       continue;
     }
 
-    // Array item continuation
     if (currentKey && currentArray !== null && /^\s+-\s+/.test(line)) {
       const value = line.replace(/^\s+-\s+/, '').trim();
       currentArray.push(unquote(value));
@@ -55,10 +54,8 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
       continue;
     }
 
-    // Key-value pair
     const kvMatch = line.match(/^(\S[\w-]*)\s*:\s*(.*)/);
     if (kvMatch) {
-      // Flush previous array
       if (currentKey && currentArray !== null) {
         result[currentKey] = currentArray;
       }
@@ -67,7 +64,6 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
       const rawValue = kvMatch[2].trim();
 
       if (rawValue === '') {
-        // Start of array or empty value
         currentKey = key;
         currentArray = [];
         continue;
@@ -83,7 +79,6 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
       } else if (/^\d+$/.test(rawValue)) {
         result[key] = Number.parseInt(rawValue, 10);
       } else if (rawValue.startsWith('[') && rawValue.endsWith(']')) {
-        // Inline array
         result[key] = rawValue
           .slice(1, -1)
           .split(',')
@@ -95,7 +90,6 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
     }
   }
 
-  // Flush final array
   if (currentKey && currentArray !== null) {
     result[currentKey] = currentArray;
   }

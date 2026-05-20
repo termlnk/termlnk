@@ -87,7 +87,6 @@ export class MyMcpService extends Disposable implements IMyMcpService {
 
     this._logService.log('[MCPServerService]', 'Stopping MCP server...');
 
-    // Clean up stdio mode
     if (this._server) {
       try {
         await this._server.close();
@@ -99,7 +98,6 @@ export class MyMcpService extends Disposable implements IMyMcpService {
       this._registeredTools.clear();
     }
 
-    // Clean up http mode
     if (this._httpServer) {
       // Close all sessions
       for (const [sessionId, session] of this._sessions) {
@@ -117,7 +115,6 @@ export class MyMcpService extends Disposable implements IMyMcpService {
       });
       this._httpServer = null;
 
-      // Clean up tools sync subscription
       this._toolsSyncSubscription?.unsubscribe();
       this._toolsSyncSubscription = null;
     }
@@ -265,7 +262,6 @@ export class MyMcpService extends Disposable implements IMyMcpService {
     const currentNames = new Set(registeredTools.keys());
     const newNames = new Set(tools.map((t) => t.name));
 
-    // Remove tools that no longer exist
     for (const name of currentNames) {
       if (!newNames.has(name)) {
         registeredTools.get(name)?.remove();

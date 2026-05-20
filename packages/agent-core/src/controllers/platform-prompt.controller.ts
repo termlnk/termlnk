@@ -71,7 +71,6 @@ export class PlatformPromptController extends Disposable {
   }
 
   private _updatePlatformSections(platform: PlatformType | string): void {
-    // Remove old platform sections
     for (const id of this._currentSectionIds) {
       this._systemPrompt.removeSection(id);
     }

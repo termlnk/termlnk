@@ -152,7 +152,6 @@ export const WidgetRenderer = memo(function WidgetRenderer({
     return () => window.clearTimeout(t);
   }, [html, loaded, height]);
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current !== null) {

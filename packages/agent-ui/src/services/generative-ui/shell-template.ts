@@ -106,7 +106,6 @@ const BRIDGE_JS = `
       window._setContent(d.html);
     } else if (d.type === 'run-scripts') {
       window._runScripts();
-      // Flush any pending content first
       if (window._pending != null) {
         window._setContent(window._pending);
         window._pending = null;

@@ -206,12 +206,10 @@ export class SkillInstallerService extends Disposable implements ISkillInstaller
       throw new Error('Cannot uninstall builtin skills');
     }
 
-    // Remove from filesystem
     if (existsSync(skill.path)) {
       rmSync(skill.path, { recursive: true, force: true });
     }
 
-    // Remove from database
     await this._skillRepository.delete(id);
     this._logService.log(`[SkillInstaller] Uninstalled skill: ${skill.name}`);
   }

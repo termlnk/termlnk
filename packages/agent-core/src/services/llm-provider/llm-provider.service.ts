@@ -132,10 +132,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     this._initialized = true;
   }
 
-  // ---------------------------------------------------------------------------
-  // Provider operations
-  // ---------------------------------------------------------------------------
-
   async addProvider(config: IProviderUserConfig): Promise<void> {
     this.ensureNotDisposed();
 
@@ -246,10 +242,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
   getAvailableModels(): IProviderGroup[] {
     return this._providers$.getValue().filter((p) => p.enabled);
   }
-
-  // ---------------------------------------------------------------------------
-  // Model operations
-  // ---------------------------------------------------------------------------
 
   async refreshProviderModels(providerId: string): Promise<string[]> {
     this.ensureNotDisposed();
@@ -380,10 +372,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     this._rebuildAndPublish();
   }
 
-  // ---------------------------------------------------------------------------
-  // Custom model operations
-  // ---------------------------------------------------------------------------
-
   async addCustomModel(providerId: string, model: ICustomModelDefinition): Promise<void> {
     this.ensureNotDisposed();
 
@@ -425,28 +413,16 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Runtime Model<Api> resolution
-  // ---------------------------------------------------------------------------
-
   resolveModel(providerId: string, modelId: string): Model<Api> | null {
     const provider = this._builtProviders.find((p) => p.id === providerId);
     return provider?.models.find((m) => m.id === modelId) ?? null;
   }
-
-  // ---------------------------------------------------------------------------
-  // Cleanup
-  // ---------------------------------------------------------------------------
 
   override dispose(): void {
     this._providers$.complete();
     this._activeModelId$.complete();
     super.dispose();
   }
-
-  // ---------------------------------------------------------------------------
-  // Core build logic
-  // ---------------------------------------------------------------------------
 
   private _buildProviders(): ILLMProvider[] {
     const providerConfigs = this._providerConfigs;
@@ -468,7 +444,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
           builtinModels = [];
         }
 
-        // Apply provider-level overrides
         let models = builtinModels.map((m) => {
           let model = m;
           if (userConfig?.baseUrl) {
@@ -480,7 +455,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
           return model;
         });
 
-        // Apply model-level overrides
         models = models.map((model) => {
           const config = modelConfigs.get(`${providerName}/${model.id}`);
           if (config?.overrides) {
@@ -561,10 +535,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     this._providers$.next(groups);
   }
 
-  // ---------------------------------------------------------------------------
-  // Database loading
-  // ---------------------------------------------------------------------------
-
   private async _loadFromDatabase(): Promise<void> {
     const [providerEntities, modelConfigEntities, customModelEntities] = await Promise.all([
       this._providerRepository.getProviders(),
@@ -589,10 +559,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     await this._loadFromDatabase();
     this._rebuildAndPublish();
   }
-
-  // ---------------------------------------------------------------------------
-  // Entity conversion helpers
-  // ---------------------------------------------------------------------------
 
   private _entityToProviderConfig(entity: IAIProviderEntity): IProviderUserConfig {
     return {
@@ -631,10 +597,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
       compat: entity.compat as Model<Api>['compat'],
     };
   }
-
-  // ---------------------------------------------------------------------------
-  // Legacy migration
-  // ---------------------------------------------------------------------------
 
   private async _migrateFromLegacy(): Promise<void> {
     try {
@@ -679,10 +641,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
       // Migration is best-effort
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Model sync (HTTP)
-  // ---------------------------------------------------------------------------
 
   private async _fetchProviderModelIds(providerId: string, config: { apiKey?: string; baseUrl?: string }): Promise<string[]> {
     if (UNSUPPORTED_MODEL_SYNC_PROVIDERS.has(providerId)) {
@@ -764,10 +722,6 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
     return this._normalizeModelIds([...modelIds]);
   }
-
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
 
   private _mergeCustomModels(builtinModels: Model<Api>[], customModels: Model<Api>[]): Model<Api>[] {
     const result = [...builtinModels];

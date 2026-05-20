@@ -94,7 +94,6 @@ export class McpController extends Disposable {
 
     const selectedToolIdSet = selectedToolIds ? new Set(selectedToolIds) : null;
 
-    // Remove previously registered tools from Agent
     if (this._registeredAgentToolNames.length > 0) {
       this._aiAgentService.removeTools(this._registeredAgentToolNames);
       this._registeredAgentToolNames = [];

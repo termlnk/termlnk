@@ -486,7 +486,6 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       this._savedAgentMessages = [];
     }
 
-    // Update accessed time
     await this._chatRepository.updateSession(sessionId, {
       accessedAt: new Date().toISOString(),
     });
@@ -1404,7 +1403,6 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     const delayMs = RETRY_BASE_DELAY_MS * (2 ** (this._retryAttempt - 1));
     console.warn(`[AIAgentService] Retryable error detected, attempt ${this._retryAttempt}/${MAX_RETRY_ATTEMPTS}, waiting ${delayMs}ms...`);
 
-    // Remove the error message from agent state
     if (this._agent) {
       const messages = this._agent.state.messages;
       if (messages.length > 0 && 'role' in messages.at(-1)! && (messages.at(-1) as any).role === 'assistant') {
@@ -1424,7 +1422,6 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._status$.next('thinking');
     this._isStreaming$.next(true);
 
-    // Create retry promise if not exists
     this._ensureRetryPromise();
 
     // Wait with exponential backoff then retry
