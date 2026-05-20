@@ -1,9 +1,8 @@
-use rand::rngs::OsRng;
 use russh::keys::ssh_key::{
     self,
     private::{Ed25519Keypair, KeypairData},
 };
-use russh_keys::{Algorithm, EcdsaCurve};
+use russh::keys::{Algorithm, EcdsaCurve};
 
 use crate::utils::SshError;
 
@@ -26,20 +25,20 @@ pub fn validate_private_key(private_key_content: String) -> Result<String, SshEr
 
 #[uniffi::export]
 pub fn generate_key_pair(key_type: KeyType) -> Result<String, SshError> {
-    let mut rng = OsRng;
+    let mut rng = rand::rng();
     let key = match key_type {
-        KeyType::Rsa => russh_keys::PrivateKey::random(&mut rng, Algorithm::Rsa { hash: None })?,
-        KeyType::Ecdsa => russh_keys::PrivateKey::random(
+        KeyType::Rsa => russh::keys::PrivateKey::random(&mut rng, Algorithm::Rsa { hash: None })?,
+        KeyType::Ecdsa => russh::keys::PrivateKey::random(
             &mut rng,
             Algorithm::Ecdsa {
                 curve: EcdsaCurve::NistP256,
             },
         )?,
-        KeyType::Ed25519 => russh_keys::PrivateKey::random(&mut rng, Algorithm::Ed25519)?,
+        KeyType::Ed25519 => russh::keys::PrivateKey::random(&mut rng, Algorithm::Ed25519)?,
         KeyType::Ed448 => return Err(SshError::UnsupportedKeyType),
     };
     Ok(key
-        .to_openssh(russh_keys::ssh_key::LineEnding::LF)?
+        .to_openssh(russh::keys::ssh_key::LineEnding::LF)?
         .to_string())
 }
 
