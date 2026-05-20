@@ -14,7 +14,7 @@
  */
 
 import type { IAuthError, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
-import { AuthState, IAuthClientService } from '@termlnk/auth';
+import { AuthState, IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
 import { useState } from 'react';
@@ -26,7 +26,7 @@ type ViewMode = 'login' | 'register';
 
 export function AuthGate() {
   // OPTIONAL: cloud service may be unconfigured; fall through to a placeholder below.
-  const authClient = useDependency(IAuthClientService, Quantity.OPTIONAL);
+  const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);
   const localeService = useDependency(LocaleService);
 

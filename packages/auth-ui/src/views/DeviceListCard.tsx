@@ -14,7 +14,7 @@
  */
 
 import type { IDevice } from '@termlnk/auth';
-import { AuthState, IAuthClientService } from '@termlnk/auth';
+import { AuthState, IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import {
   AlertDialog,
@@ -38,7 +38,7 @@ import { useCallback, useEffect, useState } from 'react';
 export function DeviceListCard() {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
-  const authClient = useDependency(IAuthClientService, Quantity.OPTIONAL);
+  const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
 
   const authState = useObservable<AuthState>(
     authClient?.authState$ ?? null,

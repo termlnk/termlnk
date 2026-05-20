@@ -16,27 +16,29 @@
 import type { Dependency } from '@termlnk/core';
 import type { IRPCClientConfig } from './controllers/config.schema';
 import { IMcpRegistryService, IMcpService, ISkillService } from '@termlnk/agent';
-import { IAuthClientService } from '@termlnk/auth';
+import { IAuthService } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
-import { INotifyService, RPCPlugin } from '@termlnk/rpc';
+import { IFileTransferService, INotifyService, RPCPlugin } from '@termlnk/rpc';
+import { ISharedTerminalService } from '@termlnk/shared-terminal';
 import { IBackupClientService, ISyncService } from '@termlnk/sync';
 import { IPTYService } from '@termlnk/terminal';
 import { defaultPluginConfig, RPC_CLIENT_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { AIAgentClientService, IAIAgentClientService } from './services/ai/ai-agent-client.service';
-import { ChatSessionClientService, IChatSessionClientService } from './services/ai/chat-session-client.service';
-import { IProviderConfigClientService, ProviderConfigClientService } from './services/ai/provider-config-client.service';
-import { AuthClientService } from './services/auth/auth-client.service';
+import { ChatSessionClientService, IChatSessionService } from './services/ai/chat-session-client.service';
+import { IProviderConfigService, ProviderConfigClientService } from './services/ai/provider-config-client.service';
+import { AuthService } from './services/auth/auth.service';
 import { ConfigManagerService, IConfigManagerService } from './services/config/config-manager.service';
 import { ExtensionClientService, IExtensionClientService } from './services/extension/extension-client.service';
-import { FileTransferClientService, IFileTransferClientService } from './services/file-transfer/file-transfer.service';
+import { FileTransferService } from './services/file-transfer/file-transfer.service';
 import { HostManagerService, IHostManagerService } from './services/host/host-manager.service';
 import { McpRegistryService } from './services/mcp/mcp-registry.service';
 import { McpService } from './services/mcp/mcp.service';
 import { NotifyService } from './services/notify/notify.service';
-import { IPermissionClientService, PermissionClientService } from './services/permission/permission-client.service';
-import { IProxyClientService, ProxyClientService } from './services/proxy/proxy.service';
+import { AgentToolPermissionService, IAgentToolPermissionService } from './services/permission/permission-client.service';
+import { IProxyService, ProxyClientService } from './services/proxy/proxy.service';
 import { PTYService } from './services/pty/pty.service';
-import { ISFTPClientService, SFTPClientService } from './services/sftp/sftp.service';
+import { ISFTPService, SFTPClientService } from './services/sftp/sftp.service';
+import { SharedTerminalService } from './services/shared-terminal/shared-terminal.service';
 import { SkillService } from './services/skill/skill.service';
 import { ISSHService, SSHService } from './services/ssh/ssh.service';
 import { BackupClientService } from './services/sync/backup-client.service';
@@ -77,20 +79,21 @@ export class RPCClientPlugin extends Plugin {
   private _registerDependencies() {
     const dependencies: Dependency[] = [
       [IAIAgentClientService, { useClass: AIAgentClientService }],
-      [IAuthClientService, { useClass: AuthClientService }],
-      [IChatSessionClientService, { useClass: ChatSessionClientService }],
-      [IProviderConfigClientService, { useClass: ProviderConfigClientService }],
+      [IAuthService, { useClass: AuthService }],
+      [IChatSessionService, { useClass: ChatSessionClientService }],
+      [IProviderConfigService, { useClass: ProviderConfigClientService }],
       [IConfigManagerService, { useClass: ConfigManagerService }],
       [IExtensionClientService, { useClass: ExtensionClientService }],
-      [IFileTransferClientService, { useClass: FileTransferClientService }],
+      [IFileTransferService, { useClass: FileTransferService }],
       [IHostManagerService, { useClass: HostManagerService }],
       [IMcpService, { useClass: McpService }],
       [IMcpRegistryService, { useClass: McpRegistryService }],
       [INotifyService, { useClass: NotifyService }],
-      [IPermissionClientService, { useClass: PermissionClientService }],
-      [IProxyClientService, { useClass: ProxyClientService }],
+      [IAgentToolPermissionService, { useClass: AgentToolPermissionService }],
+      [IProxyService, { useClass: ProxyClientService }],
       [IPTYService, { useClass: PTYService }],
-      [ISFTPClientService, { useClass: SFTPClientService }],
+      [ISFTPService, { useClass: SFTPClientService }],
+      [ISharedTerminalService, { useClass: SharedTerminalService }],
       [ISkillService, { useClass: SkillService }],
       [ISSHService, { useClass: SSHService }],
       [ISyncService, { useClass: SyncClientService }],

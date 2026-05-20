@@ -13,12 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AuthErrorCode, IAuthError, IAuthKeyValueStorage, IAuthService, IDevice, IDeviceNameProvider, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenPair, IUserAccount, IUserStorageService } from '@termlnk/auth';
+import type { AuthErrorCode, IAuthError, IAuthKeyValueStorage, IAuthService, IDevice, IDeviceNameProvider, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenManager, ITokenPair, IUserAccount, IUserStorageService } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage as IAuthKeyValueStorageId, IDeviceNameProvider as IDeviceNameProviderId, IMasterKeyService as IMasterKeyServiceId, ISrpClientService as ISrpClientServiceId, IUserStorageService as IUserStorageServiceId, randomBytes } from '@termlnk/auth';
+import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage as IAuthKeyValueStorageId, IDeviceNameProvider as IDeviceNameProviderId, IMasterKeyService as IMasterKeyServiceId, ISrpClientService as ISrpClientServiceId, ITokenManager as ITokenManagerId, IUserStorageService as IUserStorageServiceId, randomBytes } from '@termlnk/auth';
 import { Disposable, generateRandomId, ILogService, Inject, Optional } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
-import { TokenManager } from './token-manager.service';
 
 // Random component length (bytes) of the Argon2id salt; combined with the email to form
 // the full salt material.
@@ -195,7 +194,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
     private readonly _config: IHttpAuthServiceConfig,
     @Inject(IMasterKeyServiceId) private readonly _masterKey: IMasterKeyService,
     @Inject(ISrpClientServiceId) private readonly _srp: ISrpClientService,
-    @Inject(TokenManager) private readonly _tokenManager: TokenManager,
+    @Inject(ITokenManagerId) private readonly _tokenManager: ITokenManager,
     @Inject(IAuthKeyValueStorageId) private readonly _storage: IAuthKeyValueStorage,
     @Inject(IUserStorageServiceId) private readonly _userStorage: IUserStorageService,
     @Inject(ILogService) private readonly _logService: ILogService,
@@ -220,7 +219,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
     return this._tokenManager.getAccessToken();
   }
 
-  async register(input: IRegisterInput): Promise<IUserAccount> {
+  async register(input: IRegisterInput): Promise<void> {
     this._lastError$.next(null);
     this._authState$.next(AuthState.Authenticating);
 
@@ -250,13 +249,12 @@ export class HttpAuthService extends Disposable implements IAuthService {
 
       const resp = await this._fetchAuthFreeJson<IRegisterResponseBody>('/auth/register', body);
       await this._completeAuthSession(resp);
-      return resp.user;
     } catch (err) {
       throw this._toAuthError(err, 'register');
     }
   }
 
-  async login(input: ILoginInput): Promise<IUserAccount> {
+  async login(input: ILoginInput): Promise<void> {
     this._lastError$.next(null);
     this._authState$.next(AuthState.Authenticating);
 
@@ -297,7 +295,6 @@ export class HttpAuthService extends Disposable implements IAuthService {
       this._srp.verifySession(ephemeral.public, session, verifyResp.serverSessionProof);
 
       await this._completeAuthSession(verifyResp);
-      return verifyResp.user;
     } catch (err) {
       // SRP server-proof failure / network error / wrong password → master key may be partially
       // derived. Lock it to keep the in-memory invariant clean.

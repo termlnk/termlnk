@@ -25,7 +25,7 @@ import { publicProcedure, router } from '../trpc';
  * Resolve the main-process `IAuthService`. Without `cloudBaseUrl` configured
  * the service is unbound — we throw rather than return null so tRPC callers
  * get an explicit "cloud not configured" signal. This complements
- * `IAuthClientService`'s `Quantity.OPTIONAL` injection: the UI degrades
+ * `IAuthService`'s `Quantity.OPTIONAL` injection: the UI degrades
  * gracefully, the RPC layer fails hard when actually invoked.
  */
 function requireAuthService(injector: Injector): IAuthService {

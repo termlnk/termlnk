@@ -18,7 +18,7 @@ import type { IFileListEntry } from '../file-browser/FileList';
 import type { DragSourceType } from '../hooks/use-panel-drop';
 import { ILogService, Quantity } from '@termlnk/core';
 import { Button, useDependency } from '@termlnk/design';
-import { ISFTPClientService } from '@termlnk/rpc-client';
+import { ISFTPService } from '@termlnk/rpc-client';
 import { ArrowUp, Eye, EyeOff, FolderPlus, RefreshCw, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IBrowserFileTransferService } from '../../services/transfer/browser-file-transfer.service';
@@ -39,7 +39,7 @@ interface IRemoteFilePaneProps {
 }
 
 export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, refreshTrigger }: IRemoteFilePaneProps) {
-  const sftpService = useDependency(ISFTPClientService);
+  const sftpService = useDependency(ISFTPService);
   const browserTransfer = useDependency(IBrowserFileTransferService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);
   const browser = useRemoteFileBrowser(sessionId);

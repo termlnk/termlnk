@@ -19,7 +19,7 @@ import type { ReactElement } from 'react';
 import { AGENT_PLUGIN_CONFIG_KEY, AGENT_TERMINAL_SUGGEST_CONFIG_SUB_KEY, DEFAULT_TERMINAL_SUGGEST_CONFIG } from '@termlnk/agent';
 import { LocaleService, platform } from '@termlnk/core';
 import { Card, CardContent, CardHeader, cn, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, useDependency, useObservable } from '@termlnk/design';
-import { IConfigManagerService, IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IConfigManagerService, IProviderConfigService } from '@termlnk/rpc-client';
 import { createMissingShellOption, DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LETTER_SPACING, DEFAULT_PERSISTENCE_SCROLLBACK, DEFAULT_TERMINAL_RENDERER_ENGINE, getDefaultLocalTerminalConfig, IPTYService, normalizeLocalTerminalConfig, normalizeShellIntegrationConfig, resolveLegacyShellValue, SHELL_INTEGRATION_CONFIG_KEY, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_TERMINAL_FONT_FAMILIES, PERSISTENCE_SCROLLBACK_MAX, PERSISTENCE_SCROLLBACK_MIN, TERMINAL_FONT_SIZE_MAX, TERMINAL_FONT_SIZE_MIN, TERMINAL_LETTER_SPACING_MAX, TERMINAL_LETTER_SPACING_MIN } from '../../../config/config';
@@ -119,7 +119,7 @@ function compareInlineSuggestModelItems(a: IInlineSuggestModelItem, b: IInlineSu
 function InlineSuggestModelCombobox(props: IInlineSuggestModelComboboxProps): ReactElement {
   const { value, onChange } = props;
   const localeService = useDependency(LocaleService);
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
   const providers = useObservable(providerConfigService.providers$, [] as IProviderGroup[]);
   const anchorRef = useRef<HTMLDivElement | null>(null);
 

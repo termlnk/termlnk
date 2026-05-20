@@ -14,7 +14,7 @@
  */
 
 import { useDependency } from '@termlnk/design';
-import { IChatSessionClientService } from '@termlnk/rpc-client';
+import { IChatSessionService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChatHeader } from './ChatHeader';
 import { ChatInput } from './ChatInput';
@@ -23,7 +23,7 @@ import { ChatSessionList } from './ChatSessionList';
 import { PendingApprovalBar } from './PendingApprovalBar';
 
 function useSessionTitle(): string | undefined {
-  const chatSessionService = useDependency(IChatSessionClientService);
+  const chatSessionService = useDependency(IChatSessionService);
   const [title, setTitle] = useState<string | undefined>();
   const currentSessionIdRef = useRef<string | null>(null);
 

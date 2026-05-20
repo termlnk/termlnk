@@ -14,7 +14,7 @@
  */
 
 import { ILogService, RxDisposable } from '@termlnk/core';
-import { IAIAgentClientService, IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IAIAgentClientService, IProviderConfigService } from '@termlnk/rpc-client';
 import { distinctUntilChanged, filter, takeUntil } from 'rxjs';
 
 // Forwards model selection (providerId / modelId) to the main process when the user
@@ -23,7 +23,7 @@ import { distinctUntilChanged, filter, takeUntil } from 'rxjs';
 export class AIAgentController extends RxDisposable {
   constructor(
     @IAIAgentClientService private readonly _aiAgentService: IAIAgentClientService,
-    @IProviderConfigClientService private readonly _providerConfigService: IProviderConfigClientService,
+    @IProviderConfigService private readonly _providerConfigService: IProviderConfigService,
     @ILogService private readonly _logService: ILogService
   ) {
     super();

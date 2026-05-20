@@ -13,8 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthClientService, IAuthError, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
-import { AuthState, IAuthClientService as IAuthClientServiceId } from '@termlnk/auth';
+import type { IAuthService, IAuthError, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
+import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { ILogService, Injector } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { describe, expect, it } from 'vitest';
@@ -29,7 +29,7 @@ class NoopLogService {
   setLogLevel(_level: number): void {}
 }
 
-class FakeAuthClientService implements IAuthClientService {
+class FakeAuthService implements IAuthService {
   readonly currentUser$ = new BehaviorSubject<IUserAccount | null>(null).asObservable();
   readonly authState$ = new BehaviorSubject<AuthState>(AuthState.Unauthenticated).asObservable();
   readonly lastError$ = new BehaviorSubject<IAuthError | null>(null).asObservable();
@@ -42,29 +42,32 @@ class FakeAuthClientService implements IAuthClientService {
   }
 
   async listDevices() { return []; }
-  async revokeDevice(): Promise<void> {}
+  async revokeDevice(_deviceId: string): Promise<void> {}
+  async getAccessToken(): Promise<string | null> { return null; }
+  getCurrentUser(): IUserAccount | null { return null; }
+  async restore(): Promise<void> {}
 }
 
-function createBed(opts: { withAuth: boolean }): { injector: Injector; auth: FakeAuthClientService | null } {
+function createBed(opts: { withAuth: boolean }): { injector: Injector; auth: FakeAuthService | null } {
   const injector = new Injector();
   injector.add([ILogService, { useClass: NoopLogService }]);
-  let auth: FakeAuthClientService | null = null;
+  let auth: FakeAuthService | null = null;
   if (opts.withAuth) {
-    auth = new FakeAuthClientService();
-    injector.add([IAuthClientServiceId, { useValue: auth }]);
+    auth = new FakeAuthService();
+    injector.add([IAuthServiceId, { useValue: auth }]);
   }
   return { injector, auth };
 }
 
 describe('auth.commands', () => {
-  it('LogoutCommand calls IAuthClientService.logout when bound', async () => {
+  it('LogoutCommand calls IAuthService.logout when bound', async () => {
     const bed = createBed({ withAuth: true });
     const result = await LogoutCommand.handler(bed.injector);
     expect(result).toBe(true);
     expect(bed.auth!.logoutCalls).toBe(1);
   });
 
-  it('LogoutCommand returns false when IAuthClientService is unbound', async () => {
+  it('LogoutCommand returns false when IAuthService is unbound', async () => {
     const bed = createBed({ withAuth: false });
     const result = await LogoutCommand.handler(bed.injector);
     expect(result).toBe(false);

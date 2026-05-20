@@ -26,7 +26,7 @@ import {
   useDependency,
   useObservable,
 } from '@termlnk/design';
-import { IPermissionClientService } from '@termlnk/rpc-client';
+import { IAgentToolPermissionService } from '@termlnk/rpc-client';
 import { AlertTriangle, ChevronDown, ShieldCheck, ShieldQuestion } from 'lucide-react';
 import { memo, useState } from 'react';
 import { pickPermissionHighlight } from './parts/permission/highlight';
@@ -43,7 +43,7 @@ function riskIcon(level: ToolRiskLevel): ReactElement {
 
 export const PendingApprovalBar = memo(function PendingApprovalBar() {
   const localeService = useDependency(LocaleService);
-  const permissionService = useDependency(IPermissionClientService);
+  const permissionService = useDependency(IAgentToolPermissionService);
   const pending = useObservable(permissionService.pendingRequests$, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

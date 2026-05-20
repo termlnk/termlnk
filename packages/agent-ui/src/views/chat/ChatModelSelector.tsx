@@ -17,7 +17,7 @@ import type { IModelOption, IProviderGroup } from '@termlnk/agent';
 import { compareProviders } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { cn, SearchSelect, SearchSelectContent, SearchSelectEmpty, SearchSelectGroup, SearchSelectInput, SearchSelectItem, SearchSelectList, SearchSelectTrigger, useDependency, useObservable } from '@termlnk/design';
-import { IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IProviderConfigService } from '@termlnk/rpc-client';
 import { Brain, ChevronDown, Eye, Sparkles } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { ProviderLogo } from '../settings/provider-logo';
@@ -55,7 +55,7 @@ interface IGroupedProvider extends IProviderGroup {
 
 export function ChatModelSelector(props: IChatModelSelectorProps) {
   const { className, triggerClassName, showStatusDot = false, showModelTag = false } = props;
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
   const localeService = useDependency(LocaleService);
   const providers = useObservable(providerConfigService.providers$, []);
   const activeModel = useObservable(providerConfigService.activeModel$, null);

@@ -17,7 +17,7 @@ import type { ToolPermissionMode } from '@termlnk/agent';
 import type { LucideIcon } from 'lucide-react';
 import { LocaleService } from '@termlnk/core';
 import { Button, cn, HoverPanel, HoverPanelBody, HoverPanelContent, HoverPanelHeader, HoverPanelTrigger, useDependency, useObservable } from '@termlnk/design';
-import { IPermissionClientService } from '@termlnk/rpc-client';
+import { IAgentToolPermissionService } from '@termlnk/rpc-client';
 import { Check, Eye, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
 import { useCallback } from 'react';
 
@@ -36,7 +36,7 @@ const PERMISSION_MODE_OPTIONS: IPermissionModeOption[] = [
 ];
 
 export function ChatPermissionModeSelector() {
-  const permissionService = useDependency(IPermissionClientService);
+  const permissionService = useDependency(IAgentToolPermissionService);
   const localeService = useDependency(LocaleService);
 
   const mode = useObservable(permissionService.mode$, 'default' as ToolPermissionMode);

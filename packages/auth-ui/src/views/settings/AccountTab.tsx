@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { IAuthClientService } from '@termlnk/auth';
+import { IAuthService } from '@termlnk/auth';
 import { LocaleService, Quantity } from '@termlnk/core';
 import { Card, CardContent, CardDescription, CardHeader, useDependency } from '@termlnk/design';
 import { IBackupClientService, ISyncService } from '@termlnk/sync';
@@ -26,7 +26,7 @@ import { DeviceListCard } from '../DeviceListCard';
 // bound, so an unconfigured cloud build collapses to just the AuthGate placeholder.
 export function AccountTab() {
   const localeService = useDependency(LocaleService);
-  const authClient = useDependency(IAuthClientService, Quantity.OPTIONAL);
+  const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
   const syncService = useDependency(ISyncService, Quantity.OPTIONAL);
   const backupClient = useDependency(IBackupClientService, Quantity.OPTIONAL);
 

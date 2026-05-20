@@ -16,7 +16,7 @@
 import { KNOWN_API_TYPES } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, useDependency } from '@termlnk/design';
-import { IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IProviderConfigService } from '@termlnk/rpc-client';
 import { Plus } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -24,7 +24,7 @@ const labelCls = 'tm:text-xs tm:font-medium tm:text-white';
 
 export function AddProviderDialog() {
   const localeService = useDependency(LocaleService);
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');

@@ -16,7 +16,7 @@
 import { ISkillService } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, Checkbox, cn, HoverPanel, HoverPanelBody, HoverPanelContent, HoverPanelFooter, HoverPanelHeader, HoverPanelTrigger, useDependency } from '@termlnk/design';
-import { IChatSessionClientService } from '@termlnk/rpc-client';
+import { IChatSessionService } from '@termlnk/rpc-client';
 import { Loader2, UserRound, Wand2 } from 'lucide-react';
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -56,7 +56,7 @@ function readSelectedSkillIds(session: any): string[] | null {
 }
 
 export function ChatSkillSelector() {
-  const chatSessionService = useDependency(IChatSessionClientService);
+  const chatSessionService = useDependency(IChatSessionService);
   const skillService = useDependency(ISkillService);
   const localeService = useDependency(LocaleService);
   const currentSessionIdRef = useRef<string | null>(null);

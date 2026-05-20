@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthKeyValueStorage as IAuthKeyValueStorageType, IDeviceNameProvider as IDeviceNameProviderType, IMasterKeyService as IMasterKeyServiceType, ISrpClientService as ISrpClientServiceType, IUserStorageService as IUserStorageServiceType } from '@termlnk/auth';
+import type { IAuthKeyValueStorage as IAuthKeyValueStorageType, IDeviceNameProvider as IDeviceNameProviderType, IMasterKeyService as IMasterKeyServiceType, ISrpClientService as ISrpClientServiceType, ITokenManager as ITokenManagerType, IUserStorageService as IUserStorageServiceType } from '@termlnk/auth';
 import type { Dependency, Injector } from '@termlnk/core';
 import type { IAuthCorePluginConfig } from './controllers/config.schema';
-import { AuthPlugin, IAuthKeyValueStorage, IAuthService, IDeviceNameProvider, IIdleProbe, IMasterKeyService, IPasswordHasher, ISrpClientService, ITokenRefresher, ITokenStorageService, IUserStorageService } from '@termlnk/auth';
+import { AuthPlugin, IAuthKeyValueStorage, IAuthService, IDeviceNameProvider, IIdleProbe, IMasterKeyService, IPasswordHasher, ISrpClientService, ITokenManager, ITokenRefresher, ITokenStorageService, IUserStorageService } from '@termlnk/auth';
 import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
 import { AUTH_CORE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { IdleLockController } from './controllers/idle-lock.controller';
@@ -73,7 +73,7 @@ export class AuthCorePlugin extends Plugin {
       [ISrpClientService, { useClass: SrpClientService }],
       [ITokenStorageService, { useClass: TokenStorageService }],
       [IUserStorageService, { useClass: UserStorageService }],
-      [TokenManager, { useClass: TokenManager }],
+      [ITokenManager, { useClass: TokenManager }],
       [IPasswordHasher, { useClass: HashWasmPasswordHasher }],
       [IDeviceNameProvider, { useClass: DefaultDeviceNameProvider }],
       [IIdleProbe, { useClass: NoopIdleProbe }],
@@ -90,7 +90,7 @@ export class AuthCorePlugin extends Plugin {
         }],
         [IAuthService, {
           // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
-          useFactory: (masterKey: IMasterKeyServiceType, srp: ISrpClientServiceType, tokenManager: TokenManager, storage: IAuthKeyValueStorageType, userStorage: IUserStorageServiceType, logService: ILogService, deviceNameProvider: IDeviceNameProviderType) =>
+          useFactory: (masterKey: IMasterKeyServiceType, srp: ISrpClientServiceType, tokenManager: ITokenManagerType, storage: IAuthKeyValueStorageType, userStorage: IUserStorageServiceType, logService: ILogService, deviceNameProvider: IDeviceNameProviderType) =>
             new HttpAuthService(
               { baseUrl },
               masterKey,
@@ -101,7 +101,7 @@ export class AuthCorePlugin extends Plugin {
               logService,
               deviceNameProvider
             ),
-          deps: [IMasterKeyService, ISrpClientService, TokenManager, IAuthKeyValueStorage, IUserStorageService, ILogService, IDeviceNameProvider],
+          deps: [IMasterKeyService, ISrpClientService, ITokenManager, IAuthKeyValueStorage, IUserStorageService, ILogService, IDeviceNameProvider],
         }]
       );
     }

@@ -18,7 +18,7 @@ import type { IAttachedFile } from './ChatFilePreview';
 import type { IChatSlashCommandPanelHandle } from './ChatSlashCommandPanel';
 import { generateRandomId, LocaleService } from '@termlnk/core';
 import { Button, cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
-import { IAIAgentClientService, IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IAIAgentClientService, IProviderConfigService } from '@termlnk/rpc-client';
 import { Gauge, Paperclip, Send } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { map } from 'rxjs';
@@ -62,7 +62,7 @@ const COMPACT_COMMAND_PATTERN = /^\/compact(?:\s+([\s\S]*))?$/;
 
 export function ChatInput() {
   const aiAgentService = useDependency(IAIAgentClientService);
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
   const localeService = useDependency(LocaleService);
   const activeModel = useObservable(providerConfigService.activeModel$, null);
   const messages = useObservable(aiAgentService.messages$, []);
@@ -90,7 +90,6 @@ export function ChatInput() {
 
   const slashState = useSlashCommand(value, cursorPosition);
 
-  // Cleanup ObjectURLs on unmount
   useEffect(() => {
     return () => {
       attachedFilesRef.current.forEach((f) => URL.revokeObjectURL(f.previewUrl));
@@ -267,7 +266,6 @@ export function ChatInput() {
       const nextCursor = before.length + replacement.length;
       setValue(nextValue);
       setCursorPosition(nextCursor);
-      // Restore focus and set cursor position
       requestAnimationFrame(() => {
         const textarea = textareaRef.current;
         if (textarea) {

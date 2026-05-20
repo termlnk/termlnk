@@ -19,7 +19,7 @@ import { createIdentifier, Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { IRPCClientService } from '../rpc-client.service';
 
-export interface ISFTPClientService {
+export interface ISFTPService {
   // Session management
   createSession(hostId: string, password?: string): Promise<string>;
   closeSession(sessionId: string): Promise<void>;
@@ -50,9 +50,9 @@ export interface ISFTPClientService {
   event$(sessionId: string): Observable<SFTPSessionEvent>;
   transferProgress$(sessionId: string): Observable<ISFTPTransferTask>;
 }
-export const ISFTPClientService = createIdentifier<ISFTPClientService>('rpc-client.sftp-service');
+export const ISFTPService = createIdentifier<ISFTPService>('rpc-client.sftp-service');
 
-export class SFTPClientService extends Disposable implements ISFTPClientService {
+export class SFTPClientService extends Disposable implements ISFTPService {
   constructor(
     @IRPCClientService private readonly _rpcClientService: IRPCClientService
   ) {

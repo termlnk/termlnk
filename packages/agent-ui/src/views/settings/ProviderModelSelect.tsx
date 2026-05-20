@@ -18,7 +18,7 @@ import type { ReactElement } from 'react';
 import { compareProviders } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { cn, SearchSelect, SearchSelectContent, SearchSelectEmpty, SearchSelectGroup, SearchSelectInput, SearchSelectItem, SearchSelectList, SearchSelectTrigger, useDependency, useObservable } from '@termlnk/design';
-import { IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IProviderConfigService } from '@termlnk/rpc-client';
 import { Brain, ChevronDown, Eye, Sparkles } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { ProviderLogo } from './provider-logo';
@@ -84,7 +84,7 @@ export function ProviderModelSelect(props: IProviderModelSelectProps): ReactElem
     disabled,
   } = props;
 
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
   const localeService = useDependency(LocaleService);
   const providers = useObservable(providerConfigService.providers$, []);
   const [open, setOpen] = useState(false);

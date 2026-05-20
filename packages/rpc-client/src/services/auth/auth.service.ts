@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthClientService, IAuthError, IDevice, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
+import type { IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
 import { AuthState } from '@termlnk/auth';
 import { Disposable, ILogService, Inject, toDisposable } from '@termlnk/core';
@@ -21,14 +21,13 @@ import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { BehaviorSubject } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
 
-// Renderer-side facade: mirrors IAuthService state via three tRPC subscriptions
-// (currentUser$ / authState$ / lastError$) and forwards register/login/logout calls.
-// A one-shot getCurrentUser query at construction time prevents a brief "logged out"
-// flash before the subscription's first push lands.
-//
-// register/login transit the password through tRPC; once the main-process derives the
-// verifier the plaintext is discarded. Master key and tokens never travel.
-export class AuthClientService extends Disposable implements IAuthClientService {
+const MAIN_PROCESS_ONLY_MESSAGE = '[AuthService] this method is only available in the main process';
+
+// Renderer-side implementation of IAuthService. Mirrors the main-process state
+// via three tRPC subscriptions and forwards mutations. Methods that hold
+// privileged material (access token, persisted user) intentionally throw — the
+// renderer must never observe them across IPC.
+export class AuthService extends Disposable implements IAuthService {
   private readonly _currentUser$ = new BehaviorSubject<IUserAccount | null>(null);
   readonly currentUser$: Observable<IUserAccount | null> = this._currentUser$.asObservable();
 
@@ -44,35 +43,35 @@ export class AuthClientService extends Disposable implements IAuthClientService 
   ) {
     super();
 
-    // One-shot snapshot to populate before the subscription's first push. Silent on
-    // failure (cloud not configured) — the BehaviorSubject keeps its initial value.
+    // One-shot snapshot so we don't flash a "logged out" UI before the subscription's first push.
+    // Silent on failure (cloud not configured) — the BehaviorSubject keeps its initial value.
     void this._client.getCurrentUser.query()
       .then((user) => {
         this._currentUser$.next(user ?? null);
       })
       .catch((err) => {
-        this._logService.warn('[AuthClientService] initial getCurrentUser failed:', err);
+        this._logService.warn('[AuthService] initial getCurrentUser failed:', err);
       });
 
     const userSub = trpcSubscriptionToObservable<IUserAccount | null>(
       (opts) => this._client.currentUser$.subscribe(undefined, opts)
     ).subscribe({
       next: (user) => this._currentUser$.next(user),
-      error: (err) => this._logService.warn('[AuthClientService] currentUser$ stream error:', err),
+      error: (err) => this._logService.warn('[AuthService] currentUser$ stream error:', err),
     });
 
     const stateSub = trpcSubscriptionToObservable<AuthState>(
       (opts) => this._client.authState$.subscribe(undefined, opts)
     ).subscribe({
       next: (state) => this._authState$.next(state),
-      error: (err) => this._logService.warn('[AuthClientService] authState$ stream error:', err),
+      error: (err) => this._logService.warn('[AuthService] authState$ stream error:', err),
     });
 
     const errorSub = trpcSubscriptionToObservable<IAuthError | null>(
       (opts) => this._client.lastError$.subscribe(undefined, opts)
     ).subscribe({
       next: (e) => this._lastError$.next(e),
-      error: (err) => this._logService.warn('[AuthClientService] lastError$ stream error:', err),
+      error: (err) => this._logService.warn('[AuthService] lastError$ stream error:', err),
     });
 
     this.disposeWithMe(toDisposable(userSub));
@@ -81,10 +80,10 @@ export class AuthClientService extends Disposable implements IAuthClientService 
   }
 
   override dispose(): void {
+    super.dispose();
     this._currentUser$.complete();
     this._authState$.complete();
     this._lastError$.complete();
-    super.dispose();
   }
 
   private get _client() {
@@ -109,5 +108,21 @@ export class AuthClientService extends Disposable implements IAuthClientService 
 
   async revokeDevice(deviceId: string): Promise<void> {
     await this._client.revokeDevice.mutate({ deviceId });
+  }
+
+  // Renderer-side synchronous getter reads the locally mirrored BehaviorSubject; the
+  // value tracks the main-process currentUser$ stream within one round-trip.
+  getCurrentUser(): IUserAccount | null {
+    return this._currentUser$.getValue();
+  }
+
+  // Access token is privileged and never crosses IPC.
+  getAccessToken(): Promise<string | null> {
+    throw new Error(MAIN_PROCESS_ONLY_MESSAGE);
+  }
+
+  // Persisted-state rehydration is the main process's responsibility.
+  restore(): Promise<void> {
+    throw new Error(MAIN_PROCESS_ONLY_MESSAGE);
   }
 }

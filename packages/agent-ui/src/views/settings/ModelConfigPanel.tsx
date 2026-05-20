@@ -16,7 +16,7 @@
 import type { IModelOverrides } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, Input, useDependency } from '@termlnk/design';
-import { IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IProviderConfigService } from '@termlnk/rpc-client';
 import { RotateCcw } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -37,7 +37,7 @@ export function ModelConfigPanel({
   currentMaxTokens,
 }: IModelConfigPanelProps) {
   const localeService = useDependency(LocaleService);
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
 
   const [maxTokens, setMaxTokens] = useState('');
   const [contextWindow, setContextWindow] = useState('');

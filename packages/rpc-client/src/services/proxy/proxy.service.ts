@@ -28,13 +28,13 @@ export interface IProxyTestResult {
   message?: string;
 }
 
-export interface IProxyClientService {
+export interface IProxyService {
   testProxy(input: IProxyTestInput): Promise<IProxyTestResult>;
 }
 
-export const IProxyClientService = createIdentifier<IProxyClientService>('rpc-client.proxy-service');
+export const IProxyService = createIdentifier<IProxyService>('rpc-client.proxy-service');
 
-export class ProxyClientService extends Disposable implements IProxyClientService {
+export class ProxyClientService extends Disposable implements IProxyService {
   constructor(
     @IRPCClientService private readonly _rpcClientService: IRPCClientService
   ) {

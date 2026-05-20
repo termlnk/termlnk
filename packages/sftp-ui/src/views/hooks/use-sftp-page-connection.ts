@@ -15,7 +15,7 @@
 
 import type { SFTPSessionEvent, SFTPSessionStatus } from '@termlnk/rpc';
 import { useDependency } from '@termlnk/design';
-import { ISFTPClientService } from '@termlnk/rpc-client';
+import { ISFTPService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type SFTPPageConnectionPhase = 'idle' | 'connecting' | 'password' | 'ready' | 'error' | 'closed';
@@ -29,7 +29,7 @@ export type SFTPPageConnectionState =
   | { phase: 'closed' };
 
 export function useSFTPPageConnection(hostId: string | null) {
-  const sftpService = useDependency(ISFTPClientService);
+  const sftpService = useDependency(ISFTPService);
   const [state, setState] = useState<SFTPPageConnectionState>({ phase: 'idle' });
   const backendSessionIdRef = useRef<string | null>(null);
   const disposedRef = useRef(false);

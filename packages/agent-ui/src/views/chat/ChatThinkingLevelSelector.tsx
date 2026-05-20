@@ -18,7 +18,7 @@ import type { LucideIcon } from 'lucide-react';
 import { DEFAULT_THINKING_LEVEL } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, cn, HoverPanel, HoverPanelBody, HoverPanelContent, HoverPanelHeader, HoverPanelTrigger, useDependency, useObservable } from '@termlnk/design';
-import { IAIAgentClientService, IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IAIAgentClientService, IProviderConfigService } from '@termlnk/rpc-client';
 import { Ban, Check, Lightbulb } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
@@ -41,7 +41,7 @@ const THINKING_LEVEL_OPTIONS: IThinkingLevelOption[] = [
 
 export function ChatThinkingLevelSelector() {
   const aiAgentService = useDependency(IAIAgentClientService);
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
   const localeService = useDependency(LocaleService);
   const activeModel = useObservable(providerConfigService.activeModel$, null);
 

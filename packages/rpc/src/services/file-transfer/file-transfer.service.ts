@@ -19,8 +19,11 @@ import { createIdentifier } from '@termlnk/core';
 
 export interface IFileTransferService {
   transferEvent$(sessionId: string): Observable<FileTransferEvent>;
+  // Main-process only — wires up the trzsz/zmodem middleware stack for an SSH
+  // session. Renderer implementation throws because it has no SSH session handle.
   initSession(sessionId: string): void;
+  // Main-process only — mirror of initSession; throws on the renderer.
   disposeSession(sessionId: string): void;
-  cancelTransfer(sessionId: string): void;
+  cancelTransfer(sessionId: string): Promise<void>;
 }
 export const IFileTransferService = createIdentifier<IFileTransferService>('rpc.file-transfer-service');

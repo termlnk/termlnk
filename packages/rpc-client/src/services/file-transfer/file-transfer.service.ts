@@ -13,19 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
-import type { FileTransferEvent } from '@termlnk/rpc';
+import type { FileTransferEvent, IFileTransferService } from '@termlnk/rpc';
 import type { Observable } from 'rxjs';
-import { createIdentifier, Disposable } from '@termlnk/core';
+import { Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { IRPCClientService } from '../rpc-client.service';
 
-export interface IFileTransferClientService {
-  transferEvent$(sessionId: string): Observable<FileTransferEvent>;
-  cancelTransfer(sessionId: string): Promise<void>;
-}
-export const IFileTransferClientService = createIdentifier<IFileTransferClientService>('rpc-client.file-transfer-service');
+const MAIN_PROCESS_ONLY_MESSAGE = '[FileTransferService] this method is only available in the main process';
 
-export class FileTransferClientService extends Disposable implements IFileTransferClientService {
+export class FileTransferService extends Disposable implements IFileTransferService {
   constructor(
     @IRPCClientService private readonly _rpcClientService: IRPCClientService
   ) {
@@ -44,5 +40,14 @@ export class FileTransferClientService extends Disposable implements IFileTransf
 
   async cancelTransfer(sessionId: string): Promise<void> {
     await this._client.cancelTransfer.mutate(sessionId);
+  }
+
+  // Renderer has no SSH session handle — middleware lifecycle stays in the main process.
+  initSession(_sessionId: string): void {
+    throw new Error(MAIN_PROCESS_ONLY_MESSAGE);
+  }
+
+  disposeSession(_sessionId: string): void {
+    throw new Error(MAIN_PROCESS_ONLY_MESSAGE);
   }
 }

@@ -220,13 +220,12 @@ describe('HttpAuthService — register', () => {
       new NoopLogService()
     );
 
-    const user = await auth.register({
+    await auth.register({
       email: 'alice@example.com',
       password: 'correct-horse',
       displayName: 'Alice',
     });
 
-    expect(user).toEqual(TEST_USER);
     expect(auth.getCurrentUser()).toEqual(TEST_USER);
     expect(bed.userStorage.data).toEqual(TEST_USER);
     expect(bed.masterKey.derivedFor?.password).toBe('correct-horse');
@@ -370,8 +369,7 @@ describe('HttpAuthService — login (full SRP6a round-trip with simulated server
     await auth.register({ email: 'alice@example.com', password: 'shared-secret' });
     expect(serverDb.has('alice@example.com')).toBe(true);
 
-    const user = await auth.login({ email: 'alice@example.com', password: 'shared-secret' });
-    expect(user).toEqual(TEST_USER);
+    await auth.login({ email: 'alice@example.com', password: 'shared-secret' });
     expect(bed.storage.data?.accessToken).toBe('after-login');
     expect(auth.getCurrentUser()).toEqual(TEST_USER);
     expect(bed.userStorage.data).toEqual(TEST_USER);

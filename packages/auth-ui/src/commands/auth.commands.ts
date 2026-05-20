@@ -14,16 +14,16 @@
  */
 
 import type { IAccessor, ICommand } from '@termlnk/core';
-import { IAuthClientService } from '@termlnk/auth';
+import { IAuthService } from '@termlnk/auth';
 import { Quantity } from '@termlnk/core';
 
 // Programmatic logout. Login is intentionally omitted: zero-knowledge auth requires the
 // password as input, so there is no parameter-less login command we could expose.
-// Returns false when IAuthClientService is unbound (cloud not configured).
+// Returns false when IAuthService is unbound (cloud not configured).
 export const LogoutCommand: ICommand = {
   id: 'auth-ui.command.logout',
   handler: async (accessor: IAccessor): Promise<boolean> => {
-    const auth = accessor.get(IAuthClientService, Quantity.OPTIONAL);
+    const auth = accessor.get(IAuthService, Quantity.OPTIONAL);
     if (!auth) {
       return false;
     }

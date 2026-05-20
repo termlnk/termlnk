@@ -14,7 +14,7 @@
  */
 
 import { Button, useDependency } from '@termlnk/design';
-import { ISFTPClientService } from '@termlnk/rpc-client';
+import { ISFTPService } from '@termlnk/rpc-client';
 import { Save, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -26,7 +26,7 @@ interface IInlineFileEditorProps {
 }
 
 export function InlineFileEditor({ sessionId, remotePath, filename, onClose }: IInlineFileEditorProps) {
-  const sftpService = useDependency(ISFTPClientService);
+  const sftpService = useDependency(ISFTPService);
   const [content, setContent] = useState('');
   const [originalContent, setOriginalContent] = useState('');
   const [loading, setLoading] = useState(true);

@@ -27,7 +27,7 @@ import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { shareReplay } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
 
-export interface IPermissionClientService {
+export interface IAgentToolPermissionService {
   readonly mode$: Observable<ToolPermissionMode>;
   readonly pendingRequests$: Observable<IAgentToolPermissionRequest[]>;
   readonly rules$: Observable<IPermissionRule[]>;
@@ -42,11 +42,11 @@ export interface IPermissionClientService {
   removeRule(id: string): Promise<void>;
 }
 
-export const IPermissionClientService = createIdentifier<IPermissionClientService>(
+export const IAgentToolPermissionService = createIdentifier<IAgentToolPermissionService>(
   'rpc-client.permission-client-service'
 );
 
-export class PermissionClientService extends Disposable implements IPermissionClientService {
+export class AgentToolPermissionService extends Disposable implements IAgentToolPermissionService {
   readonly mode$: Observable<ToolPermissionMode>;
   readonly pendingRequests$: Observable<IAgentToolPermissionRequest[]>;
   readonly rules$: Observable<IPermissionRule[]>;

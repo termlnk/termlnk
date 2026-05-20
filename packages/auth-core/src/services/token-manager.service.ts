@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITokenPair, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
+import type { ITokenManager, ITokenPair, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
 import { ITokenRefresher as ITokenRefresherId, ITokenStorageService as ITokenStorageServiceId } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 
@@ -24,7 +24,7 @@ const ACCESS_TOKEN_REFRESH_MARGIN_MS = 30_000;
 // In-memory cache + proactive refresh + single-flight coalescing. Fail-soft on refresh
 // failure: clears local state and returns null so the UI drives a re-login rather than
 // having an RPC throw at the call site.
-export class TokenManager extends Disposable {
+export class TokenManager extends Disposable implements ITokenManager {
   private _cache: ITokenPair | null = null;
   private _refreshPromise: Promise<ITokenPair> | null = null;
 
@@ -37,9 +37,9 @@ export class TokenManager extends Disposable {
   }
 
   override dispose(): void {
+    super.dispose();
     this._cache = null;
     this._refreshPromise = null;
-    super.dispose();
   }
 
   // Returns null when the user is logged out or the refresh chain has broken.

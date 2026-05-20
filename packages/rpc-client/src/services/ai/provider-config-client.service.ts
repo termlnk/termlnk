@@ -19,7 +19,7 @@ import { createIdentifier, Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { IRPCClientService } from '../rpc-client.service';
 
-export interface IProviderConfigClientService {
+export interface IProviderConfigService {
   readonly providers$: Observable<IProviderGroup[]>;
   readonly activeModelId$: Observable<string | null>;
   readonly activeModel$: Observable<IModelOption | null>;
@@ -42,9 +42,9 @@ export interface IProviderConfigClientService {
   removeCustomModel(providerId: string, modelId: string): Promise<void>;
 }
 
-export const IProviderConfigClientService = createIdentifier<IProviderConfigClientService>('rpc-client.provider-config-client-service');
+export const IProviderConfigService = createIdentifier<IProviderConfigService>('rpc-client.provider-config-client-service');
 
-export class ProviderConfigClientService extends Disposable implements IProviderConfigClientService {
+export class ProviderConfigClientService extends Disposable implements IProviderConfigService {
   readonly providers$: Observable<IProviderGroup[]>;
   readonly activeModelId$: Observable<string | null>;
   readonly activeModel$: Observable<IModelOption | null>;

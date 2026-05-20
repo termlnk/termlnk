@@ -59,9 +59,11 @@ export class FileTransferService extends Disposable implements IFileTransferServ
     }
   }
 
-  cancelTransfer(sessionId: string): void {
+  async cancelTransfer(sessionId: string): Promise<void> {
     const session = this._sshSessionService.getSession(sessionId);
-    if (!session) return;
+    if (!session) {
+      return;
+    }
 
     // Emit cancelled event so the UI can react
     const subject = this._eventSubjects.get(sessionId);

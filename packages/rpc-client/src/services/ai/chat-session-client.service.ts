@@ -24,7 +24,7 @@ export interface IChatSessionChangeEvent {
   sessionId: string;
 }
 
-export interface IChatSessionClientService {
+export interface IChatSessionService {
   readonly sessions$: Observable<IChatSessionChangeEvent>;
   readonly currentSessionId$: Observable<string | null>;
   listSessions(): Promise<any[]>;
@@ -38,9 +38,9 @@ export interface IChatSessionClientService {
   newSession(): Promise<string>;
 }
 
-export const IChatSessionClientService = createIdentifier<IChatSessionClientService>('rpc-client.chat-session-client-service');
+export const IChatSessionService = createIdentifier<IChatSessionService>('rpc-client.chat-session-client-service');
 
-export class ChatSessionClientService extends Disposable implements IChatSessionClientService {
+export class ChatSessionClientService extends Disposable implements IChatSessionService {
   readonly sessions$: Observable<IChatSessionChangeEvent>;
   readonly currentSessionId$: Observable<string | null>;
 

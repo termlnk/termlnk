@@ -17,7 +17,8 @@ import type { IHost } from '@termlnk/terminal';
 import type { ITerminalViewProps } from '../../services/terminal/terminal-view-registry.service';
 import { LocaleService } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
-import { IFileTransferClientService, IHostManagerService, ISSHService } from '@termlnk/rpc-client';
+import { IFileTransferService } from '@termlnk/rpc';
+import { IHostManagerService, ISSHService } from '@termlnk/rpc-client';
 import { HostType, IShellIntegrationService } from '@termlnk/terminal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ITerminalInputService } from '../../services/terminal-input/terminal-input.service';
@@ -44,7 +45,7 @@ export function TerminalView(props: ITerminalViewProps) {
   const sshService = useDependency(ISSHService);
   const hostManagerService = useDependency(IHostManagerService);
   const terminalUIService = useDependency(ITerminalUIService);
-  const fileTransferService = useDependency(IFileTransferClientService);
+  const fileTransferService = useDependency(IFileTransferService);
   const terminalInputService = useDependency(ITerminalInputService);
   const globalAppearance = useGlobalTerminalAppearance();
   const activeSessionId = useObservable(terminalUIService.activeSessionId$, null);

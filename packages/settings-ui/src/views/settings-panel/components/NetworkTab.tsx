@@ -17,7 +17,7 @@ import type { IProxyTestResult } from '@termlnk/rpc-client';
 import type { IProxy } from '@termlnk/terminal';
 import { LocaleService } from '@termlnk/core';
 import { Button, Card, CardContent, CardDescription, CardHeader, cn, Field, FieldContent, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, useDependency } from '@termlnk/design';
-import { IConfigManagerService, IProxyClientService } from '@termlnk/rpc-client';
+import { IConfigManagerService, IProxyService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const NETWORK_CONFIG_KEY = 'network.config';
@@ -126,7 +126,7 @@ function mapTestResult(result: IProxyTestResult): IProxyTestState {
 export function NetworkTab() {
   const localeService = useDependency(LocaleService);
   const configManagerService = useDependency(IConfigManagerService);
-  const proxyClientService = useDependency(IProxyClientService);
+  const proxyClientService = useDependency(IProxyService);
 
   const [proxy, setProxy] = useState<IProxy>(createDefaultProxy);
   const [hostText, setHostText] = useState(() => createDefaultProxy().host);

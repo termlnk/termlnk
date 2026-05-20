@@ -18,7 +18,7 @@ import type { ReactNode } from 'react';
 import { IMcpService } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, Checkbox, cn, Collapsible, CollapsibleContent, CollapsibleTrigger, HoverCard, HoverCardContent, HoverCardTrigger, HoverPanel, HoverPanelBody, HoverPanelContent, HoverPanelFooter, HoverPanelHeader, HoverPanelTrigger, Switch, useDependency } from '@termlnk/design';
-import { IChatSessionClientService } from '@termlnk/rpc-client';
+import { IChatSessionService } from '@termlnk/rpc-client';
 import { Check, ChevronDown, ChevronRight, FolderOpen, Globe, Loader2, Plug2, RefreshCw, Server, Sparkles, TerminalSquare, Wrench } from 'lucide-react';
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -137,7 +137,7 @@ function readSelectedToolIds(session: any): string[] | null {
 }
 
 export function ChatToolSelector() {
-  const chatSessionService = useDependency(IChatSessionClientService);
+  const chatSessionService = useDependency(IChatSessionService);
   const mcpService = useDependency(IMcpService);
   const localeService = useDependency(LocaleService);
   const currentSessionIdRef = useRef<string | null>(null);
@@ -159,14 +159,12 @@ export function ChatToolSelector() {
     try {
       const nextServers = sortServers(await mcpService.servers());
 
-      // Fetch tools from external MCP servers
       const toolGroups = await Promise.all(
         nextServers
           .filter((server) => server.enabled)
           .map(async (server) => mcpService.getTools(server.id))
       );
 
-      // Fetch built-in tools
       const builtinTools = await mcpService.getBuiltinTools();
       const nextTools = sortTools(
         [...builtinTools, ...toolGroups.flat()].map((tool) => ({

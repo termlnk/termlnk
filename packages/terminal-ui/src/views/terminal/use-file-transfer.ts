@@ -13,14 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
-import type { FileTransferEvent } from '@termlnk/rpc';
-import type { IFileTransferClientService } from '@termlnk/rpc-client';
+import type { FileTransferEvent, IFileTransferService } from '@termlnk/rpc';
 import { FileTransferEventType } from '@termlnk/rpc';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface IUseFileTransferOptions {
   backendSessionId: string | null;
-  fileTransferService: IFileTransferClientService;
+  fileTransferService: IFileTransferService;
 }
 
 export function useFileTransfer(options: IUseFileTransferOptions) {

@@ -14,7 +14,7 @@
  */
 
 import type { IBackupClientService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
-import { AuthState, IAuthClientService } from '@termlnk/auth';
+import { AuthState, IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { IBackupClientService as IBackupClientServiceId } from '@termlnk/sync';
@@ -36,7 +36,7 @@ export function BackupCard() {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
   const backupClient = useDependency(IBackupClientServiceId, Quantity.OPTIONAL);
-  const authClient = useDependency(IAuthClientService, Quantity.OPTIONAL);
+  const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
 
   const authState = useObservable<AuthState>(
     authClient?.authState$ ?? null,

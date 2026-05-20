@@ -15,7 +15,7 @@
 
 import { LocaleService } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
-import { IChatSessionClientService } from '@termlnk/rpc-client';
+import { IChatSessionService } from '@termlnk/rpc-client';
 import { MessageSquare, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -47,7 +47,7 @@ function formatDate(dateStr: string): string {
 }
 
 export function ChatSessionList({ onSelectSession }: IChatSessionListProps) {
-  const chatSessionService = useDependency(IChatSessionClientService);
+  const chatSessionService = useDependency(IChatSessionService);
   const localeService = useDependency(LocaleService);
   const currentSessionId = useObservable(chatSessionService.currentSessionId$, null);
 

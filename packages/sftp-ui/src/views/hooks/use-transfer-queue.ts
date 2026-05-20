@@ -15,7 +15,7 @@
 
 import type { ISFTPTransferTask } from '@termlnk/rpc';
 import { useDependency } from '@termlnk/design';
-import { IRPCClientService, ISFTPClientService } from '@termlnk/rpc-client';
+import { IRPCClientService, ISFTPService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ITransferHistoryService } from '../../services/transfer/transfer-history.service';
 
@@ -30,7 +30,7 @@ interface IUseTransferQueueOptions {
 }
 
 export function useTransferQueue(sessionId: string | null, options?: IUseTransferQueueOptions) {
-  const sftpService = useDependency(ISFTPClientService);
+  const sftpService = useDependency(ISFTPService);
   const rpcClient = useDependency(IRPCClientService);
   const historyService = useDependency(ITransferHistoryService);
   const [transfers, setTransfers] = useState<ISFTPTransferTask[]>([]);
@@ -38,7 +38,9 @@ export function useTransferQueue(sessionId: string | null, options?: IUseTransfe
   onTransferCompleteRef.current = options?.onTransferComplete;
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
     const sub = sftpService.transferProgress$(sessionId).subscribe((task) => {
       setTransfers((prev) => {

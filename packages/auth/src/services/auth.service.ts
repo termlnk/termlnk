@@ -19,7 +19,12 @@ import type { AuthState, IAuthError } from '../models/session';
 import type { ILoginInput, IRegisterInput, IUserAccount } from '../models/user';
 import { createIdentifier } from '@termlnk/core';
 
-// Main-process auth service.
+// Auth contract — implemented on both the main process (HttpAuthService in
+// @termlnk/auth-core, performs the SRP6a handshake + token storage + restore)
+// and the renderer process (AuthService in @termlnk/rpc-client, forwards to
+// the main-process implementation through tRPC). Main-process-only methods
+// (`getAccessToken`, `getCurrentUser`, `restore`) throw on the renderer side
+// because access tokens never cross the IPC boundary.
 //
 // Trust boundaries:
 // - Plaintext password lives only inside register/login call stacks; discarded after deriving
@@ -33,10 +38,11 @@ export interface IAuthService {
   readonly lastError$: Observable<IAuthError | null>;
 
   // Client derives the SRP6a verifier and uploads it; the server stores only the verifier
-  // hash and never sees the password. Successful registration auto-logs in.
-  register(input: IRegisterInput): Promise<IUserAccount>;
+  // hash and never sees the password. Successful registration auto-logs in. Returns void
+  // because the renderer reads the resulting user through `currentUser$`.
+  register(input: IRegisterInput): Promise<void>;
 
-  login(input: ILoginInput): Promise<IUserAccount>;
+  login(input: ILoginInput): Promise<void>;
 
   // Revokes the refresh token, clears the master key and wipes locally stored tokens.
   // Local logout completes even when the network call fails.
@@ -44,14 +50,15 @@ export interface IAuthService {
 
   // Returns a still-valid access token, refreshing automatically when needed.
   // Returns null when both tokens have expired so the caller can drive a re-login.
+  // Main-process only — the renderer must not have the raw token.
   getAccessToken(): Promise<string | null>;
 
+  // Synchronous snapshot of the current user. Main-process only (the renderer reads
+  // currentUser$ directly from its BehaviorSubject).
   getCurrentUser(): IUserAccount | null;
 
   // Rehydrates currentUser$/authState$ from the locally persisted user + token pair.
-  // Emits the cached user immediately to avoid a login-screen flash, then refreshes from
-  // /auth/me best-effort: 401/403 clears the whole session; transient failures keep the
-  // cached user. Idempotent; noop when never logged in.
+  // Main-process only — the renderer never persists auth state.
   restore(): Promise<void>;
 
   // Devices currently holding an active refresh token, ordered by lastSeenAt desc.

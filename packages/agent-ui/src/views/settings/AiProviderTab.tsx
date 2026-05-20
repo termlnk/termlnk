@@ -17,7 +17,7 @@ import type { IModelOption } from '@termlnk/agent';
 import { compareProviders, getDefaultProviderBaseUrl } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, cn, Input, Popover, PopoverContent, PopoverTrigger, Switch, useDependency, useObservable } from '@termlnk/design';
-import { IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IProviderConfigService } from '@termlnk/rpc-client';
 import { ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Zap } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AddCustomModelDialog } from './AddCustomModelDialog';
@@ -43,7 +43,7 @@ interface IProviderListItem {
 
 export function AiProviderTab() {
   const localeService = useDependency(LocaleService);
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
   const providers = useObservable(providerConfigService.providers$, []);
 
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
@@ -61,7 +61,6 @@ export function AiProviderTab() {
   const [testPopoverOpen, setTestPopoverOpen] = useState(false);
   const testRequestSeqRef = useRef(0);
 
-  // Load provider configs on mount
   useEffect(() => {
     let cancelled = false;
 
@@ -100,7 +99,6 @@ export function AiProviderTab() {
     };
   }, [providers, providerConfigService]);
 
-  // Auto-select first provider
   useEffect(() => {
     const orderedProviders = providers.toSorted(compareProviders);
 

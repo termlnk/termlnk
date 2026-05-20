@@ -15,7 +15,7 @@
 
 import type { ISFTPFileEntry } from '@termlnk/rpc';
 import { useDependency } from '@termlnk/design';
-import { ISFTPClientService } from '@termlnk/rpc-client';
+import { ISFTPService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useState } from 'react';
 
 export type SortField = 'filename' | 'size' | 'mtime';
@@ -32,7 +32,7 @@ export interface IFileBrowserState {
 }
 
 export function useRemoteFileBrowser(sessionId: string | null) {
-  const sftpService = useDependency(ISFTPClientService);
+  const sftpService = useDependency(ISFTPService);
   const [state, setState] = useState<IFileBrowserState>({
     currentPath: '~',
     entries: [],

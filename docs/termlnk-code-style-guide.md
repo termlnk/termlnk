@@ -46,6 +46,58 @@ views/         → 依赖以上所有层（React 组件）
 | **命令驱动** | 所有用户交互和状态变更通过命令系统执行 |
 | **接口隔离** | 对外暴露接口（`I` 前缀），隐藏实现细节 |
 | **自动资源回收** | 所有资源必须通过 Disposable 机制管理，确保无泄漏 |
+| **对称双进程契约** | 主进程 / 渲染进程共享同一个接口类型，分别在 `rpc-server` / `rpc-client` 实现，禁止为渲染端单开 `*Client*` 接口 |
+
+### 1.3 对称双进程契约（必须遵守）
+
+**问题**：Termlnk 是 Electron 双进程架构。主进程承载业务逻辑（`rpc-server`），渲染进程承载 UI 与 facade（`rpc-client`），二者通过 tRPC over IPC 通信。
+
+**反模式**：为渲染端单独定义 `IXxxClientService`，与主进程的 `IXxxService` 并行存在。这会导致：
+
+- 接口契约漂移（两边各自演化字段）
+- React 组件被迫绑定运行时进程（`useDependency(IXxxClientService)` 暴露了"我在渲染端"）
+- 测试时需要为两端各搭一套 mock
+- 跨进程边界的真实差异（同步 vs 远程 Promise）被命名隐藏，反而看不清
+
+**正确做法**：
+
+```typescript
+// packages/shared-terminal/src/services/shared-terminal.service.ts （契约层）
+export interface ISharedTerminalService {
+  readonly sessions$: Observable<readonly ISharedSession[]>;
+  listSessions(): Promise<readonly ISharedSession[]>;
+  setDriver(sessionId: string, clientId: string | null): Promise<void>;
+}
+export const ISharedTerminalService = createIdentifier<ISharedTerminalService>(
+  'shared-terminal.service'
+);
+
+// packages/shared-terminal-core/src/services/shared-terminal.service.ts （主进程实现）
+export class SharedTerminalService extends Disposable implements ISharedTerminalService {
+  // ... 直接操作 PtyMultiplexerService / PairingService / 等本地服务
+}
+
+// packages/rpc-client/src/services/shared-terminal/shared-terminal.service.ts （渲染端实现）
+export class SharedTerminalService extends Disposable implements ISharedTerminalService {
+  // ... 把每个方法转成 tRPC mutation/query/subscription
+}
+```
+
+**两端实现注册**：主进程在 `SharedTerminalCorePlugin` 注册 `[ISharedTerminalService, { useClass: SharedTerminalService }]`；渲染端在 `RPCClientPlugin` 注册 `[ISharedTerminalService, { useClass: SharedTerminalService }]`（两个 `SharedTerminalService` 是不同文件、同名接口的不同实现）。
+
+**接口的物理位置**：契约接口和 DI 标识符放在与运行时无关的契约包中（如 `@termlnk/shared-terminal`、`@termlnk/terminal`、`@termlnk/auth`）。`rpc-server` 实现这些接口；`rpc-client` 也实现这些接口；二者都不导出新的接口。
+
+**所有方法签名一律返回 Promise / Observable**：即使主进程实现内部是同步的（如 `setDriver` 直接调本地服务），也声明为 `Promise<void>`，让渲染端可以零摩擦实现。同步 getter 仅用于 BehaviorSubject 当前值（如 `get sessions(): readonly ISharedSession[]`），且必须在主进程独立 API 中提供，不进入跨进程接口。
+
+**禁止事项**：
+
+- ❌ 禁止接口名后缀 `*ClientService`（如 `IExtensionClientService`、`IAIAgentClientService`）—— 它泄漏了运行时位置
+- ❌ 禁止只在 `rpc-client` 包里定义接口然后没有对应主进程实现
+- ❌ 禁止主进程和渲染端各自定义"功能相同但 shape 略不同"的两个接口（必然漂移）
+
+**何时是真正合理的客户端独有接口**：渲染端某些纯本地状态（如 React 路由、UI 偏好、Workbench 布局）从未进入主进程，可以保留 renderer-only 服务（命名为 `IXxxService`、放在 UI 包内即可，不带 `Client` 后缀）。
+
+**何时需要保留 `*Client*` 命名**：当存在一个**纯协议层**门面而非业务接口时（如 `IRPCClientService` —— 它只负责暴露 `getClient(): TRPCClient`），可保留 `Client` 后缀以表明"这是协议门面"。这是个别例外，不应作为业务服务命名的范本。
 
 ---
 

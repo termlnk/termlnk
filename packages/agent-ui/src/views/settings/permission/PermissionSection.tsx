@@ -16,7 +16,7 @@
 import type { IPermissionRule, ToolPermissionMode } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Button, Card, CardContent, CardHeader, cn, Input, useDependency, useObservable } from '@termlnk/design';
-import { IPermissionClientService } from '@termlnk/rpc-client';
+import { IAgentToolPermissionService } from '@termlnk/rpc-client';
 import { ShieldCheck, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -54,7 +54,7 @@ function formatPattern(rule: IPermissionRule, toolWideLabel: string): string {
 
 export function PermissionSection() {
   const localeService = useDependency(LocaleService);
-  const permissionService = useDependency(IPermissionClientService);
+  const permissionService = useDependency(IAgentToolPermissionService);
 
   const t = useCallback(
     (key: string): string => localeService.t(`agent-ui.permission.${key}`),

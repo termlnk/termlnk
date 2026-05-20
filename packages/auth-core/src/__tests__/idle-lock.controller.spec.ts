@@ -81,8 +81,8 @@ class FakeAuthService implements IAuthService {
   logoutShouldThrow = false;
   constructor(private readonly _master: FakeMasterKeyService) {}
 
-  async register(): Promise<IUserAccount> { throw new Error('not used'); }
-  async login(): Promise<IUserAccount> { throw new Error('not used'); }
+  async register(): Promise<void> { throw new Error('not used'); }
+  async login(): Promise<void> { throw new Error('not used'); }
   async logout(): Promise<void> {
     this.logoutCalls++;
     if (this.logoutShouldThrow) {

@@ -16,7 +16,7 @@
 import type { IModelOption } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { cn, Switch, useDependency } from '@termlnk/design';
-import { IProviderConfigClientService } from '@termlnk/rpc-client';
+import { IProviderConfigService } from '@termlnk/rpc-client';
 import { Brain, Image, Settings } from 'lucide-react';
 import { useCallback } from 'react';
 
@@ -39,7 +39,7 @@ function formatCost(cost: number): string {
 }
 
 export function ModelListItem({ model, isExpanded, onToggleExpand }: IModelListItemProps) {
-  const providerConfigService = useDependency(IProviderConfigClientService);
+  const providerConfigService = useDependency(IProviderConfigService);
   const localeService = useDependency(LocaleService);
 
   const handleToggle = useCallback(async (checked: boolean) => {
