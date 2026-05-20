@@ -3,31 +3,31 @@
   "version": "0.0.1",
   "private": true,
   "description": "Self-vendored React Native binding for Rust russh + russh-sftp via uniffi-bindgen-react-native. Replaces the NMSSH/JSch bridge in termlnk-mobile.",
-  "homepage": "https://github.com/termlnk/termlnk#readme",
   "author": "telan <telanflow@gmail.com>",
   "license": "PolyForm-Noncommercial-1.0.0",
+  "homepage": "https://github.com/termlnk/termlnk#readme",
   "repository": {
     "url": "git+https://github.com/termlnk/termlnk.git",
     "type": "git"
   },
-  "main": "./src/api/index.ts",
-  "types": "./src/api/index.ts",
   "exports": {
     ".": "./src/api/index.ts",
     "./package.json": "./package.json"
   },
+  "main": "./src/api/index.ts",
+  "types": "./src/api/index.ts",
   "files": [
-    "src",
-    "android",
-    "ios",
-    "cpp",
-    "rust",
-    "*.podspec",
-    "react-native.config.js",
     "*.md",
-    "ubrn.config.yaml",
+    "*.podspec",
+    "LICENSE",
+    "android",
+    "cpp",
+    "ios",
+    "react-native.config.js",
+    "rust",
+    "src",
     "tsconfig*.json",
-    "LICENSE"
+    "ubrn.config.yaml"
   ],
   "scripts": {
     "build:ios": "ubrn build ios --and-generate --release",
@@ -40,7 +40,7 @@
   },
   "peerDependencies": {
     "react": "^19.2.6",
-    "react-native": "~0.83.9"
+    "react-native": "^0.85.3"
   },
   "dependencies": {
     "uniffi-bindgen-react-native": "github:jhugman/uniffi-bindgen-react-native#62c91bcce60ca9bbee7269820cc79a9680cb908b"

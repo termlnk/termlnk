@@ -60,6 +60,6 @@
     "@trpc/server": "^11.17.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.13",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   }
 }

@@ -29,13 +29,13 @@ onlyBuiltDependencies:
   - uniffi-bindgen-react-native
 
 overrides:
-  '@types/react': ^19.2.14
+  '@types/react': ^19.2.15
   '@types/react-dom': ^19.2.3
   react: ^19.2.6
   react-dom: ^19.2.6
   electron: 41.5.0
   tar: ^7.5.13
-  undici: ^8.2.0
+  undici: ^8.3.0
   file-type: ^22.0.0
   '@tootallnate/once': ^3.0.1
   tmp: ^0.2.5

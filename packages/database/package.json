@@ -63,7 +63,7 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "better-sqlite3": "^12.9.0",
-    "drizzle-orm": "1.0.0-rc.2",
+    "drizzle-orm": "1.0.0-rc.3",
     "nanoid": "^5.1.11"
   },
   "devDependencies": {
@@ -71,11 +71,11 @@
     "@termlnk/shared": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^25.8.0",
-    "drizzle-kit": "1.0.0-rc.2",
+    "@types/node": "^25.9.1",
+    "drizzle-kit": "1.0.0-rc.3",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.13",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   }
 }
