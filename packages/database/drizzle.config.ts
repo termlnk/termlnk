@@ -33,6 +33,7 @@ export default defineConfig({
     './src/entities/mcp-oauth-token.ts',
     './src/entities/mcp-server.ts',
     './src/entities/provider.ts',
+    './src/entities/session-log-index.ts',
     './src/entities/skill.ts',
     './src/entities/sync-cursor.ts',
     './src/entities/sync-field-meta.ts',

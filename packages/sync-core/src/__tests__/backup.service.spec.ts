@@ -125,8 +125,7 @@ interface ITestBed {
 function createTestBed(): ITestBed {
   const injector = new Injector();
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
-  // MasterKeyService now requires IPasswordHasher (see P6.2). Bind the Wasm impl since
-  // these tests run under Node.
+  // MasterKeyService requires IPasswordHasher; bind the Wasm impl since these tests run under Node.
   injector.add([IPasswordHasher, { useClass: HashWasmPasswordHasher }]);
   injector.add([IMasterKeyService, { useClass: MasterKeyService }]);
   const cryptoService = new SyncCryptoService(
@@ -244,7 +243,7 @@ describe('BackupService', () => {
     await expect(bed.service.importEncryptedBackup(payload, 'replace')).rejects.toThrow(/disk full/);
   }, 30_000);
 
-  it('rejects merge mode through the repository (P2.7 ships only replace)', async () => {
+  it('rejects merge mode through the repository (replace-only)', async () => {
     await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
     bed.backupRepo.exported = makeEmptySnapshot();
     const { payload } = await bed.service.exportEncryptedBackup();

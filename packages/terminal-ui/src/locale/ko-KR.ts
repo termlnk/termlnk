@@ -213,6 +213,17 @@ const locale: typeof enUS = {
       'close-session': '터미널 닫기',
       'tab-list': '탭 목록 표시',
     },
+    multiplayer: {
+      tooltip: '멀티플레이어',
+      title: '멀티플레이어',
+      'copy-link': '링크 복사',
+      stop: '멀티플레이어 중지',
+      'hint-empty': '링크를 복사하여 이 터미널 세션을 공유하세요. 참여자는 여기에 표시됩니다.',
+      participants: '참여자:',
+      you: '나',
+      'take-keyboard': '키보드 가져오기',
+      copied: '링크가 복사되었습니다',
+    },
   },
 };
 

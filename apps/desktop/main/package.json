@@ -27,6 +27,8 @@
     "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
+    "@termlnk/shared-terminal": "workspace:*",
+    "@termlnk/shared-terminal-core": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/sync-core": "workspace:*",
     "@termlnk/terminal": "workspace:*",

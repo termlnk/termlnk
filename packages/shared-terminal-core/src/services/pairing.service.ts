@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { CollabInviteStatus as DbCollabInviteStatus, ICollabInviteTokenEntity } from '@termlnk/database';
 import type {
   CollabInviteStatus,
   ICapability,
@@ -27,9 +28,8 @@ import type {
   ISharedTerminalPluginConfig,
   SharedTerminalRole,
 } from '@termlnk/shared-terminal';
-import type { CollabInviteStatus as DbCollabInviteStatus, ICollabInviteTokenEntity } from '@termlnk/database';
-import { CollabInviteTokenRepository } from '@termlnk/database';
 import { Disposable, IConfigService, ILogService, Inject, Optional } from '@termlnk/core';
+import { CollabInviteTokenRepository } from '@termlnk/database';
 import {
   ICollabInviteTransportService as ICollabInviteTransportServiceId,
   ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId,
@@ -39,10 +39,10 @@ import {
 } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { computeCapabilityHash } from '../utils/capability-hash';
-import { base64UrlToBytes, bytesToBase64Url } from '../utils/encoding';
+import { bytesToBase64Url } from '../utils/encoding';
 
 /**
- * Owner-side invite lifecycle (P5.5.2).
+ * Owner-side invite lifecycle.
  *
  * State source of truth: the local SQLite collab_invite_token table. Server push is
  * a best-effort mirror so a separate device (or the same machine after re-install)
@@ -50,7 +50,7 @@ import { base64UrlToBytes, bytesToBase64Url } from '../utils/encoding';
  *
  * Failure modes:
  *   - HTTP push fails: local row stays `serverSyncedAt = null`. A future syncNow
- *     hook (P5.5.6) drains these. Owner can still share the URL because the relay
+ *     hook drains these. Owner can still share the URL because the relay
  *     path validates the locally-signed envelope.
  *   - Invite expires while running: startup sweep + on-demand `_reconcileExpiry`
  *     transition active rows past `exp` to `expired`.
@@ -204,7 +204,7 @@ export class PairingService extends Disposable implements IPairingService {
 
   /**
    * Mark an invite as consumed when relay/daemon confirms a successful claim. Public so
-   * the relay-side claim handler (P5.5.3 wires this up) can update lifecycle without
+   * the relay-side claim handler can update lifecycle without
    * crossing back into PairingService internals.
    */
   async consumeInvite(inviteId: string): Promise<void> {
@@ -269,9 +269,6 @@ export class PairingService extends Disposable implements IPairingService {
     return config?.relayBaseUrl?.replace(/\/+$/, '');
   }
 }
-
-// Suppress unused-import lint for base64UrlToBytes — kept exported via index for P5.5.3 consumers.
-void base64UrlToBytes;
 
 function toTokenState(row: ICollabInviteTokenEntity): IInviteTokenState {
   return {

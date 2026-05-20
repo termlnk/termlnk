@@ -213,6 +213,17 @@ const locale: typeof enUS = {
       'close-session': 'ターミナルを閉じる',
       'tab-list': 'タブ一覧を表示',
     },
+    multiplayer: {
+      tooltip: 'マルチプレイヤー',
+      title: 'マルチプレイヤー',
+      'copy-link': 'リンクをコピー',
+      stop: 'マルチプレイヤーを停止',
+      'hint-empty': 'リンクをコピーしてこの端末セッションを共有します。参加者はここに表示されます。',
+      participants: '参加者：',
+      you: 'あなた',
+      'take-keyboard': 'キーボードを取得',
+      copied: 'リンクをコピーしました',
+    },
   },
 };
 

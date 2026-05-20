@@ -14,16 +14,12 @@
  */
 
 import type { ILogService } from '@termlnk/core';
-import type { IFrame, IOutboundFrame, IPtySource, IRecordingHandle } from '@termlnk/shared-terminal';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { FrameChannel, FrameFlag, SharedSessionState, SharedTerminalRole } from '@termlnk/shared-terminal';
+import type { IFrame, IOutboundFrame, IPtySource } from '@termlnk/shared-terminal';
+import { FrameChannel, FrameFlag, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SharedTerminalCryptoService } from '../services/crypto.service';
 import { PtyMultiplexerService } from '../services/pty-multiplexer.service';
-import { SharedSessionRecordingService } from '../services/recording.service';
 
 class FakeLogService implements ILogService {
   debug = vi.fn();
@@ -341,112 +337,5 @@ describe('PtyMultiplexerService', () => {
       sessions = s;
     });
     expect(sessions).toHaveLength(0);
-  });
-});
-
-describe('PtyMultiplexerService recording integration', () => {
-  let dir: string;
-  let now = 1_000_000;
-  let recording: SharedSessionRecordingService;
-  let mux: PtyMultiplexerService;
-
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'termlnk-mux-recording-'));
-    recording = new SharedSessionRecordingService({
-      recordingsDir: dir,
-      now: () => now,
-    });
-    mux = new PtyMultiplexerService(new FakeLogService(), new SharedTerminalCryptoService(), null, recording);
-  });
-
-  afterEach(async () => {
-    mux.dispose();
-    recording.dispose();
-    await rm(dir, { recursive: true, force: true });
-  });
-
-  it('records PTY output even when no clients are attached', async () => {
-    const ts = createSource('s1');
-    mux.register(ts.source);
-    const handle = await recording.start({ sessionId: 's1', title: 'recorded', mandatory: false });
-    now += 1200;
-
-    ts.output$.next(new TextEncoder().encode('boot log'));
-    await waitFor(async () => {
-      const cast = await readFile(handle.path, 'utf-8');
-      return cast.includes('boot log') ? cast : undefined;
-    });
-
-    let sessions: readonly { recording: boolean; state: SharedSessionState }[] = [];
-    mux.sessions$.subscribe((value) => {
-      sessions = value;
-    });
-    expect(sessions[0]!.recording).toBe(true);
-    expect(sessions[0]!.state).toBe(SharedSessionState.Recording);
-  });
-
-  it('writes participant and session close audit events to active recording', async () => {
-    const ts = createSource('s1');
-    const registered = mux.register(ts.source);
-    const handle = await recording.start({ sessionId: 's1', title: 'audit', mandatory: false });
-
-    mux.attachClient('s1', 'clientA', SharedTerminalRole.CoPilot, 'Alice');
-    registered.unregister();
-
-    const auditLogPath = handle.path.replace(/\.cast$/, '.audit.jsonl');
-    const audit = await waitFor(async () => {
-      const text = await readFile(auditLogPath, 'utf-8');
-      return text.includes('participant_joined') && text.includes('session_closed') ? text : undefined;
-    });
-    expect(audit).toContain('clientA');
-    expect(audit).toContain('session_closed');
-  });
-
-  it('starts mandatory recording before auditor participant is joined', async () => {
-    const ts = createSource('s1');
-    mux.register(ts.source);
-
-    mux.attachClient('s1', 'auditorA', SharedTerminalRole.Auditor, 'Auditor');
-
-    const active = await waitFor(() => {
-      let handles: readonly IRecordingHandle[] = [];
-      recording.activeRecordings$.subscribe((value) => {
-        handles = value;
-      }).unsubscribe();
-      return handles[0];
-    });
-    expect(active.sessionId).toBe('s1');
-    expect(active.mandatory).toBe(true);
-
-    const participant = await waitFor(() => {
-      let participants: readonly { connectionId: string; role: SharedTerminalRole }[] = [];
-      mux.participants$('s1').subscribe((value) => {
-        participants = value;
-      }).unsubscribe();
-      return participants.find((item) => item.connectionId === 'auditorA');
-    });
-    expect(participant.role).toBe(SharedTerminalRole.Auditor);
-
-    const list = await recording.list();
-    await expect(recording.stop(active)).rejects.toThrow(/mandatory/);
-    expect(list[0]!.endedAt).toBeNull();
-  });
-
-  it('records a participant_kicked audit event distinct from a voluntary leave', async () => {
-    const ts = createSource('s1');
-    mux.register(ts.source);
-    const handle = await recording.start({ sessionId: 's1', title: 'kick-test', mandatory: false });
-    mux.attachClient('s1', 'clientA', SharedTerminalRole.CoPilot, 'Alice');
-    mux.kick('s1', 'clientA', 'policy violation');
-
-    const auditLogPath = handle.path.replace(/\.cast$/, '.audit.jsonl');
-    const audit = await waitFor(async () => {
-      const text = await readFile(auditLogPath, 'utf-8');
-      return text.includes('participant_kicked') ? text : undefined;
-    });
-    expect(audit).toContain('participant_kicked');
-    expect(audit).toContain('policy violation');
-    // Followed by the implicit participant_left.
-    expect(audit).toContain('participant_left');
   });
 });

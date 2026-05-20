@@ -15,9 +15,11 @@
 
 import type { DependencyOverride } from '@termlnk/core';
 
-export { SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '../common/constants';
+export const SHARED_TERMINAL_PLUGIN_CONFIG_KEY = 'shared-terminal.config';
 
 export interface ISharedTerminalPluginConfig {
+  override?: DependencyOverride;
+
   /**
    * Relay base URL with protocol + version prefix
    * (e.g. `wss://relay.termlnk.cloud/v1`). When set, the daemon starts;
@@ -28,8 +30,8 @@ export interface ISharedTerminalPluginConfig {
   relayBaseUrl?: string;
 
   /**
-   * HTTPS root for owner-side collaboration management endpoints (P5.5.2:
-   * `/v1/collab/invite/{create,revoke,list}`). When configured PairingService
+   * HTTPS root for owner-side collaboration management endpoints
+   * (`/v1/collab/invite/{create,revoke,list}`). When configured PairingService
    * mirrors invite lifecycle to the server so distant devices (or the same
    * machine after re-install) can reconcile. Leave undefined to keep all
    * invite state local — relay still works because invites are signed offline.
@@ -42,18 +44,8 @@ export interface ISharedTerminalPluginConfig {
    * when the user clicks "Add device" or "Start collaboration".
    */
   autoStartDaemon?: boolean;
-
-  /**
-   * Default recording policy. Auditors force this on regardless; the owner
-   * can override in the UI. See cloud-sync-architecture.md §5.7.6.
-   */
-  defaultRecording?: 'off' | 'on';
-
-  /** DI override hook for tests / integration; not for production. */
-  override?: DependencyOverride;
 }
 
 export const defaultPluginConfig: ISharedTerminalPluginConfig = {
   autoStartDaemon: true,
-  defaultRecording: 'off',
 };

@@ -13,8 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-export { SHARED_TERMINAL_CORE_PLUGIN_NAME } from './common/constants';
-export { SharedTerminalCorePlugin } from './plugin';
+export { SHARED_TERMINAL_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
+export type { ISharedTerminalCoreConfig } from './controllers/config.schema';
+export { SHARED_TERMINAL_CORE_PLUGIN_NAME, SharedTerminalCorePlugin } from './plugin';
 export { SharedTerminalCryptoService } from './services/crypto.service';
 export { DaemonKeypairService } from './services/daemon-keypair.service';
 export { FrameCodecService } from './services/frame-codec.service';
@@ -22,8 +23,6 @@ export { HttpCollabInviteTransportService } from './services/http-collab-invite-
 export type { CollabHttpFetchFn, IHttpCollabInviteTransportConfig } from './services/http-collab-invite-transport.service';
 export { PairingService } from './services/pairing.service';
 export { PtyMultiplexerService } from './services/pty-multiplexer.service';
-export { SharedSessionRecordingService } from './services/recording.service';
-export type { IRecordingServiceConfig } from './services/recording.service';
 export { RelayTransportService } from './services/relay-transport.service';
 export type { IRelayTransportServiceConfig, IRelayWebSocket, RelayWebSocketCtor } from './services/relay-transport.service';
 export { HeadlessSession } from './utils/headless-session';

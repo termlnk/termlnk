@@ -33,6 +33,8 @@ import { IslandCorePlugin } from '@termlnk/island-core';
 import { IFetchProvider, NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { IFileDialogService, RPCServerPlugin } from '@termlnk/rpc-server';
+import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { SharedTerminalCorePlugin } from '@termlnk/shared-terminal-core';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncCorePlugin } from '@termlnk/sync-core';
 import { chadracula } from '@termlnk/themes';
@@ -287,6 +289,13 @@ app.whenReady().then(async () => {
   });
   core.registerPlugin(SyncPlugin);
   core.registerPlugin(SyncCorePlugin, { cloudBaseUrl });
+
+  // Shared-terminal must follow AuthCorePlugin because HttpCollabInviteTransportService
+  // resolves TokenManager from the same singleton AuthCorePlugin binds. DatabasePlugin
+  // is already up so CollabInviteTokenRepository / ConfigRepository / ISecretCipherService
+  // are available for DaemonKeypairService and PairingService.
+  core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl });
+  core.registerPlugin(SharedTerminalCorePlugin);
 
   // Bundled skills must live outside app.asar — Node's fs APIs throw ENOENT
   // on asar virtual directory entries; extraResources drops them into

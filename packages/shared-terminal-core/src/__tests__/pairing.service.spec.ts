@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ILogService, LogLevel, IConfigService } from '@termlnk/core';
+import type { IConfigService, ILogService, LogLevel } from '@termlnk/core';
 import type { CollabInviteTokenRepository, ICollabInviteTokenEntity, ICollabInviteTokenEntityInsert } from '@termlnk/database';
 import type { ICollabInviteCreateInput, ICollabInviteTransportService } from '@termlnk/shared-terminal';
 import { ConfigService, IConfigService as IConfigServiceId, Injector } from '@termlnk/core';
@@ -118,14 +118,17 @@ class CapturingTransport implements ICollabInviteTransportService {
   isAvailable(): boolean {
     return this.available;
   }
+
   async pushCreate(input: ICollabInviteCreateInput): Promise<void> {
     this.creates.push(input);
     await this.pushCreateImpl(input);
   }
+
   async pushRevoke(inviteId: string): Promise<void> {
     this.revokes.push(inviteId);
     await this.pushRevokeImpl(inviteId);
   }
+
   async list(): Promise<readonly never[]> {
     return [];
   }
@@ -236,7 +239,7 @@ describe('PairingService', () => {
 
     const { invite } = await service.createInvite({
       sessionId: 'sid',
-      role: SharedTerminalRole.Auditor,
+      role: SharedTerminalRole.Observer,
       ttlMs: 60_000,
       singleUse: true,
     });

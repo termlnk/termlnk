@@ -27,6 +27,8 @@ export { PTYSessionService } from './services/pty/pty-session.service';
 export { SFTPSession } from './services/sftp/sftp-session';
 export type { ISFTPFileAttrs, ISFTPFileEntry } from './services/sftp/sftp-session';
 export { ISFTPSessionService, SFTPSessionService } from './services/sftp/sftp-session.service';
+export { IDeepLinkBus } from './services/shared-terminal/deep-link.bus';
+export { IShareSessionService } from './services/shared-terminal/share-session.service';
 export { SSHSession } from './services/ssh-session/ssh-session';
 export { SSHSessionService } from './services/ssh-session/ssh-session.service';
 export { SSHToolService } from './services/ssh-tool.service';

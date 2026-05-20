@@ -17,6 +17,10 @@
  * Logical channel for multiplexed frames. Each channel has an independent monotonic seq counter
  * so ordering is guaranteed within a channel without head-of-line blocking across channels.
  */
+import type { ICapability } from './invite';
+import type { SharedTerminalRole } from './role';
+import type { ISessionSnapshot } from './session';
+
 export enum FrameChannel {
   Control = 0,
   PtyData = 1,
@@ -194,8 +198,6 @@ export const SESSION_EVENT_TYPES = [
   'role_changed',
   'driver_handover',
   'rekey',
-  'recording_started',
-  'recording_stopped',
   'session_started',
   'session_closed',
   'snapshot',
@@ -238,17 +240,6 @@ export interface IDriverHandoverSessionEvent extends ISessionEventBase {
   readonly toClientId: string | null;
 }
 
-export interface IRecordingStartedSessionEvent extends ISessionEventBase {
-  readonly type: 'recording_started';
-  readonly recordingId: string;
-  readonly mandatory: boolean;
-}
-
-export interface IRecordingStoppedSessionEvent extends ISessionEventBase {
-  readonly type: 'recording_stopped';
-  readonly recordingId: string;
-}
-
 export interface IInviteSessionEvent extends ISessionEventBase {
   readonly type: 'invite_created' | 'invite_consumed' | 'invite_revoked';
   readonly inviteId: string;
@@ -275,12 +266,7 @@ export type ISessionEvent =
   | IParticipantKickedSessionEvent
   | IRoleChangedSessionEvent
   | IDriverHandoverSessionEvent
-  | IRecordingStartedSessionEvent
-  | IRecordingStoppedSessionEvent
   | IInviteSessionEvent
   | IRekeySessionEvent
   | ISessionLifecycleEvent
   | ISnapshotSessionEvent;
-import type { ICapability } from './invite';
-import type { SharedTerminalRole } from './role';
-import type { ISessionSnapshot } from './session';

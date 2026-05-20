@@ -17,7 +17,7 @@ import type { IKeypair } from '../models/keypair';
 import { createIdentifier } from '@termlnk/core';
 
 /**
- * Owner-side long-term X25519 keypair (P5.5.3).
+ * Owner-side long-term X25519 keypair.
  *
  * Persistence rules:
  *   - secret key: written to local SQLite via ConfigRepository.setField as a

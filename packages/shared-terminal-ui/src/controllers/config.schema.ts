@@ -13,4 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-export const SHARED_TERMINAL_CORE_PLUGIN_NAME = 'SHARED_TERMINAL_CORE_PLUGIN';
+import type { DependencyOverride } from '@termlnk/core';
+
+export const SHARED_TERMINAL_UI_PLUGIN_CONFIG_KEY = 'shared-terminal-ui.config';
+
+export interface ISharedTerminalUIPluginConfig {
+  override?: DependencyOverride;
+}
+
+export const defaultPluginConfig: ISharedTerminalUIPluginConfig = {};

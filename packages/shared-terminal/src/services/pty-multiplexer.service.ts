@@ -60,7 +60,7 @@ export interface IPtyMultiplexerService {
   kick(sessionId: string, clientId: string, reason?: string): void;
 
   /**
-   * Attach a participant. Optional `publicKey` (P5.5.3) registers the client's X25519
+   * Attach a participant. Optional `publicKey` registers the client's X25519
    * public key so the daemon can wrap the per-session symmetric key for them on
    * subsequent rekeys. Omit for legacy paired-device flows (no rekey participation).
    */
@@ -76,7 +76,7 @@ export interface IPtyMultiplexerService {
   clientHeartbeat(sessionId: string, clientId: string): void;
 
   /**
-   * Current per-session symmetric key (32 bytes) used to encrypt PTY frames (P5.5.3).
+   * Current per-session symmetric key (32 bytes) used to encrypt PTY frames.
    * Generated lazily on the first attach with a registered publicKey; null when no
    * keyed participant has joined yet.
    */

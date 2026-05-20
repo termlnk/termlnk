@@ -13,43 +13,42 @@
  * governing permissions and limitations under the License.
  */
 
-import type { DependencyOverride, Injector } from '@termlnk/core';
-import { DependentOn, InjectSelf, Plugin, Quantity } from '@termlnk/core';
-import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
+import type { Dependency, Injector } from '@termlnk/core';
+import type { ISharedTerminalUIPluginConfig } from './controllers/config.schema';
+import { DependentOn, IConfigService, InjectSelf, merge, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
-import { MonitorUpIcon } from 'lucide-react';
-import { SharedTerminalPanel } from './views/SharedTerminalPanel';
+import { defaultPluginConfig, SHARED_TERMINAL_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
+import { MultiplayerMountController } from './controllers/multiplayer-mount.controller';
 
 export const SHARED_TERMINAL_UI_PLUGIN_NAME = 'SHARED_TERMINAL_UI_PLUGIN';
-
-export interface ISharedTerminalUIPluginConfig {
-  override?: DependencyOverride;
-}
 
 @DependentOn(SharedTerminalPlugin)
 export class SharedTerminalUIPlugin extends Plugin {
   static override pluginName = SHARED_TERMINAL_UI_PLUGIN_NAME;
 
   constructor(
-    private readonly _config: ISharedTerminalUIPluginConfig = {},
-    @InjectSelf() protected readonly _injector: Injector
+    private readonly _config: ISharedTerminalUIPluginConfig = defaultPluginConfig,
+    @InjectSelf() protected readonly _injector: Injector,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
-    void this._config;
+
+    const config = merge(
+      {},
+      defaultPluginConfig,
+      this._config
+    );
+    this._configService.setConfig(SHARED_TERMINAL_UI_PLUGIN_CONFIG_KEY, config);
   }
 
   override onReady(): void {
-    const registry = this._injector.get(ISettingsTabRegistryService, Quantity.OPTIONAL);
-    if (!registry) {
-      return;
-    }
-    this.disposeWithMe(registry.register({
-      id: 'shared-terminal',
-      labelKey: 'shared-terminal-ui.tab.label',
-      descriptionKey: 'shared-terminal-ui.tab.description',
-      icon: MonitorUpIcon,
-      component: SharedTerminalPanel,
-      order: 115,
-    }));
+    const deps: Dependency[] = [
+      [MultiplayerMountController],
+    ];
+    registerDependencies(this._injector, deps);
+
+    touchDependencies(this._injector, [
+      [MultiplayerMountController],
+    ]);
   }
 }

@@ -15,14 +15,10 @@
 
 import type { ISharedTerminalPluginConfig } from './controllers/config.schema';
 import { IConfigService, Inject, Injector, merge, Plugin } from '@termlnk/core';
-import { SHARED_TERMINAL_PLUGIN_NAME } from './common/constants';
 import { defaultPluginConfig, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 
-export { SHARED_TERMINAL_PLUGIN_NAME };
+export const SHARED_TERMINAL_PLUGIN_NAME = 'SHARED_TERMINAL_PLUGIN';
 
-// Contract-only: registers config but binds no services. Implementation lives in
-// @termlnk/shared-terminal-core. Main-process bootstrap order:
-// AuthPlugin -> AuthCorePlugin -> SharedTerminalPlugin -> SharedTerminalCorePlugin.
 export class SharedTerminalPlugin extends Plugin {
   static override pluginName = SHARED_TERMINAL_PLUGIN_NAME;
 

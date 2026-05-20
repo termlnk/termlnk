@@ -53,6 +53,7 @@
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/rpc": "workspace:*",
+    "@termlnk/shared-terminal": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "rxjs": ">=7.0.0"
@@ -62,6 +63,7 @@
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/rpc": "workspace:*",
+    "@termlnk/shared-terminal": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "@trpc/client": "^11.17.0"

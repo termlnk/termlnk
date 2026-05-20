@@ -25,6 +25,7 @@ import { hostRouter } from './routers/host';
 import { localFsRouter } from './routers/local-fs';
 import { mcpRouter } from './routers/mcp';
 import { mcpRegistryRouter } from './routers/mcp-registry';
+import { multiplayerRouter } from './routers/multiplayer';
 import { notifyRouter } from './routers/notify';
 import { permissionRouter } from './routers/permission';
 import { proxyRouter } from './routers/proxy';
@@ -46,6 +47,7 @@ export const appRouter = router({
   host: hostRouter,
   mcp: mcpRouter,
   mcpRegistry: mcpRegistryRouter,
+  multiplayer: multiplayerRouter,
   notify: notifyRouter,
   permission: permissionRouter,
   proxy: proxyRouter,

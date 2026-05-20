@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { isWriterRole, requiresMandatoryRecording, SharedTerminalRole } from '../models/role';
+import { isWriterRole, SharedTerminalRole } from '../models/role';
 
 describe('SharedTerminalRole helpers', () => {
   it('owner and co-pilot are writers', () => {
@@ -22,15 +22,7 @@ describe('SharedTerminalRole helpers', () => {
     expect(isWriterRole(SharedTerminalRole.CoPilot)).toBe(true);
   });
 
-  it('observer and auditor are read-only', () => {
+  it('observer is read-only', () => {
     expect(isWriterRole(SharedTerminalRole.Observer)).toBe(false);
-    expect(isWriterRole(SharedTerminalRole.Auditor)).toBe(false);
-  });
-
-  it('only auditor triggers mandatory recording', () => {
-    expect(requiresMandatoryRecording(SharedTerminalRole.Auditor)).toBe(true);
-    expect(requiresMandatoryRecording(SharedTerminalRole.Owner)).toBe(false);
-    expect(requiresMandatoryRecording(SharedTerminalRole.CoPilot)).toBe(false);
-    expect(requiresMandatoryRecording(SharedTerminalRole.Observer)).toBe(false);
   });
 });

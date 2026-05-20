@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDaemonKeypairService, IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRecordingHandle, IRegisteredPty, IRekeyResult, ISessionSnapshot, ISharedSession, ISharedSessionRecordingService, ISharedTerminalCryptoService, RekeyReason, SharedTerminalRole } from '@termlnk/shared-terminal';
-import type { Subscription } from 'rxjs';
+import type { IDaemonKeypairService, IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRegisteredPty, IRekeyResult, ISessionSnapshot, ISharedSession, ISharedTerminalCryptoService, RekeyReason, SharedTerminalRole } from '@termlnk/shared-terminal';
+import type { Observable, Subscription } from 'rxjs';
 import { Disposable, ILogService, Inject, Optional } from '@termlnk/core';
-import { FrameChannel, FrameFlag, IDaemonKeypairService as IDaemonKeypairServiceId, ISharedSessionRecordingService as ISharedSessionRecordingServiceId, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, isWriterRole, requiresMandatoryRecording, SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS, SHARED_TERMINAL_RING_BUFFER_BYTES, SharedSessionState } from '@termlnk/shared-terminal';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { FrameChannel, FrameFlag, IDaemonKeypairService as IDaemonKeypairServiceId, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, isWriterRole, SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS, SHARED_TERMINAL_RING_BUFFER_BYTES, SharedSessionState } from '@termlnk/shared-terminal';
+import { BehaviorSubject, EMPTY, Subject } from 'rxjs';
 import { bytesToBase64Url } from '../utils/encoding';
 import { HeadlessSession } from '../utils/headless-session';
 import { RingBuffer } from '../utils/ring-buffer';
@@ -41,8 +41,7 @@ interface ISessionRuntime {
   cols: number;
   rows: number;
   readonly seqCounters: Record<FrameChannel, number>;
-  recordingHandle: IRecordingHandle | null;
-  /** Current 32-byte symmetric session key used to encrypt PTY frames (P5.5.3). */
+  /** Current 32-byte symmetric session key used to encrypt PTY frames. */
   sessionKey: Uint8Array | null;
 }
 
@@ -76,27 +75,18 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   readonly outbound$ = this._outboundSubject.asObservable();
 
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  private _activeRecordingHandles: readonly IRecordingHandle[] = [];
 
   constructor(
     @ILogService private readonly _logService: ILogService,
     @Inject(ISharedTerminalCryptoServiceId) private readonly _crypto: ISharedTerminalCryptoService,
     @Optional(IDaemonKeypairServiceId)
-    private readonly _daemonKeypair: IDaemonKeypairService | null = null,
-    @Optional(ISharedSessionRecordingServiceId)
-    private readonly _recordingService: ISharedSessionRecordingService | null = null
+    private readonly _daemonKeypair: IDaemonKeypairService | null = null
   ) {
     super();
     // Scan for stale drivers every second.
     this._heartbeatTimer = setInterval(() => this._reapStaleDrivers(), 1000);
     if (typeof this._heartbeatTimer === 'object' && this._heartbeatTimer !== null && 'unref' in this._heartbeatTimer) {
       (this._heartbeatTimer as { unref: () => void }).unref();
-    }
-    if (this._recordingService) {
-      this.disposeWithMe(this._recordingService.activeRecordings$.subscribe((handles) => {
-        this._activeRecordingHandles = handles;
-        this._syncRecordingHandles(handles);
-      }));
     }
   }
 
@@ -113,13 +103,24 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     super.dispose();
   }
 
-  driverState$(sessionId: string) {
-    const runtime = this._requireSession(sessionId);
+  driverState$(sessionId: string): Observable<IDriverState> {
+    // Return EMPTY for unknown sessions rather than throwing — the renderer
+    // may briefly subscribe to a session that was just unregistered (race
+    // between sessions$ removal and a re-render iterating sessions.map). A
+    // sync throw here propagates through the tRPC subscription and stalls
+    // the main process event loop.
+    const runtime = this._sessions.get(sessionId);
+    if (!runtime) {
+      return EMPTY;
+    }
     return runtime.driverSubject.asObservable();
   }
 
-  participants$(sessionId: string) {
-    const runtime = this._requireSession(sessionId);
+  participants$(sessionId: string): Observable<readonly IParticipant[]> {
+    const runtime = this._sessions.get(sessionId);
+    if (!runtime) {
+      return EMPTY;
+    }
     return runtime.participantsSubject.asObservable();
   }
 
@@ -162,11 +163,9 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         [FrameChannel.PtyData]: 0,
         [FrameChannel.SessionEvent]: 0,
       },
-      recordingHandle: null,
       sessionKey: null,
     };
     this._sessions.set(source.id, runtime);
-    this._syncRuntimeRecordingHandle(runtime);
     this._publishSessions();
 
     return {
@@ -235,15 +234,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       return;
     }
     this._sendControlToClient(sessionId, clientId, { type: 'kick', reason });
-    // Audit: kick is distinct from a voluntary leave — record before detach so the
-    // participant_left event below carries no ambiguity for offline log analysis.
-    this._appendAuditEvent(sessionId, {
-      type: 'participant_kicked',
-      sessionId,
-      clientId,
-      reason: reason ?? null,
-      at: Date.now(),
-    });
     this._detachClientInternal(runtime, clientId, 'kick');
   }
 
@@ -301,17 +291,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       });
       recipientCount += 1;
     }
-    // Audit (only effective when a recording is active): single source for every wrap +
-    // broadcast, regardless of which caller (manual rekey / attach / detach / kick)
-    // triggered it. The IRekeyResult below carries the same fields for callers.
-    this._appendAuditEvent(runtime.source.id, {
-      type: 'rekey',
-      sessionId: runtime.source.id,
-      reason,
-      recipientCount,
-      unwrappedClientIds,
-      at: Date.now(),
-    });
     return {
       sessionId: runtime.source.id,
       reason,
@@ -328,21 +307,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     publicKey?: Uint8Array
   ): void {
     const runtime = this._requireSession(sessionId);
-    if (this._requiresRecordingBeforeAttach(runtime, role)) {
-      this._recordingService!.start({
-        sessionId: runtime.source.id,
-        title: runtime.source.title,
-        mandatory: true,
-      }).then(() => {
-        const current = this._sessions.get(sessionId);
-        if (current) {
-          this._attachClientRuntime(current, clientId, role, displayName, publicKey);
-        }
-      }).catch((err) => {
-        this._logService.error(`[PtyMultiplexerService] mandatory recording start failed for ${runtime.source.id}:`, err);
-      });
-      return;
-    }
     this._attachClientRuntime(runtime, clientId, role, displayName, publicKey);
   }
 
@@ -412,7 +376,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   }
 
   /**
-   * Common detach path. P5.5.3: forward secrecy — if the departing client had a
+   * Common detach path. Forward secrecy: if the departing client had a
    * registered pubkey (i.e. it participated in sessionKey wrapping) we rotate the key
    * so the kicked/disconnected participant cannot continue to decrypt new traffic via a
    * stale relay buffer.
@@ -504,7 +468,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     }
     runtime.ringBuffer.write(chunk);
     runtime.headless.write(chunk);
-    this._appendRecordingOutput(runtime, chunk);
     if (runtime.clients.size === 0) {
       return;
     }
@@ -614,7 +577,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   private _broadcastSessionEvent(sessionId: string, event: object): void {
     const payload = new TextEncoder().encode(JSON.stringify(event));
     this._broadcast(sessionId, FrameChannel.SessionEvent, FrameFlag.None, payload);
-    this._appendAuditEvent(sessionId, event);
   }
 
   private _sendControlToClient(sessionId: string, clientId: string, message: object): void {
@@ -660,7 +622,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         createdAt: runtime.participantsSubject.getValue()[0]?.joinedAt ?? Date.now(),
         participantIds: [...runtime.clients.keys()],
         driverId: runtime.driverId,
-        recording: runtime.recordingHandle !== null,
       });
     }
     this._sessionsSubject.next(out);
@@ -707,47 +668,8 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     this._publishSessions();
   }
 
-  private _syncRecordingHandles(handles: readonly IRecordingHandle[]): void {
-    let changed = false;
-    for (const runtime of this._sessions.values()) {
-      const previous = runtime.recordingHandle;
-      const next = handles.find((handle) => handle.sessionId === runtime.source.id) ?? null;
-      if (previous?.id !== next?.id) {
-        runtime.recordingHandle = next;
-        this._refreshRuntimeState(runtime, false);
-        if (!previous && next) {
-          this._broadcastSessionEvent(runtime.source.id, {
-            type: 'recording_started',
-            sessionId: runtime.source.id,
-            recordingId: next.id,
-            mandatory: next.mandatory,
-          });
-        } else if (previous && !next) {
-          this._broadcastSessionEvent(runtime.source.id, {
-            type: 'recording_stopped',
-            sessionId: runtime.source.id,
-            recordingId: previous.id,
-          });
-        }
-        changed = true;
-      }
-    }
-    if (changed) {
-      this._publishSessions();
-    }
-  }
-
-  private _syncRuntimeRecordingHandle(runtime: ISessionRuntime): void {
-    runtime.recordingHandle = this._activeRecordingHandles.find(
-      (handle) => handle.sessionId === runtime.source.id
-    ) ?? null;
-    this._refreshRuntimeState(runtime, false);
-  }
-
   private _refreshRuntimeState(runtime: ISessionRuntime, publish = true): void {
-    if (runtime.recordingHandle) {
-      runtime.state = SharedSessionState.Recording;
-    } else if (runtime.clients.size > 0) {
+    if (runtime.clients.size > 0) {
       runtime.state = SharedSessionState.Active;
     } else {
       runtime.state = SharedSessionState.Idle;
@@ -755,33 +677,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     if (publish) {
       this._publishSessions();
     }
-  }
-
-  private _appendRecordingOutput(runtime: ISessionRuntime, chunk: Uint8Array): void {
-    if (!this._recordingService || !runtime.recordingHandle) {
-      return;
-    }
-    this._recordingService.appendOutput(runtime.recordingHandle, chunk).catch((err) => {
-      this._logService.error(`[PtyMultiplexerService] recording append output failed for ${runtime.source.id}:`, err);
-    });
-  }
-
-  private _appendAuditEvent(sessionId: string, event: object): void {
-    const runtime = this._sessions.get(sessionId);
-    if (!this._recordingService || !runtime?.recordingHandle) {
-      return;
-    }
-    this._recordingService.appendAuditEvent(runtime.recordingHandle, event as Record<string, unknown>).catch((err) => {
-      this._logService.error(`[PtyMultiplexerService] recording audit append failed for ${sessionId}:`, err);
-    });
-  }
-
-  private _requiresRecordingBeforeAttach(runtime: ISessionRuntime, role: SharedTerminalRole): boolean {
-    return Boolean(
-      this._recordingService
-      && requiresMandatoryRecording(role)
-      && (!runtime.recordingHandle || !runtime.recordingHandle.mandatory)
-    );
   }
 
   private _reapStaleDrivers(): void {

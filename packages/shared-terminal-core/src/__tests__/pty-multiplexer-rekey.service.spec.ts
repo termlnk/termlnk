@@ -36,9 +36,11 @@ class FakeDaemonKeypair implements IDaemonKeypairService {
   async getOrCreate(): Promise<IKeypair> {
     return this._kp;
   }
+
   async getPublicKey(): Promise<Uint8Array> {
     return this._kp.publicKey;
   }
+
   async rotate(): Promise<IKeypair> {
     return this._kp;
   }

@@ -72,6 +72,16 @@ const config: Configuration = {
   releaseInfo: {
     releaseNotesFile: 'build/release-notes.md',
   },
+  // Multiplayer invite deep links (`termlnk://...`) are forwarded by electron-main
+  // through IDeepLinkBus into ParticipantJoinDialog. Registering the scheme here
+  // wires up Launch Services on macOS, the Windows registry installer hooks, and
+  // .desktop MimeType for Linux installs so users can click an invite link.
+  protocols: [
+    {
+      name: 'Termlnk Multiplayer',
+      schemes: ['termlnk'],
+    },
+  ],
 
   mac: {
     category: 'public.app-category.developer-tools',
@@ -83,6 +93,16 @@ const config: Configuration = {
     // Question etc.) so the CLI TUI and the island stay in sync.
     extendInfo: {
       NSAccessibilityUsageDescription: 'Termlnk requests Accessibility permission so the Dynamic Island can relay your choices to the terminal window running Claude Code (syncing AskUserQuestion picks between the notch and the CLI).',
+      // Multiplayer invite handler — macOS uses CFBundleURLTypes to associate
+      // `termlnk://` deep links with this app. electron-builder normally writes
+      // this from `protocols` above, but we duplicate it here to keep the
+      // Info.plist self-documenting for code review.
+      CFBundleURLTypes: [
+        {
+          CFBundleURLName: 'com.termlnk.desktop.multiplayer',
+          CFBundleURLSchemes: ['termlnk'],
+        },
+      ],
     },
     ...(isSigningEnabled
       ? {

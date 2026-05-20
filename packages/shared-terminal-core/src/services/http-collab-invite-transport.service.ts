@@ -13,12 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ITokenManager } from '@termlnk/auth';
 import type { ICollabInviteCreateInput, ICollabInviteServerView, ICollabInviteTransportService } from '@termlnk/shared-terminal';
-import { HttpRequestError } from '@termlnk/auth';
-// Deep import: @termlnk/auth-core/index.ts re-exports AuthCorePlugin which transitively
-// drags @termlnk/database / better-sqlite3 native module — avoid pulling native bindings
-// into renderer / web bundles that only need the TokenManager runtime.
-import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
+import { HttpRequestError, ITokenManager as ITokenManagerId } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 
 /**
@@ -28,13 +25,7 @@ export type CollabHttpFetchFn = (url: string, init: {
   method?: string;
   headers?: Record<string, string>;
   body?: string;
-}) => Promise<{
-  ok: boolean;
-  status: number;
-  statusText: string;
-  json: () => Promise<unknown>;
-  text: () => Promise<string>;
-}>;
+}) => Promise<{ ok: boolean; status: number; statusText: string; json: () => Promise<unknown>; text: () => Promise<string> }>;
 
 const DEFAULT_FETCH_FN: CollabHttpFetchFn = async (url, init) => {
   const resp = await globalThis.fetch(url, init as RequestInit);
@@ -74,7 +65,7 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
 
   constructor(
     private readonly _config: IHttpCollabInviteTransportConfig,
-    @Inject(TokenManager) private readonly _tokenManager: TokenManager,
+    @Inject(ITokenManagerId) private readonly _tokenManager: ITokenManager,
     @Inject(ILogService) private readonly _logService: ILogService
   ) {
     super();

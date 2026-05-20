@@ -18,7 +18,7 @@ import type { SharedTerminalRole } from '../models/role';
 import { createIdentifier } from '@termlnk/core';
 
 /**
- * REST client for `/v1/collab/invite/*` on termlnk-server (P5.5.2).
+ * REST client for `/v1/collab/invite/*` on termlnk-server.
  *
  * Owner pushes create / revoke events; relay enforces the resulting status on /claim.
  * Bound to authenticated user identity via Bearer access token (handled internally,

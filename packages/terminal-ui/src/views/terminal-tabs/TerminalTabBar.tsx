@@ -16,12 +16,13 @@
 import type { Nullable } from '@termlnk/core';
 import type { IPaneToTabDragState, ITabItem } from '../../models/workspace.model';
 import type { ITerminalSession } from '../../services/terminal/terminal-ui.service';
-import { useDependency, useObservable } from '@termlnk/design';
+import { cn, useDependency, useObservable } from '@termlnk/design';
 import { DEFAULT_PAGE_ID, IContentRouterService } from '@termlnk/ui';
 import { useCallback } from 'react';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
 import { ITerminalViewRegistry } from '../../services/terminal/terminal-view-registry.service';
 import { IWorkspaceService } from '../../services/workspace/workspace.service';
+import { MultiplayerControl } from './MultiplayerControl';
 import { TerminalTabs } from './TerminalTabs';
 import { useTabDisplayItems } from './use-tab-display-items';
 
@@ -73,15 +74,22 @@ export function TerminalTabBar() {
   }, [addSessionHandler, ensureTerminalPage]);
 
   return (
-    <TerminalTabs
-      items={displayItems}
-      activeTabItemId={effectiveActiveTabItemId}
-      externalDragDropIndex={paneToTabDrag?.dropIndex}
-      onSelectTab={handleSelectTab}
-      onCloseTab={handleCloseTab}
-      onReorderTab={handleReorderTab}
-      onMergeTab={handleMergeTab}
-      onAddSession={addSessionHandler ? handleAddSession : undefined}
-    />
+    <div className={cn('tm:flex tm:h-full tm:min-w-0 tm:items-stretch tm:gap-1')}>
+      <div className={cn('tm:min-w-0 tm:flex-1')}>
+        <TerminalTabs
+          items={displayItems}
+          activeTabItemId={effectiveActiveTabItemId}
+          externalDragDropIndex={paneToTabDrag?.dropIndex}
+          onSelectTab={handleSelectTab}
+          onCloseTab={handleCloseTab}
+          onReorderTab={handleReorderTab}
+          onMergeTab={handleMergeTab}
+          onAddSession={addSessionHandler ? handleAddSession : undefined}
+        />
+      </div>
+      <div className={cn('electron-no-drag tm:flex tm:items-center tm:px-1')}>
+        <MultiplayerControl />
+      </div>
+    </div>
   );
 }

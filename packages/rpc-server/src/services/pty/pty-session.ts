@@ -78,6 +78,14 @@ export class PTYSession extends Disposable implements IDisposable {
     return this._shellPath;
   }
 
+  get cols(): number {
+    return this._cols;
+  }
+
+  get rows(): number {
+    return this._rows;
+  }
+
   write(data: string): void {
     if (!this._process) {
       return;

@@ -45,14 +45,5 @@ export { SQLiteAdaptor } from './services/db-adaptor/sqlite.adaptor';
 export type { ISQLiteDatabaseOptions } from './services/db-adaptor/sqlite.adaptor';
 export { ISecretCipherService, isEncrypted, SECRET_CIPHER_PREFIX } from './services/secret-cipher.service';
 export type { SecretCipherScheme } from './services/secret-cipher.service';
-export {
-  decryptCredential,
-  decryptIfNeeded,
-  decryptMcpConfig,
-  decryptProxy,
-  encryptCredential,
-  encryptIfNeeded,
-  encryptMcpConfig,
-  encryptProxy,
-} from './services/secret-cipher/credential-masker';
+export { decryptCredential, decryptIfNeeded, decryptMcpConfig, decryptProxy, encryptCredential, encryptIfNeeded, encryptMcpConfig, encryptProxy } from './services/secret-cipher/credential-masker';
 export { LocalDerivedSecretCipher } from './services/secret-cipher/local-derived.cipher';

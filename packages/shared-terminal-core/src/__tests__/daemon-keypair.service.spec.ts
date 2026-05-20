@@ -41,12 +41,14 @@ class FakeCipher implements ISecretCipherService {
   isAvailable(): boolean {
     return true;
   }
+
   encrypt(plaintext: string): string {
     if (plaintext === '' || plaintext.startsWith('tmenc1:')) {
       return plaintext;
     }
     return `tmenc1:${plaintext}`;
   }
+
   decrypt(ciphertext: string): string {
     return ciphertext.startsWith('tmenc1:') ? ciphertext.slice('tmenc1:'.length) : ciphertext;
   }

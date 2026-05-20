@@ -52,6 +52,10 @@ export class SSHSession extends Disposable implements IDisposable {
   private readonly _error$ = new Subject<string>();
   readonly error$ = this._error$.asObservable();
 
+  get host(): IHost {
+    return this._host;
+  }
+
   private _closeReason: 'auth_failed' | 'error' | undefined;
 
   private _channel: Nullable<ISSHChannel>;
@@ -147,6 +151,10 @@ export class SSHSession extends Disposable implements IDisposable {
 
   get cols(): number {
     return this._cols;
+  }
+
+  get rows(): number {
+    return this._rows;
   }
 
   get closeReason(): 'auth_failed' | 'error' | undefined {

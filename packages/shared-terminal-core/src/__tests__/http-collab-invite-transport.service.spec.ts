@@ -13,12 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ITokenManager } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { ICollabInviteServerView } from '@termlnk/shared-terminal';
-import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
+import type { CollabHttpFetchFn } from '../services/http-collab-invite-transport.service';
 import { SharedTerminalRole } from '@termlnk/shared-terminal';
 import { describe, expect, it } from 'vitest';
-import { type CollabHttpFetchFn, HttpCollabInviteTransportService } from '../services/http-collab-invite-transport.service';
+import { HttpCollabInviteTransportService } from '../services/http-collab-invite-transport.service';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -67,13 +68,13 @@ describe('HttpCollabInviteTransportService', () => {
     const { fetchFn } = recordingFetch({});
     const svc = new HttpCollabInviteTransportService(
       { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager('tok') as unknown as TokenManager,
+      new FixedTokenManager('tok') as unknown as ITokenManager,
       new NoopLogService()
     );
     expect(svc.isAvailable()).toBe(true);
     const empty = new HttpCollabInviteTransportService(
       { baseUrl: '', fetchFn },
-      new FixedTokenManager('tok') as unknown as TokenManager,
+      new FixedTokenManager('tok') as unknown as ITokenManager,
       new NoopLogService()
     );
     expect(empty.isAvailable()).toBe(false);
@@ -85,7 +86,7 @@ describe('HttpCollabInviteTransportService', () => {
     });
     const svc = new HttpCollabInviteTransportService(
       { baseUrl: 'https://example.test/v1/', fetchFn },
-      new FixedTokenManager('my-jwt') as unknown as TokenManager,
+      new FixedTokenManager('my-jwt') as unknown as ITokenManager,
       new NoopLogService()
     );
     await svc.pushCreate({
@@ -114,7 +115,7 @@ describe('HttpCollabInviteTransportService', () => {
     });
     const svc = new HttpCollabInviteTransportService(
       { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager('jwt') as unknown as TokenManager,
+      new FixedTokenManager('jwt') as unknown as ITokenManager,
       new NoopLogService()
     );
     await svc.pushRevoke('inv/1');
@@ -137,7 +138,7 @@ describe('HttpCollabInviteTransportService', () => {
     });
     const svc = new HttpCollabInviteTransportService(
       { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager('jwt') as unknown as TokenManager,
+      new FixedTokenManager('jwt') as unknown as ITokenManager,
       new NoopLogService()
     );
     const got = await svc.list();
@@ -148,7 +149,7 @@ describe('HttpCollabInviteTransportService', () => {
     const { fetchFn } = recordingFetch({});
     const svc = new HttpCollabInviteTransportService(
       { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager(null) as unknown as TokenManager,
+      new FixedTokenManager(null) as unknown as ITokenManager,
       new NoopLogService()
     );
     await expect(svc.pushCreate({
@@ -169,7 +170,7 @@ describe('HttpCollabInviteTransportService', () => {
     });
     const svc = new HttpCollabInviteTransportService(
       { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager('jwt') as unknown as TokenManager,
+      new FixedTokenManager('jwt') as unknown as ITokenManager,
       new NoopLogService()
     );
     await expect(svc.pushCreate({

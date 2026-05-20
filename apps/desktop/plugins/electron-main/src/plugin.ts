@@ -21,6 +21,7 @@ import { RPCServerPlugin } from '@termlnk/rpc-server';
 import { AgentKeepAwakeController } from './controllers/agent-keep-awake.controller';
 import { AppSettingsController } from './controllers/app-settings.controller';
 import { defaultPluginConfig, ELECTRON_MAIN_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
+import { DeepLinkController } from './controllers/deep-link.controller';
 import { DynamicIslandController } from './controllers/dynamic-island.controller';
 import { MainController } from './controllers/main.controller';
 import { MenuController } from './controllers/menu.controller';
@@ -66,6 +67,7 @@ export class ElectronMainPlugin extends Plugin {
       [RPCController],
       [AppSettingsController],
       [WindowFocusSyncController],
+      [DeepLinkController],
     ]);
   }
 
@@ -104,6 +106,7 @@ export class ElectronMainPlugin extends Plugin {
       [DynamicIslandController],
       [WindowFocusSyncController],
       [AgentKeepAwakeController],
+      [DeepLinkController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }

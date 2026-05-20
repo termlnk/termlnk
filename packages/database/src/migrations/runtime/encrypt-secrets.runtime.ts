@@ -24,12 +24,7 @@ import { mcpOAuthTokenEntity } from '../../entities/mcp-oauth-token';
 import { mcpServerEntity } from '../../entities/mcp-server';
 import { aiProviderEntity } from '../../entities/provider';
 import { isEncrypted } from '../../services/secret-cipher.service';
-import {
-  encryptCredential,
-  encryptIfNeeded,
-  encryptMcpConfig,
-  encryptProxy,
-} from '../../services/secret-cipher/credential-masker';
+import { encryptCredential, encryptIfNeeded, encryptMcpConfig, encryptProxy } from '../../services/secret-cipher/credential-masker';
 
 // Idempotent runtime migration: re-encrypt rows whose sensitive fields are still plaintext.
 // Runs outside a transaction so a single bad row cannot block the rest; safe to re-run on

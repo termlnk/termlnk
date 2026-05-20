@@ -14,8 +14,8 @@
  */
 
 import type { IDaemonKeypairService, IKeypair, IPersistedDaemonKeypair, ISharedTerminalCryptoService } from '@termlnk/shared-terminal';
-import { ConfigRepository, ISecretCipherService } from '@termlnk/database';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { ConfigRepository, ISecretCipherService } from '@termlnk/database';
 import {
   DAEMON_KEYPAIR_CONFIG_SUBKEY,
   ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId,

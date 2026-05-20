@@ -22,7 +22,7 @@ import { createIdentifier } from '@termlnk/core';
  * Owner-side pairing: account-scoped session attach + cross-account invites.
  * Does not participate in PTY frame transport — that is IPtyMultiplexerService's job.
  *
- * Token lifecycle (P5.5.2): every invite ever minted is persisted (collab_invite_token table)
+ * Token lifecycle: every invite ever minted is persisted (collab_invite_token table)
  * and progresses through active → consumed | revoked | expired. The observables expose the
  * UI-safe IInviteTokenState (no ephPriv), while createInvite returns the full ICollabInvite +
  * shareable URL exactly once at creation time for the owner to copy.

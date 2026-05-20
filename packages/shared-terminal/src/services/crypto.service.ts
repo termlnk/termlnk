@@ -40,7 +40,7 @@ export interface ISharedTerminalCryptoService {
   generateSessionKey(): Uint8Array;
 
   /**
-   * Wrap a 32-byte symmetric session key for a recipient (P5.5.3). Equivalent to NaCl
+   * Wrap a 32-byte symmetric session key for a recipient. Equivalent to NaCl
    * `box(sessionKey, theirPublicKey, mySecretKey)`. The output `nonce(24) || box(...)`
    * can be unwrapped by the recipient via {@link unwrapSessionKey} using their own secret
    * key + the wrapper's public key. Validates sessionKey is 32 bytes to catch misuse early.

@@ -47,9 +47,8 @@ interface ITestBed {
 function createTestBed(): ITestBed {
   const injector = new Injector();
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
-  // MasterKeyService now takes IPasswordHasher as a constructor dep (P6.2 extracted the
-  // Argon2id call so React Native can swap in a native binding). Tests stay on the
-  // WebAssembly default since they run under Node.
+  // MasterKeyService takes IPasswordHasher as a constructor dep so React Native can
+  // swap in a native Argon2id binding. Tests stay on the WebAssembly default under Node.
   injector.add([IPasswordHasher, { useClass: HashWasmPasswordHasher }]);
   injector.add([IMasterKeyService, { useClass: MasterKeyService }]);
   injector.add([SyncCryptoService]);

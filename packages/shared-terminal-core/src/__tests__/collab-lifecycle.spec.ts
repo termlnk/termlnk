@@ -14,7 +14,7 @@
  */
 
 /**
- * End-to-end collaboration lifecycle suite (P5.5.6).
+ * End-to-end collaboration lifecycle suite.
  *
  * Walks the full invite lifecycle (create → consume / revoke / expire) and the rekey
  * forward-secrecy properties so any future change that breaks one of the state
@@ -25,7 +25,7 @@
  * mock so we can also confirm the server-side push lifecycle.
  */
 
-import type { ILogService, LogLevel, IConfigService } from '@termlnk/core';
+import type { IConfigService, ILogService, LogLevel } from '@termlnk/core';
 import type { CollabInviteTokenRepository, ICollabInviteTokenEntity, ICollabInviteTokenEntityInsert, ISecretCipherService } from '@termlnk/database';
 import type { ICollabInviteCreateInput, ICollabInviteTransportService, IKeypair, IPtySource } from '@termlnk/shared-terminal';
 import { ConfigService, IConfigService as IConfigServiceId, Injector } from '@termlnk/core';
@@ -50,12 +50,14 @@ class FakeCipher implements ISecretCipherService {
   isAvailable(): boolean {
     return true;
   }
+
   encrypt(plaintext: string): string {
     if (plaintext === '' || plaintext.startsWith('tmenc1:')) {
       return plaintext;
     }
     return `tmenc1:${plaintext}`;
   }
+
   decrypt(ciphertext: string): string {
     return ciphertext.startsWith('tmenc1:') ? ciphertext.slice('tmenc1:'.length) : ciphertext;
   }
@@ -85,30 +87,37 @@ class FakeRepo {
     this.rows.set(record.inviteId, row);
     return row;
   }
+
   async getById(inviteId: string): Promise<ICollabInviteTokenEntity | null> {
     return this.rows.get(inviteId) ?? null;
   }
+
   async listOutstanding(): Promise<ICollabInviteTokenEntity[]> {
     return [...this.rows.values()].filter((r) => r.status === 'active');
   }
+
   async listAll(): Promise<ICollabInviteTokenEntity[]> {
     return [...this.rows.values()];
   }
+
   async listExpiredActive(now: number): Promise<ICollabInviteTokenEntity[]> {
     return [...this.rows.values()].filter((r) => r.status === 'active' && r.exp < now);
   }
+
   async markConsumed(inviteId: string, consumedAt: number): Promise<void> {
     const r = this.rows.get(inviteId);
     if (r) {
       this.rows.set(inviteId, { ...r, status: 'consumed', consumedAt });
     }
   }
+
   async markRevoked(inviteId: string, revokedAt: number): Promise<void> {
     const r = this.rows.get(inviteId);
     if (r) {
       this.rows.set(inviteId, { ...r, status: 'revoked', revokedAt });
     }
   }
+
   async markExpired(inviteIds: string[]): Promise<void> {
     for (const id of inviteIds) {
       const r = this.rows.get(id);
@@ -117,6 +126,7 @@ class FakeRepo {
       }
     }
   }
+
   async markServerSynced(inviteId: string, syncedAt: number): Promise<void> {
     const r = this.rows.get(inviteId);
     if (r) {
@@ -131,12 +141,15 @@ class TransportMock implements ICollabInviteTransportService {
   isAvailable(): boolean {
     return true;
   }
+
   async pushCreate(input: ICollabInviteCreateInput): Promise<void> {
     this.creates.push(input);
   }
+
   async pushRevoke(inviteId: string): Promise<void> {
     this.revokes.push(inviteId);
   }
+
   async list(): Promise<readonly never[]> {
     return [];
   }
@@ -183,7 +196,7 @@ function createPtySource(id: string): { source: IPtySource; output$: Subject<Uin
   };
 }
 
-describe('P5.5.6 collaboration lifecycle', () => {
+describe('collaboration lifecycle', () => {
   describe('invite lifecycle', () => {
     it('walks create → revoke and surfaces the revoked state', async () => {
       const transport = new TransportMock();

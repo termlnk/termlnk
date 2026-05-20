@@ -213,6 +213,17 @@ const locale: typeof enUS = {
       'close-session': '關閉終端機',
       'tab-list': '顯示分頁清單',
     },
+    multiplayer: {
+      tooltip: '多人協作',
+      title: '多人協作',
+      'copy-link': '複製連結',
+      stop: '停止協作',
+      'hint-empty': '複製連結以共享目前終端會話。加入者會顯示在這裡。',
+      participants: '參與者：',
+      you: '我',
+      'take-keyboard': '接管鍵盤',
+      copied: '連結已複製',
+    },
   },
 };
 

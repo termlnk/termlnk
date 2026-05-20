@@ -211,6 +211,17 @@ const locale = {
       'close-session': 'Close terminal',
       'tab-list': 'Show tab list',
     },
+    multiplayer: {
+      tooltip: 'Multiplayer',
+      title: 'Multiplayer',
+      'copy-link': 'Copy link',
+      stop: 'Stop multiplayer',
+      'hint-empty': 'Copy link to share this terminal session. People who join will be visible here.',
+      participants: 'Participants:',
+      you: 'You',
+      'take-keyboard': 'Take keyboard',
+      copied: 'Link copied',
+    },
   },
 };
 

@@ -13,9 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-export const SHARED_TERMINAL_PLUGIN_NAME = 'SHARED_TERMINAL_PLUGIN';
-export const SHARED_TERMINAL_PLUGIN_CONFIG_KEY = 'shared-terminal.config';
-
 // Bump on any frame layout / cipher change. The decode path dispatches by version and
 // must keep older frames decodable.
 export const SHARED_TERMINAL_FRAME_VERSION = 1;

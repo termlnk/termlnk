@@ -42,13 +42,11 @@ export enum ClientConnectionState {
  *
  * - **Idle**: the PTY is running but nobody besides the owner is attached.
  * - **Active**: at least one client is attached.
- * - **Recording**: an asciicast is being captured; does not block `Active`.
  * - **Closed**: the PTY has exited.
  */
 export enum SharedSessionState {
   Idle = 'idle',
   Active = 'active',
-  Recording = 'recording',
   Closed = 'closed',
 }
 
@@ -69,8 +67,6 @@ export interface ISharedSession {
   readonly participantIds: readonly string[];
   /** Current driver client ID; null means no one holds the keyboard. */
   readonly driverId: string | null;
-  /** Whether the session is currently being recorded. */
-  readonly recording: boolean;
 }
 
 /**

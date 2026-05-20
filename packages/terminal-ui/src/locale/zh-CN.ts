@@ -213,6 +213,17 @@ const locale: typeof enUS = {
       'close-session': '关闭终端',
       'tab-list': '显示标签列表',
     },
+    multiplayer: {
+      tooltip: '多人协作',
+      title: '多人协作',
+      'copy-link': '复制链接',
+      stop: '停止协作',
+      'hint-empty': '复制链接以共享当前终端会话。加入者将显示在这里。',
+      participants: '参与者：',
+      you: '我',
+      'take-keyboard': '接管键盘',
+      copied: '链接已复制',
+    },
   },
 };
 
