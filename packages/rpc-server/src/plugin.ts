@@ -15,7 +15,7 @@
 
 import type { Dependency, LocaleType } from '@termlnk/core';
 import type { IRPCServerConfig } from './controllers/config.schema';
-import { ITerminalSuggestService } from '@termlnk/agent';
+import { ITerminalSessionEnvService, ITerminalSuggestService } from '@termlnk/agent';
 import { DependentOn, IConfigService, Inject, Injector, LocaleService, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ConfigRepository, DatabasePlugin } from '@termlnk/database';
 import { IFileTransferService, INotifyService, ISSHSessionService, ISSHToolService, ITerminalSessionNotifyService } from '@termlnk/rpc';
@@ -34,6 +34,7 @@ import { DeepLinkBus, IDeepLinkBus } from './services/shared-terminal/deep-link.
 import { IShareSessionService, ShareSessionService } from './services/shared-terminal/share-session.service';
 import { SharedTerminalService } from './services/shared-terminal/shared-terminal.service';
 import { CommandBlockService, ICommandBlockService } from './services/shell-integration/command-block.service';
+import { TerminalSessionEnvService } from './services/shell-integration/terminal-session-env.service';
 import { SSHSessionService } from './services/ssh-session/ssh-session.service';
 import { SSHToolService } from './services/ssh-tool.service';
 import { ISSHHostChainService, SSHHostChainService } from './services/ssh/ssh-host-chain.service';
@@ -79,6 +80,7 @@ export class RPCServerPlugin extends Plugin {
       [ITerminalSessionNotifyService, { useClass: TerminalSessionNotifyService }],
       [ISSHToolService, { useClass: SSHToolService }],
       [ICommandBlockService, { useClass: CommandBlockService }],
+      [ITerminalSessionEnvService, { useClass: TerminalSessionEnvService }],
       [IPTYSessionService, { useClass: PTYSessionService }],
       [ITerminalSuggestService, { useClass: TerminalSuggestService }],
       [IShareSessionService, { useClass: ShareSessionService }],

@@ -44,11 +44,21 @@ class FakeCommandBlockService implements ICommandBlockService {
   blockFinished$ = new Subject<ITerminalCommand>();
   blockStarted$ = new Subject<IBlockStartedEvent>();
   query$ = new Subject<INaturalLanguageQueryEvent>();
+  envChanged$ = new Subject<{ sessionId: string; env: { remoteOS: string; remoteShell: string; remoteDistro: string } }>();
   private _cwd = new Map<string, string>();
+  private _env = new Map<string, { remoteOS: string; remoteShell: string; remoteDistro: string }>();
   private _blocks = new Map<string, ITerminalCommand[]>();
 
   setCwd(sessionId: string, cwd: string): void {
     this._cwd.set(sessionId, cwd);
+  }
+
+  setEnv(sessionId: string, env: { remoteOS?: string; remoteShell?: string; remoteDistro?: string }): void {
+    this._env.set(sessionId, {
+      remoteOS: env.remoteOS ?? '',
+      remoteShell: env.remoteShell ?? '',
+      remoteDistro: env.remoteDistro ?? '',
+    });
   }
 
   pushBlock(block: ITerminalCommand): void {
@@ -79,6 +89,10 @@ class FakeCommandBlockService implements ICommandBlockService {
 
   getCurrentCwd(sessionId: string): string {
     return this._cwd.get(sessionId) ?? '';
+  }
+
+  getRawEnv(sessionId: string): { remoteOS: string; remoteShell: string; remoteDistro: string } {
+    return this._env.get(sessionId) ?? { remoteOS: '', remoteShell: '', remoteDistro: '' };
   }
 
   isAttached(): boolean {

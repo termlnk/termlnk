@@ -19,14 +19,23 @@ import { createIdentifier } from '@termlnk/core';
 export type ShellType = 'bash' | 'zsh' | 'fish' | 'powershell' | 'pwsh' | 'cmd' | 'sh' | 'unknown';
 export type PlatformType = 'macos' | 'windows' | 'linux' | 'wsl' | 'unknown';
 
-export interface IActiveSessionContext {
+/**
+ * Terminal session env reported via OSC 633;P Remote{OS,Shell,Distro}.
+ * Fields stay undefined until the remote shell hits its first prompt.
+ */
+export interface IRemoteSessionEnv {
+  remoteOS?: PlatformType;
+  remoteShell?: ShellType;
+  remoteDistro?: string;
+}
+
+export interface IActiveSessionContext extends IRemoteSessionEnv {
   sessionId: string;
   type: 'local' | 'ssh';
   shell: ShellType;
   cwd: string;
   isAtPrompt: boolean;
   hostLabel?: string;
-  remoteOS?: PlatformType;
 }
 
 export interface IPlatformContext {

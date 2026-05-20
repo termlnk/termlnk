@@ -89,21 +89,24 @@ interface ISuggestionResponse {
   command: string;
 }
 
+const ENV_ADAPTATION_RULE = 'Generate commands appropriate for the reported Remote OS / Shell / Distro. Pick the package manager and binaries that exist on that system (apt/yum/apk/pacman/brew/choco). If Remote OS is unknown, prefer commands that work cross-platform (POSIX) or suggest a detection step first.';
+
 const NL_SYSTEM_PROMPT = [
   'You are a shell command assistant inside a terminal emulator.',
-  'Given a natural-language request plus context (cwd, git branch, recent terminal output), produce ONE concrete shell command.',
+  'Given a natural-language request plus context (cwd, git branch, recent terminal output, target shell environment), produce ONE concrete shell command.',
   'Respond with EXACTLY one JSON object: {"summary": <one-sentence description, <= 72 chars, no parentheses>, "command": <single-line shell command>}.',
   'Output JSON only — no markdown, no code fences, no surrounding text.',
-  'Use POSIX-portable forms when possible. Prefer commands that work in bash, zsh, and fish.',
+  ENV_ADAPTATION_RULE,
   'Do not use shell aliases (e.g. ll, gst). Spell out the underlying command.',
   'If you cannot produce a safe command, set "command" to an empty string and explain in summary.',
 ].join('\n');
 
 const ERROR_FIX_SYSTEM_PROMPT = [
   'You are a shell debugging assistant inside a terminal emulator.',
-  'Given a failed command, its non-zero exit code, and recent output, suggest a single corrective shell command.',
+  'Given a failed command, its non-zero exit code, recent output, and the target shell environment, suggest a single corrective shell command.',
   'Respond with EXACTLY one JSON object: {"summary": <one-sentence description, <= 72 chars, no parentheses>, "command": <single-line shell command>}.',
   'Output JSON only — no markdown, no code fences, no surrounding text.',
+  ENV_ADAPTATION_RULE,
   'Prefer the smallest fix; do not chain unrelated cleanup.',
   'Do not include the original command verbatim unless the fix is to re-run it.',
   'If no safe fix exists, set "command" to an empty string and explain in summary.',
@@ -283,7 +286,7 @@ export class TerminalSuggestService extends RxDisposable implements ITerminalSug
     try {
       const cwd = this._commandBlockService.getCurrentCwd(sessionId);
       const recentOutput = this._collectRecentOutput(sessionId);
-      const userMsg = this._buildNlUserMessage(query, cwd, recentOutput);
+      const userMsg = this._buildNlUserMessage(sessionId, query, cwd, recentOutput);
 
       const parsed = await this._invokeLlm(NL_SYSTEM_PROMPT, userMsg, ctrl.signal);
       if (!parsed) {
@@ -330,7 +333,7 @@ export class TerminalSuggestService extends RxDisposable implements ITerminalSug
     try {
       const cwd = this._commandBlockService.getCurrentCwd(sessionId);
       const trimmedOutput = output.slice(-RECENT_OUTPUT_CHARS);
-      const userMsg = this._buildErrorFixUserMessage(failedCommand, exitCode, cwd, trimmedOutput);
+      const userMsg = this._buildErrorFixUserMessage(sessionId, failedCommand, exitCode, cwd, trimmedOutput);
 
       const parsed = await this._invokeLlm(ERROR_FIX_SYSTEM_PROMPT, userMsg, ctrl.signal);
       if (!parsed) {
@@ -576,9 +579,26 @@ export class TerminalSuggestService extends RxDisposable implements ITerminalSug
     return parts.join('\n');
   }
 
-  private _buildNlUserMessage(query: string, cwd: string, recentOutput: string): string {
+  private _buildEnvLines(sessionId: string): string[] {
+    const env = this._commandBlockService.getRawEnv(sessionId);
+    const kind = this._sessionKinds.get(sessionId) ?? 'unknown';
+    const lines = [`Session kind: ${kind}`];
+    if (env.remoteOS) {
+      lines.push(`Remote OS: ${env.remoteOS}`);
+    }
+    if (env.remoteShell) {
+      lines.push(`Remote shell: ${env.remoteShell}`);
+    }
+    if (env.remoteDistro) {
+      lines.push(`Remote distro: ${env.remoteDistro}`);
+    }
+    return lines;
+  }
+
+  private _buildNlUserMessage(sessionId: string, query: string, cwd: string, recentOutput: string): string {
     const lines = [
       `Request: ${query}`,
+      ...this._buildEnvLines(sessionId),
       `Working directory: ${cwd || '(unknown)'}`,
     ];
     if (recentOutput) {
@@ -587,10 +607,11 @@ export class TerminalSuggestService extends RxDisposable implements ITerminalSug
     return lines.join('\n');
   }
 
-  private _buildErrorFixUserMessage(failed: string, exitCode: number, cwd: string, recentOutput: string): string {
+  private _buildErrorFixUserMessage(sessionId: string, failed: string, exitCode: number, cwd: string, recentOutput: string): string {
     const lines = [
       `Failed command: ${failed}`,
       `Exit code: ${exitCode}`,
+      ...this._buildEnvLines(sessionId),
       `Working directory: ${cwd || '(unknown)'}`,
     ];
     if (recentOutput) {

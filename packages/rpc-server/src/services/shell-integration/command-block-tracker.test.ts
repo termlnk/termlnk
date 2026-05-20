@@ -151,6 +151,51 @@ describe('CommandBlockTracker', () => {
     expect(tracker.currentCwd).toBe('/tmp');
   });
 
+  it('updates remote env from OSC 633;P RemoteOS/RemoteShell/RemoteDistro events', () => {
+    const tracker = new CommandBlockTracker({ sessionId: 's' });
+    const envEvents: Array<{ sessionId: string; env: { remoteOS: string; remoteShell: string; remoteDistro: string } }> = [];
+    tracker.envChanged$.subscribe((event) => envEvents.push(event));
+
+    tracker.feed([
+      osc633('P;RemoteOS=Linux'),
+      osc633('P;RemoteShell=zsh'),
+      osc633('P;RemoteDistro=ubuntu'),
+    ].join(''));
+
+    expect(tracker.currentRemoteOS).toBe('Linux');
+    expect(tracker.currentRemoteShell).toBe('zsh');
+    expect(tracker.currentRemoteDistro).toBe('ubuntu');
+    expect(tracker.getRawEnv()).toEqual({ remoteOS: 'Linux', remoteShell: 'zsh', remoteDistro: 'ubuntu' });
+    expect(envEvents).toHaveLength(3);
+    expect(envEvents[2].sessionId).toBe('s');
+  });
+
+  it('does not re-emit envChanged$ when the same value is reported again', () => {
+    const tracker = new CommandBlockTracker({ sessionId: 's' });
+    const envEvents: Array<unknown> = [];
+    tracker.envChanged$.subscribe((event) => envEvents.push(event));
+
+    tracker.feed(osc633('P;RemoteOS=Darwin'));
+    tracker.feed(osc633('P;RemoteOS=Darwin'));
+    tracker.feed(osc633('P;RemoteOS=Darwin'));
+
+    expect(envEvents).toHaveLength(1);
+  });
+
+  it('accepts an empty env value (script reports `RemoteDistro=` when /etc/os-release is missing)', () => {
+    const tracker = new CommandBlockTracker({ sessionId: 's' });
+    const envEvents: Array<{ sessionId: string; env: { remoteOS: string; remoteShell: string; remoteDistro: string } }> = [];
+    tracker.envChanged$.subscribe((event) => envEvents.push(event));
+
+    tracker.feed(osc633('P;RemoteOS=Darwin'));
+    tracker.feed(osc633('P;RemoteDistro='));
+
+    expect(tracker.currentRemoteOS).toBe('Darwin');
+    expect(tracker.currentRemoteDistro).toBe('');
+    // Initial blank distro → blank distro should not re-fire; only the OS change above did.
+    expect(envEvents).toHaveLength(1);
+  });
+
   it('assigns monotonically increasing seq numbers', () => {
     const tracker = new CommandBlockTracker({ sessionId: 's' });
     const blocks = captureBlocks(tracker);

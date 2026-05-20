@@ -58,6 +58,22 @@ export interface INaturalLanguageQueryEvent {
   observedAt: number;
 }
 
+/**
+ * Raw OSC 633;P values as the script printed them (e.g. `Darwin`, `zsh`,
+ * `ubuntu`). Normalization to PlatformType/ShellType is the consumer's job;
+ * tracker stays protocol-faithful.
+ */
+export interface IRawRemoteEnv {
+  remoteOS: string;
+  remoteShell: string;
+  remoteDistro: string;
+}
+
+export interface IRawRemoteEnvChange {
+  sessionId: string;
+  env: IRawRemoteEnv;
+}
+
 export interface IPendingBlockSnapshot {
   blockId: string;
   command: string;
@@ -93,6 +109,9 @@ export class CommandBlockTracker extends Disposable {
   readonly query$: Observable<INaturalLanguageQueryEvent> = this._query$.asObservable();
   private _querySeq = 0;
 
+  private readonly _envChanged$ = new Subject<IRawRemoteEnvChange>();
+  readonly envChanged$: Observable<IRawRemoteEnvChange> = this._envChanged$.asObservable();
+
   private _parseState: ParseState = 'ground';
   private _flowState: FlowState = 'idle';
   private _oscIdBuffer = '';
@@ -101,6 +120,7 @@ export class CommandBlockTracker extends Disposable {
 
   private _pending: IPendingBlock | null = null;
   private _currentCwd = '';
+  private readonly _currentEnv: IRawRemoteEnv = { remoteOS: '', remoteShell: '', remoteDistro: '' };
   private _seq = 0;
   private _osc633EventCount = 0;
 
@@ -119,6 +139,22 @@ export class CommandBlockTracker extends Disposable {
 
   get currentCwd(): string {
     return this._currentCwd;
+  }
+
+  get currentRemoteOS(): string {
+    return this._currentEnv.remoteOS;
+  }
+
+  get currentRemoteShell(): string {
+    return this._currentEnv.remoteShell;
+  }
+
+  get currentRemoteDistro(): string {
+    return this._currentEnv.remoteDistro;
+  }
+
+  getRawEnv(): IRawRemoteEnv {
+    return { ...this._currentEnv };
   }
 
   /** Count of OSC 633 events received on this session (A/B/C/D/E/P combined). */
@@ -167,6 +203,7 @@ export class CommandBlockTracker extends Disposable {
     this._blockFinished$.complete();
     this._blockStarted$.complete();
     this._query$.complete();
+    this._envChanged$.complete();
     this._blocks.length = 0;
     this._pending = null;
     super.dispose();
@@ -298,6 +335,12 @@ export class CommandBlockTracker extends Disposable {
       case 'P':
         if (event.key === 'Cwd') {
           this._currentCwd = event.value;
+        } else if (event.key === 'RemoteOS') {
+          this._updateEnvField('remoteOS', event.value);
+        } else if (event.key === 'RemoteShell') {
+          this._updateEnvField('remoteShell', event.value);
+        } else if (event.key === 'RemoteDistro') {
+          this._updateEnvField('remoteDistro', event.value);
         }
         break;
 
@@ -305,6 +348,14 @@ export class CommandBlockTracker extends Disposable {
         this._handleQuery(event.query);
         break;
     }
+  }
+
+  private _updateEnvField(field: keyof IRawRemoteEnv, value: string): void {
+    if (this._currentEnv[field] === value) {
+      return;
+    }
+    this._currentEnv[field] = value;
+    this._envChanged$.next({ sessionId: this._sessionId, env: { ...this._currentEnv } });
   }
 
   private _handleQuery(query: string): void {

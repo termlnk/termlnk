@@ -13,15 +13,18 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IPlatformContext, IPlatformContextService, PlatformType, ShellType } from '@termlnk/agent';
+import type { IActiveSessionContext, IPlatformContext, IPlatformContextService, ITerminalSessionEnvService, PlatformType, ShellType } from '@termlnk/agent';
 import type { ILogService } from '@termlnk/core';
+import type { ITerminalSessionNotifyService } from '@termlnk/rpc';
 import type { Observable } from 'rxjs';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { arch, homedir, release } from 'node:os';
 import { basename } from 'node:path';
 import process from 'node:process';
+import { ITerminalSessionEnvService as ITerminalSessionEnvServiceId } from '@termlnk/agent';
 import { Disposable, ILogService as ILogServiceId, Inject, Injector, isLinux, isMacintosh, isWindows, LocaleService, LocaleType, platform, PlatformToString } from '@termlnk/core';
+import { ITerminalSessionNotifyService as ITerminalSessionNotifyServiceId } from '@termlnk/rpc';
 import { BehaviorSubject, debounceTime, Subject } from 'rxjs';
 
 export const DEFAULT_CONTEXT: IPlatformContext = {
@@ -43,10 +46,15 @@ export class PlatformContextService extends Disposable implements IPlatformConte
   private readonly _refreshTrigger$ = new Subject<void>();
   private _cachedOsVersion: string | null = null;
 
+  private readonly _sessions = new Map<string, IActiveSessionContext>();
+  private _focusedSessionId: string | null = null;
+
   constructor(
     @Inject(Injector) private readonly _injector: Injector,
     @ILogServiceId private readonly _logService: ILogService,
-    @Inject(LocaleService) private readonly _localeService: LocaleService
+    @Inject(LocaleService) private readonly _localeService: LocaleService,
+    @ITerminalSessionNotifyServiceId private readonly _sessionNotify: ITerminalSessionNotifyService,
+    @ITerminalSessionEnvServiceId private readonly _sessionEnv: ITerminalSessionEnvService
   ) {
     super();
 
@@ -66,6 +74,53 @@ export class PlatformContextService extends Disposable implements IPlatformConte
       })
     );
 
+    this.disposeWithMe(
+      this._sessionNotify.sessionCreated$.subscribe((event) => {
+        const initialEnv = this._sessionEnv.getEnv(event.sessionId);
+        this._sessions.set(event.sessionId, {
+          sessionId: event.sessionId,
+          type: event.type,
+          shell: initialEnv.remoteShell ?? 'unknown',
+          cwd: '',
+          isAtPrompt: false,
+          hostLabel: event.hostLabel,
+          ...initialEnv,
+        });
+        this._refreshTrigger$.next();
+      })
+    );
+
+    this.disposeWithMe(
+      this._sessionNotify.sessionClosed$.subscribe((event) => {
+        this._sessions.delete(event.sessionId);
+        if (this._focusedSessionId === event.sessionId) {
+          this._focusedSessionId = null;
+        }
+        this._refreshTrigger$.next();
+      })
+    );
+
+    this.disposeWithMe(
+      this._sessionNotify.focusedSessionId$.subscribe((id) => {
+        this._focusedSessionId = id;
+        this._refreshTrigger$.next();
+      })
+    );
+
+    this.disposeWithMe(
+      this._sessionEnv.env$.subscribe((change) => {
+        const ctx = this._sessions.get(change.sessionId);
+        if (!ctx) {
+          return;
+        }
+        Object.assign(ctx, change.env);
+        if (change.env.remoteShell) {
+          ctx.shell = change.env.remoteShell;
+        }
+        this._refreshTrigger$.next();
+      })
+    );
+
     this._context$.next(this._buildContext());
   }
 
@@ -74,17 +129,34 @@ export class PlatformContextService extends Disposable implements IPlatformConte
   }
 
   private _buildContext(): IPlatformContext {
+    const activeSessions = Array.from(this._sessions.values());
+    const focusedSession = this._focusedSessionId
+      ? this._sessions.get(this._focusedSessionId) ?? null
+      : null;
+
     return {
-      platform: this._detectPlatform(),
+      platform: this._detectEffectivePlatform(focusedSession),
       arch: arch(),
       defaultShell: this._detectDefaultShell(),
       osVersion: this._detectOsVersion(),
       homeDir: homedir(),
       currentDate: new Date().toISOString().split('T')[0],
       locale: this._localeService?.getCurrentLocale() ?? '',
-      activeSessions: [],
-      focusedSession: null,
+      activeSessions,
+      focusedSession,
     };
+  }
+
+  /**
+   * The OS where the AI's next command will run. A focused session's reported
+   * remote OS wins over the local one — otherwise SSH suggestions would use
+   * the wrong package manager / binaries when the remote OS differs.
+   */
+  private _detectEffectivePlatform(focused: IActiveSessionContext | null): PlatformType {
+    if (focused?.remoteOS && focused.remoteOS !== 'unknown') {
+      return focused.remoteOS;
+    }
+    return this._detectPlatform();
   }
 
   private _detectPlatform(): PlatformType {
@@ -156,8 +228,9 @@ export class PlatformContextService extends Disposable implements IPlatformConte
   }
 
   override dispose(): void {
-    super.dispose();
+    this._sessions.clear();
     this._context$.complete();
     this._refreshTrigger$.complete();
+    super.dispose();
   }
 }

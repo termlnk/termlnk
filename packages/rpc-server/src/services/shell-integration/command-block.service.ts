@@ -16,7 +16,7 @@
 import type { ITerminalCommand } from '@termlnk/terminal';
 import type { Buffer } from 'node:buffer';
 import type { Observable, Subscription } from 'rxjs';
-import type { IBlockStartedEvent, INaturalLanguageQueryEvent, IPendingBlockSnapshot } from './command-block-tracker';
+import type { IBlockStartedEvent, INaturalLanguageQueryEvent, IPendingBlockSnapshot, IRawRemoteEnv, IRawRemoteEnvChange } from './command-block-tracker';
 import { createIdentifier, Disposable, ILogService } from '@termlnk/core';
 import { Subject } from 'rxjs';
 import { CommandBlockTracker } from './command-block-tracker';
@@ -63,6 +63,10 @@ export interface ICommandBlockService {
   getPendingSnapshot(sessionId: string): IPendingBlockSnapshot | null;
   /** Get the current reported CWD for a session (empty string if unknown). */
   getCurrentCwd(sessionId: string): string;
+  /** Latest raw OSC 633;P env for a session. Empty fields when never reported. */
+  getRawEnv(sessionId: string): IRawRemoteEnv;
+  /** Fires whenever any remote env field changes. */
+  readonly envChanged$: Observable<IRawRemoteEnvChange>;
   /** Whether a tracker is attached for a given session. */
   isAttached(sessionId: string): boolean;
   /**
@@ -81,6 +85,7 @@ interface ISessionEntry {
   blockSub: Subscription;
   startedSub: Subscription;
   querySub: Subscription;
+  envSub: Subscription;
 }
 
 export class CommandBlockService extends Disposable implements ICommandBlockService {
@@ -94,6 +99,9 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
 
   private readonly _query$ = new Subject<INaturalLanguageQueryEvent>();
   readonly query$: Observable<INaturalLanguageQueryEvent> = this._query$.asObservable();
+
+  private readonly _envChanged$ = new Subject<IRawRemoteEnvChange>();
+  readonly envChanged$: Observable<IRawRemoteEnvChange> = this._envChanged$.asObservable();
 
   constructor(
     @ILogService private readonly _logService: ILogService
@@ -146,7 +154,11 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
       this._query$.next(event);
     });
 
-    this._sessions.set(sessionId, { tracker, dataSub, blockSub, startedSub, querySub });
+    const envSub = tracker.envChanged$.subscribe((event) => {
+      this._envChanged$.next(event);
+    });
+
+    this._sessions.set(sessionId, { tracker, dataSub, blockSub, startedSub, querySub, envSub });
   }
 
   detachSession(sessionId: string): void {
@@ -158,6 +170,7 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     entry.blockSub.unsubscribe();
     entry.startedSub.unsubscribe();
     entry.querySub.unsubscribe();
+    entry.envSub.unsubscribe();
     entry.tracker.dispose();
     this._sessions.delete(sessionId);
   }
@@ -182,6 +195,11 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     return this._sessions.get(sessionId)?.tracker.currentCwd ?? '';
   }
 
+  getRawEnv(sessionId: string): IRawRemoteEnv {
+    const tracker = this._sessions.get(sessionId)?.tracker;
+    return tracker?.getRawEnv() ?? { remoteOS: '', remoteShell: '', remoteDistro: '' };
+  }
+
   isAttached(sessionId: string): boolean {
     return this._sessions.has(sessionId);
   }
@@ -198,6 +216,7 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     this._blockFinished$.complete();
     this._blockStarted$.complete();
     this._query$.complete();
+    this._envChanged$.complete();
     super.dispose();
   }
 }
