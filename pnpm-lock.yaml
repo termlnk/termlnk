@@ -2059,9 +2059,6 @@ importers:
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core
-      '@termlnk/terminal':
-        specifier: workspace:*
-        version: link:../terminal
     devDependencies:
       '@termlnk/shared':
         specifier: workspace:*
@@ -2133,9 +2130,6 @@ importers:
       '@termlnk/shared-terminal':
         specifier: workspace:*
         version: link:../shared-terminal
-      '@termlnk/terminal':
-        specifier: workspace:*
-        version: link:../terminal
       '@termlnk/ui':
         specifier: workspace:*
         version: link:../ui
@@ -21571,8 +21565,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.57.2(typescript@6.0.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.59.3(typescript@6.0.3)
-      '@typescript-eslint/types': 8.59.3
+      '@typescript-eslint/tsconfig-utils': 8.59.4(typescript@6.0.3)
+      '@typescript-eslint/types': 8.59.4
       debug: 4.4.3
       typescript: 6.0.3
     transitivePeerDependencies:

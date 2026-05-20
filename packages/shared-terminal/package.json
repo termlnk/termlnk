@@ -49,12 +49,10 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
-    "@termlnk/core": "workspace:*",
-    "@termlnk/terminal": "workspace:*"
+    "@termlnk/core": "workspace:*"
   },
   "dependencies": {
-    "@termlnk/core": "workspace:*",
-    "@termlnk/terminal": "workspace:*"
+    "@termlnk/core": "workspace:*"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
