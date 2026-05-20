@@ -13,12 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ITokenManager } from '@termlnk/auth';
 import type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse, ISyncMutation, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { base64ToBytes, bytesToBase64, HttpRequestError } from '@termlnk/auth';
-// Deep import keeps better-sqlite3 (transitively pulled in by @termlnk/auth-core's barrel)
-// out of browser/mobile bundles.
-import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
+import { base64ToBytes, bytesToBase64, HttpRequestError, ITokenManager as ITokenManagerId } from '@termlnk/auth';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { SYNC_TRIGGER_INTERVALS } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
@@ -133,7 +131,7 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
 
   constructor(
     private readonly _config: IHttpSyncTransportConfig,
-    @Inject(TokenManager) private readonly _tokenManager: TokenManager,
+    @Inject(ITokenManagerId) private readonly _tokenManager: ITokenManager,
     @Inject(ILogService) private readonly _logService: ILogService
   ) {
     super();

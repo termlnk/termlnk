@@ -13,10 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-// Deep import: must match the resolution path used by http-transport.service.ts so the
-// TypeScript nominal identity of TokenManager stays single — going through the package
-// barrel would resolve to lib/types and create a second incompatible class type.
-import type { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
+// Token surface used by HttpSyncTransportService is the ITokenManager contract
+// from @termlnk/auth — tests cast a minimal fake to it.
+import type { ITokenManager } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { ISyncMutation } from '@termlnk/sync';
 import type { HttpFetchFn, HttpWebSocketCtor, IHttpWebSocket } from '../services/http-transport.service';
@@ -119,7 +118,7 @@ describe('HttpSyncTransportService — JSON wire format', () => {
     });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -164,7 +163,7 @@ describe('HttpSyncTransportService — JSON wire format', () => {
     });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -181,7 +180,7 @@ describe('HttpSyncTransportService — JSON wire format', () => {
     const { fetch } = makeFakeFetch({ status: 200, json: {} });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -195,7 +194,7 @@ describe('HttpSyncTransportService — JSON wire format', () => {
     const { fetch } = makeFakeFetch({ status: 500, text: 'server boom' });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -212,7 +211,7 @@ describe('HttpSyncTransportService — JSON wire format', () => {
     });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'https://cloud.example/v1/', fetchFn: fetch },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -228,7 +227,7 @@ describe('HttpSyncTransportService — JSON wire format', () => {
     });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -266,7 +265,7 @@ describe('HttpSyncTransportService — WebSocket', () => {
     const { fetch } = makeFakeFetch({ status: 200, json: {} });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'https://cloud.example/v1', fetchFn: fetch, webSocketCtor: ctor },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -287,7 +286,7 @@ describe('HttpSyncTransportService — WebSocket', () => {
     const { fetch } = makeFakeFetch({ status: 200, json: {} });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'http://localhost:8080', fetchFn: fetch, webSocketCtor: ctor },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -314,7 +313,7 @@ describe('HttpSyncTransportService — WebSocket', () => {
     const { fetch } = makeFakeFetch({ status: 200, json: {} });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'http://localhost:8080', fetchFn: fetch, webSocketCtor: ctor },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -338,7 +337,7 @@ describe('HttpSyncTransportService — WebSocket', () => {
     const { fetch } = makeFakeFetch({ status: 200, json: {} });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'http://localhost:8080', fetchFn: fetch, webSocketCtor: ctor },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 
@@ -359,7 +358,7 @@ describe('HttpSyncTransportService — WebSocket', () => {
     const { fetch } = makeFakeFetch({ status: 200, json: {} });
     const transport = new HttpSyncTransportService(
       { baseUrl: 'http://localhost:8080', fetchFn: fetch, webSocketCtor: ctor },
-      tokenManager as unknown as TokenManager,
+      tokenManager as unknown as ITokenManager,
       logService
     );
 

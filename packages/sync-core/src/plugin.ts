@@ -13,13 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ITokenManager } from '@termlnk/auth';
 import type { Dependency, Injector } from '@termlnk/core';
 import type { ISyncCorePluginConfig } from './controllers/config.schema';
+import { ITokenManager as ITokenManagerId } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
-// Deep import: both this file and http-transport.service.ts must take the same path or
-// TypeScript surfaces a second nominal TokenManager. The barrel also pulls in
-// @termlnk/database, which we want to keep out of browser/mobile bundles.
-import { TokenManager } from '@termlnk/auth-core/services/token-manager.service.ts';
 import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService, SyncPlugin } from '@termlnk/sync';
@@ -85,10 +83,9 @@ export class SyncCorePlugin extends Plugin {
 
   private _buildHttpTransportBinding(baseUrl: string): Dependency {
     return [ISyncTransportService, {
-      // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
-      useFactory: (tokenManager: TokenManager, logService: ILogService) =>
+      useFactory: (tokenManager: ITokenManager, logService: ILogService) =>
         new HttpSyncTransportService({ baseUrl }, tokenManager, logService),
-      deps: [TokenManager, ILogService],
+      deps: [ITokenManagerId, ILogService],
     }];
   }
 
