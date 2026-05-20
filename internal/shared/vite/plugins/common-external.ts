@@ -70,7 +70,7 @@ export default {
   socks: {
     global: 'socks',
     name: 'socks',
-    version: '^2.8.7',
+    version: '^2.8.9',
   },
   trzsz: {
     global: 'trzsz',
