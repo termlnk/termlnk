@@ -2081,9 +2081,9 @@ importers:
 
   packages/shared-terminal-core:
     dependencies:
-      '@termlnk/auth-core':
+      '@termlnk/auth':
         specifier: workspace:*
-        version: link:../auth-core
+        version: link:../auth
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core

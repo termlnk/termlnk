@@ -49,14 +49,14 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
-    "@termlnk/auth-core": "workspace:*",
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/shared-terminal": "workspace:*",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@termlnk/auth-core": "workspace:*",
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/shared-terminal": "workspace:*",
