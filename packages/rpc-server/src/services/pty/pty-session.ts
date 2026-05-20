@@ -30,6 +30,18 @@ export interface IPTYSessionOptions {
   restored?: boolean;
 }
 
+/**
+ * Bounded buffer count for `_data$` replay. The window time is what matters
+ * functionally (the renderer's tRPC subscription lands a few hundred ms after
+ * session creation and needs to receive the ConPTY/shell startup banner); the
+ * byte cap is a safety net so a single high-throughput command (`cat`, build
+ * logs) cannot lock multi-MB of PTY chunks in memory for the full 5s window.
+ *
+ * ConPTY's banner + first interactive prompt are usually <10 chunks; 64 gives
+ * a 6x margin for slow-starting shells without unbounded growth.
+ */
+const PTY_REPLAY_BUFFER_LIMIT = 64;
+
 export class PTYSession extends Disposable implements IDisposable {
   private readonly _status$ = new BehaviorSubject<PTYSessionStatus>(PTYSessionStatus.IDLE);
   readonly status$ = this._status$.asObservable();
@@ -37,12 +49,7 @@ export class PTYSession extends Disposable implements IDisposable {
     return this._status$.getValue();
   }
 
-  // Time-windowed replay so the renderer's tRPC subscription (which attaches
-  // a few hundred ms after session creation) still receives the ConPTY /
-  // shell initial banner + first prompt. Without this, early data emitted
-  // before the subscription lands is lost — visible on Windows as a missing
-  // prompt after session restore.
-  private readonly _data$ = new ReplaySubject<Buffer>(Infinity, 5000);
+  private readonly _data$ = new ReplaySubject<Buffer>(PTY_REPLAY_BUFFER_LIMIT, 5000);
   readonly data$ = this._data$.asObservable();
 
   private _process: Nullable<IPTYProcess>;
