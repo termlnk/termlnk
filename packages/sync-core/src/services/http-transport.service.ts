@@ -24,6 +24,10 @@ import { BehaviorSubject, Subject } from 'rxjs';
 const MAX_RECONNECT_BACKOFF_MS = 30_000;
 const INITIAL_RECONNECT_BACKOFF_MS = 1_000;
 const HEARTBEAT_INTERVAL_MS = SYNC_TRIGGER_INTERVALS.heartbeatMs;
+const IDLE_TIMEOUT_MS = SYNC_TRIGGER_INTERVALS.idleTimeoutMs;
+// Application-range close code (RFC 6455 §7.4.2, 4000-4999) so logs can tell a watchdog
+// close from a peer disconnect; reconnect behaviour is identical.
+const WS_CLOSE_CODE_IDLE = 4001;
 
 // Narrow subsets of fetch / WebSocket so tests inject fakes without binding to undici types.
 export type HttpFetchFn = (url: string, init: {
@@ -122,6 +126,9 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
   private _ws: IHttpWebSocket | null = null;
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  // Refreshed by every inbound frame. The heartbeat tick force-closes when this falls
+  // behind by more than IDLE_TIMEOUT_MS so a silently-dropped connection recovers.
+  private _lastServerActivityAt = 0;
   // Set true after disconnect(); suppresses further reconnect attempts.
   private _stopped = false;
   private _reconnectBackoff = INITIAL_RECONNECT_BACKOFF_MS;
@@ -302,6 +309,10 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
   }
 
   private _handleSocketMessage(data: unknown): void {
+    // Any inbound frame proves the server side is alive; pong has no payload to surface
+    // but updating the liveness clock is its whole job.
+    this._lastServerActivityAt = Date.now();
+
     let parsed: IWirePokeMessage | { type: 'pong' };
     try {
       const text = typeof data === 'string' ? data : new TextDecoder().decode(data as ArrayBuffer);
@@ -315,18 +326,34 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
       const poke = parsed as IWirePokeMessage;
       this._poke$.next({ type: 'poke', resource: poke.resource, cursor: poke.cursor });
     }
-    // Pong only keeps `onclose` from firing.
   }
 
+  // Single timer drives both halves of liveness: each tick first checks for an idle
+  // gap longer than IDLE_TIMEOUT_MS (force-close to recover), then sends a keepalive
+  // ping. HEARTBEAT_INTERVAL_MS stays well under the 60s idle window common to
+  // Nginx / ALB / Cloudflare so three ticks fit inside any proxy's window.
   private _startHeartbeat(): void {
     this._clearHeartbeat();
-    this._heartbeatTimer = setInterval(() => {
+    this._lastServerActivityAt = Date.now();
+    this._heartbeatTimer = setInterval(() => this._heartbeatTick(), HEARTBEAT_INTERVAL_MS);
+  }
+
+  private _heartbeatTick(): void {
+    const idleFor = Date.now() - this._lastServerActivityAt;
+    if (idleFor > IDLE_TIMEOUT_MS) {
+      this._logService.warn(`[HttpSyncTransportService] no server activity for ${idleFor}ms; closing to reconnect`);
       try {
-        this._ws?.send(JSON.stringify({ type: 'ping' }));
+        this._ws?.close(WS_CLOSE_CODE_IDLE, 'idle timeout');
       } catch (err) {
-        this._logService.warn('[HttpSyncTransportService] heartbeat send failed:', err);
+        this._logService.warn('[HttpSyncTransportService] watchdog close failed:', err);
       }
-    }, HEARTBEAT_INTERVAL_MS);
+      return;
+    }
+    try {
+      this._ws?.send(JSON.stringify({ type: 'ping' }));
+    } catch (err) {
+      this._logService.warn('[HttpSyncTransportService] heartbeat send failed:', err);
+    }
   }
 
   private _clearHeartbeat(): void {

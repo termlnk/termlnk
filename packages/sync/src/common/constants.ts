@@ -27,8 +27,13 @@ export const SYNC_TRIGGER_INTERVALS = {
   pullDebounceMs: 200,
   // Background poll backstop; the primary path is poke-driven.
   pollIntervalMs: 5 * 60 * 1000,
-  // WebSocket heartbeat.
-  heartbeatMs: 30 * 1000,
+  // WebSocket keepalive cadence. Kept well below the 60s idle timeout common to Nginx /
+  // ALB / Cloudflare so three heartbeats fit inside any proxy window.
+  heartbeatMs: 15 * 1000,
+  // No inbound frame for this long => connection is dead even if the socket still looks
+  // open; the transport force-closes and lets the reconnect backoff take over. ~3x
+  // heartbeatMs so a single dropped pong does not cause spurious reconnects.
+  idleTimeoutMs: 45 * 1000,
 } as const;
 
 // Max mutations the SyncService sends in a single push request. The transport peels off
