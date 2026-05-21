@@ -13,12 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IDisposable } from '@termlnk/core';
 import type { Observable } from 'rxjs';
 import type { ISyncError, ISyncStats, SyncState } from '../models/state';
+import type { IResourceSynchroniser } from './resource-synchroniser';
 import { createIdentifier } from '@termlnk/core';
 
-// Top-level sync coordinator (main-process only). Registers ResourceSynchronisers, manages
-// the global lifecycle and push/pull cadence, and exposes state for the renderer via tRPC.
+// Top-level sync coordinator. The renderer facade in @termlnk/rpc-client implements the
+// same interface but throws on register / stopRuntime — those carry main-process
+// semantics and have no IPC surface.
 export interface ISyncService {
   readonly state$: Observable<SyncState>;
   readonly stats$: Observable<ISyncStats>;
@@ -39,6 +42,12 @@ export interface ISyncService {
   // Clears cursors and pulls everything from scratch. Useful for cross-device first login or
   // suspected local corruption.
   forceFullResync(): Promise<void>;
+
+  register(synchroniser: IResourceSynchroniser): IDisposable;
+
+  // Sign-out path: tear down the runtime pipeline without flipping the persisted
+  // userEnabled flag, so the next sign-in restores the toggle.
+  stopRuntime(): Promise<void>;
 }
 
 export const ISyncService = createIdentifier<ISyncService>('sync.sync-service');

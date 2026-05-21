@@ -13,7 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IResourceSyncStats, ISyncError, ISyncService, ISyncStats, SyncResourceId } from '@termlnk/sync';
+import type { IDisposable } from '@termlnk/core';
+import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncService, ISyncStats, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { Disposable, ILogService, Inject, toDisposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
@@ -120,6 +121,15 @@ export class SyncClientService extends Disposable implements ISyncService {
 
   async forceFullResync(): Promise<void> {
     await this._client.forceFullResync.mutate();
+  }
+
+  // Main-process semantics; reaching either over IPC is a routing bug.
+  register(_synchroniser: IResourceSynchroniser): IDisposable {
+    throw new Error('[SyncClientService] register() is main-process only');
+  }
+
+  async stopRuntime(): Promise<void> {
+    throw new Error('[SyncClientService] stopRuntime() is main-process only');
   }
 }
 

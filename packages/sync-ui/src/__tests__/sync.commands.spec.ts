@@ -13,9 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ISyncError, ISyncService, ISyncStats, SyncState } from '@termlnk/sync';
-import { ILogService, Injector } from '@termlnk/core';
-import { ISyncService as ISyncServiceId } from '@termlnk/sync';
+import type { IDisposable } from '@termlnk/core';
+import type { IResourceSynchroniser, ISyncError, ISyncStats, SyncState } from '@termlnk/sync';
+import { ILogService, Injector, toDisposable } from '@termlnk/core';
+import { ISyncService } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { DisableSyncCommand, EnableSyncCommand, ForceFullResyncCommand, SyncNowCommand, ToggleSyncEnabledCommand } from '../commands/sync.commands';
@@ -57,6 +58,14 @@ class FakeSyncService implements ISyncService {
   async forceFullResync(): Promise<void> {
     this.forceFullResyncCalls++;
   }
+
+  register(_synchroniser: IResourceSynchroniser): IDisposable {
+    return toDisposable(() => {});
+  }
+
+  async stopRuntime(): Promise<void> {
+    this._enabled$.next(false);
+  }
 }
 
 function createBed(opts: { withSync: boolean }): { injector: Injector; sync: FakeSyncService | null } {
@@ -65,7 +74,7 @@ function createBed(opts: { withSync: boolean }): { injector: Injector; sync: Fak
   let sync: FakeSyncService | null = null;
   if (opts.withSync) {
     sync = new FakeSyncService();
-    injector.add([ISyncServiceId, { useValue: sync }]);
+    injector.add([ISyncService, { useValue: sync }]);
   }
   return { injector, sync };
 }

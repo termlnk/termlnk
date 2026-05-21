@@ -14,10 +14,10 @@
  */
 
 import type { Injector } from '@termlnk/core';
-import type { ISyncError, ISyncService, ISyncStats, SyncState } from '@termlnk/sync';
+import type { ISyncError, ISyncStats, SyncState } from '@termlnk/sync';
 import { Quantity } from '@termlnk/core';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
-import { ISyncService as ISyncServiceId } from '@termlnk/sync';
+import { ISyncService } from '@termlnk/sync';
 import { firstValueFrom } from 'rxjs';
 import { publicProcedure, router } from '../trpc';
 
@@ -27,7 +27,7 @@ import { publicProcedure, router } from '../trpc';
  * and lets RPC callers get an explicit "sync not configured" signal.
  */
 function requireSyncService(injector: Injector): ISyncService {
-  const service = injector.get(ISyncServiceId, Quantity.OPTIONAL);
+  const service = injector.get(ISyncService, Quantity.OPTIONAL);
   if (!service) {
     throw new Error('sync service is not configured (SyncCorePlugin missing)');
   }
@@ -54,7 +54,7 @@ function requireSyncService(injector: Injector): ISyncService {
 export const syncRouter = router({
   /** Initial snapshot returned to the renderer on startup; subscriptions push subsequent changes. */
   getSnapshot: publicProcedure.query(async ({ ctx }): Promise<ISyncSnapshot> => {
-    const service = ctx.injector.get(ISyncServiceId, Quantity.OPTIONAL);
+    const service = ctx.injector.get(ISyncService, Quantity.OPTIONAL);
     if (!service) {
       return null;
     }

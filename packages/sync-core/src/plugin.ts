@@ -65,10 +65,6 @@ export class SyncCorePlugin extends Plugin {
       [ISyncService, { useClass: SyncService }],
       transportBinding,
 
-      // Bound under both the interface and concrete tokens so register() (concrete-only)
-      // and ISyncService consumers resolve to the same instance.
-      [SyncService, { useClass: SyncService }],
-
       [HostSynchroniser, { useClass: HostSynchroniser }],
       [ConfigSynchroniser, { useClass: ConfigSynchroniser }],
       [ProviderSynchroniser, { useClass: ProviderSynchroniser }],

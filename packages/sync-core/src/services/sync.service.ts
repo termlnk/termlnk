@@ -30,8 +30,7 @@ const CONFIG_GARBAGE_ENTITY_PREFIXES: readonly string[] = Array.from(NON_SYNCABL
 );
 
 // Top-level sync coordinator. Registers ResourceSynchronisers and drives the
-// push/pull/poke cadence. register() lives on the concrete class only so ISyncService
-// consumers cannot reach it.
+// push/pull/poke cadence.
 export class SyncService extends Disposable implements ISyncService {
   private readonly _state$ = new BehaviorSubject<SyncState>(SyncState.Disabled);
   readonly state$: Observable<SyncState> = this._state$.asObservable();

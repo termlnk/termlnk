@@ -15,8 +15,7 @@
 
 import type { IResourceSynchroniser, ISyncPluginConfig, SyncResourceId } from '@termlnk/sync';
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
-import { SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
-import { SyncService } from '../services/sync.service';
+import { ISyncService, SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
 import { ConfigSynchroniser } from '../synchronisers/config-synchroniser';
 import { HostSynchroniser } from '../synchronisers/host-synchroniser';
 import { McpSynchroniser } from '../synchronisers/mcp-synchroniser';
@@ -29,7 +28,7 @@ import { SkillSynchroniser } from '../synchronisers/skill-synchroniser';
 // ever pushing into the outbox.
 export class SynchroniserRegistrationController extends Disposable {
   constructor(
-    @Inject(SyncService) private readonly _syncService: SyncService,
+    @ISyncService private readonly _syncService: ISyncService,
     @IConfigService private readonly _configService: IConfigService,
     @Inject(ILogService) private readonly _logService: ILogService,
     @Inject(HostSynchroniser) private readonly _host: HostSynchroniser,

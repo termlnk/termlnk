@@ -18,9 +18,8 @@ import type { ISyncPluginConfig } from '@termlnk/sync';
 import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { IConfigService, ILogService, Inject, Optional, RxDisposable } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
-import { SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from '@termlnk/sync';
+import { ISyncService, SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from '@termlnk/sync';
 import { distinctUntilChanged, takeUntil } from 'rxjs';
-import { SyncService } from '../services/sync.service';
 
 // IAuthService is @Optional — without it (no cloudBaseUrl configured) the listener
 // no-ops so offline features still work.
@@ -28,7 +27,7 @@ export class AuthSyncBridgeController extends RxDisposable {
   private readonly _authService: IAuthService | null;
 
   constructor(
-    @Inject(SyncService) private readonly _syncService: SyncService,
+    @ISyncService private readonly _syncService: ISyncService,
     @Optional(IAuthServiceId) authService: IAuthService | null,
     @IConfigService private readonly _configService: IConfigService,
     @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
