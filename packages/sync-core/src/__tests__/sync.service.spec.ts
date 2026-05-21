@@ -16,7 +16,7 @@
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { ConfigRepository, ISyncCursorEntity, SyncCursorRepository } from '@termlnk/database';
 import type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse, IResourceSynchroniser, ISyncMutation, ISyncOutboxService, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
-import { SynchroniserStatus } from '@termlnk/sync';
+import { SynchroniserStatus, SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SyncService } from '../services/sync.service';
@@ -467,6 +467,33 @@ describe('SyncService', () => {
     bed.service.dispose();
 
     expect(sk.disposed).toBe(true);
+  });
+
+  // Regression: persisted userEnabled is the single source AuthSyncBridgeController
+  // reads after restart — enable/disable must write it; stopRuntime must not.
+  it('enable persists userEnabled=true to ConfigRepository', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    await bed.service.enable();
+    expect(await bed.config.getField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD)).toBe(true);
+  });
+
+  it('disable persists userEnabled=false to ConfigRepository', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    await bed.service.enable();
+    await bed.service.disable();
+    expect(await bed.config.getField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD)).toBe(false);
+  });
+
+  it('stopRuntime stops the runtime without changing persisted userEnabled', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    await bed.service.enable();
+    expect(await bed.config.getField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD)).toBe(true);
+
+    await bed.service.stopRuntime();
+
+    expect(await firstValue(bed.service.enabled$)).toBe(false);
+    expect(await firstValue(bed.service.state$)).toBe('disabled');
+    expect(await bed.config.getField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD)).toBe(true);
   });
 });
 

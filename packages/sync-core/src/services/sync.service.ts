@@ -18,7 +18,7 @@ import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncOutbox
 import type { Observable } from 'rxjs';
 import { Disposable, generateRandomId, ILogService, Inject, toDisposable } from '@termlnk/core';
 import { ConfigRepository, SyncCursorRepository } from '@termlnk/database';
-import { ISyncOutboxService as ISyncOutboxServiceId, ISyncTransportService as ISyncTransportServiceId, NON_SYNCABLE_CONFIG_KEYS, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SynchroniserStatus, SyncState } from '@termlnk/sync';
+import { ISyncOutboxService as ISyncOutboxServiceId, ISyncTransportService as ISyncTransportServiceId, NON_SYNCABLE_CONFIG_KEYS, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SYNC_USER_ENABLED_FIELD, SynchroniserStatus, SyncState } from '@termlnk/sync';
 import { BehaviorSubject, debounceTime, filter, interval, merge, Subject, Subscription } from 'rxjs';
 
 const CLIENT_ID_FIELD = 'clientId';
@@ -101,6 +101,9 @@ export class SyncService extends Disposable implements ISyncService {
   }
 
   async enable(): Promise<void> {
+    // Persist intent before runtime so AuthSyncBridgeController can restore the
+    // toggle on next sign-in even if startup races never call enable() again.
+    await this._configRepo.setField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD, true);
     if (this._enabled$.getValue()) {
       return;
     }
@@ -167,6 +170,13 @@ export class SyncService extends Disposable implements ISyncService {
   }
 
   async disable(): Promise<void> {
+    await this._configRepo.setField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD, false);
+    await this.stopRuntime();
+  }
+
+  // Sign-out path: tear down the pipeline but keep userEnabled intact so the next
+  // sign-in auto-restores the toggle.
+  async stopRuntime(): Promise<void> {
     if (!this._enabled$.getValue()) {
       return;
     }

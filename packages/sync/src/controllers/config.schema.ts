@@ -21,25 +21,27 @@ export const SYNC_PLUGIN_CONFIG_KEY = 'sync.config';
 export interface ISyncPluginConfig {
   override?: DependencyOverride;
 
-  // Whether sync auto-enables right after login. Defaults to true; consumed by
-  // AuthSyncBridgeController only at the login moment, so subsequent manual toggles
-  // via SyncStatusPanel are not overwritten.
+  // First-login fallback only. Once userEnabled is written this hint is ignored.
   autoEnableOnLogin?: boolean;
 
-  // User-controlled exclusions. Note that chat-family resources are never synced
-  // regardless of this list; this field only affects the optional resources.
+  // Persisted toggle position. Survives app restart so AuthSyncBridgeController can
+  // restore the in-memory _enabled$ on the next Authenticated tick.
+  userEnabled?: boolean;
+
+  // chat-family resources are never synced regardless of this list.
   excludedResources?: SyncResourceId[];
 
-  // Per-device client ID for server-side mutation deduplication. Generated and persisted
-  // on first launch via ConfigRepository.setField.
+  // Per-device client ID for server-side mutation deduplication.
   clientId?: string;
 
-  // Internal: highest client_mut_id ever emitted on this device. Persisted by
-  // SyncOutboxService and read back at startup so an emptied outbox does not restart
-  // numbering from 0 (which would let the server re-deduplicate stale mutations).
-  // Not user-editable.
+  // Highest client_mut_id ever emitted; persisted so an emptied outbox does not
+  // restart from 0 (the server would re-dedupe stale mutations).
   lastClientMutId?: number;
 }
+
+// Shared subKey for ConfigRepository.getField / setField. Single source for
+// SyncService (writer) and AuthSyncBridgeController (reader).
+export const SYNC_USER_ENABLED_FIELD: keyof ISyncPluginConfig = 'userEnabled';
 
 export const defaultPluginConfig: ISyncPluginConfig = {
   autoEnableOnLogin: true,

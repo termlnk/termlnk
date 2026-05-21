@@ -16,7 +16,7 @@
 export { NON_SYNCABLE_CONFIG_KEYS, SYNC_PAYLOAD_PREFIX, SYNC_PAYLOAD_VERSION, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS } from './common/constants';
 export type { SyncResourceId } from './common/constants';
 export type { ISyncPluginConfig } from './controllers/config.schema';
-export { SYNC_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
+export { SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from './controllers/config.schema';
 export type { ISyncCursor, ISyncFieldMeta, ISyncMutation, ISyncPatchItem } from './models/mutation';
 export type { IResourceSyncStats, ISyncError, ISyncStats, SyncErrorCode } from './models/state';
 export { SynchroniserStatus, SyncState } from './models/state';

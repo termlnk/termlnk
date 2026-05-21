@@ -17,14 +17,13 @@ import type { IAuthService } from '@termlnk/auth';
 import type { ISyncPluginConfig } from '@termlnk/sync';
 import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { IConfigService, ILogService, Inject, Optional, RxDisposable } from '@termlnk/core';
-import { SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
+import { ConfigRepository } from '@termlnk/database';
+import { SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from '@termlnk/sync';
 import { distinctUntilChanged, takeUntil } from 'rxjs';
 import { SyncService } from '../services/sync.service';
 
-// Auto-enables sync on sign-in (subject to autoEnableOnLogin) and always disables on
-// sign-out. Decides only the moment-of-sign-in transition; manual SyncStatusPanel toggles
-// downstream are never overridden. IAuthService is optional — without it, the listener
-// no-ops and SyncService stays Disabled so offline features still work.
+// IAuthService is @Optional — without it (no cloudBaseUrl configured) the listener
+// no-ops so offline features still work.
 export class AuthSyncBridgeController extends RxDisposable {
   private readonly _authService: IAuthService | null;
 
@@ -32,6 +31,7 @@ export class AuthSyncBridgeController extends RxDisposable {
     @Inject(SyncService) private readonly _syncService: SyncService,
     @Optional(IAuthServiceId) authService: IAuthService | null,
     @IConfigService private readonly _configService: IConfigService,
+    @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
     @Inject(ILogService) private readonly _logService: ILogService
   ) {
     super();
@@ -49,39 +49,41 @@ export class AuthSyncBridgeController extends RxDisposable {
       .pipe(distinctUntilChanged(), takeUntil(this.dispose$))
       .subscribe((state) => {
         if (state === AuthState.Authenticated) {
-          if (this._shouldAutoEnableOnLogin()) {
-            void this._enableSync();
-          } else {
-            this._logService.log('[AuthSyncBridgeController] sign-in observed but autoEnableOnLogin=false; user must enable sync manually');
-          }
+          void this._restoreSyncIntent();
         } else if (state === AuthState.Unauthenticated) {
-          void this._disableSync();
+          void this._stopSyncRuntime();
         }
-        // `Authenticating` / `Error` don't touch SyncService — keep the previous state during recovery.
+        // Authenticating / Error hold the previous SyncService state during recovery.
       });
   }
 
   private _shouldAutoEnableOnLogin(): boolean {
     const config = this._configService.getConfig<ISyncPluginConfig>(SYNC_PLUGIN_CONFIG_KEY);
-    // Unset falls back to SyncPlugin's defaultPluginConfig (true).
     return config?.autoEnableOnLogin !== false;
   }
 
-  private async _enableSync(): Promise<void> {
+  private async _restoreSyncIntent(): Promise<void> {
     try {
+      const persisted = await this._configRepo.getField<boolean>(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD);
+      if (persisted === false) {
+        return;
+      }
+      // undefined falls back to autoEnableOnLogin; SyncService.enable will write
+      // userEnabled=true so subsequent restarts skip the fallback path entirely.
+      if (persisted !== true && !this._shouldAutoEnableOnLogin()) {
+        return;
+      }
       await this._syncService.enable();
-      this._logService.log('[AuthSyncBridgeController] sync enabled after sign-in');
     } catch (err) {
-      this._logService.warn('[AuthSyncBridgeController] failed to enable sync:', err);
+      this._logService.warn('[AuthSyncBridgeController] failed to restore sync intent:', err);
     }
   }
 
-  private async _disableSync(): Promise<void> {
+  private async _stopSyncRuntime(): Promise<void> {
     try {
-      await this._syncService.disable();
-      this._logService.log('[AuthSyncBridgeController] sync disabled after sign-out');
+      await this._syncService.stopRuntime();
     } catch (err) {
-      this._logService.warn('[AuthSyncBridgeController] failed to disable sync:', err);
+      this._logService.warn('[AuthSyncBridgeController] failed to stop sync runtime:', err);
     }
   }
 }
