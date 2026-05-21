@@ -32,6 +32,7 @@ export default {
       offline: 'Offline',
       error: 'Error',
       disabled: 'Disabled',
+      'pending-push': 'Pending push ({0})',
     },
     error: {
       unauthenticated: 'Sign in to sync',

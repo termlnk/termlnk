@@ -55,6 +55,10 @@ export class SyncService extends Disposable implements ISyncService {
 
   private _clientId: string | null = null;
 
+  // Gates SyncState.Idle: a push-only success would otherwise light the "Up to date"
+  // badge while stats.lastSyncedAt is still null/stale.
+  private _initialPullDone = false;
+
   // One-shot per process; subsequent sweeps would just be wasted disk I/O.
   private _garbagePurged = false;
 
@@ -108,7 +112,8 @@ export class SyncService extends Disposable implements ISyncService {
       return;
     }
     this._lastError$.next(null);
-    this._state$.next(SyncState.Idle);
+    this._initialPullDone = false;
+    this._state$.next(SyncState.Syncing);
     this._enabled$.next(true);
 
     for (const s of this._synchronisers.values()) {
@@ -120,8 +125,8 @@ export class SyncService extends Disposable implements ISyncService {
     // BehaviorSubject and replays its (now non-zero) value at subscribe time, so the
     // first debounce window fires push without extra trigger plumbing.
     await this._seedInitialSnapshots();
+    await this._refreshStats();
 
-    // Disconnect -> Offline; reconnect -> Idle + immediate pull.
     this._transportSub = this._transport.connected$.subscribe((isConnected) => {
       if (!this._enabled$.getValue()) {
         return;
@@ -130,7 +135,7 @@ export class SyncService extends Disposable implements ISyncService {
         this._state$.next(SyncState.Offline);
         return;
       }
-      this._state$.next(SyncState.Idle);
+      this._state$.next(SyncState.Syncing);
       this._pullTrigger$.next();
     });
 
@@ -181,6 +186,7 @@ export class SyncService extends Disposable implements ISyncService {
       return;
     }
     this._enabled$.next(false);
+    this._initialPullDone = false;
     this._runtimeSub?.unsubscribe();
     this._runtimeSub = null;
     this._transportSub?.unsubscribe();
@@ -197,6 +203,8 @@ export class SyncService extends Disposable implements ISyncService {
     if (!this._enabled$.getValue()) {
       return;
     }
+    // Manual retry clears the stale error banner; the next failure will repopulate it.
+    this._lastError$.next(null);
     this._pushTrigger$.next();
     this._pullTrigger$.next();
   }
@@ -205,7 +213,6 @@ export class SyncService extends Disposable implements ISyncService {
     if (!this._enabled$.getValue()) {
       return;
     }
-    // Clearing every cursor makes the next pull restart from the beginning.
     for (const resource of SYNC_RESOURCES) {
       await this._cursors.delete(resource);
     }
@@ -242,10 +249,16 @@ export class SyncService extends Disposable implements ISyncService {
           break;
         }
       }
-      this._state$.next(SyncState.Idle);
+      // refreshStats must precede the Idle emit so subscribers never observe
+      // "Idle + stale lastSyncedAt" between two BehaviorSubject ticks.
+      await this._refreshStats();
+      this._lastError$.next(null);
+      // Push success alone cannot prove "local matches remote" — wait for first pull.
+      if (this._initialPullDone) {
+        this._state$.next(SyncState.Idle);
+      }
     } catch (err) {
       this._reportError('network', `push failed: ${(err as Error).message}`);
-    } finally {
       await this._refreshStats();
     }
   }
@@ -315,10 +328,14 @@ export class SyncService extends Disposable implements ISyncService {
           lastPulledAt: Date.now(),
         });
       }
+      // refreshStats must precede the Idle emit so subscribers never observe
+      // "Idle + stale lastSyncedAt" between two BehaviorSubject ticks.
+      await this._refreshStats();
+      this._initialPullDone = true;
+      this._lastError$.next(null);
       this._state$.next(SyncState.Idle);
     } catch (err) {
       this._reportError('network', `pull failed: ${(err as Error).message}`);
-    } finally {
       await this._refreshStats();
     }
   }

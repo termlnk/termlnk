@@ -32,6 +32,7 @@ export default {
       offline: '오프라인',
       error: '오류',
       disabled: '비활성화됨',
+      'pending-push': '보낼 변경 대기 중({0}개)',
     },
     error: {
       unauthenticated: '동기화하려면 로그인하세요',

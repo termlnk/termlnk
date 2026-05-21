@@ -96,14 +96,27 @@ class FakeTransport implements ISyncTransportService {
   connectCalls = 0;
   disconnectCalls = 0;
   shouldRejectConnect = false;
+  // When false, connect() resolves without flipping connected$ — the test drives the
+  // transition manually so it can inspect state during the "waiting for first pull" window.
+  autoConnect = true;
+  // When set, push/pull will throw the error instead of returning a response — used to
+  // exercise lastError$ population and clearance.
+  pushThrows: Error | null = null;
+  pullThrows: Error | null = null;
 
   async push(req: IPushRequest): Promise<IPushResponse> {
     this.pushCalls.push(req);
+    if (this.pushThrows) {
+      throw this.pushThrows;
+    }
     return this.pushResponse;
   }
 
   async pull(req: IPullRequest): Promise<IPullResponse> {
     this.pullCalls.push(req);
+    if (this.pullThrows) {
+      throw this.pullThrows;
+    }
     return this.pullResponseFor.get(req.resource) ?? {
       cursor: 'cursor-1',
       patch: [],
@@ -116,7 +129,9 @@ class FakeTransport implements ISyncTransportService {
     if (this.shouldRejectConnect) {
       throw new Error('connect failed');
     }
-    this.connected$.next(true);
+    if (this.autoConnect) {
+      this.connected$.next(true);
+    }
   }
 
   async disconnect(): Promise<void> {
@@ -467,6 +482,84 @@ describe('SyncService', () => {
     bed.service.dispose();
 
     expect(sk.disposed).toBe(true);
+  });
+
+  // Regression: enable() used to flip state straight to Idle while lastSyncedAt was
+  // still null, so the UI showed "Up to date / Never synced". State must hold Syncing
+  // until the first pull populates stats.lastSyncedAt.
+  it('enable holds Syncing across the connect→firstPull window', async () => {
+    bed.transport.autoConnect = false;
+    bed.service.register(new FakeSynchroniser('skill'));
+
+    await bed.service.enable();
+
+    // Pre-connect: BehaviorSubject(false) replays through transportSub → Offline.
+    expect(await firstValue(bed.service.state$)).toBe('offline');
+    const statsBefore = await firstValue(bed.service.stats$);
+    expect(statsBefore.lastSyncedAt).toBeNull();
+
+    bed.transport.connected$.next(true);
+    await flushAsync(50);
+
+    expect(await firstValue(bed.service.state$)).toBe('idle');
+    const statsAfter = await firstValue(bed.service.stats$);
+    expect(statsAfter.lastSyncedAt).not.toBeNull();
+  });
+
+  // Regression: push-only success used to light "Up to date" while lastSyncedAt was
+  // still 3-days-old (the reported "Up to date / 3 days ago" bug). Push must not flip
+  // state to Idle before the first pull completes.
+  it('push success alone does not flip state to Idle before first pull', async () => {
+    bed.transport.autoConnect = false;
+    bed.service.register(new FakeSynchroniser('skill'));
+
+    await bed.outbox.enqueue({
+      resource: 'skill',
+      op: 'upsert',
+      entityId: 's1',
+      payload: new Uint8Array([1, 2, 3]),
+      baseVersion: null,
+    });
+    bed.transport.pushResponse = { accepted: [1], rejected: [], lastServerVersion: 1 };
+
+    await bed.service.enable();
+    await flushAsync(700); // past the 500ms push debounce
+
+    expect(bed.transport.pushCalls.length).toBeGreaterThan(0);
+    expect(await firstValue(bed.service.state$)).not.toBe('idle');
+  });
+
+  // Regression: lastError$ was only cleared on enable(); a transient pull failure left
+  // the red banner up forever, even after the next pull succeeded.
+  it('successful pull clears a previously surfaced lastError', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    bed.transport.pullThrows = new Error('boom');
+
+    await bed.service.enable();
+    await flushAsync(50);
+
+    expect((await firstValue(bed.service.lastError$))?.code).toBe('network');
+
+    bed.transport.pullThrows = null;
+    await bed.service.syncNow();
+    await flushAsync(50);
+
+    expect(await firstValue(bed.service.lastError$)).toBeNull();
+  });
+
+  // Manual retry must clear the banner synchronously so the UI doesn't stay red while
+  // the retry is already in flight.
+  it('syncNow clears lastError immediately', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    bed.transport.pullThrows = new Error('boom');
+
+    await bed.service.enable();
+    await flushAsync(50);
+
+    expect(await firstValue(bed.service.lastError$)).not.toBeNull();
+
+    await bed.service.syncNow();
+    expect(await firstValue(bed.service.lastError$)).toBeNull();
   });
 
   // Regression: persisted userEnabled is the single source AuthSyncBridgeController

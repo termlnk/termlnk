@@ -32,6 +32,7 @@ export default {
       offline: '离线',
       error: '错误',
       disabled: '未启用',
+      'pending-push': '等待推送（{0} 项）',
     },
     error: {
       unauthenticated: '需要登录后同步',

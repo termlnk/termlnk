@@ -90,11 +90,11 @@ export function SyncStatusPanel() {
     }
   };
 
-  const visual = getStateVisual(state, localeService);
+  const pendingCount = stats?.pendingMutations ?? 0;
+  const visual = getStateVisual(state, pendingCount, localeService);
   const lastSyncedText = stats?.lastSyncedAt
     ? formatLastSynced(stats.lastSyncedAt, localeService)
     : localeService.t('sync-ui.status.never-synced');
-  const pendingCount = stats?.pendingMutations ?? 0;
 
   return (
     <div className={cn('tm:flex tm:flex-col tm:gap-4')}>
@@ -147,7 +147,7 @@ export function SyncStatusPanel() {
         </div>
       </div>
 
-      {pendingCount > 0 && (
+      {pendingCount > 0 && state !== SyncState.Idle && (
         <div
           className={cn(`
             tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:bg-yellow/10 tm:px-3 tm:py-2 tm:text-xs tm:text-yellow
@@ -214,7 +214,17 @@ const STATE_VISUALS = {
   },
 } satisfies Record<SyncState, Omit<IStateVisual, 'label'> & { labelKey: string }>;
 
-function getStateVisual(state: SyncState, localeService: LocaleService): IStateVisual {
+function getStateVisual(state: SyncState, pendingCount: number, localeService: LocaleService): IStateVisual {
+  // Idle + pending > 0 isn't really "up to date" — local outbox still holds rows the
+  // server hasn't accepted. Treat it as its own visual so the green badge never lies.
+  if (state === SyncState.Idle && pendingCount > 0) {
+    return {
+      Icon: CloudUploadIcon,
+      iconBgClass: 'tm:bg-yellow/15',
+      iconColorClass: 'tm:text-yellow',
+      label: localeService.t('sync-ui.state.pending-push', String(pendingCount)),
+    };
+  }
   const { labelKey, ...rest } = STATE_VISUALS[state];
   return { ...rest, label: localeService.t(labelKey) };
 }

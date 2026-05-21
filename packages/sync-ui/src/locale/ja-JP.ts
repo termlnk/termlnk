@@ -32,6 +32,7 @@ export default {
       offline: 'オフライン',
       error: 'エラー',
       disabled: '無効',
+      'pending-push': '送信待ち（{0} 件）',
     },
     error: {
       unauthenticated: '同期するにはサインインが必要です',
