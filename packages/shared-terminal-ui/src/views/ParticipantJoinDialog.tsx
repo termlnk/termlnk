@@ -33,18 +33,17 @@ interface IInvitePayload {
  * Subscribes to ISharedTerminalService.inviteUrl$ (sourced from the OS
  * deep-link bus through electron-main → tRPC) and parses incoming termlnk:// /
  * https:// invite URLs. Displays the human-readable capability metadata so the
- * recipient can verify the session before opting in.
- *
- * The "Join" action is currently a placeholder — actually attaching to the
- * remote PTY stream depends on the client-side transport layer (see M4b / M5
- * in docs/agent/shared-terminal-multiplayer.md). Dismissing the dialog drops
- * the URL on the floor.
+ * recipient can verify the session before opting in. Confirming routes through
+ * ISharedTerminalService.connectAsParticipant; failures surface inline so the
+ * user is not left wondering why nothing happened.
  */
 export function ParticipantJoinDialog(): React.JSX.Element | null {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
   const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
   const [pending, setPending] = useState<IInvitePayload | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!client) {
@@ -52,8 +51,8 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
     }
     const sub = client.inviteUrl$.subscribe({
       next: (url) => {
-        const parsed = parseInviteUrl(url, logService);
-        setPending(parsed);
+        setErrorMessage(null);
+        setPending(parseInviteUrl(url, logService));
       },
       error: (err) => logService.error('[ParticipantJoinDialog] inviteUrl$ stream errored:', err),
     });
@@ -73,24 +72,25 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
 
   const handleDismiss = (): void => {
     setPending(null);
+    setErrorMessage(null);
   };
 
   const handleJoin = async (): Promise<void> => {
-    if (!client || !pending) {
+    if (!client || !pending?.capability) {
       return;
     }
     setBusy(true);
+    setErrorMessage(null);
     try {
       await client.connectAsParticipant(pending.rawUrl);
       setPending(null);
     } catch (err) {
       logService.error('[ParticipantJoinDialog] join failed:', err);
+      setErrorMessage(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
   };
-
-  const [busy, setBusy] = useState(false);
 
   if (!pending) {
     return null;
@@ -98,11 +98,12 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
 
   const cap = pending.capability;
   const expiryDate = cap?.exp ? new Date(cap.exp) : null;
-  const canJoin = Boolean(client && cap);
 
   return (
     <Dialog
       open
+      width={580}
+      style={{ height: 320 }}
       onOpenChange={(open) => {
         if (!open) {
           handleDismiss();
@@ -122,7 +123,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
           </Button>
           <Button
             variant="default"
-            disabled={!canJoin || busy}
+            disabled={!cap || busy}
             onClick={() => { void handleJoin(); }}
             className={cn('tm:gap-1.5')}
           >
@@ -136,10 +137,15 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
         <p className={cn('tm:text-grey-fg')}>
           {localeService.t('shared-terminal-ui.join-dialog.description')}
         </p>
-        <div className={cn('tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-3 tm:font-mono tm:text-xs')}>
-          <div className={cn('tm:flex tm:items-center tm:justify-between tm:gap-2')}>
-            <span className={cn('tm:truncate tm:text-light-grey')}>{pending.rawUrl}</span>
-            <Button variant="outline" size="sm" onClick={() => { void handleCopy(); }} className={cn('tm:gap-1.5')}>
+        <div className={cn('tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-2 tm:font-mono tm:text-xs')}>
+          <div className={cn('tm:flex tm:min-w-0 tm:items-center tm:justify-between tm:gap-2')}>
+            <span className={cn('tm:min-w-0 tm:flex-1 tm:truncate tm:text-light-grey')}>{pending.rawUrl}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { void handleCopy(); }}
+              className={cn('tm:shrink-0 tm:gap-1.5')}
+            >
               <ClipboardCopyIcon className={cn('tm:size-3.5')} />
               {localeService.t('shared-terminal-ui.join-dialog.copy-url')}
             </Button>
@@ -149,7 +155,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
           ? (
             <div className={cn('tm:grid tm:grid-cols-[auto_1fr] tm:items-center tm:gap-x-3 tm:gap-y-1 tm:text-xs')}>
               <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.session-label')}</span>
-              <span className={cn('tm:font-mono tm:text-light-grey')}>{cap.sid}</span>
+              <span className={cn('tm:truncate tm:font-mono tm:text-light-grey')}>{cap.sid}</span>
               <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.role-label')}</span>
               <span>
                 <Badge variant="secondary" className={cn('tm:bg-grey-fg/20 tm:text-grey-fg')}>
@@ -171,9 +177,12 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
               {localeService.t('shared-terminal-ui.join-dialog.unparsable')}
             </div>
           )}
-        <div className={cn('tm:rounded-md tm:border tm:border-yellow/30 tm:bg-yellow/5 tm:p-3 tm:text-xs tm:text-yellow')}>
-          {localeService.t('shared-terminal-ui.join-dialog.disabled-hint')}
-        </div>
+        {errorMessage && (
+          <div className={cn('tm:rounded-md tm:border tm:border-red/40 tm:bg-red/10 tm:p-2 tm:text-xs tm:text-red')}>
+            <div>{localeService.t('shared-terminal-ui.join-dialog.join-failed')}</div>
+            <div className={cn('tm:mt-1 tm:font-mono tm:break-all tm:text-red/80')}>{errorMessage}</div>
+          </div>
+        )}
       </div>
     </Dialog>
   );

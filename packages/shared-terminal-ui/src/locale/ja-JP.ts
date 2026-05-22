@@ -30,10 +30,9 @@ const locale: typeof enUS = {
       'expires-label': '期限',
       'copy-url': 'URL をコピー',
       join: 'セッションに参加',
-      'join-disabled': '参加（リレーが必要）',
       dismiss: '閉じる',
       unparsable: 'この招待 URL を解析できませんでした。発信者に再送を依頼してください。',
-      'disabled-hint': '参加にはリレー（relayBaseUrl）の設定、または WebRTC クライアントサポートを待つ必要があります。',
+      'join-failed': 'セッションへの参加に失敗しました:',
     },
     remote: {
       'viewing-only': '閲覧のみ',

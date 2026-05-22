@@ -30,10 +30,9 @@ const locale: typeof enUS = {
       'expires-label': '到期時間',
       'copy-url': '複製 URL',
       join: '加入會話',
-      'join-disabled': '加入（需要中繼）',
       dismiss: '關閉',
       unparsable: '無法解析此邀請連結。請發起方重新發送。',
-      'disabled-hint': '加入操作需要先設定中繼（relayBaseUrl）或等待 WebRTC 客戶端支援。',
+      'join-failed': '加入會話失敗：',
     },
     remote: {
       'viewing-only': '唯讀旁觀',

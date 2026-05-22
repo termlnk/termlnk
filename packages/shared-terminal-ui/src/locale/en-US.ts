@@ -28,10 +28,9 @@ const locale = {
       'expires-label': 'Expires',
       'copy-url': 'Copy URL',
       join: 'Join session',
-      'join-disabled': 'Join (relay required)',
       dismiss: 'Dismiss',
       unparsable: 'This invite URL could not be parsed. Ask the host to resend.',
-      'disabled-hint': 'Joining requires a configured relay/transport. Set relayBaseUrl in shared-terminal config or wait for WebRTC client support.',
+      'join-failed': 'Could not join the session:',
     },
     remote: {
       'viewing-only': 'Viewing (read-only)',

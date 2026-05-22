@@ -30,10 +30,9 @@ const locale: typeof enUS = {
       'expires-label': '만료 시간',
       'copy-url': 'URL 복사',
       join: '세션 참여',
-      'join-disabled': '참여 (릴레이 필요)',
       dismiss: '닫기',
       unparsable: '이 초대 URL을 분석할 수 없습니다. 발신자에게 재전송을 요청하세요.',
-      'disabled-hint': '참여하려면 릴레이(relayBaseUrl)를 설정하거나 WebRTC 클라이언트 지원을 기다려야 합니다.',
+      'join-failed': '세션 참여에 실패했습니다:',
     },
     remote: {
       'viewing-only': '읽기 전용',
