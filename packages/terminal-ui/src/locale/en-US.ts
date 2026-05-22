@@ -55,7 +55,7 @@ const locale = {
       credential: {
         type: 'Auth Type',
         password: 'Password',
-        rsa: 'SSH Key',
+        rsa: 'Private Key',
       },
       proxy: {
         enable: 'Enable Proxy',
