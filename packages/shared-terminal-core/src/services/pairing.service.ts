@@ -77,9 +77,13 @@ export class PairingService extends Disposable implements IPairingService {
   }
 
   async createInvite(options: IInviteCreateOptions): Promise<{ invite: ICollabInvite; url: string }> {
-    const relayBaseUrl = this._relayBaseUrl();
+    const relayBaseUrl = this._baseUrl('relayBaseUrl');
     if (!relayBaseUrl) {
       throw new Error('[PairingService] relayBaseUrl is required before creating invite');
+    }
+    const inviteBaseUrl = this._baseUrl('inviteBaseUrl');
+    if (!inviteBaseUrl) {
+      throw new Error('[PairingService] inviteBaseUrl is required before creating invite');
     }
     const now = Date.now();
     const ttlMs = Number.isFinite(options.ttlMs) && options.ttlMs > 0
@@ -148,7 +152,7 @@ export class PairingService extends Disposable implements IPairingService {
 
     await this._refresh();
 
-    const url = this._buildInviteUrl(relayBaseUrl, inviteId, ephPrivB64, capability);
+    const url = this._buildInviteUrl(inviteBaseUrl, inviteId, ephPrivB64, capability);
     return { invite, url };
   }
 
@@ -234,17 +238,16 @@ export class PairingService extends Disposable implements IPairingService {
     }
   }
 
-  private _buildInviteUrl(relayBaseUrl: string, inviteId: string, ephPrivB64: string, capability: ICapability): string {
+  private _buildInviteUrl(inviteBaseUrl: string, inviteId: string, ephPrivB64: string, capability: ICapability): string {
     const fragment = encodeURIComponent(JSON.stringify({ ephPriv: ephPrivB64, capability }));
-    const httpsBase = relayBaseUrl.replace(/^wss?:\/\//, 'https://').replace(/\/+$/, '');
-    return `${httpsBase}/s/${inviteId}#${fragment}`;
+    return `${inviteBaseUrl}/s/${inviteId}#${fragment}`;
   }
 
-  private _relayBaseUrl(): string | undefined {
+  private _baseUrl(field: 'relayBaseUrl' | 'inviteBaseUrl'): string | undefined {
     const config = this._configService.getConfig<ISharedTerminalPluginConfig>(
       SHARED_TERMINAL_PLUGIN_CONFIG_KEY
     );
-    return config?.relayBaseUrl?.replace(/\/+$/, '');
+    return config?.[field]?.replace(/\/+$/, '');
   }
 }
 

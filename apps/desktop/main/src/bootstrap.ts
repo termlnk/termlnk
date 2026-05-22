@@ -187,9 +187,8 @@ function withAsarEnabled<T>(fn: () => Promise<T>): Promise<T> {
 // Production cloud endpoint baked into the packaged build.
 const PRODUCTION_CLOUD_BASE_URL = 'https://cloud.termlnk.com/v1';
 
-// Dev/CI takes TERMLNK_CLOUD_BASE_URL (via shell or apps/desktop/.env loaded by
-// electron-vite). Packaged builds hit the hard-coded constant — env var only wins
-// in unpackaged runs so a stray shell variable can't redirect end-user traffic.
+// Env var only wins in unpackaged builds so a stray shell variable can't redirect
+// end-user traffic.
 function resolveCloudBaseUrl(): string | undefined {
   const envValue = process.env.TERMLNK_CLOUD_BASE_URL?.trim();
   if (envValue && !app.isPackaged) {
@@ -198,9 +197,8 @@ function resolveCloudBaseUrl(): string | undefined {
   return PRODUCTION_CLOUD_BASE_URL;
 }
 
-// Relay reuses the cloud host: HTTPS + WSS coexist on the same origin, so deriving the
-// WS URL from cloudBaseUrl keeps a single source of truth. Dev/CI can still pin a
-// separate relay via TERMLNK_RELAY_BASE_URL when testing against a local server.
+// Relay shares the cloud host (HTTPS + WSS on the same origin); derive from cloudBaseUrl
+// for a single source of truth. Dev overrides via TERMLNK_RELAY_BASE_URL.
 function resolveRelayBaseUrl(cloudBaseUrl: string | undefined): string | undefined {
   const envValue = process.env.TERMLNK_RELAY_BASE_URL?.trim();
   if (envValue && !app.isPackaged) {
@@ -210,6 +208,19 @@ function resolveRelayBaseUrl(cloudBaseUrl: string | undefined): string | undefin
     return undefined;
   }
   return cloudBaseUrl.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+}
+
+// Invite landing page lives at the cloud origin root (outside `/v1`), so the shared URL
+// stays short. Strip `/v1` from cloudBaseUrl to derive.
+function resolveInviteBaseUrl(cloudBaseUrl: string | undefined): string | undefined {
+  const envValue = process.env.TERMLNK_INVITE_BASE_URL?.trim();
+  if (envValue && !app.isPackaged) {
+    return envValue;
+  }
+  if (!cloudBaseUrl) {
+    return undefined;
+  }
+  return cloudBaseUrl.replace(/\/v\d+\/?$/, '').replace(/\/+$/, '');
 }
 
 function resolveRendererAssetPath(requestURL: string): string | null {
@@ -291,9 +302,11 @@ app.whenReady().then(async () => {
   // Empty/unset → cloud stays offline and AuthGate shows the "unavailable" placeholder.
   const cloudBaseUrl = resolveCloudBaseUrl();
   const relayBaseUrl = resolveRelayBaseUrl(cloudBaseUrl);
+  const inviteBaseUrl = resolveInviteBaseUrl(cloudBaseUrl);
   const logService = core.getInjector().get(ILogService);
   logService.log(`[Bootstrap] cloudBaseUrl = ${cloudBaseUrl ?? '(unset — cloud features disabled)'}`);
   logService.log(`[Bootstrap] relayBaseUrl = ${relayBaseUrl ?? '(unset — shared-terminal disabled)'}`);
+  logService.log(`[Bootstrap] inviteBaseUrl = ${inviteBaseUrl ?? '(unset — invite URL cannot be stamped)'}`);
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl,
@@ -311,7 +324,7 @@ app.whenReady().then(async () => {
   // resolves TokenManager from the same singleton AuthCorePlugin binds. DatabasePlugin
   // is already up so CollabInviteTokenRepository / ConfigRepository / ISecretCipherService
   // are available for DaemonKeypairService and PairingService.
-  core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl, relayBaseUrl });
+  core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl, relayBaseUrl, inviteBaseUrl });
   core.registerPlugin(SharedTerminalCorePlugin);
 
   // Bundled skills must live outside app.asar — Node's fs APIs throw ENOENT

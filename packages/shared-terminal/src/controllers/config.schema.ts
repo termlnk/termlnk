@@ -30,6 +30,17 @@ export interface ISharedTerminalPluginConfig {
   relayBaseUrl?: string;
 
   /**
+   * Public landing-page origin used when stamping invite URLs
+   * (e.g. `https://cloud.termlnk.com`). Decoupled from `relayBaseUrl` because
+   * the URL we hand out points at a browser-facing HTML page that wakes the
+   * desktop client via the `termlnk://` deep link — the relay is wss-only and
+   * lives behind a `/v1` API prefix that's not part of the user-visible URL.
+   * Zero-knowledge guarantee is unchanged: the URL fragment never reaches this
+   * origin's server.
+   */
+  inviteBaseUrl?: string;
+
+  /**
    * HTTPS root for owner-side collaboration management endpoints
    * (`/v1/collab/invite/{create,revoke,list}`). When configured PairingService
    * mirrors invite lifecycle to the server so distant devices (or the same
