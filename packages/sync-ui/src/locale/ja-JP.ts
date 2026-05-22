@@ -36,13 +36,16 @@ export default {
     },
     error: {
       unauthenticated: '同期するにはサインインが必要です',
-      master_key_locked: 'マスターキーがロックされています',
+      master_key_locked: 'マスターキーがロックされています — サインインし直して同期を再開してください',
       network: 'ネットワークエラー',
       rate_limited: 'サーバーによりレート制限されました',
       protocol_mismatch: 'クライアント／サーバーのスキーマが一致しません',
       cipher_mismatch: '復号に失敗しました',
       server_error: 'サーバーエラー',
       unknown: '不明なエラー',
+      action: {
+        'sign-in-again': 'サインインし直す',
+      },
     },
     backup: {
       title: '暗号化バックアップ',

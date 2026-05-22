@@ -13,28 +13,24 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthService } from '@termlnk/auth';
 import type { ISyncPluginConfig } from '@termlnk/sync';
-import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
+import { AuthState, IAuthService, IMasterKeyService, MasterKeyState } from '@termlnk/auth';
 import { IConfigService, ILogService, Inject, Optional, RxDisposable } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { ISyncService, SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from '@termlnk/sync';
-import { distinctUntilChanged, takeUntil } from 'rxjs';
+import { combineLatest, distinctUntilChanged, takeUntil } from 'rxjs';
 
-// IAuthService is @Optional — without it (no cloudBaseUrl configured) the listener
-// no-ops so offline features still work.
 export class AuthSyncBridgeController extends RxDisposable {
-  private readonly _authService: IAuthService | null;
-
   constructor(
     @ISyncService private readonly _syncService: ISyncService,
-    @Optional(IAuthServiceId) authService: IAuthService | null,
+    @IMasterKeyService private readonly _masterKeyService: IMasterKeyService,
     @IConfigService private readonly _configService: IConfigService,
     @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @Optional(IAuthService) private readonly _authService?: IAuthService
   ) {
     super();
-    this._authService = authService;
+
     this._initListeners();
   }
 
@@ -44,15 +40,36 @@ export class AuthSyncBridgeController extends RxDisposable {
       return;
     }
 
-    this._authService.authState$
-      .pipe(distinctUntilChanged(), takeUntil(this.dispose$))
-      .subscribe((state) => {
-        if (state === AuthState.Authenticated) {
+    combineLatest([
+      this._authService.authState$,
+      this._masterKeyService.state$,
+    ])
+      .pipe(
+        distinctUntilChanged(([a1, m1], [a2, m2]) => a1 === a2 && m1 === m2),
+        takeUntil(this.dispose$)
+      )
+      .subscribe(([authState, masterKeyState]) => {
+        // Happy path: signed in + key unlocked -> let SyncService decide whether the user
+        // has sync turned on (it persists userEnabled across sessions).
+        if (authState === AuthState.Authenticated && masterKeyState === MasterKeyState.Unlocked) {
           void this._restoreSyncIntent();
-        } else if (state === AuthState.Unauthenticated) {
+          return;
+        }
+
+        // Signed out -> drop runtime regardless of master key state.
+        if (authState === AuthState.Unauthenticated) {
+          void this._stopSyncRuntime();
+          return;
+        }
+
+        // Signed in but key locked (idle-lock fired, or restore failed to unwrap) ->
+        // pause the runtime. SyncService.enable()'s crypto.available gate will refuse to
+        // restart until the user re-authenticates, so the next combineLatest emission with
+        // Unlocked picks it up.
+        if (authState === AuthState.Authenticated && masterKeyState === MasterKeyState.Locked) {
           void this._stopSyncRuntime();
         }
-        // Authenticating / Error hold the previous SyncService state during recovery.
+        // Authenticating / Error: hold the previous SyncService state during recovery.
       });
   }
 

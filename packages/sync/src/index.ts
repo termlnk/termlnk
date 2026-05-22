@@ -28,4 +28,4 @@ export { ISyncOutboxService } from './services/outbox.service';
 export type { IResourceSynchroniser, IResourceSynchroniserFactory } from './services/resource-synchroniser';
 export { ISyncService } from './services/sync.service';
 export { ISyncTransportService } from './services/transport.service';
-export type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse } from './services/transport.service';
+export type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse } from './services/transport.service';

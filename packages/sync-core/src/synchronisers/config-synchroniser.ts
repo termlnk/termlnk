@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { ILogService, Inject, RxDisposable } from '@termlnk/core';
 import { ConfigRepository, SyncFieldMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService as ISyncCryptoServiceId, ISyncOutboxService as ISyncOutboxServiceId, NON_SYNCABLE_CONFIG_KEYS, SynchroniserStatus } from '@termlnk/sync';
+import { ISyncCryptoService, ISyncOutboxService, NON_SYNCABLE_CONFIG_KEYS, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const RESOURCE_ID = 'config' as const;
@@ -47,10 +47,10 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
 
   constructor(
     @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
-    @Inject(SyncFieldMetaRepository) private readonly _fieldMeta: SyncFieldMetaRepository,
-    @Inject(ISyncOutboxServiceId) private readonly _outbox: ISyncOutboxService,
-    @Inject(ISyncCryptoServiceId) private readonly _crypto: ISyncCryptoService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @Inject(SyncFieldMetaRepository) private readonly _fieldMetaRepo: SyncFieldMetaRepository,
+    @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
+    @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }
@@ -104,6 +104,39 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
     return [];
   }
 
+  async onPushAccepted(detail: IPushAcceptedDetail): Promise<void> {
+    // Field-level meta uses (key, subKey) as its compound id, encoded in entityId as
+    // `<key>::<subKey>`. The LWW comparator is local updatedAt (config has no row version),
+    // so we stamp Date.now() — the same timestamp the local write used when it built the
+    // mutation. Server-assigned `detail.version` is ignored: field LWW deliberately diverges
+    // from row LWW here, see ConfigSynchroniser class comment.
+    const decoded = this._decodeEntityId(detail.entityId);
+    if (!decoded) {
+      this._logService.warn(`[ConfigSynchroniser] cannot decode entityId on push-ack: ${detail.entityId}`);
+      return;
+    }
+    await this._fieldMetaRepo.upsert({
+      resource: RESOURCE_ID,
+      entityId: decoded.key,
+      field: decoded.subKey,
+      updatedAt: Date.now(),
+    });
+  }
+
+  async reconcileGhostMeta(serverEntityIds: ReadonlySet<string>): Promise<void> {
+    // Field-level diff: server set carries entityId encoded as `<key>::<subKey>`, our local
+    // sync_field_meta keys by (entityId=key, field=subKey). Reassemble the composite for
+    // membership testing, drop anything the server no longer carries.
+    const all = await this._fieldMetaRepo.getAllByResource(RESOURCE_ID);
+    for (const meta of all) {
+      const composed = `${meta.entityId}${ENTITY_DELIMITER}${meta.field}`;
+      if (!serverEntityIds.has(composed)) {
+        this._logService.log(`[ConfigSynchroniser] dropping ghost meta for ${composed}`);
+        await this._fieldMetaRepo.delete(RESOURCE_ID, meta.entityId, meta.field);
+      }
+    }
+  }
+
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
     // Skip fields that already have sync_field_meta; _enqueueFieldUpsert writes meta so
     // subsequent enable() calls short-circuit.
@@ -119,7 +152,7 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
       // Flatten to (key, subKey) field pairs — first object level only.
       if (value && typeof value === 'object' && !Array.isArray(value)) {
         for (const [field, fieldValue] of Object.entries(value as Record<string, unknown>)) {
-          const existingMeta = await this._fieldMeta.get(RESOURCE_ID, entry.key, field);
+          const existingMeta = await this._fieldMetaRepo.get(RESOURCE_ID, entry.key, field);
           if (existingMeta) {
             continue;
           }
@@ -127,7 +160,7 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
           out.push(enqueued);
         }
       } else {
-        const existingMeta = await this._fieldMeta.get(RESOURCE_ID, entry.key, '');
+        const existingMeta = await this._fieldMetaRepo.get(RESOURCE_ID, entry.key, '');
         if (existingMeta) {
           continue;
         }
@@ -172,6 +205,10 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
         await this._enqueueFieldUpsert(event.key, '', current, now);
       }
     } catch (err) {
+      if (!this._cryptoService.available) {
+        this._status$.next(SynchroniserStatus.CryptoLocked);
+        return;
+      }
       this._logService.error('[ConfigSynchroniser] failed to enqueue mutation:', err);
       this._status$.next(SynchroniserStatus.Error);
     } finally {
@@ -183,7 +220,7 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
 
   private async _enqueueFieldUpsert(key: string, subKey: string, value: unknown, updatedAt: number): Promise<ISyncMutation> {
     const entityId = `${key}${ENTITY_DELIMITER}${subKey}`;
-    await this._fieldMeta.upsert({
+    await this._fieldMetaRepo.upsert({
       resource: RESOURCE_ID,
       entityId: key,
       field: subKey,
@@ -191,8 +228,8 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
     });
 
     const payloadObj: IFieldPayload = { value, updatedAt };
-    const payload = this._crypto.encrypt(TEXT_ENCODER.encode(JSON.stringify(payloadObj)));
-    return this._outbox.enqueue({
+    const payload = this._cryptoService.encrypt(TEXT_ENCODER.encode(JSON.stringify(payloadObj)));
+    return this._outboxService.enqueue({
       resource: RESOURCE_ID,
       op: 'upsert',
       entityId,
@@ -203,14 +240,14 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
 
   private async _enqueueFieldDelete(key: string, subKey: string, updatedAt: number): Promise<ISyncMutation> {
     const entityId = `${key}${ENTITY_DELIMITER}${subKey}`;
-    await this._fieldMeta.upsert({
+    await this._fieldMetaRepo.upsert({
       resource: RESOURCE_ID,
       entityId: key,
       field: subKey,
       updatedAt,
     });
 
-    return this._outbox.enqueue({
+    return this._outboxService.enqueue({
       resource: RESOURCE_ID,
       op: 'delete',
       entityId,
@@ -225,7 +262,7 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
       for (const entry of all) {
         await this._configRepo.delete(entry.key);
       }
-      await this._fieldMeta.deleteResource(RESOURCE_ID);
+      await this._fieldMetaRepo.deleteResource(RESOURCE_ID);
       return;
     }
 
@@ -252,13 +289,13 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
       if (subKey === '') {
         await this._configRepo.delete(key);
         // Drop every field-meta row under this key.
-        const fields = await this._fieldMeta.getByEntity(RESOURCE_ID, key);
+        const fields = await this._fieldMetaRepo.getByEntity(RESOURCE_ID, key);
         for (const f of fields) {
-          await this._fieldMeta.delete(RESOURCE_ID, key, f.field);
+          await this._fieldMetaRepo.delete(RESOURCE_ID, key, f.field);
         }
       } else {
         await this._configRepo.deleteField(key, subKey);
-        await this._fieldMeta.delete(RESOURCE_ID, key, subKey);
+        await this._fieldMetaRepo.delete(RESOURCE_ID, key, subKey);
       }
       return;
     }
@@ -268,7 +305,7 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
         this._logService.warn(`[ConfigSynchroniser] put without payload for ${item.entityId}`);
         return;
       }
-      const decrypted = this._crypto.decrypt(item.payload);
+      const decrypted = this._cryptoService.decrypt(item.payload);
       let parsed: IFieldPayload;
       try {
         parsed = JSON.parse(TEXT_DECODER.decode(decrypted)) as IFieldPayload;
@@ -279,7 +316,7 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
 
       // Field-level LWW: apply only when remote `updatedAt` is strictly newer
       // than local `sync_field_meta.updatedAt`.
-      const local = await this._fieldMeta.get(RESOURCE_ID, key, subKey);
+      const local = await this._fieldMetaRepo.get(RESOURCE_ID, key, subKey);
       if (local && local.updatedAt >= parsed.updatedAt) {
         // Local wins — drop the remote update.
         return;
@@ -290,7 +327,7 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
       } else {
         await this._configRepo.setField(key, subKey, parsed.value);
       }
-      await this._fieldMeta.upsert({
+      await this._fieldMetaRepo.upsert({
         resource: RESOURCE_ID,
         entityId: key,
         field: subKey,

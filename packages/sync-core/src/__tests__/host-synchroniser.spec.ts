@@ -65,6 +65,10 @@ class FakeRowMetaRepo {
     return this.rows.get(this._key(resource, entityId)) ?? null;
   }
 
+  async getAll(resource: SyncResourceId): Promise<ISyncRowMetaEntity[]> {
+    return [...this.rows.values()].filter((r) => r.resource === resource);
+  }
+
   async upsert(meta: ISyncRowMetaEntity): Promise<void> {
     this.rows.set(this._key(meta.resource, meta.entityId), meta);
   }
@@ -310,5 +314,44 @@ describe('HostSynchroniser', () => {
     bed.hostRepo.changed$.next({ type: 'add', id: 'h1', pid: 'root' });
     await flushAsync();
     expect(bed.outbox.enqueued).toHaveLength(0);
+  });
+
+  it('onPushAccepted writes sync_row_meta with the server-assigned version', async () => {
+    await bed.syncer.onPushAccepted({ id: 7, resource: 'host', entityId: 'h1', version: 42 });
+
+    const meta = await bed.rowMeta.get('host', 'h1');
+    expect(meta?.version).toBe(42);
+    expect(meta?.updatedAt).toBeGreaterThan(0);
+  });
+
+  it('onPushAccepted on a previously synced entity overwrites the version (idempotent upsert)', async () => {
+    await bed.rowMeta.upsert({ resource: 'host', entityId: 'h1', version: 3, updatedAt: 1 });
+    await bed.syncer.onPushAccepted({ id: 9, resource: 'host', entityId: 'h1', version: 99 });
+
+    const meta = await bed.rowMeta.get('host', 'h1');
+    expect(meta?.version).toBe(99);
+  });
+
+  it('reconcileGhostMeta drops local meta whose entityId is not in the server set', async () => {
+    // Two local meta rows; server still holds one of them ("live") and forgot the other
+    // ("ghost", typical of a sync_objects wipe). Without this cleanup, buildInitialSnapshot
+    // would skip the local "ghost" host forever (its meta still claims "synced").
+    await bed.rowMeta.upsert({ resource: 'host', entityId: 'live', version: 1, updatedAt: 1 });
+    await bed.rowMeta.upsert({ resource: 'host', entityId: 'ghost', version: 2, updatedAt: 2 });
+
+    await bed.syncer.reconcileGhostMeta(new Set(['live']));
+
+    expect(await bed.rowMeta.get('host', 'live')).not.toBeNull();
+    expect(await bed.rowMeta.get('host', 'ghost')).toBeNull();
+  });
+
+  it('reconcileGhostMeta keeps every meta when server set covers them all', async () => {
+    await bed.rowMeta.upsert({ resource: 'host', entityId: 'a', version: 1, updatedAt: 1 });
+    await bed.rowMeta.upsert({ resource: 'host', entityId: 'b', version: 2, updatedAt: 2 });
+
+    await bed.syncer.reconcileGhostMeta(new Set(['a', 'b', 'c']));  // server has extras too
+
+    expect(await bed.rowMeta.get('host', 'a')).not.toBeNull();
+    expect(await bed.rowMeta.get('host', 'b')).not.toBeNull();
   });
 });

@@ -14,11 +14,11 @@
  */
 
 import type { ISkillEntity } from '@termlnk/database';
-import type { IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { ILogService, Inject, RxDisposable } from '@termlnk/core';
 import { SkillRepository, SyncRowMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService as ISyncCryptoServiceId, ISyncOutboxService as ISyncOutboxServiceId, SynchroniserStatus } from '@termlnk/sync';
+import { ISyncCryptoService, ISyncOutboxService, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const RESOURCE_ID = 'skill' as const;
@@ -40,10 +40,10 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
 
   constructor(
     @Inject(SkillRepository) private readonly _skillRepo: SkillRepository,
-    @Inject(SyncRowMetaRepository) private readonly _rowMeta: SyncRowMetaRepository,
-    @Inject(ISyncOutboxServiceId) private readonly _outbox: ISyncOutboxService,
-    @Inject(ISyncCryptoServiceId) private readonly _crypto: ISyncCryptoService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
+    @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
+    @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }
@@ -91,17 +91,36 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
     return [];
   }
 
+  async onPushAccepted(detail: IPushAcceptedDetail): Promise<void> {
+    await this._rowMetaRepo.upsert({
+      resource: RESOURCE_ID,
+      entityId: detail.entityId,
+      version: detail.version,
+      updatedAt: Date.now(),
+    });
+  }
+
+  async reconcileGhostMeta(serverEntityIds: ReadonlySet<string>): Promise<void> {
+    const all = await this._rowMetaRepo.getAll(RESOURCE_ID);
+    for (const meta of all) {
+      if (!serverEntityIds.has(meta.entityId)) {
+        this._logService.log(`[SkillSynchroniser] dropping ghost meta for ${meta.entityId}`);
+        await this._rowMetaRepo.delete(RESOURCE_ID, meta.entityId);
+      }
+    }
+  }
+
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
     // Skip rows that already have sync_row_meta so re-enable() never re-pushes.
     const rows = await this._skillRepo.getAll();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
-      const meta = await this._rowMeta.get(RESOURCE_ID, row.id);
+      const meta = await this._rowMetaRepo.get(RESOURCE_ID, row.id);
       if (meta) {
         continue;
       }
       const mutation = await this._buildUpsertMutation(row, null);
-      const enqueued = await this._outbox.enqueue(mutation);
+      const enqueued = await this._outboxService.enqueue(mutation);
       out.push(enqueued);
     }
     return out;
@@ -110,11 +129,11 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
   private async _handleLocalChange(id: string, type: 'add' | 'update' | 'delete'): Promise<void> {
     try {
       this._status$.next(SynchroniserStatus.PushingMutations);
-      const meta = await this._rowMeta.get(RESOURCE_ID, id);
+      const meta = await this._rowMetaRepo.get(RESOURCE_ID, id);
       const baseVersion = meta?.version ?? null;
 
       if (type === 'delete') {
-        await this._outbox.enqueue({
+        await this._outboxService.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
           entityId: id,
@@ -127,7 +146,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
       const row = await this._skillRepo.getById(id);
       if (!row) {
         // Race: the row was deleted before the event reached us — fall back to a delete mutation.
-        await this._outbox.enqueue({
+        await this._outboxService.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
           entityId: id,
@@ -138,8 +157,12 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
       }
 
       const mutation = await this._buildUpsertMutation(row, baseVersion);
-      await this._outbox.enqueue(mutation);
+      await this._outboxService.enqueue(mutation);
     } catch (err) {
+      if (!this._cryptoService.available) {
+        this._status$.next(SynchroniserStatus.CryptoLocked);
+        return;
+      }
       this._logService.error(`[SkillSynchroniser] failed to enqueue mutation for ${id}:`, err);
       this._status$.next(SynchroniserStatus.Error);
     } finally {
@@ -151,7 +174,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
 
   private async _buildUpsertMutation(row: ISkillEntity, baseVersion: number | null): Promise<Omit<ISyncMutation, 'id' | 'createdAt'>> {
     const json = JSON.stringify(row);
-    const payload = this._crypto.encrypt(TEXT_ENCODER.encode(json));
+    const payload = this._cryptoService.encrypt(TEXT_ENCODER.encode(json));
     return {
       resource: RESOURCE_ID,
       op: 'upsert',
@@ -166,7 +189,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
       const rows = await this._skillRepo.getAll();
       for (const r of rows) {
         await this._skillRepo.delete(r.id);
-        await this._rowMeta.delete(RESOURCE_ID, r.id);
+        await this._rowMetaRepo.delete(RESOURCE_ID, r.id);
       }
       return;
     }
@@ -178,7 +201,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
 
     if (item.op === 'del') {
       await this._skillRepo.delete(item.entityId);
-      await this._rowMeta.delete(RESOURCE_ID, item.entityId);
+      await this._rowMetaRepo.delete(RESOURCE_ID, item.entityId);
       return;
     }
 
@@ -187,12 +210,12 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
         this._logService.warn(`[SkillSynchroniser] put without payload for ${item.entityId}`);
         return;
       }
-      const decrypted = this._crypto.decrypt(item.payload);
+      const decrypted = this._cryptoService.decrypt(item.payload);
       const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISkillEntity;
       // entityId is the source of truth if payload.id ever drifts.
       const normalised: ISkillEntity = { ...row, id: item.entityId };
       await this._skillRepo.upsert(normalised);
-      await this._rowMeta.upsert({
+      await this._rowMetaRepo.upsert({
         resource: RESOURCE_ID,
         entityId: item.entityId,
         version: item.version,

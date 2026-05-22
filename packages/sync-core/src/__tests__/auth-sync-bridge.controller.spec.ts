@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthError, IAuthService, IUserAccount } from '@termlnk/auth';
+import type { IAuthError, IAuthService, IMasterKey, IMasterKeyService, IUserAccount } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { Observable } from 'rxjs';
-import { AuthState } from '@termlnk/auth';
+import { AuthState, MasterKeyState } from '@termlnk/auth';
 import { ConfigService } from '@termlnk/core';
 import { SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
@@ -54,6 +54,24 @@ class FakeAuthService implements IAuthService {
   async revokeDevice(): Promise<void> {}
 }
 
+// Defaults to Unlocked so existing happy-path tests don't need to manually unlock.
+// Tests that exercise the locked path call setMasterKeyState(Locked) explicitly.
+class FakeMasterKeyService implements IMasterKeyService {
+  private readonly _state$ = new BehaviorSubject<MasterKeyState>(MasterKeyState.Unlocked);
+  readonly state$ = this._state$.asObservable();
+
+  setMasterKeyState(state: MasterKeyState): void {
+    this._state$.next(state);
+  }
+
+  async derive(): Promise<IMasterKey> { throw new Error('not used'); }
+  lock(): void { this._state$.next(MasterKeyState.Locked); }
+  getCurrent(): IMasterKey | null { return null; }
+  getState(): MasterKeyState { return this._state$.getValue(); }
+  async tryRestoreFromStorage(): Promise<boolean> { return false; }
+  async clearPersistedKey(): Promise<void> {}
+}
+
 class FakeSyncService {
   enableCalls = 0;
   disableCalls = 0;
@@ -80,6 +98,7 @@ class FakeConfigRepo {
 
 interface ITestBed {
   auth: FakeAuthService;
+  masterKey: FakeMasterKeyService;
   sync: FakeSyncService;
   config: ConfigService;
   configRepo: FakeConfigRepo;
@@ -91,6 +110,7 @@ function createBed(opts: {
   persistedUserEnabled?: boolean;
 } = {}): ITestBed {
   const auth = new FakeAuthService();
+  const masterKey = new FakeMasterKeyService();
   const sync = new FakeSyncService();
   const config = new ConfigService();
   const configRepo = new FakeConfigRepo();
@@ -102,12 +122,13 @@ function createBed(opts: {
   }
   const controller = new AuthSyncBridgeController(
     sync as never,
-    auth,
+    masterKey,
     config,
     configRepo as never,
-    new NoopLogService()
+    new NoopLogService(),
+    auth
   );
-  return { auth, sync, config, configRepo, controller };
+  return { auth, masterKey, sync, config, configRepo, controller };
 }
 
 async function flushAsync(): Promise<void> {
@@ -210,6 +231,65 @@ describe('AuthSyncBridgeController — sign-out preserves user intent', () => {
   });
 });
 
+describe('AuthSyncBridgeController — master key state coupling', () => {
+  let bed: ITestBed;
+
+  afterEach(() => {
+    bed?.controller.dispose();
+  });
+
+  // Without this gate sync would start the pipeline against a locked master key, every
+  // encrypt() would silently fail, and the UI would lie "synced". Regression for the bug
+  // where mac displayed "已同步" while the cloud had no host data.
+  it('does NOT enable while master key is locked, even if signed in with intent persisted', async () => {
+    bed = createBed({ persistedUserEnabled: true });
+    bed.masterKey.setMasterKeyState(MasterKeyState.Locked);
+    await flushAsync();
+    bed.auth.setState(AuthState.Authenticated);
+    await flushAsync();
+    expect(bed.sync.enableCalls).toBe(0);
+  });
+
+  it('enables automatically once the key flips from Locked to Unlocked', async () => {
+    bed = createBed({ persistedUserEnabled: true });
+    bed.masterKey.setMasterKeyState(MasterKeyState.Locked);
+    bed.auth.setState(AuthState.Authenticated);
+    await flushAsync();
+    expect(bed.sync.enableCalls).toBe(0);
+
+    bed.masterKey.setMasterKeyState(MasterKeyState.Unlocked);
+    await flushAsync();
+    expect(bed.sync.enableCalls).toBe(1);
+  });
+
+  it('stops the runtime when the key locks while signed in (idle-lock scenario)', async () => {
+    bed = createBed({ persistedUserEnabled: true });
+    // happy path first
+    bed.auth.setState(AuthState.Authenticated);
+    await flushAsync();
+    expect(bed.sync.enableCalls).toBe(1);
+    const baselineStop = bed.sync.stopRuntimeCalls;
+
+    bed.masterKey.setMasterKeyState(MasterKeyState.Locked);
+    await flushAsync();
+    expect(bed.sync.stopRuntimeCalls).toBeGreaterThan(baselineStop);
+    expect(bed.sync.disableCalls).toBe(0);   // userEnabled stays intact
+  });
+
+  it('re-enables after a lock → unlock cycle while staying Authenticated', async () => {
+    bed = createBed({ persistedUserEnabled: true });
+    bed.auth.setState(AuthState.Authenticated);
+    await flushAsync();
+    expect(bed.sync.enableCalls).toBe(1);
+
+    bed.masterKey.setMasterKeyState(MasterKeyState.Locked);
+    await flushAsync();
+    bed.masterKey.setMasterKeyState(MasterKeyState.Unlocked);
+    await flushAsync();
+    expect(bed.sync.enableCalls).toBe(2);
+  });
+});
+
 describe('AuthSyncBridgeController — misc', () => {
   let bed: ITestBed;
 
@@ -219,14 +299,16 @@ describe('AuthSyncBridgeController — misc', () => {
 
   it('controller is a no-op when IAuthService is unbound (offline build)', async () => {
     const sync = new FakeSyncService();
+    const masterKey = new FakeMasterKeyService();
     const config = new ConfigService();
     const configRepo = new FakeConfigRepo();
     const controller = new AuthSyncBridgeController(
       sync as never,
-      null,
+      masterKey,
       config,
       configRepo as never,
       new NoopLogService()
+      // _authService omitted — simulates a build without cloudBaseUrl.
     );
     await flushAsync();
     expect(sync.enableCalls).toBe(0);

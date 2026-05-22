@@ -36,13 +36,16 @@ export default {
     },
     error: {
       unauthenticated: '需要登录后同步',
-      master_key_locked: '主密钥已锁定',
+      master_key_locked: '主密钥已锁定，请重新登录以继续同步',
       network: '网络错误',
       rate_limited: '服务端限流',
       protocol_mismatch: '客户端/服务端协议不匹配',
       cipher_mismatch: '解密失败',
       server_error: '服务端错误',
       unknown: '未知错误',
+      action: {
+        'sign-in-again': '重新登录',
+      },
     },
     backup: {
       title: '加密备份',

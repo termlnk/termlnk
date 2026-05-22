@@ -92,6 +92,10 @@ class FakeFieldMetaRepo {
     return [...this.rows.values()].filter((r) => r.resource === resource && r.entityId === entityId);
   }
 
+  async getAllByResource(resource: SyncResourceId): Promise<ISyncFieldMetaEntity[]> {
+    return [...this.rows.values()].filter((r) => r.resource === resource);
+  }
+
   async upsert(meta: ISyncFieldMetaEntity): Promise<void> {
     this.rows.set(this._key(meta.resource, meta.entityId, meta.field), meta);
   }
@@ -409,5 +413,57 @@ describe('ConfigSynchroniser', () => {
       version: 1,
     }]);
     expect(bed.configRepo.store.size).toBe(0);
+  });
+
+  it('onPushAccepted decodes entityId and stamps sync_field_meta updatedAt', async () => {
+    await bed.syncer.onPushAccepted({
+      id: 3,
+      resource: 'config',
+      entityId: 'ui.config::theme',
+      version: 11,
+    });
+
+    const meta = await bed.fieldMeta.get('config', 'ui.config', 'theme');
+    expect(meta?.updatedAt).toBeGreaterThan(0);
+    // config is field-level LWW — server `version` is intentionally not stored.
+  });
+
+  it('onPushAccepted handles whole-key entityIds with empty subKey', async () => {
+    await bed.syncer.onPushAccepted({
+      id: 4,
+      resource: 'config',
+      entityId: 'standalone-key::',
+      version: 12,
+    });
+
+    const meta = await bed.fieldMeta.get('config', 'standalone-key', '');
+    expect(meta?.updatedAt).toBeGreaterThan(0);
+  });
+
+  it('onPushAccepted is a no-op for malformed entityIds', async () => {
+    await bed.syncer.onPushAccepted({
+      id: 5,
+      resource: 'config',
+      entityId: 'no-delimiter',
+      version: 13,
+    });
+
+    expect(bed.fieldMeta.rows.size).toBe(0);
+  });
+
+  it('reconcileGhostMeta drops field meta whose `<key>::<subKey>` composite is not in server set', async () => {
+    // Three local field meta rows; server set carries only the first two.
+    await bed.fieldMeta.upsert({ resource: 'config', entityId: 'ui.config', field: 'theme', updatedAt: 1 });
+    await bed.fieldMeta.upsert({ resource: 'config', entityId: 'ui.config', field: 'locale', updatedAt: 2 });
+    await bed.fieldMeta.upsert({ resource: 'config', entityId: 'ai.config', field: 'ghost-field', updatedAt: 3 });
+
+    await bed.syncer.reconcileGhostMeta(new Set([
+      'ui.config::theme',
+      'ui.config::locale',
+    ]));
+
+    expect(await bed.fieldMeta.get('config', 'ui.config', 'theme')).not.toBeNull();
+    expect(await bed.fieldMeta.get('config', 'ui.config', 'locale')).not.toBeNull();
+    expect(await bed.fieldMeta.get('config', 'ai.config', 'ghost-field')).toBeNull();
   });
 });

@@ -16,7 +16,7 @@
 import type { IDisposable } from '@termlnk/core';
 import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncService, ISyncStats, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { Disposable, ILogService, Inject, toDisposable } from '@termlnk/core';
+import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { SYNC_RESOURCES, SynchroniserStatus, SyncState } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
@@ -41,8 +41,8 @@ export class SyncClientService extends Disposable implements ISyncService {
   readonly enabled$: Observable<boolean> = this._enabled$.asObservable();
 
   constructor(
-    @Inject(IRPCClientService) private readonly _rpcClientService: IRPCClientService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @IRPCClientService private readonly _rpcClientService: IRPCClientService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
 
@@ -146,6 +146,7 @@ function emptyStats(): ISyncStats {
   return {
     pendingMutations: 0,
     lastSyncedAt: null,
+    lastPushedAt: null,
     perResource,
   };
 }

@@ -18,6 +18,7 @@ import type { Observable } from 'rxjs';
 import type { SyncResourceId } from '../common/constants';
 import type { ISyncMutation, ISyncPatchItem } from '../models/mutation';
 import type { SynchroniserStatus } from '../models/state';
+import type { IPushAcceptedDetail } from './transport.service';
 
 // One instance per resource type. Owns the changed$ subscription that pushes mutations
 // to the outbox and the applyPatch that consumes pulls. Field-level LWW (only `config`)
@@ -39,6 +40,22 @@ export interface IResourceSynchroniser extends IDisposable {
 
   // Re-derive initial mutations for every local row (first sync / forceFullResync).
   buildInitialSnapshot(): Promise<ISyncMutation[]>;
+
+  // Called per accepted mutation right after push ack. Synchroniser persists the
+  // server-assigned version locally (sync_row_meta for row-level resources, or
+  // sync_field_meta for the field-level config resource) so the next buildInitialSnapshot
+  // does not re-enqueue the same row and so future _handleLocalChange uses the correct
+  // baseVersion. Failures must be swallowed — meta writes are best-effort and a later
+  // reconcile pass covers anything that slipped.
+  onPushAccepted(detail: IPushAcceptedDetail): Promise<void>;
+
+  // Called by SyncService.enable() right after a full pull (cursor=null) has refreshed the
+  // local store with the server's authoritative state. `serverEntityIds` is the set of
+  // entityIds the server still holds (`put` patches in the full pull). Any local meta
+  // pointing at an entityId not in this set is a "ghost" — typically left behind after a
+  // server-side reset or test wipe — and must be cleared so buildInitialSnapshot re-enqueues
+  // the local row on the next pass. Failures should be swallowed; reconcile is opportunistic.
+  reconcileGhostMeta(serverEntityIds: ReadonlySet<string>): Promise<void>;
 }
 
 // Synchroniser factory used by DI registration.

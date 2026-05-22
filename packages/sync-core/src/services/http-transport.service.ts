@@ -13,11 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITokenManager } from '@termlnk/auth';
-import type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse, ISyncMutation, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
+import type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse, ISyncMutation, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { base64ToBytes, bytesToBase64, HttpRequestError, ITokenManager as ITokenManagerId } from '@termlnk/auth';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { base64ToBytes, bytesToBase64, HttpRequestError, ITokenManager } from '@termlnk/auth';
+import { Disposable, ILogService } from '@termlnk/core';
 import { SYNC_TRIGGER_INTERVALS } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
 
@@ -104,6 +103,8 @@ interface IWirePatchItem {
 
 interface IWirePushResponse {
   accepted: number[];
+  // Optional on the wire so old servers (no `acceptedDetails` field) still parse cleanly.
+  acceptedDetails?: IPushAcceptedDetail[];
   rejected: { id: number; reason: string }[];
   lastServerVersion: number;
 }
@@ -138,8 +139,8 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
 
   constructor(
     private readonly _config: IHttpSyncTransportConfig,
-    @Inject(ITokenManagerId) private readonly _tokenManager: ITokenManager,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ITokenManager private readonly _tokenManager: ITokenManager,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
     this._fetchFn = _config.fetchFn ?? DEFAULT_FETCH_FN;
@@ -166,6 +167,10 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
     const json = await resp.json() as IWirePushResponse;
     return {
       accepted: json.accepted,
+      // Servers running an older protocol revision do not return this field; expose an
+      // empty array so callers can iterate unconditionally and fall back to `accepted`
+      // for ack when the list is empty.
+      acceptedDetails: json.acceptedDetails ?? [],
       rejected: json.rejected,
       lastServerVersion: json.lastServerVersion,
     };

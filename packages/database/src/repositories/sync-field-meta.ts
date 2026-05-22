@@ -60,6 +60,16 @@ export class SyncFieldMetaRepository extends Disposable {
       .where(and(eq(syncFieldMetaEntity.resource, resource), eq(syncFieldMetaEntity.entityId, entityId)));
   }
 
+  // Returns every meta row for the resource, regardless of entityId. Used by reconcile to
+  // diff local field-level meta against the server's authoritative set of (entityId, field)
+  // pairs after a full pull.
+  async getAllByResource(resource: SyncResourceId): Promise<ISyncFieldMetaEntity[]> {
+    return this._db
+      .select()
+      .from(syncFieldMetaEntity)
+      .where(eq(syncFieldMetaEntity.resource, resource));
+  }
+
   async upsert(meta: ISyncFieldMetaEntity): Promise<void> {
     await this._db
       .insert(syncFieldMetaEntity)

@@ -34,11 +34,27 @@ export enum SynchroniserStatus {
   PullingPatch = 'pulling',
   ApplyingPatch = 'applying',
   Error = 'error',
+  // Local change observed while master key is locked — synchroniser cannot encrypt,
+  // so it cannot enqueue. SyncService maps this to ISyncError.code = 'master_key_locked'
+  // and pauses the pipeline until the user signs in again.
+  CryptoLocked = 'crypto_locked',
 }
 
 export interface ISyncStats {
   readonly pendingMutations: number;
+  /**
+   * Wall-clock of the most recent successful pull (any resource). Tracks "we know what's
+   * on the server up to here" — distinct from `lastPushedAt`, which tracks the outbox
+   * direction. The UI uses both to decide between "Up to date" (both flowed at least once
+   * and outbox is empty) and "Pulled" (only pulled, never pushed).
+   */
   readonly lastSyncedAt: number | null;
+  /**
+   * Wall-clock of the most recent push round where the outbox emptied to zero. null when
+   * the device has never observed a clean push since enable() — either because no local
+   * change was ever queued, or because every push round still left rows behind.
+   */
+  readonly lastPushedAt: number | null;
   readonly perResource: Record<SyncResourceId, IResourceSyncStats>;
 }
 

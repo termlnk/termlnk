@@ -33,7 +33,7 @@ class NoopLogService {
 class FakeSyncService implements ISyncService {
   readonly _enabled$ = new BehaviorSubject<boolean>(false);
   readonly state$ = new BehaviorSubject<SyncState>('disabled' as SyncState).asObservable();
-  readonly stats$ = new BehaviorSubject<ISyncStats>({ pendingMutations: 0, lastSyncedAt: null, perResource: {} as never }).asObservable();
+  readonly stats$ = new BehaviorSubject<ISyncStats>({ pendingMutations: 0, lastSyncedAt: null, lastPushedAt: null, perResource: {} as never }).asObservable();
   readonly lastError$ = new BehaviorSubject<ISyncError | null>(null).asObservable();
   readonly enabled$ = this._enabled$.asObservable();
   enableCalls = 0;

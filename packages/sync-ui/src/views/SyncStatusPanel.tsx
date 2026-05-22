@@ -15,6 +15,7 @@
 
 import type { ISyncError, ISyncStats } from '@termlnk/sync';
 import type { LucideIcon } from 'lucide-react';
+import { IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Button, cn, Switch, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { ISyncService, SyncState } from '@termlnk/sync';
@@ -38,6 +39,7 @@ interface IStateVisual {
 // forceFullResync stays UI-hidden — recovery-only, reachable via sync.command.force-full-resync.
 export function SyncStatusPanel() {
   const syncService = useDependency(ISyncService, Quantity.OPTIONAL);
+  const authService = useDependency(IAuthService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);
   const localeService = useDependency(LocaleService);
 
@@ -166,7 +168,7 @@ export function SyncStatusPanel() {
           `)}
         >
           <TriangleAlertIcon className={cn('tm:mt-0.5 tm:size-3.5 tm:shrink-0')} />
-          <div className={cn('tm:flex tm:flex-col tm:gap-1')}>
+          <div className={cn('tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:gap-1')}>
             <span className={cn('tm:font-medium')}>
               {localeService.t(`sync-ui.error.${lastError.code}`)}
             </span>
@@ -174,6 +176,24 @@ export function SyncStatusPanel() {
               <span className={cn('tm:text-grey-fg')}>{lastError.message}</span>
             )}
           </div>
+          {lastError.requiresUserAction && authService && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                // Sign out so the auth flow re-prompts for password — derive() will produce
+                // a fresh master key and re-wrap it into IAuthKeyValueStorage. Sync resumes
+                // automatically once authState→Authenticated + masterKeyState→Unlocked.
+                setBusy(true);
+                void authService.logout()
+                  .catch((err) => logService.error('[SyncStatusPanel] logout failed:', err))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              {localeService.t('sync-ui.error.action.sign-in-again')}
+            </Button>
+          )}
         </div>
       )}
     </div>

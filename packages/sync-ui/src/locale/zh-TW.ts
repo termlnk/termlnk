@@ -36,13 +36,16 @@ export default {
     },
     error: {
       unauthenticated: '需要登入後同步',
-      master_key_locked: '主金鑰已鎖定',
+      master_key_locked: '主金鑰已鎖定，請重新登入以繼續同步',
       network: '網路錯誤',
       rate_limited: '伺服器限流',
       protocol_mismatch: '客戶端／伺服器協定不匹配',
       cipher_mismatch: '解密失敗',
       server_error: '伺服器錯誤',
       unknown: '未知錯誤',
+      action: {
+        'sign-in-again': '重新登入',
+      },
     },
     backup: {
       title: '加密備份',

@@ -23,8 +23,26 @@ export interface IPushRequest {
   readonly mutations: readonly ISyncMutation[];
 }
 
+export interface IPushAcceptedDetail {
+  /** per-client monotonic id, echoes the mutation that produced this row */
+  readonly id: number;
+  readonly resource: SyncResourceId;
+  readonly entityId: string;
+  /** server-assigned version after applying this mutation; written to sync_row_meta on ack */
+  readonly version: number;
+}
+
 export interface IPushResponse {
+  /**
+   * Legacy field: ids of accepted mutations. New code prefers `acceptedDetails` because
+   * it also carries the server-assigned version needed to update sync_row_meta on ack.
+   */
   readonly accepted: readonly number[];
+  /**
+   * Per-mutation acceptance detail with server version. Empty array on servers that
+   * predate this field — callers must fall back to `accepted` for ack and skip meta writes.
+   */
+  readonly acceptedDetails: readonly IPushAcceptedDetail[];
   // Rejected (e.g. baseVersion conflict); the client should pull and retry.
   readonly rejected: readonly { id: number; reason: string }[];
   // Latest global server version; debug/monitoring only.

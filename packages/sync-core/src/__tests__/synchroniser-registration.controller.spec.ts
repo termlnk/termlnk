@@ -90,6 +90,8 @@ class StubSynchroniser implements IResourceSynchroniser {
   async applyPatch(_patch: ISyncPatchItem[]): Promise<void> {}
   async buildMutations(): Promise<ISyncMutation[]> { return []; }
   async buildInitialSnapshot(): Promise<ISyncMutation[]> { return []; }
+  async onPushAccepted(): Promise<void> {}
+  async reconcileGhostMeta(): Promise<void> {}
   dispose(): void {}
 }
 

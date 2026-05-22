@@ -14,11 +14,11 @@
  */
 
 import type { IMcpServerEntity } from '@termlnk/database';
-import type { IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { ILogService, Inject, RxDisposable } from '@termlnk/core';
 import { McpServerRepository, SyncRowMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService as ISyncCryptoServiceId, ISyncOutboxService as ISyncOutboxServiceId, SynchroniserStatus } from '@termlnk/sync';
+import { ISyncCryptoService, ISyncOutboxService, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const RESOURCE_ID = 'mcp_server' as const;
@@ -41,10 +41,10 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
 
   constructor(
     @Inject(McpServerRepository) private readonly _mcpRepo: McpServerRepository,
-    @Inject(SyncRowMetaRepository) private readonly _rowMeta: SyncRowMetaRepository,
-    @Inject(ISyncOutboxServiceId) private readonly _outbox: ISyncOutboxService,
-    @Inject(ISyncCryptoServiceId) private readonly _crypto: ISyncCryptoService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
+    @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
+    @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }
@@ -92,16 +92,35 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
     return [];
   }
 
+  async onPushAccepted(detail: IPushAcceptedDetail): Promise<void> {
+    await this._rowMetaRepo.upsert({
+      resource: RESOURCE_ID,
+      entityId: detail.entityId,
+      version: detail.version,
+      updatedAt: Date.now(),
+    });
+  }
+
+  async reconcileGhostMeta(serverEntityIds: ReadonlySet<string>): Promise<void> {
+    const all = await this._rowMetaRepo.getAll(RESOURCE_ID);
+    for (const meta of all) {
+      if (!serverEntityIds.has(meta.entityId)) {
+        this._logService.log(`[McpSynchroniser] dropping ghost meta for ${meta.entityId}`);
+        await this._rowMetaRepo.delete(RESOURCE_ID, meta.entityId);
+      }
+    }
+  }
+
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
     // Skip rows that already have sync_row_meta so re-enable() never re-pushes.
     const rows = await this._mcpRepo.getAll();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
-      const meta = await this._rowMeta.get(RESOURCE_ID, row.id);
+      const meta = await this._rowMetaRepo.get(RESOURCE_ID, row.id);
       if (meta) {
         continue;
       }
-      const enqueued = await this._outbox.enqueue(this._buildUpsertMutation(row, null));
+      const enqueued = await this._outboxService.enqueue(this._buildUpsertMutation(row, null));
       out.push(enqueued);
     }
     return out;
@@ -110,11 +129,11 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
   private async _handleLocalChange(id: string, type: 'add' | 'update' | 'delete'): Promise<void> {
     try {
       this._status$.next(SynchroniserStatus.PushingMutations);
-      const meta = await this._rowMeta.get(RESOURCE_ID, id);
+      const meta = await this._rowMetaRepo.get(RESOURCE_ID, id);
       const baseVersion = meta?.version ?? null;
 
       if (type === 'delete') {
-        await this._outbox.enqueue({
+        await this._outboxService.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
           entityId: id,
@@ -126,7 +145,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
 
       const row = await this._mcpRepo.getById(id);
       if (!row) {
-        await this._outbox.enqueue({
+        await this._outboxService.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
           entityId: id,
@@ -136,8 +155,12 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
         return;
       }
 
-      await this._outbox.enqueue(this._buildUpsertMutation(row, baseVersion));
+      await this._outboxService.enqueue(this._buildUpsertMutation(row, baseVersion));
     } catch (err) {
+      if (!this._cryptoService.available) {
+        this._status$.next(SynchroniserStatus.CryptoLocked);
+        return;
+      }
       this._logService.error(`[McpSynchroniser] failed to enqueue mutation for ${id}:`, err);
       this._status$.next(SynchroniserStatus.Error);
     } finally {
@@ -149,7 +172,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
 
   private _buildUpsertMutation(row: IMcpServerEntity, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
     const json = JSON.stringify(row);
-    const payload = this._crypto.encrypt(TEXT_ENCODER.encode(json));
+    const payload = this._cryptoService.encrypt(TEXT_ENCODER.encode(json));
     return {
       resource: RESOURCE_ID,
       op: 'upsert',
@@ -164,7 +187,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
       const all = await this._mcpRepo.getAll();
       for (const r of all) {
         await this._mcpRepo.delete(r.id);
-        await this._rowMeta.delete(RESOURCE_ID, r.id);
+        await this._rowMetaRepo.delete(RESOURCE_ID, r.id);
       }
       return;
     }
@@ -176,7 +199,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
 
     if (item.op === 'del') {
       await this._mcpRepo.delete(item.entityId);
-      await this._rowMeta.delete(RESOURCE_ID, item.entityId);
+      await this._rowMetaRepo.delete(RESOURCE_ID, item.entityId);
       return;
     }
 
@@ -185,7 +208,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
         this._logService.warn(`[McpSynchroniser] put without payload for ${item.entityId}`);
         return;
       }
-      const decrypted = this._crypto.decrypt(item.payload);
+      const decrypted = this._cryptoService.decrypt(item.payload);
       const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as IMcpServerEntity;
 
       const existing = await this._mcpRepo.getById(item.entityId);
@@ -197,7 +220,7 @@ export class McpSynchroniser extends RxDisposable implements IResourceSynchronis
         await this._mcpRepo.create({ ...row, id: item.entityId });
       }
 
-      await this._rowMeta.upsert({
+      await this._rowMetaRepo.upsert({
         resource: RESOURCE_ID,
         entityId: item.entityId,
         version: item.version,

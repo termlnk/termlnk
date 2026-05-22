@@ -14,11 +14,11 @@
  */
 
 import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity } from '@termlnk/database';
-import type { IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { ILogService, Inject, RxDisposable } from '@termlnk/core';
 import { ProviderRepository, SyncRowMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService as ISyncCryptoServiceId, ISyncOutboxService as ISyncOutboxServiceId, SynchroniserStatus } from '@termlnk/sync';
+import { ISyncCryptoService, ISyncOutboxService, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const RESOURCE_ID = 'ai_provider' as const;
@@ -54,10 +54,10 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
 
   constructor(
     @Inject(ProviderRepository) private readonly _providerRepo: ProviderRepository,
-    @Inject(SyncRowMetaRepository) private readonly _rowMeta: SyncRowMetaRepository,
-    @Inject(ISyncOutboxServiceId) private readonly _outbox: ISyncOutboxService,
-    @Inject(ISyncCryptoServiceId) private readonly _crypto: ISyncCryptoService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
+    @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
+    @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }
@@ -109,6 +109,27 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
     return [];
   }
 
+  async onPushAccepted(detail: IPushAcceptedDetail): Promise<void> {
+    // entityId already encodes the kind prefix (prov:/pmod:/cmod:); store it verbatim so
+    // buildInitialSnapshot's per-kind dedupe lookup hits the right row.
+    await this._rowMetaRepo.upsert({
+      resource: RESOURCE_ID,
+      entityId: detail.entityId,
+      version: detail.version,
+      updatedAt: Date.now(),
+    });
+  }
+
+  async reconcileGhostMeta(serverEntityIds: ReadonlySet<string>): Promise<void> {
+    const all = await this._rowMetaRepo.getAll(RESOURCE_ID);
+    for (const meta of all) {
+      if (!serverEntityIds.has(meta.entityId)) {
+        this._logService.log(`[ProviderSynchroniser] dropping ghost meta for ${meta.entityId}`);
+        await this._rowMetaRepo.delete(RESOURCE_ID, meta.entityId);
+      }
+    }
+  }
+
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
     // Skip rows that already have sync_row_meta so re-enable() never re-pushes.
     const out: ISyncMutation[] = [];
@@ -142,11 +163,11 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
 
   private async _enqueueUpsertIfUnsynced(kind: ProviderKind, row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity, id: string): Promise<ISyncMutation | null> {
     const entityId = `${KIND_PREFIX[kind]}${id}`;
-    const meta = await this._rowMeta.get(RESOURCE_ID, entityId);
+    const meta = await this._rowMetaRepo.get(RESOURCE_ID, entityId);
     if (meta) {
       return null;
     }
-    return this._outbox.enqueue(this._buildUpsertMutation(kind, row, entityId, null));
+    return this._outboxService.enqueue(this._buildUpsertMutation(kind, row, entityId, null));
   }
 
   private _eventTypeToKind(type: 'provider' | 'model-config' | 'custom-model'): ProviderKind | null {
@@ -164,11 +185,11 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
     try {
       this._status$.next(SynchroniserStatus.PushingMutations);
       const entityId = `${KIND_PREFIX[kind]}${id}`;
-      const meta = await this._rowMeta.get(RESOURCE_ID, entityId);
+      const meta = await this._rowMetaRepo.get(RESOURCE_ID, entityId);
       const baseVersion = meta?.version ?? null;
 
       if (action === 'delete') {
-        await this._outbox.enqueue({
+        await this._outboxService.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
           entityId,
@@ -180,7 +201,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
 
       const row = await this._readRow(kind, id);
       if (!row) {
-        await this._outbox.enqueue({
+        await this._outboxService.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
           entityId,
@@ -190,8 +211,12 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
         return;
       }
 
-      await this._outbox.enqueue(this._buildUpsertMutation(kind, row, entityId, baseVersion));
+      await this._outboxService.enqueue(this._buildUpsertMutation(kind, row, entityId, baseVersion));
     } catch (err) {
+      if (!this._cryptoService.available) {
+        this._status$.next(SynchroniserStatus.CryptoLocked);
+        return;
+      }
       this._logService.error(`[ProviderSynchroniser] failed to enqueue ${kind} mutation for ${id}:`, err);
       this._status$.next(SynchroniserStatus.Error);
     } finally {
@@ -216,7 +241,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
   private _buildUpsertMutation(kind: ProviderKind, row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity, entityId: string, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
     const payloadObj: IProviderPayload = { kind, row };
     const json = JSON.stringify(payloadObj);
-    const payload = this._crypto.encrypt(TEXT_ENCODER.encode(json));
+    const payload = this._cryptoService.encrypt(TEXT_ENCODER.encode(json));
     return {
       resource: RESOURCE_ID,
       op: 'upsert',
@@ -232,7 +257,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
       for (const p of providers) {
         await this._providerRepo.deleteProvider(p.id);
       }
-      await this._rowMeta.deleteResource(RESOURCE_ID);
+      await this._rowMetaRepo.deleteResource(RESOURCE_ID);
       return;
     }
 
@@ -249,7 +274,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
 
     if (item.op === 'del') {
       await this._deleteByKind(kind, id);
-      await this._rowMeta.delete(RESOURCE_ID, item.entityId);
+      await this._rowMetaRepo.delete(RESOURCE_ID, item.entityId);
       return;
     }
 
@@ -258,7 +283,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
         this._logService.warn(`[ProviderSynchroniser] put without payload for ${item.entityId}`);
         return;
       }
-      const decrypted = this._crypto.decrypt(item.payload);
+      const decrypted = this._cryptoService.decrypt(item.payload);
       const parsed = JSON.parse(TEXT_DECODER.decode(decrypted)) as IProviderPayload;
 
       // Defensive: the server must never mismatch entityId.kind and payload.kind.
@@ -268,7 +293,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
       }
 
       await this._upsertByKind(kind, parsed.row);
-      await this._rowMeta.upsert({
+      await this._rowMetaRepo.upsert({
         resource: RESOURCE_ID,
         entityId: item.entityId,
         version: item.version,

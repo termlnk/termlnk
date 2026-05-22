@@ -15,8 +15,8 @@
 
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { ConfigRepository, ISyncCursorEntity, SyncCursorRepository } from '@termlnk/database';
-import type { IPokeMessage, IPullRequest, IPullResponse, IPushRequest, IPushResponse, IResourceSynchroniser, ISyncMutation, ISyncOutboxService, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
-import { SynchroniserStatus, SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from '@termlnk/sync';
+import type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse, IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
+import { SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SyncService } from '../services/sync.service';
@@ -91,7 +91,7 @@ class FakeTransport implements ISyncTransportService {
   poke$ = new Subject<IPokeMessage>();
   pushCalls: IPushRequest[] = [];
   pullCalls: IPullRequest[] = [];
-  pushResponse: IPushResponse = { accepted: [], rejected: [], lastServerVersion: 0 };
+  pushResponse: IPushResponse = { accepted: [], acceptedDetails: [], rejected: [], lastServerVersion: 0 };
   pullResponseFor: Map<SyncResourceId, IPullResponse> = new Map();
   connectCalls = 0;
   disconnectCalls = 0;
@@ -156,6 +156,27 @@ class FakeCursorRepo {
   }
 }
 
+class FakeCryptoService implements ISyncCryptoService {
+  constructor(public available: boolean) {}
+  encrypt(_plaintext: Uint8Array): Uint8Array {
+    if (!this.available) {
+      throw new Error('[FakeCryptoService] master key is locked');
+    }
+    return new Uint8Array([1, 2, 3]);
+  }
+
+  decrypt(_payload: Uint8Array): Uint8Array {
+    if (!this.available) {
+      throw new Error('[FakeCryptoService] master key is locked');
+    }
+    return new Uint8Array([4, 5, 6]);
+  }
+
+  hmacIndex(_value: string): Uint8Array {
+    return new Uint8Array(32);
+  }
+}
+
 class FakeConfigRepo {
   store: Map<string, Map<string, unknown>> = new Map();
 
@@ -177,12 +198,22 @@ class FakeSynchroniser implements IResourceSynchroniser {
   startCalls = 0;
   initialSnapshotCalls = 0;
   initialSnapshotError: Error | null = null;
+  pushAccepted: IPushAcceptedDetail[] = [];
+  reconcileCalls: ReadonlySet<string>[] = [];
   disposed = false;
 
   constructor(public readonly resourceId: SyncResourceId) {}
 
   start(): void {
     this.startCalls++;
+  }
+
+  async onPushAccepted(detail: IPushAcceptedDetail): Promise<void> {
+    this.pushAccepted.push(detail);
+  }
+
+  async reconcileGhostMeta(serverEntityIds: ReadonlySet<string>): Promise<void> {
+    this.reconcileCalls.push(serverEntityIds);
   }
 
   async applyPatch(patch: ISyncPatchItem[]): Promise<void> {
@@ -211,22 +242,25 @@ interface ITestBed {
   transport: FakeTransport;
   cursors: FakeCursorRepo;
   config: FakeConfigRepo;
+  crypto: FakeCryptoService;
   service: SyncService;
 }
 
-function createTestBed(): ITestBed {
+function createTestBed(opts: { cryptoAvailable?: boolean } = {}): ITestBed {
   const outbox = new FakeOutbox();
   const transport = new FakeTransport();
   const cursors = new FakeCursorRepo();
   const config = new FakeConfigRepo();
+  const crypto = new FakeCryptoService(opts.cryptoAvailable ?? true);
   const service = new SyncService(
     outbox,
     transport,
+    crypto,
     cursors as unknown as SyncCursorRepository,
     config as unknown as ConfigRepository,
     new NoopLogService()
   );
-  return { outbox, transport, cursors, config, service };
+  return { outbox, transport, cursors, config, crypto, service };
 }
 
 async function flushAsync(extraMs: number = 0): Promise<void> {
@@ -354,7 +388,12 @@ describe('SyncService', () => {
     await flushAsync(50);
 
     bed.transport.pushCalls.length = 0;
-    bed.transport.pushResponse = { accepted: [1], rejected: [], lastServerVersion: 1 };
+    bed.transport.pushResponse = {
+      accepted: [1],
+      acceptedDetails: [{ id: 1, resource: 'skill', entityId: 's1', version: 1 }],
+      rejected: [],
+      lastServerVersion: 1,
+    };
 
     await bed.outbox.enqueue({
       resource: 'skill',
@@ -368,6 +407,43 @@ describe('SyncService', () => {
     expect(bed.transport.pushCalls.length).toBe(1);
     expect(bed.transport.pushCalls[0].mutations).toHaveLength(1);
     expect(bed.outbox.ackedIds.flat()).toContain(1);
+    // Push ack must route onPushAccepted to the matching synchroniser so it can write
+    // sync_row_meta with the server-assigned version. Without this, the next restart
+    // would re-enqueue this row (buildInitialSnapshot skips rows that already have meta).
+    expect(sk.pushAccepted).toEqual([
+      { id: 1, resource: 'skill', entityId: 's1', version: 1 },
+    ]);
+  });
+
+  it('push falls back to acked = `accepted` when an older server returns no acceptedDetails', async () => {
+    const sk = new FakeSynchroniser('skill');
+    bed.service.register(sk);
+    await bed.service.enable();
+    await flushAsync(50);
+
+    bed.transport.pushCalls.length = 0;
+    // Simulate a server on the previous protocol: only the legacy `accepted` array, no
+    // acceptedDetails. The transport adapter exposes the field as [] (see http-transport).
+    bed.transport.pushResponse = {
+      accepted: [1],
+      acceptedDetails: [],
+      rejected: [],
+      lastServerVersion: 5,
+    };
+
+    await bed.outbox.enqueue({
+      resource: 'skill',
+      op: 'upsert',
+      entityId: 's2',
+      payload: new Uint8Array([4, 5, 6]),
+      baseVersion: null,
+    });
+    await flushAsync(600);
+
+    // Outbox still gets acked from the legacy field so old servers keep working.
+    expect(bed.outbox.ackedIds.flat()).toContain(1);
+    // No detail = no meta write; reconcile (PR4) will fix up later.
+    expect(sk.pushAccepted).toEqual([]);
   });
 
   it('push rejection triggers a follow-up pull', async () => {
@@ -380,6 +456,7 @@ describe('SyncService', () => {
     bed.transport.pullCalls.length = 0;
     bed.transport.pushResponse = {
       accepted: [],
+      acceptedDetails: [],
       rejected: [{ id: 1, reason: 'baseVersion mismatch' }],
       lastServerVersion: 1,
     };
@@ -487,30 +564,37 @@ describe('SyncService', () => {
   // Regression: enable() used to flip state straight to Idle while lastSyncedAt was
   // still null, so the UI showed "Up to date / Never synced". State must hold Syncing
   // until the first pull populates stats.lastSyncedAt.
-  it('enable holds Syncing across the connect→firstPull window', async () => {
+  it('enable performs reconcile via HTTP pull so lastSyncedAt is set even before WS connects', async () => {
+    // reconcile() drives the initial full pull through HTTP (independent of the WS), so
+    // by the time enable() returns we already have an authoritative cursor + lastSyncedAt.
+    // The WS staying disconnected only impacts state (Offline) and live pokes — not the
+    // initial sync.
     bed.transport.autoConnect = false;
     bed.service.register(new FakeSynchroniser('skill'));
 
     await bed.service.enable();
 
-    // Pre-connect: BehaviorSubject(false) replays through transportSub → Offline.
+    // Pre-WS-connect: BehaviorSubject(false) replays through transportSub → Offline.
     expect(await firstValue(bed.service.state$)).toBe('offline');
+    // Reconcile already pulled and refreshed stats — lastSyncedAt is no longer null.
     const statsBefore = await firstValue(bed.service.stats$);
-    expect(statsBefore.lastSyncedAt).toBeNull();
+    expect(statsBefore.lastSyncedAt).not.toBeNull();
 
     bed.transport.connected$.next(true);
     await flushAsync(50);
 
+    // First connect after a successful reconcile skips the redundant pull and flips Idle.
     expect(await firstValue(bed.service.state$)).toBe('idle');
-    const statsAfter = await firstValue(bed.service.stats$);
-    expect(statsAfter.lastSyncedAt).not.toBeNull();
   });
 
   // Regression: push-only success used to light "Up to date" while lastSyncedAt was
-  // still 3-days-old (the reported "Up to date / 3 days ago" bug). Push must not flip
-  // state to Idle before the first pull completes.
-  it('push success alone does not flip state to Idle before first pull', async () => {
+  // still 3-days-old (the reported "Up to date / 3 days ago" bug). With reconcile in
+  // place this is now a happy path; the test pins the inverse condition — reconcile
+  // *failing* must keep the push-only-Idle gate closed so we don't lie when the cursor
+  // is still uninitialised.
+  it('push success after a failed reconcile still cannot flip state to Idle', async () => {
     bed.transport.autoConnect = false;
+    bed.transport.pullThrows = new Error('reconcile boom');
     bed.service.register(new FakeSynchroniser('skill'));
 
     await bed.outbox.enqueue({
@@ -520,12 +604,20 @@ describe('SyncService', () => {
       payload: new Uint8Array([1, 2, 3]),
       baseVersion: null,
     });
-    bed.transport.pushResponse = { accepted: [1], rejected: [], lastServerVersion: 1 };
+    bed.transport.pushResponse = {
+      accepted: [1],
+      acceptedDetails: [{ id: 1, resource: 'skill', entityId: 's1', version: 1 }],
+      rejected: [],
+      lastServerVersion: 1,
+    };
 
     await bed.service.enable();
-    await flushAsync(700); // past the 500ms push debounce
+    // Drain the push debounce window so _runPush has a chance to complete.
+    await flushAsync(700);
 
     expect(bed.transport.pushCalls.length).toBeGreaterThan(0);
+    // reconcile failed → _initialPullDone stays false → push success cannot flip Idle.
+    // (The actual state here is Error / Offline because reconcile + WS-down both happened.)
     expect(await firstValue(bed.service.state$)).not.toBe('idle');
   });
 
@@ -587,6 +679,101 @@ describe('SyncService', () => {
     expect(await firstValue(bed.service.enabled$)).toBe(false);
     expect(await firstValue(bed.service.state$)).toBe('disabled');
     expect(await bed.config.getField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD)).toBe(true);
+  });
+
+  // Reconcile: pulls cursor=null per registered resource and routes the patch through the
+  // synchroniser. This is the new "first pull" path that replaces the WS-triggered pull.
+  it('reconcile pulls cursor=null per registered resource and applies the patch', async () => {
+    const sk = new FakeSynchroniser('skill');
+    bed.service.register(sk);
+    bed.transport.pullResponseFor.set('skill', {
+      cursor: 'srv-cursor-skill',
+      patch: [{
+        op: 'put',
+        resource: 'skill',
+        entityId: 's-server-1',
+        payload: new Uint8Array([9]),
+        version: 7,
+      }],
+      lastMutationId: 0,
+    });
+
+    await bed.service.enable();
+    await flushAsync(50);
+
+    // Reconcile drove exactly one pull with cursor=null (the connect-driven follow-up was
+    // suppressed by _skipFirstConnectPull).
+    expect(bed.transport.pullCalls.filter((c) => c.resource === 'skill')).toEqual([
+      { clientId: expect.any(String), resource: 'skill', cursor: null },
+    ]);
+    expect(sk.appliedPatches).toHaveLength(1);
+    expect((await bed.cursors.get('skill'))?.cursor).toBe('srv-cursor-skill');
+  });
+
+  // Reconcile: passes the server-side authoritative entityId set to each synchroniser so
+  // that local meta pointing at server-side-deleted entityIds can be dropped. This is the
+  // core ghost-meta fix that unblocks buildInitialSnapshot for the mac-stuck-after-reset
+  // scenario.
+  it('reconcile passes server entityId set to synchroniser.reconcileGhostMeta', async () => {
+    const sk = new FakeSynchroniser('skill');
+    bed.service.register(sk);
+    bed.transport.pullResponseFor.set('skill', {
+      cursor: 'srv-cursor-skill',
+      patch: [
+        { op: 'put', resource: 'skill', entityId: 'live-1', payload: new Uint8Array([1]), version: 1 },
+        { op: 'del', resource: 'skill', entityId: 'tombstone-1', payload: null, version: 2 },
+      ],
+      lastMutationId: 0,
+    });
+
+    await bed.service.enable();
+    await flushAsync(50);
+
+    expect(sk.reconcileCalls).toHaveLength(1);
+    expect([...sk.reconcileCalls[0]].sort()).toEqual(['live-1', 'tombstone-1']);
+  });
+
+  // Regression for the silent-failure root cause: previously enable() would run the
+  // pipeline against a locked master key, every encrypt() would throw inside synchroniser
+  // try/catch blocks, and the UI would still report "synced". The gate must refuse to
+  // start the runtime and surface master_key_locked instead.
+  it('enable refuses to start when crypto.available is false and emits master_key_locked', async () => {
+    const lockedBed = createTestBed({ cryptoAvailable: false });
+    lockedBed.service.register(new FakeSynchroniser('skill'));
+
+    await lockedBed.service.enable();
+
+    expect(await firstValue(lockedBed.service.enabled$)).toBe(false);
+    expect(await firstValue(lockedBed.service.state$)).toBe('error');
+    const err = await firstValue(lockedBed.service.lastError$);
+    expect(err?.code).toBe('master_key_locked');
+    expect(err?.requiresUserAction).toBe(true);
+    // userEnabled is still persisted because the user's intent is unchanged — only the
+    // runtime is blocked until the key unlocks.
+    expect(await lockedBed.config.getField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD)).toBe(true);
+    // No synchroniser was started, no transport connect, no client id generated.
+    expect(lockedBed.transport.connectCalls).toBe(0);
+    lockedBed.service.dispose();
+  });
+
+  it('synchroniser CryptoLocked status raises master_key_locked on SyncService.lastError$', async () => {
+    const synchroniser = new FakeSynchroniser('skill');
+    bed.service.register(synchroniser);
+    await bed.service.enable();
+
+    const seen: Array<{ code: string; requiresUserAction?: boolean } | null> = [];
+    const sub = bed.service.lastError$.subscribe((e) => seen.push(e));
+
+    synchroniser.status$.next(SynchroniserStatus.CryptoLocked);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // A successful pull triggered by enable() may clear lastError$ back to null moments
+    // later — we only need to verify that the error did surface on the stream, not that
+    // it stuck around.
+    const reported = seen.find((e) => e?.code === 'master_key_locked');
+    expect(reported).toBeDefined();
+    expect(reported?.requiresUserAction).toBe(true);
+    sub.unsubscribe();
   });
 });
 

@@ -36,13 +36,16 @@ export default {
     },
     error: {
       unauthenticated: 'Sign in to sync',
-      master_key_locked: 'Master key locked',
+      master_key_locked: 'Master key locked — sign in again to resume sync',
       network: 'Network error',
       rate_limited: 'Rate limited by server',
       protocol_mismatch: 'Client/server schema mismatch',
       cipher_mismatch: 'Decryption failed',
       server_error: 'Server error',
       unknown: 'Unknown error',
+      action: {
+        'sign-in-again': 'Sign in again',
+      },
     },
     backup: {
       title: 'Encrypted backup',

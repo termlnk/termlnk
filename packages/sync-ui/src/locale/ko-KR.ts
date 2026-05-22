@@ -36,13 +36,16 @@ export default {
     },
     error: {
       unauthenticated: '동기화하려면 로그인하세요',
-      master_key_locked: '마스터 키가 잠겨 있습니다',
+      master_key_locked: '마스터 키가 잠겨 있습니다 — 다시 로그인하여 동기화를 재개하세요',
       network: '네트워크 오류',
       rate_limited: '서버에 의해 속도가 제한되었습니다',
       protocol_mismatch: '클라이언트/서버 스키마가 일치하지 않습니다',
       cipher_mismatch: '복호화에 실패했습니다',
       server_error: '서버 오류',
       unknown: '알 수 없는 오류',
+      action: {
+        'sign-in-again': '다시 로그인',
+      },
     },
     backup: {
       title: '암호화 백업',
