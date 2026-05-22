@@ -220,7 +220,8 @@ const locale = {
       participants: 'Participants:',
       you: 'You',
       'take-keyboard': 'Take keyboard',
-      copied: 'Link copied',
+      copied: 'Copied',
+      'copy-failed': 'Failed to copy link. Check your network or sign-in.',
     },
   },
 };

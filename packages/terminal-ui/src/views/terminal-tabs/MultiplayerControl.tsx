@@ -19,8 +19,8 @@ import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, toast, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { ISharedTerminalService, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { TooltipWrapper } from '@termlnk/ui';
-import { KeyboardIcon, LinkIcon, SquareIcon, UserIcon, UsersIcon } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { CheckIcon, KeyboardIcon, LinkIcon, SquareIcon, UserIcon, UsersIcon } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY } from 'rxjs';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
 
@@ -39,8 +39,20 @@ export function MultiplayerControl(): React.JSX.Element | null {
   const activeSessionId = useObservable<Nullable<string>>(terminalUIService.activeSessionId$);
   const shareable = useObservable<readonly IShareableSession[]>(client?.shareable$ ?? null, []);
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   // Cache the invite URL across re-renders so the user can copy again without re-creating.
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  // Hold the active "Copied" timer so consecutive clicks restart the countdown
+  // rather than clearing the visual feedback prematurely.
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   const activeEntry = useMemo(() => {
     if (!activeSessionId) {
@@ -92,9 +104,17 @@ export function MultiplayerControl(): React.JSX.Element | null {
         setInviteUrl(url);
       }
       await navigator.clipboard.writeText(url);
-      toast.success(localeService.t('terminal-ui.multiplayer.copied'));
+      setCopied(true);
+      if (copyTimerRef.current !== null) {
+        clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = setTimeout(() => {
+        setCopied(false);
+        copyTimerRef.current = null;
+      }, 2000);
     } catch (err) {
       logService.error('[MultiplayerControl] copy-link failed:', err);
+      toast.error(localeService.t('terminal-ui.multiplayer.copy-failed'));
     } finally {
       setBusy(false);
     }
@@ -108,6 +128,11 @@ export function MultiplayerControl(): React.JSX.Element | null {
     try {
       await client.stopSharing(activeEntry.sessionId);
       setInviteUrl(null);
+      setCopied(false);
+      if (copyTimerRef.current !== null) {
+        clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = null;
+      }
     } catch (err) {
       logService.error('[MultiplayerControl] stop failed:', err);
     } finally {
@@ -163,10 +188,21 @@ export function MultiplayerControl(): React.JSX.Element | null {
                 size="sm"
                 disabled={busy}
                 onClick={() => { void handleCopyLink(); }}
-                className={cn('tm:gap-1.5')}
+                className={cn('tm:gap-1.5', { 'tm:text-green': copied })}
               >
-                <LinkIcon className={cn('tm:size-3.5')} />
-                {localeService.t('terminal-ui.multiplayer.copy-link')}
+                {copied
+                  ? (
+                    <>
+                      <CheckIcon className={cn('tm:size-3.5')} />
+                      {localeService.t('terminal-ui.multiplayer.copied')}
+                    </>
+                  )
+                  : (
+                    <>
+                      <LinkIcon className={cn('tm:size-3.5')} />
+                      {localeService.t('terminal-ui.multiplayer.copy-link')}
+                    </>
+                  )}
               </Button>
               {isShared && (
                 <Button

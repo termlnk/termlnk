@@ -222,7 +222,8 @@ const locale: typeof enUS = {
       participants: '參與者：',
       you: '我',
       'take-keyboard': '接管鍵盤',
-      copied: '連結已複製',
+      copied: '已複製',
+      'copy-failed': '複製連結失敗，請檢查網路或登入狀態。',
     },
   },
 };

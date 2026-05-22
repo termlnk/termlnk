@@ -222,7 +222,8 @@ const locale: typeof enUS = {
       participants: '参加者：',
       you: 'あなた',
       'take-keyboard': 'キーボードを取得',
-      copied: 'リンクをコピーしました',
+      copied: 'コピー済み',
+      'copy-failed': 'リンクのコピーに失敗しました。ネットワークまたはサインイン状態を確認してください。',
     },
   },
 };

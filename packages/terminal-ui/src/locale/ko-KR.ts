@@ -222,7 +222,8 @@ const locale: typeof enUS = {
       participants: '참여자:',
       you: '나',
       'take-keyboard': '키보드 가져오기',
-      copied: '링크가 복사되었습니다',
+      copied: '복사됨',
+      'copy-failed': '링크 복사에 실패했습니다. 네트워크 또는 로그인 상태를 확인하세요.',
     },
   },
 };

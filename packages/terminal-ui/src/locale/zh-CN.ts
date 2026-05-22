@@ -222,7 +222,8 @@ const locale: typeof enUS = {
       participants: '参与者：',
       you: '我',
       'take-keyboard': '接管键盘',
-      copied: '链接已复制',
+      copied: '已复制',
+      'copy-failed': '复制链接失败，请检查网络或登录状态。',
     },
   },
 };
