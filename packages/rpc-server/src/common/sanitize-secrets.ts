@@ -17,20 +17,7 @@ import type { IProviderUserConfig } from '@termlnk/agent';
 import type { IAIProviderEntity, IHostEntity } from '@termlnk/database';
 import type { ICredential, IProxy } from '@termlnk/terminal';
 
-// tRPC boundary sanitizers for *batch* endpoints (host.tree / host.getChildrenList /
-// ai providers list). Plaintext secrets may circulate inside the main process; batch
-// queries don't need them, so we collapse passwords / private keys to `hasXxx` boolean
-// placeholders. Non-sensitive fields (type / username / addr / port) stay so list views
-// render without the cipher.
-//
-// NOTE: host.getInfo (single-host edit + connect path) bypasses these and returns the
-// full decrypted entity — the renderer needs the plaintext to render the design Input's
-// eye-toggle and to submit "no-change" diffs. See host router for context.
-//
-// Renderer types are derived via tRPC `inferRouterOutputs` — these IPublic* aliases stay
-// file-private.
-
-interface IPublicCredential {
+export interface IPublicCredential {
   type: ICredential['type'];
   username: string;
   hasPassword?: boolean;
@@ -59,7 +46,7 @@ export function sanitizeCredential(credential: ICredential | null | undefined): 
   }
 }
 
-interface IPublicProxy extends Omit<IProxy, 'password'> {
+export interface IPublicProxy extends Omit<IProxy, 'password'> {
   hasPassword: boolean;
 }
 
@@ -88,7 +75,7 @@ export function sanitizeHostEntities<T extends IHostEntity>(entities: T[]): IPub
   return entities.map((entity) => sanitizeHostEntity(entity));
 }
 
-interface IPublicHostTreeNode extends IPublicHostEntity {
+export interface IPublicHostTreeNode extends IPublicHostEntity {
   children: IPublicHostTreeNode[];
 }
 
