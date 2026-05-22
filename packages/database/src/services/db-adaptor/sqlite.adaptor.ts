@@ -65,6 +65,10 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
     this._sqlite = new BetterSqlite3(this._options.filename);
     this._sqlite.pragma('journal_mode = WAL');
     this._sqlite.pragma('foreign_keys = ON');
+    // Brand-new databases adopt this immediately (must be set before any table is
+    // created); legacy databases keep auto_vacuum=NONE until the next VACUUM
+    // rewrites the file per the configured mode.
+    this._sqlite.pragma('auto_vacuum = INCREMENTAL');
 
     this._db = drizzle({
       client: this._sqlite,
@@ -72,6 +76,7 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
     });
 
     this._migration();
+    this._compactIfBloated();
   }
 
   async close(): Promise<void> {
@@ -100,6 +105,54 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
     } catch (error) {
       console.error('[SQLiteAdaptor] Migration failed:', error);
       throw new Error(`Database migration failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Reclaim space when the SQLite freelist has grown disproportionate to live
+  // data. Without this, deleting rows or recreating large blobs (e.g. the
+  // singleton terminal_session_backup row) leaves freelist pages behind that
+  // never shrink the file. Threshold guards against pointless VACUUMs on small
+  // or healthy databases — VACUUM rewrites the whole file and needs up to 2x
+  // disk space.
+  private _compactIfBloated(): void {
+    const sqlite = this._sqlite;
+    if (!sqlite) {
+      return;
+    }
+
+    const pageCount = sqlite.pragma('page_count', { simple: true }) as number;
+    const freelistCount = sqlite.pragma('freelist_count', { simple: true }) as number;
+    const pageSize = sqlite.pragma('page_size', { simple: true }) as number;
+
+    if (!pageCount || !pageSize) {
+      return;
+    }
+
+    const MIN_FREE_BYTES = 8 * 1024 * 1024;
+    const MIN_FREE_RATIO = 0.5;
+
+    const freeBytes = freelistCount * pageSize;
+    const freeRatio = freelistCount / pageCount;
+
+    if (freeBytes < MIN_FREE_BYTES || freeRatio < MIN_FREE_RATIO) {
+      return;
+    }
+
+    const freeMb = (freeBytes / 1024 / 1024).toFixed(1);
+    const ratioPct = Math.round(freeRatio * 100);
+    console.warn(
+      `[SQLiteAdaptor] Compacting database: ${freelistCount}/${pageCount} pages free `
+      + `(~${freeMb} MB, ${ratioPct}%). Running VACUUM.`
+    );
+
+    const startedAt = Date.now();
+    try {
+      // VACUUM honors the auto_vacuum pragma set above, so legacy
+      // auto_vacuum=NONE databases are flipped to INCREMENTAL on the same pass.
+      sqlite.exec('VACUUM');
+      console.log(`[SQLiteAdaptor] VACUUM finished in ${Date.now() - startedAt}ms.`);
+    } catch (error) {
+      console.error('[SQLiteAdaptor] VACUUM failed:', error);
     }
   }
 }
