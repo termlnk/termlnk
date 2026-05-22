@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITokenManager, ITokenPair, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
-import { ITokenRefresher as ITokenRefresherId, ITokenStorageService as ITokenStorageServiceId } from '@termlnk/auth';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import type { ITokenManager, ITokenPair } from '@termlnk/auth';
+import { ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
+import { Disposable, ILogService } from '@termlnk/core';
 
 // Refresh proactively this many ms before the access token expires. Covers ~10 s clock
 // drift plus typical RTT so concurrent callers do not race the deadline.
@@ -29,9 +29,9 @@ export class TokenManager extends Disposable implements ITokenManager {
   private _refreshPromise: Promise<ITokenPair> | null = null;
 
   constructor(
-    @Inject(ITokenStorageServiceId) private readonly _storage: ITokenStorageService,
-    @Inject(ITokenRefresherId) private readonly _refresher: ITokenRefresher,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ITokenStorageService private readonly _storage: ITokenStorageService,
+    @ITokenRefresher private readonly _refresher: ITokenRefresher,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }

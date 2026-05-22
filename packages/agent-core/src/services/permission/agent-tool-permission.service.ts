@@ -13,21 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type {
-  IAgentToolPermissionRequest,
-  IAgentToolPermissionResponse,
-  IAgentToolPermissionService,
-  IGuardInput,
-  IGuardResult,
-  IPermissionRuleService,
-  IRiskAssessmentService,
-  ToolPermissionMode,
-  ToolRiskLevel,
-} from '@termlnk/agent';
-import type { ILogService } from '@termlnk/core';
+import type { IAgentToolPermissionRequest, IAgentToolPermissionResponse, IAgentToolPermissionService, IGuardInput, IGuardResult, ToolPermissionMode, ToolRiskLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
-import { AGENT_PLUGIN_CONFIG_KEY, IPermissionRuleService as IPermissionRuleServiceId, IRiskAssessmentService as IRiskAssessmentServiceId } from '@termlnk/agent';
-import { Disposable, generateRandomId, ILogService as ILogServiceId, Inject } from '@termlnk/core';
+import { AGENT_PLUGIN_CONFIG_KEY, IPermissionRuleService, IRiskAssessmentService } from '@termlnk/agent';
+import { Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { BehaviorSubject } from 'rxjs';
 
@@ -49,10 +38,10 @@ export class AgentToolPermissionService extends Disposable implements IAgentTool
   private readonly _pendingResolvers = new Map<string, IPendingResolver>();
 
   constructor(
-    @Inject(IPermissionRuleServiceId) private readonly _ruleService: IPermissionRuleService,
-    @Inject(IRiskAssessmentServiceId) private readonly _riskService: IRiskAssessmentService,
+    @IPermissionRuleService private readonly _ruleService: IPermissionRuleService,
+    @IRiskAssessmentService private readonly _riskService: IRiskAssessmentService,
     @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
-    @ILogServiceId private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
     void this._loadModeFromConfig();

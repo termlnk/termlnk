@@ -30,7 +30,7 @@ export class SynchroniserRegistrationController extends Disposable {
   constructor(
     @ISyncService private readonly _syncService: ISyncService,
     @IConfigService private readonly _configService: IConfigService,
-    @Inject(ILogService) private readonly _logService: ILogService,
+    @ILogService private readonly _logService: ILogService,
     @Inject(HostSynchroniser) private readonly _host: HostSynchroniser,
     @Inject(ConfigSynchroniser) private readonly _config: ConfigSynchroniser,
     @Inject(ProviderSynchroniser) private readonly _provider: ProviderSynchroniser,

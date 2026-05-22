@@ -13,26 +13,22 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthPluginConfig, IAuthService, IIdleProbe, IMasterKeyService } from '@termlnk/auth';
-import { AUTH_PLUGIN_CONFIG_KEY, IAuthService as IAuthServiceId, IIdleProbe as IIdleProbeId, IMasterKeyService as IMasterKeyServiceId, MasterKeyState } from '@termlnk/auth';
-import { IConfigService, ILogService, Inject, Optional, RxDisposable } from '@termlnk/core';
+import type { IAuthPluginConfig } from '@termlnk/auth';
+import { AUTH_PLUGIN_CONFIG_KEY, IAuthService, IIdleProbe, IMasterKeyService, MasterKeyState } from '@termlnk/auth';
+import { IConfigService, ILogService, Optional, RxDisposable } from '@termlnk/core';
 import { takeUntil } from 'rxjs';
 
 const IDLE_POLL_INTERVAL_MS = 15_000;
 
-// Auto-locks the master key after `autoLockIdleMinutes` of inactivity (0 disables).
-// Prefers IAuthService.logout() when bound so tokens + authState are cleared together;
-// falls back to a bare master-key lock. Polling runs only while Unlocked. Probe
-// exceptions are swallowed — failing closed would punish users when the OS API hiccups.
 export class IdleLockController extends RxDisposable {
   private _intervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor(
-    @Inject(IMasterKeyServiceId) private readonly _masterKeyService: IMasterKeyService,
-    @Inject(IIdleProbeId) private readonly _idleProbe: IIdleProbe,
+    @IMasterKeyService private readonly _masterKeyService: IMasterKeyService,
+    @IIdleProbe private readonly _idleProbe: IIdleProbe,
     @IConfigService private readonly _configService: IConfigService,
-    @Inject(ILogService) private readonly _logService: ILogService,
-    @Optional(IAuthServiceId) private readonly _authService: IAuthService | null = null
+    @ILogService private readonly _logService: ILogService,
+    @Optional(IAuthService) private readonly _authService?: IAuthService
   ) {
     super();
 

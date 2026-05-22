@@ -31,7 +31,7 @@ import { ISecretCipherService } from './secret-cipher.service';
 export class ConfigRepoAuthKeyValueStorage implements IAuthKeyValueStorage {
   constructor(
     @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
-    @Inject(ISecretCipherService) private readonly _cipher: ISecretCipherService
+    @ISecretCipherService private readonly _cipher: ISecretCipherService
   ) {}
 
   async getString(key: string): Promise<string | null> {

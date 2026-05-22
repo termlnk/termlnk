@@ -13,23 +13,23 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ClientConnectionState, ICollabInvite, IDevicePairingService, IDriverState, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IPairingService, IParticipant, IParticipantConnectResult, IParticipantFrame, IParticipantService, IParticipantSnapshot, IPtyMultiplexerService, IRemoteAnnouncedSession, IShareableSession, ISharedSession, ISharedTerminalService } from '@termlnk/shared-terminal';
+import type { ClientConnectionState, ICollabInvite, IDriverState, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IParticipant, IParticipantConnectResult, IParticipantFrame, IParticipantSnapshot, IRemoteAnnouncedSession, IShareableSession, ISharedSession, ISharedTerminalService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
-import { Disposable, ILogService, Inject, Optional } from '@termlnk/core';
-import { IDevicePairingService as IDevicePairingServiceId, IPairingService as IPairingServiceId, IParticipantService as IParticipantServiceId, IPtyMultiplexerService as IPtyMultiplexerServiceId } from '@termlnk/shared-terminal';
+import { Disposable, ILogService, Optional } from '@termlnk/core';
+import { IDevicePairingService, IPairingService, IParticipantService, IPtyMultiplexerService } from '@termlnk/shared-terminal';
 import { EMPTY, firstValueFrom } from 'rxjs';
 import { IDeepLinkBus } from './deep-link.bus';
 import { IShareSessionService } from './share-session.service';
 
 export class SharedTerminalService extends Disposable implements ISharedTerminalService {
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService,
-    @Optional(IPtyMultiplexerServiceId) private readonly _mux: IPtyMultiplexerService | null = null,
-    @Optional(IPairingServiceId) private readonly _pairing: IPairingService | null = null,
-    @Optional(IParticipantServiceId) private readonly _participant: IParticipantService | null = null,
-    @Optional(IDevicePairingServiceId) private readonly _devicePairing: IDevicePairingService | null = null,
-    @Optional(IShareSessionService) private readonly _share: IShareSessionService | null = null,
-    @Optional(IDeepLinkBus) private readonly _deepLinks: IDeepLinkBus | null = null
+    @ILogService private readonly _logService: ILogService,
+    @Optional(IPtyMultiplexerService) private readonly _mux?: IPtyMultiplexerService,
+    @Optional(IPairingService) private readonly _pairing?: IPairingService,
+    @Optional(IParticipantService) private readonly _participant?: IParticipantService,
+    @Optional(IDevicePairingService) private readonly _devicePairing?: IDevicePairingService,
+    @Optional(IShareSessionService) private readonly _share?: IShareSessionService,
+    @Optional(IDeepLinkBus) private readonly _deepLinks?: IDeepLinkBus
   ) {
     super();
   }

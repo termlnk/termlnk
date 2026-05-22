@@ -89,7 +89,7 @@ describe('PtyMultiplexer rekey', () => {
     crypto = new SharedTerminalCryptoService();
     daemonKp = crypto.generateKeypair();
     daemonService = new FakeDaemonKeypair(daemonKp);
-    mux = new PtyMultiplexerService(new NoopLogService(), crypto, daemonService);
+    mux = new PtyMultiplexerService(crypto, new NoopLogService(), daemonService);
   });
 
   afterEach(() => {
@@ -214,7 +214,7 @@ describe('PtyMultiplexer rekey', () => {
   });
 
   it('no rekey occurs when daemon keypair service is unavailable', async () => {
-    const mux2 = new PtyMultiplexerService(new NoopLogService(), crypto, null);
+    const mux2 = new PtyMultiplexerService(crypto, new NoopLogService());
     const ts = createSource('s1');
     mux2.register(ts.source);
     const cop = crypto.generateKeypair();

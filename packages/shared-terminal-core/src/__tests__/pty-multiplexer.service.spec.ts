@@ -84,7 +84,7 @@ describe('PtyMultiplexerService', () => {
   let outbound: IOutboundFrame[];
 
   beforeEach(() => {
-    mux = new PtyMultiplexerService(new FakeLogService(), new SharedTerminalCryptoService());
+    mux = new PtyMultiplexerService(new SharedTerminalCryptoService(), new FakeLogService());
     outbound = [];
     mux.outbound$.subscribe((f) => outbound.push(f));
   });

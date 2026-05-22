@@ -15,7 +15,7 @@
 
 import type { IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
-import { createIdentifier, Disposable, ILogService, Inject, Optional } from '@termlnk/core';
+import { createIdentifier, Disposable, ILogService, Optional } from '@termlnk/core';
 import { ISSHSessionService, ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { IPtyMultiplexerService } from '@termlnk/shared-terminal';
 import { IPTYSessionService } from '@termlnk/terminal';
@@ -61,9 +61,7 @@ export interface IShareSessionService {
   isShared(sessionId: string): boolean;
 }
 
-export const IShareSessionService = createIdentifier<IShareSessionService>(
-  'rpc-server.share-session-service'
-);
+export const IShareSessionService = createIdentifier<IShareSessionService>('rpc-server.share-session-service');
 
 export class ShareSessionService extends Disposable implements IShareSessionService {
   private readonly _registrations = new Map<string, ISharedRegistration>();
@@ -72,13 +70,18 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
   readonly shareable$: Observable<readonly IShareableSession[]> = this._shareable$.asObservable();
 
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService,
-    @Optional(IPtyMultiplexerService) private readonly _mux: IPtyMultiplexerServiceType | null,
-    @Inject(ISSHSessionService) private readonly _sshSessionService: ISSHSessionService,
-    @Inject(IPTYSessionService) private readonly _ptySessionService: IPTYSessionService,
-    @Inject(ITerminalSessionNotifyService) private readonly _notifyService: ITerminalSessionNotifyService
+    @ILogService private readonly _logService: ILogService,
+    @ISSHSessionService private readonly _sshSessionService: ISSHSessionService,
+    @IPTYSessionService private readonly _ptySessionService: IPTYSessionService,
+    @ITerminalSessionNotifyService private readonly _notifyService: ITerminalSessionNotifyService,
+    @Optional(IPtyMultiplexerService) private readonly _mux?: IPtyMultiplexerServiceType
   ) {
     super();
+
+    this._init();
+  }
+
+  private _init() {
     this.disposeWithMe(this._notifyService.sessionCreated$.subscribe((event) => {
       this._sessions.set(event.sessionId, {
         sessionId: event.sessionId,
@@ -88,6 +91,7 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
       });
       this._publish();
     }));
+
     this.disposeWithMe(this._notifyService.sessionClosed$.subscribe((event) => {
       if (this._registrations.has(event.sessionId)) {
         // Implicit stop on PTY exit. Errors swallowed; logged inside stopSharing.

@@ -16,7 +16,7 @@
 import type { IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
 import { AuthState } from '@termlnk/auth';
-import { Disposable, ILogService, Inject, toDisposable } from '@termlnk/core';
+import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { BehaviorSubject } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
@@ -38,8 +38,8 @@ export class AuthService extends Disposable implements IAuthService {
   readonly lastError$: Observable<IAuthError | null> = this._lastError$.asObservable();
 
   constructor(
-    @Inject(IRPCClientService) private readonly _rpcClientService: IRPCClientService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @IRPCClientService private readonly _rpcClientService: IRPCClientService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
 

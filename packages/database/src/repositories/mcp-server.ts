@@ -17,7 +17,7 @@ import type { IMcpServerChangeEvent, McpConnectionStatus } from '@termlnk/agent'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { IMcpServerEntity, IMcpServerEntityInsert } from '../entities';
-import { Disposable, Inject } from '@termlnk/core';
+import { Disposable } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
 import { Subject } from 'rxjs';
 import { generateId } from '../entities/base';
@@ -31,8 +31,8 @@ export class McpServerRepository extends Disposable {
   readonly changed$ = this._changed$.asObservable();
 
   constructor(
-    @Inject(IDBAdaptorService) private readonly _dbService: IDBAdaptorService,
-    @Inject(ISecretCipherService) private readonly _cipher: ISecretCipherService
+    @IDBAdaptorService private readonly _dbService: IDBAdaptorService,
+    @ISecretCipherService private readonly _cipher: ISecretCipherService
   ) {
     super();
   }

@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDaemonKeypairService, IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRegisteredPty, IRekeyResult, ISessionSnapshot, ISharedSession, ISharedTerminalCryptoService, RekeyReason, SharedTerminalRole } from '@termlnk/shared-terminal';
+import type { IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRegisteredPty, IRekeyResult, ISessionSnapshot, ISharedSession, RekeyReason, SharedTerminalRole } from '@termlnk/shared-terminal';
 import type { Observable, Subscription } from 'rxjs';
-import { Disposable, ILogService, Inject, Optional } from '@termlnk/core';
-import { FrameChannel, FrameFlag, IDaemonKeypairService as IDaemonKeypairServiceId, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, isWriterRole, SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS, SHARED_TERMINAL_RING_BUFFER_BYTES, SharedSessionState } from '@termlnk/shared-terminal';
+import { Disposable, ILogService, Optional } from '@termlnk/core';
+import { FrameChannel, FrameFlag, IDaemonKeypairService, ISharedTerminalCryptoService, isWriterRole, SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS, SHARED_TERMINAL_RING_BUFFER_BYTES, SharedSessionState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, EMPTY, Subject } from 'rxjs';
 import { bytesToBase64Url } from '../utils/encoding';
 import { HeadlessSession } from '../utils/headless-session';
@@ -77,10 +77,9 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
+    @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService,
     @ILogService private readonly _logService: ILogService,
-    @Inject(ISharedTerminalCryptoServiceId) private readonly _crypto: ISharedTerminalCryptoService,
-    @Optional(IDaemonKeypairServiceId)
-    private readonly _daemonKeypair: IDaemonKeypairService | null = null
+    @Optional(IDaemonKeypairService) private readonly _daemonKeypairService?: IDaemonKeypairService
   ) {
     super();
     // Scan for stale drivers every second.
@@ -244,7 +243,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
 
   async rekey(sessionId: string, reason: RekeyReason): Promise<IRekeyResult> {
     const runtime = this._requireSession(sessionId);
-    runtime.sessionKey = this._crypto.generateSessionKey();
+    runtime.sessionKey = this._cryptoService.generateSessionKey();
     return this._wrapAndBroadcastSessionKey(runtime, reason);
   }
 
@@ -265,7 +264,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         unwrappedClientIds: [...runtime.clients.keys()],
       };
     }
-    if (!this._daemonKeypair) {
+    if (!this._daemonKeypairService) {
       // Daemon keypair service was not registered (e.g. test harness). Nothing to broadcast.
       return {
         sessionId: runtime.source.id,
@@ -274,7 +273,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         unwrappedClientIds: [...runtime.clients.keys()],
       };
     }
-    const daemon = await this._daemonKeypair.getOrCreate();
+    const daemon = await this._daemonKeypairService.getOrCreate();
     const unwrappedClientIds: string[] = [];
     let recipientCount = 0;
     for (const [clientId, entry] of runtime.clients) {
@@ -282,7 +281,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         unwrappedClientIds.push(clientId);
         continue;
       }
-      const wrapped = this._crypto.wrapSessionKey(sessionKey, entry.publicKey, daemon.secretKey);
+      const wrapped = this._cryptoService.wrapSessionKey(sessionKey, entry.publicKey, daemon.secretKey);
       this._sendControlToClient(runtime.source.id, clientId, {
         type: 'rekey',
         wrappedKey: bytesToBase64Url(wrapped),
@@ -341,8 +340,8 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     });
 
     // First keyed participant: generate the per-session symmetric key + wrap it for them.
-    if (publicKey && runtime.sessionKey === null && this._daemonKeypair) {
-      runtime.sessionKey = this._crypto.generateSessionKey();
+    if (publicKey && runtime.sessionKey === null && this._daemonKeypairService) {
+      runtime.sessionKey = this._cryptoService.generateSessionKey();
       // Fire-and-forget: wrap+broadcast happens via rekey() so the new client receives
       // the wrapped K via the same control-frame path as future rotations.
       void this._wrapAndBroadcastSessionKey(runtime, 'manual');
@@ -410,7 +409,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     if (wasKeyed && runtime.sessionKey !== null) {
       const hasRemainingKeyed = [...runtime.clients.values()].some((entry) => entry.publicKey);
       if (hasRemainingKeyed) {
-        runtime.sessionKey = this._crypto.generateSessionKey();
+        runtime.sessionKey = this._cryptoService.generateSessionKey();
         void this._wrapAndBroadcastSessionKey(runtime, reason);
       } else {
         // Last keyed participant left — drop the key so the next attach generates a fresh one.

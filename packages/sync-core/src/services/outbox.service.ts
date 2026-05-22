@@ -40,7 +40,7 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
   constructor(
     @Inject(SyncOutboxRepository) private readonly _outboxRepo: SyncOutboxRepository,
     @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
     this._hydratePromise = this._hydrate();

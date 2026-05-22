@@ -15,12 +15,12 @@
 
 import type { AgentEvent, AgentTool } from '@earendil-works/pi-agent-core';
 import type { Api, AssistantMessage, Model, UserMessage } from '@earendil-works/pi-ai';
-import type { AgentStatus, IAgentToolPermissionRequest, IAgentToolPermissionService, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
+import type { AgentStatus, IAgentToolPermissionRequest, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import type { IPendingDeliveryMode } from '../../common/pending-message-queue';
 import { Agent } from '@earendil-works/pi-agent-core';
 import { getModel, streamSimple } from '@earendil-works/pi-ai';
-import { DEFAULT_COMPACT_CONFIG, DEFAULT_THINKING_LEVEL, IAgentToolPermissionService as IAgentToolPermissionServiceId, ILLMProviderService, normalizeCompactConfig } from '@termlnk/agent';
+import { DEFAULT_COMPACT_CONFIG, DEFAULT_THINKING_LEVEL, IAgentToolPermissionService, ILLMProviderService, normalizeCompactConfig } from '@termlnk/agent';
 import { Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
 import { BehaviorSubject, combineLatest, map, Subject } from 'rxjs';
@@ -145,10 +145,10 @@ export class AIAgentService extends Disposable implements IAIAgentService {
   readonly pendingMessageIds$: Observable<string[]> = this._pendingQueue.ids$;
 
   constructor(
-    @Inject(ILLMProviderService) private readonly _llmProviderService: ILLMProviderService,
+    @ILLMProviderService private readonly _llmProviderService: ILLMProviderService,
     @Inject(ChatRepository) private readonly _chatRepository: ChatRepository,
-    @Inject(IAgentToolPermissionServiceId) private readonly _permissionService: IAgentToolPermissionService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @IAgentToolPermissionService private readonly _permissionService: IAgentToolPermissionService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
 

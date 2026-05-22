@@ -15,7 +15,7 @@
 
 import type { IDisposable } from '@termlnk/core';
 import type { IExtensionPoint, IExtensionPointContribution, IExtensionPointDescriptor, IExtensionPointHandler } from './extension-point';
-import { createIdentifier, Disposable, ILogService, Inject, toDisposable } from '@termlnk/core';
+import { createIdentifier, Disposable, ILogService, toDisposable } from '@termlnk/core';
 
 class ExtensionPoint<T> implements IExtensionPoint<T> {
   readonly name: string;
@@ -93,7 +93,7 @@ export class ExtensionPointRegistry extends Disposable implements IExtensionPoin
   private readonly _points = new Map<string, IExtensionPoint<unknown>>();
 
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }

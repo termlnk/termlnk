@@ -13,13 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMasterKey, IMasterKeyService } from '@termlnk/auth';
+import type { IMasterKey } from '@termlnk/auth';
 import type { ISyncCryptoService } from '@termlnk/sync';
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { hmac } from '@noble/hashes/hmac.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { IMasterKeyService as IMasterKeyServiceId, randomBytes } from '@termlnk/auth';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { IMasterKeyService, randomBytes } from '@termlnk/auth';
+import { Disposable, ILogService } from '@termlnk/core';
 import { SYNC_PAYLOAD_PREFIX } from '@termlnk/sync';
 
 const TEXT_ENCODER = new TextEncoder();
@@ -30,8 +30,8 @@ const POLY1305_TAG_LEN = 16;
 
 export class SyncCryptoService extends Disposable implements ISyncCryptoService {
   constructor(
-    @Inject(IMasterKeyServiceId) private readonly _masterKeyService: IMasterKeyService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @IMasterKeyService private readonly _masterKeyService: IMasterKeyService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }

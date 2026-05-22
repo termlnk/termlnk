@@ -13,14 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDaemonKeypairService, IKeypair, IPersistedDaemonKeypair, ISharedTerminalCryptoService } from '@termlnk/shared-terminal';
+import type { IDaemonKeypairService, IKeypair, IPersistedDaemonKeypair } from '@termlnk/shared-terminal';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository, ISecretCipherService } from '@termlnk/database';
-import {
-  DAEMON_KEYPAIR_CONFIG_SUBKEY,
-  ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId,
-  SHARED_TERMINAL_PLUGIN_CONFIG_KEY,
-} from '@termlnk/shared-terminal';
+import { DAEMON_KEYPAIR_CONFIG_SUBKEY, ISharedTerminalCryptoService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
 import { base64UrlToBytes, bytesToBase64Url } from '../utils/encoding';
 
 /**
@@ -39,9 +35,9 @@ export class DaemonKeypairService extends Disposable implements IDaemonKeypairSe
 
   constructor(
     @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
-    @Inject(ISharedTerminalCryptoServiceId) private readonly _crypto: ISharedTerminalCryptoService,
-    @Inject(ISecretCipherService) private readonly _cipher: ISecretCipherService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService,
+    @ISecretCipherService private readonly _cipherService: ISecretCipherService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }
@@ -65,7 +61,7 @@ export class DaemonKeypairService extends Disposable implements IDaemonKeypairSe
   }
 
   async rotate(): Promise<IKeypair> {
-    const fresh = this._crypto.generateKeypair();
+    const fresh = this._cryptoService.generateKeypair();
     await this._persist(fresh);
     this._cached = fresh;
     this._logService.log('[DaemonKeypairService] rotated daemon keypair; outstanding invites for the old pub are now invalid');
@@ -80,7 +76,7 @@ export class DaemonKeypairService extends Disposable implements IDaemonKeypairSe
     if (stored && typeof stored.publicKeyB64 === 'string' && typeof stored.secretKeyCipher === 'string') {
       try {
         const publicKey = base64UrlToBytes(stored.publicKeyB64);
-        const secretB64 = this._cipher.decrypt(stored.secretKeyCipher);
+        const secretB64 = this._cipherService.decrypt(stored.secretKeyCipher);
         const secretKey = base64UrlToBytes(secretB64);
         if (publicKey.length === 32 && secretKey.length === 32) {
           this._cached = { publicKey, secretKey };
@@ -91,14 +87,14 @@ export class DaemonKeypairService extends Disposable implements IDaemonKeypairSe
         this._logService.warn('[DaemonKeypairService] persisted keypair could not be decoded; regenerating:', err);
       }
     }
-    const fresh = this._crypto.generateKeypair();
+    const fresh = this._cryptoService.generateKeypair();
     await this._persist(fresh);
     this._cached = fresh;
     return fresh;
   }
 
   private async _persist(keypair: IKeypair): Promise<void> {
-    const secretKeyCipher = this._cipher.encrypt(bytesToBase64Url(keypair.secretKey));
+    const secretKeyCipher = this._cipherService.encrypt(bytesToBase64Url(keypair.secretKey));
     const persisted: IPersistedDaemonKeypair = {
       publicKeyB64: bytesToBase64Url(keypair.publicKey),
       secretKeyCipher,

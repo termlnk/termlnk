@@ -28,20 +28,20 @@ const PREFIX_BYTES = TEXT_ENCODER.encode(BACKUP_PAYLOAD_PREFIX);
 export class BackupService extends Disposable implements IBackupService {
   constructor(
     @Inject(BackupRepository) private readonly _backupRepo: BackupRepository,
-    @Inject(ISyncCryptoService) private readonly _crypto: ISyncCryptoService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }
 
   async exportEncryptedBackup(): Promise<{ payload: Uint8Array; summary: IBackupExportSummary }> {
-    if (!this._crypto.available) {
+    if (!this._cryptoService.available) {
       throw new Error('[BackupService] master key is locked; cannot export backup');
     }
 
     const snapshot = await this._backupRepo.exportSnapshot();
     const json = JSON.stringify(snapshot);
-    const sealed = this._crypto.encrypt(TEXT_ENCODER.encode(json));
+    const sealed = this._cryptoService.encrypt(TEXT_ENCODER.encode(json));
 
     const payload = new Uint8Array(PREFIX_BYTES.length + sealed.length);
     payload.set(PREFIX_BYTES, 0);
@@ -57,7 +57,7 @@ export class BackupService extends Disposable implements IBackupService {
   }
 
   async importEncryptedBackup(payload: Uint8Array, mode: BackupImportMode): Promise<IBackupImportSummary> {
-    if (!this._crypto.available) {
+    if (!this._cryptoService.available) {
       throw new Error('[BackupService] master key is locked; cannot import backup');
     }
 
@@ -66,7 +66,7 @@ export class BackupService extends Disposable implements IBackupService {
     }
 
     const inner = payload.subarray(PREFIX_BYTES.length);
-    const decryptedBytes = this._crypto.decrypt(inner);
+    const decryptedBytes = this._cryptoService.decrypt(inner);
     let snapshot: import('@termlnk/database').IBackupSnapshot;
     try {
       snapshot = JSON.parse(TEXT_DECODER.decode(decryptedBytes));

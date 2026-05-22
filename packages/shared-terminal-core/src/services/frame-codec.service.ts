@@ -13,19 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type {
-  IFrame,
-  IFrameCodecService,
-  ISharedKey,
-  ISharedTerminalCryptoService,
-} from '@termlnk/shared-terminal';
-import { Inject } from '@termlnk/core';
-import {
-  FrameChannel,
-  ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId,
-  SHARED_TERMINAL_FRAME_PREFIX,
-  SHARED_TERMINAL_FRAME_VERSION,
-} from '@termlnk/shared-terminal';
+import type { IFrame, IFrameCodecService, ISharedKey } from '@termlnk/shared-terminal';
+import { FrameChannel, ISharedTerminalCryptoService, SHARED_TERMINAL_FRAME_PREFIX, SHARED_TERMINAL_FRAME_VERSION } from '@termlnk/shared-terminal';
 
 /**
  * Wire frame layout — see architecture §5.2 and the `IFrameCodecService`
@@ -42,7 +31,7 @@ const FRAME_PREFIX_BYTES = textEncoder().encode(SHARED_TERMINAL_FRAME_PREFIX);
 
 export class FrameCodecService implements IFrameCodecService {
   constructor(
-    @Inject(ISharedTerminalCryptoServiceId) private readonly _crypto: ISharedTerminalCryptoService
+    @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService
   ) {}
 
   encodePlain(frame: IFrame): Uint8Array {
@@ -91,7 +80,7 @@ export class FrameCodecService implements IFrameCodecService {
 
   encrypt(frame: IFrame, sharedKey: ISharedKey): Uint8Array {
     const plain = this.encodePlain(frame);
-    const enc = this._crypto.secretBox(plain, sharedKey);
+    const enc = this._cryptoService.secretBox(plain, sharedKey);
     const out = new Uint8Array(FRAME_PREFIX_BYTES.length + enc.length);
     out.set(FRAME_PREFIX_BYTES, 0);
     out.set(enc, FRAME_PREFIX_BYTES.length);
@@ -108,7 +97,7 @@ export class FrameCodecService implements IFrameCodecService {
       }
     }
     const cipher = wireBytes.subarray(FRAME_PREFIX_BYTES.length);
-    const plain = this._crypto.secretBoxOpen(cipher, sharedKey);
+    const plain = this._cryptoService.secretBoxOpen(cipher, sharedKey);
     return this.decodePlain(plain);
   }
 }

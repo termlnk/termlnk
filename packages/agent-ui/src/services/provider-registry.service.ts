@@ -16,7 +16,7 @@
 import type { IProviderDefinition, IProviderRegistryService, IRegisteredProvider } from '@termlnk/agent';
 import type { IDisposable } from '@termlnk/core';
 import type { Observable } from 'rxjs';
-import { Disposable, ILogService, Inject, toDisposable } from '@termlnk/core';
+import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 
 interface IEntryKey {
@@ -30,7 +30,7 @@ export class ProviderRegistryService extends Disposable implements IProviderRegi
   readonly providers$: Observable<ReadonlyArray<IRegisteredProvider>> = this._providers$.asObservable();
 
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }

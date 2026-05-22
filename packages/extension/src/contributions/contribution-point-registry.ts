@@ -16,7 +16,7 @@
 import type { IDisposable } from '@termlnk/core';
 import type { IExtensionDescription } from '../models/extension-description';
 import type { IContributionPoint, IContributionPointRegistry } from './contribution-point';
-import { Disposable, ILogService, Inject, toDisposable } from '@termlnk/core';
+import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 
 /**
  * Pending contribution that arrived before its target point was registered.
@@ -46,7 +46,7 @@ export class ContributionPointRegistry extends Disposable implements IContributi
   private readonly _pending = new Map<string, IPendingContribution[]>();
 
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }

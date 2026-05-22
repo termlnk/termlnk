@@ -14,10 +14,10 @@
  */
 
 import type { Nullable } from '@termlnk/core';
-import type { IFrame, IFrameCodecService, IInboundFrame, ISharedKey, ISharedTerminalTransportService, ITransportConnectOptions, ITransportSendOptions } from '@termlnk/shared-terminal';
+import type { IFrame, IInboundFrame, ISharedKey, ISharedTerminalTransportService, ITransportConnectOptions, ITransportSendOptions } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
-import { IFrameCodecService as IFrameCodecServiceId, TransportState } from '@termlnk/shared-terminal';
+import { Disposable, ILogService } from '@termlnk/core';
+import { IFrameCodecService, TransportState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 
 declare const RTCPeerConnection: { new (config?: any): any } | undefined;
@@ -53,8 +53,8 @@ export class WebRTCTransportService extends Disposable implements ISharedTermina
   private _options: Nullable<ITransportConnectOptions> = null;
 
   constructor(
-    @Inject(IFrameCodecServiceId) private readonly _codec: IFrameCodecService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @IFrameCodecService private readonly _codecService: IFrameCodecService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }

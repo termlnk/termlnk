@@ -14,7 +14,6 @@
  */
 
 import type { BackupImportMode, IBackupClientService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
-import { Inject } from '@termlnk/core';
 import { IRPCClientService } from '../rpc-client.service';
 
 // Renderer-side facade: pure tRPC forwarding. The backup payload bytes never cross IPC —
@@ -23,7 +22,7 @@ import { IRPCClientService } from '../rpc-client.service';
 // would be unnecessary exposure.
 export class BackupClientService implements IBackupClientService {
   constructor(
-    @Inject(IRPCClientService) private readonly _rpcClientService: IRPCClientService
+    @IRPCClientService private readonly _rpcClientService: IRPCClientService
   ) {}
 
   private get _client() {

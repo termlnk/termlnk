@@ -53,9 +53,9 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
   private _webrtcSub: Nullable<Subscription> = null;
 
   constructor(
-    @Inject(WebRTCTransportService) private readonly _webrtc: WebRTCTransportService,
-    @Inject(RelayTransportService) private readonly _relay: RelayTransportService,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @Inject(WebRTCTransportService) private readonly _webrtcService: WebRTCTransportService,
+    @Inject(RelayTransportService) private readonly _relayService: RelayTransportService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }
@@ -74,7 +74,7 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
     // 1. Relay is the immediate fallback — always wire it up first so we have somewhere
     //    to land traffic if WebRTC fails.
     try {
-      await this._relay.connect(options, sharedKey);
+      await this._relayService.connect(options, sharedKey);
       this._activePath$.next('relay');
       this._state$.next(TransportState.Connected);
     } catch (err) {
@@ -93,12 +93,12 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
   async disconnect(): Promise<void> {
     this._teardownSubs();
     try {
-      await this._webrtc.disconnect();
+      await this._webrtcService.disconnect();
     } catch (err) {
       this._logService.error('[CompositeTransportService] webrtc disconnect threw:', err);
     }
     try {
-      await this._relay.disconnect();
+      await this._relayService.disconnect();
     } catch (err) {
       this._logService.error('[CompositeTransportService] relay disconnect threw:', err);
     }
@@ -109,11 +109,11 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
   send(frame: IFrame, options: ITransportSendOptions): void {
     const path = this._activePath$.getValue();
     if (path === 'webrtc') {
-      this._webrtc.send(frame, options);
+      this._webrtcService.send(frame, options);
       return;
     }
     if (path === 'relay') {
-      this._relay.send(frame, options);
+      this._relayService.send(frame, options);
       return;
     }
     throw new Error('[CompositeTransportService] not connected — no active transport');
@@ -121,36 +121,36 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
 
   async rekey(newSessionKey: Uint8Array): Promise<void> {
     // Apply to both transports so a path swap mid-session inherits the new key.
-    await this._relay.rekey(newSessionKey).catch((err) => {
+    await this._relayService.rekey(newSessionKey).catch((err) => {
       this._logService.error('[CompositeTransportService] relay rekey failed:', err);
     });
     if (this._activePath$.getValue() === 'webrtc') {
-      await this._webrtc.rekey(newSessionKey).catch((err) => {
+      await this._webrtcService.rekey(newSessionKey).catch((err) => {
         this._logService.error('[CompositeTransportService] webrtc rekey failed:', err);
       });
     }
   }
 
   async revokeConnection(connectionId: string): Promise<void> {
-    await this._relay.revokeConnection(connectionId).catch((err) => {
+    await this._relayService.revokeConnection(connectionId).catch((err) => {
       this._logService.error('[CompositeTransportService] relay revoke failed:', err);
     });
     if (this._activePath$.getValue() === 'webrtc') {
-      await this._webrtc.revokeConnection(connectionId).catch((err) => {
+      await this._webrtcService.revokeConnection(connectionId).catch((err) => {
         this._logService.error('[CompositeTransportService] webrtc revoke failed:', err);
       });
     }
   }
 
   private async _tryWebrtc(options: ITransportConnectOptions, sharedKey: ISharedKey): Promise<void> {
-    if (!this._webrtc.isSupported()) {
+    if (!this._webrtcService.isSupported()) {
       this._logService.log('[CompositeTransportService] WebRTC unsupported in this runtime; staying on relay');
       return;
     }
 
     try {
       await Promise.race([
-        this._webrtc.connect(options, sharedKey),
+        this._webrtcService.connect(options, sharedKey),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('webrtc-timeout')), WEBRTC_CONNECT_TIMEOUT_MS)),
       ]);
       this._wireWebrtc();
@@ -163,7 +163,7 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
 
   private _wireRelay(): void {
     this._relaySub?.unsubscribe();
-    this._relaySub = this._relay.frames$.subscribe((frame) => {
+    this._relaySub = this._relayService.frames$.subscribe((frame) => {
       // Only forward when relay is the active path — otherwise we'd duplicate frames.
       if (this._activePath$.getValue() === 'relay') {
         this._frames$.next(frame);
@@ -173,7 +173,7 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
 
   private _wireWebrtc(): void {
     this._webrtcSub?.unsubscribe();
-    this._webrtcSub = this._webrtc.frames$.subscribe((frame) => {
+    this._webrtcSub = this._webrtcService.frames$.subscribe((frame) => {
       if (this._activePath$.getValue() === 'webrtc') {
         this._frames$.next(frame);
       }

@@ -13,10 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ICapability, IFrame, IParticipantConnectInput, IParticipantConnectResult, IParticipantFrame, IParticipantService, IParticipantSnapshot, ISharedTerminalCryptoService, ISharedTerminalPluginConfig, ISharedTerminalTransportService } from '@termlnk/shared-terminal';
+import type { Nullable } from '@termlnk/core';
+import type { ICapability, IFrame, IParticipantConnectInput, IParticipantConnectResult, IParticipantFrame, IParticipantService, IParticipantSnapshot, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
 import type { Observable, Subscription } from 'rxjs';
-import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
-import { ClientConnectionState, FrameChannel, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, ISharedTerminalTransportService as ISharedTerminalTransportServiceId, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, TransportState } from '@termlnk/shared-terminal';
+import { Disposable, IConfigService, ILogService } from '@termlnk/core';
+import { ClientConnectionState, FrameChannel, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, TransportState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 
 /**
@@ -48,14 +49,14 @@ export class ParticipantClientService extends Disposable implements IParticipant
 
   private _transportSub: Subscription | null = null;
   private _transportStateSub: Subscription | null = null;
-  private _currentSessionId: string | null = null;
-  private _currentConnectionId: string | null = null;
+  private _currentSessionId: Nullable<string> = null;
+  private _currentConnectionId: Nullable<string> = null;
 
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService,
-    @Inject(IConfigService) private readonly _configService: IConfigService,
-    @Inject(ISharedTerminalCryptoServiceId) private readonly _crypto: ISharedTerminalCryptoService,
-    @Inject(ISharedTerminalTransportServiceId) private readonly _transport: ISharedTerminalTransportService
+    @ILogService private readonly _logService: ILogService,
+    @IConfigService private readonly _configService: IConfigService,
+    @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService,
+    @ISharedTerminalTransportService private readonly _transportService: ISharedTerminalTransportService
   ) {
     super();
   }
@@ -74,6 +75,7 @@ export class ParticipantClientService extends Disposable implements IParticipant
     if (previous === ClientConnectionState.Connected || previous === ClientConnectionState.Connecting) {
       await this.disconnect();
     }
+
     this._state$.next(ClientConnectionState.Pairing);
     this._lastError$.next(null);
 
@@ -103,12 +105,12 @@ export class ParticipantClientService extends Disposable implements IParticipant
     const daemonPub = parsed.capability && (parsed.capability as ICapability & { daemonPub?: string }).daemonPub
       ? base64UrlToBytes((parsed.capability as ICapability & { daemonPub?: string }).daemonPub!)
       : new Uint8Array(32);
-    const sharedKey = this._crypto.deriveSharedKey(daemonPub, ephPriv);
+    const sharedKey = this._cryptoService.deriveSharedKey(daemonPub, ephPriv);
 
     this._state$.next(ClientConnectionState.Connecting);
 
     try {
-      await this._transport.connect({
+      await this._transportService.connect({
         relayBaseUrl,
         sessionId: parsed.capability.sid,
         accountToken: '',
@@ -122,7 +124,7 @@ export class ParticipantClientService extends Disposable implements IParticipant
     this._currentSessionId = parsed.capability.sid;
     this._currentConnectionId = parsed.inviteId;
 
-    this._transportStateSub = this._transport.state$.subscribe((state) => {
+    this._transportStateSub = this._transportService.state$.subscribe((state) => {
       switch (state) {
         case TransportState.Connected:
           this._state$.next(ClientConnectionState.Connected);
@@ -141,7 +143,7 @@ export class ParticipantClientService extends Disposable implements IParticipant
       }
     });
 
-    this._transportSub = this._transport.frames$.subscribe((inbound) => {
+    this._transportSub = this._transportService.frames$.subscribe((inbound) => {
       const frame = inbound.frame;
       if (frame.channel === FrameChannel.SessionEvent) {
         this._consumeSessionEvent(frame);
@@ -159,7 +161,7 @@ export class ParticipantClientService extends Disposable implements IParticipant
   async disconnect(): Promise<void> {
     this._cleanupSubscriptions();
     try {
-      await this._transport.disconnect();
+      await this._transportService.disconnect();
     } catch (err) {
       this._logService.error('[ParticipantClientService] transport disconnect threw:', err);
     }

@@ -28,6 +28,4 @@ export interface IAuthKeyValueStorage {
   deleteKey(key: string): Promise<void>;
 }
 
-export const IAuthKeyValueStorage = createIdentifier<IAuthKeyValueStorage>(
-  'auth.key-value-storage'
-);
+export const IAuthKeyValueStorage = createIdentifier<IAuthKeyValueStorage>('auth.key-value-storage');

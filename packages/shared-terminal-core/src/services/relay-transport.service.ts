@@ -13,9 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IFrame, IFrameCodecService, IInboundFrame, ISharedKey, ISharedTerminalTransportService, ITransportConnectOptions, ITransportSendOptions } from '@termlnk/shared-terminal';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
-import { IFrameCodecService as IFrameCodecServiceId, SHARED_TERMINAL_HEARTBEAT_MS, SHARED_TERMINAL_RECONNECT_INITIAL_MS, SHARED_TERMINAL_RECONNECT_MAX_MS, TransportState } from '@termlnk/shared-terminal';
+import type { Nullable } from '@termlnk/core';
+import type { IFrame, IInboundFrame, ISharedKey, ISharedTerminalTransportService, ITransportConnectOptions, ITransportSendOptions } from '@termlnk/shared-terminal';
+import { Disposable, ILogService } from '@termlnk/core';
+import { IFrameCodecService, SHARED_TERMINAL_HEARTBEAT_MS, SHARED_TERMINAL_RECONNECT_INITIAL_MS, SHARED_TERMINAL_RECONNECT_MAX_MS, TransportState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 
 export interface IRelayWebSocket {
@@ -50,19 +51,19 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   readonly frames$ = this._frames$.asObservable();
 
   private readonly _webSocketCtor: RelayWebSocketCtor;
-  private _ws: IRelayWebSocket | null = null;
-  private _options: ITransportConnectOptions | null = null;
-  private _sharedKey: ISharedKey | null = null;
+  private _ws: Nullable<IRelayWebSocket> = null;
+  private _options: Nullable<ITransportConnectOptions> = null;
+  private _sharedKey: Nullable<ISharedKey> = null;
   private _stopped = true;
   private _reconnectBackoff = SHARED_TERMINAL_RECONNECT_INITIAL_MS;
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  private _sessionKey: ISharedKey | null = null;
-  private _connectionId: string | null = null;
+  private _sessionKey: Nullable<ISharedKey> = null;
+  private _connectionId: Nullable<string> = null;
 
   constructor(
-    @Inject(IFrameCodecServiceId) private readonly _codec: IFrameCodecService,
-    @Inject(ILogService) private readonly _logService: ILogService,
+    @IFrameCodecService private readonly _codecService: IFrameCodecService,
+    @ILogService private readonly _logService: ILogService,
     config: IRelayTransportServiceConfig = {}
   ) {
     super();
@@ -70,13 +71,13 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   }
 
   override dispose(): void {
+    super.dispose();
     this._stopped = true;
     this._closeSocket();
     this._clearReconnectTimer();
     this._clearHeartbeat();
     this._state$.complete();
     this._frames$.complete();
-    super.dispose();
   }
 
   async connect(options: ITransportConnectOptions, sharedKey: ISharedKey): Promise<void> {
@@ -101,7 +102,7 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     if (!this._ws || !this._currentKey()) {
       throw new Error('[RelayTransportService] cannot send before connected');
     }
-    const wire = this._codec.encrypt(frame, this._currentKey()!);
+    const wire = this._codecService.encrypt(frame, this._currentKey()!);
     this._ws.send(JSON.stringify({
       type: 'frame',
       target: options.target,
@@ -177,7 +178,7 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     }
 
     try {
-      const frame = this._codec.decrypt(this._base64ToBytes(envelope.payload), this._currentKey());
+      const frame = this._codecService.decrypt(this._base64ToBytes(envelope.payload), this._currentKey());
       this._frames$.next({
         source: envelope.source ?? (this._options?.mode === 'daemon' ? 'client' : 'daemon'),
         frame,

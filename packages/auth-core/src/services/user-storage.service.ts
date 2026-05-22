@@ -15,7 +15,7 @@
 
 import type { IUserAccount, IUserStorageService } from '@termlnk/auth';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { Disposable, ILogService } from '@termlnk/core';
 
 const USER_KEY = 'user';
 
@@ -23,8 +23,8 @@ const USER_KEY = 'user';
 // drift) treat the user as logged out instead of crashing.
 export class UserStorageService extends Disposable implements IUserStorageService {
   constructor(
-    @Inject(IAuthKeyValueStorage) private readonly _storage: IAuthKeyValueStorage,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @IAuthKeyValueStorage private readonly _storage: IAuthKeyValueStorage,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }

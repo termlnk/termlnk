@@ -15,7 +15,7 @@
 
 import type { ITokenPair, ITokenStorageService } from '@termlnk/auth';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { Disposable, ILogService } from '@termlnk/core';
 
 const TOKENS_KEY = 'tokens';
 
@@ -23,8 +23,8 @@ const TOKENS_KEY = 'tokens';
 // drift) treat the user as logged out instead of crashing.
 export class TokenStorageService extends Disposable implements ITokenStorageService {
   constructor(
-    @Inject(IAuthKeyValueStorage) private readonly _storage: IAuthKeyValueStorage,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @IAuthKeyValueStorage private readonly _storage: IAuthKeyValueStorage,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
   }

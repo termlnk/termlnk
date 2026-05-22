@@ -15,7 +15,7 @@
 
 import type { ITokenPair, ITokenRefresher } from '@termlnk/auth';
 import { HttpRequestError } from '@termlnk/auth';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { Disposable, ILogService } from '@termlnk/core';
 
 // Minimal subset of fetch we depend on — easier to fake in tests; production uses
 // globalThis.fetch (native on Node 22+, browsers, RN).
@@ -61,7 +61,7 @@ export class HttpTokenRefresher extends Disposable implements ITokenRefresher {
 
   constructor(
     private readonly _config: IHttpTokenRefresherConfig,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
     this._fetchFn = _config.fetchFn ?? DEFAULT_FETCH_FN;

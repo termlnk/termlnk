@@ -13,10 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITokenManager } from '@termlnk/auth';
 import type { Dependency, Injector } from '@termlnk/core';
 import type { ISyncCorePluginConfig } from './controllers/config.schema';
-import { ITokenManager as ITokenManagerId } from '@termlnk/auth';
+import { ITokenManager } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
@@ -81,7 +80,7 @@ export class SyncCorePlugin extends Plugin {
     return [ISyncTransportService, {
       useFactory: (tokenManager: ITokenManager, logService: ILogService) =>
         new HttpSyncTransportService({ baseUrl }, tokenManager, logService),
-      deps: [ITokenManagerId, ILogService],
+      deps: [ITokenManager, ILogService],
     }];
   }
 

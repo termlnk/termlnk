@@ -16,7 +16,7 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { IMcpOAuthTokenEntity, IMcpOAuthTokenEntityInsert } from '../entities';
-import { Disposable, Inject } from '@termlnk/core';
+import { Disposable } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
 import { generateId } from '../entities/base';
 import { mcpOAuthTokenEntity } from '../entities/mcp-oauth-token';
@@ -29,8 +29,8 @@ type SensitiveField = typeof SENSITIVE_FIELDS[number];
 
 export class McpOAuthTokenRepository extends Disposable {
   constructor(
-    @Inject(IDBAdaptorService) private readonly _dbService: IDBAdaptorService,
-    @Inject(ISecretCipherService) private readonly _cipher: ISecretCipherService
+    @IDBAdaptorService private readonly _dbService: IDBAdaptorService,
+    @ISecretCipherService private readonly _cipher: ISecretCipherService
   ) {
     super();
   }

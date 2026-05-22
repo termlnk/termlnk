@@ -13,12 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthKeyValueStorage, ITokenManager } from '@termlnk/auth';
 import type { Nullable } from '@termlnk/core';
 import type { IDevicePairingService, IRemoteAnnouncedSession, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
-import { AUTH_DEVICE_ID_STORAGE_KEY, IAuthKeyValueStorage as IAuthKeyValueStorageId, ITokenManager as ITokenManagerId } from '@termlnk/auth';
-import { Disposable, IConfigService, ILogService, Inject, Optional } from '@termlnk/core';
+import { AUTH_DEVICE_ID_STORAGE_KEY, IAuthKeyValueStorage, ITokenManager } from '@termlnk/auth';
+import { Disposable, IConfigService, ILogService, Optional } from '@termlnk/core';
 import { SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
 import { BehaviorSubject } from 'rxjs';
 
@@ -46,10 +45,10 @@ export class DevicePairingService extends Disposable implements IDevicePairingSe
   private _deviceIdCache: Nullable<string> = null;
 
   constructor(
-    @Inject(ILogService) private readonly _logService: ILogService,
-    @Inject(IConfigService) private readonly _configService: IConfigService,
-    @Optional(ITokenManagerId) private readonly _tokenManager: ITokenManager | null = null,
-    @Optional(IAuthKeyValueStorageId) private readonly _authStorage: IAuthKeyValueStorage | null = null
+    @ILogService private readonly _logService: ILogService,
+    @IConfigService private readonly _configService: IConfigService,
+    @Optional(ITokenManager) private readonly _tokenManager?: ITokenManager,
+    @Optional(IAuthKeyValueStorage) private readonly _authStorage?: IAuthKeyValueStorage
   ) {
     super();
     if (this._baseUrl()) {
