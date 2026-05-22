@@ -198,6 +198,20 @@ function resolveCloudBaseUrl(): string | undefined {
   return PRODUCTION_CLOUD_BASE_URL;
 }
 
+// Relay reuses the cloud host: HTTPS + WSS coexist on the same origin, so deriving the
+// WS URL from cloudBaseUrl keeps a single source of truth. Dev/CI can still pin a
+// separate relay via TERMLNK_RELAY_BASE_URL when testing against a local server.
+function resolveRelayBaseUrl(cloudBaseUrl: string | undefined): string | undefined {
+  const envValue = process.env.TERMLNK_RELAY_BASE_URL?.trim();
+  if (envValue && !app.isPackaged) {
+    return envValue;
+  }
+  if (!cloudBaseUrl) {
+    return undefined;
+  }
+  return cloudBaseUrl.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+}
+
 function resolveRendererAssetPath(requestURL: string): string | null {
   const { hostname, pathname } = new URL(requestURL);
   if (hostname !== 'termlnk') {
@@ -276,7 +290,10 @@ app.whenReady().then(async () => {
   // Cloud endpoint: TERMLNK_CLOUD_BASE_URL (dev) or PRODUCTION_CLOUD_BASE_URL (packaged).
   // Empty/unset → cloud stays offline and AuthGate shows the "unavailable" placeholder.
   const cloudBaseUrl = resolveCloudBaseUrl();
-  core.getInjector().get(ILogService).log(`[Bootstrap] cloudBaseUrl = ${cloudBaseUrl ?? '(unset — cloud features disabled)'}`);
+  const relayBaseUrl = resolveRelayBaseUrl(cloudBaseUrl);
+  const logService = core.getInjector().get(ILogService);
+  logService.log(`[Bootstrap] cloudBaseUrl = ${cloudBaseUrl ?? '(unset — cloud features disabled)'}`);
+  logService.log(`[Bootstrap] relayBaseUrl = ${relayBaseUrl ?? '(unset — shared-terminal disabled)'}`);
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl,
@@ -294,7 +311,7 @@ app.whenReady().then(async () => {
   // resolves TokenManager from the same singleton AuthCorePlugin binds. DatabasePlugin
   // is already up so CollabInviteTokenRepository / ConfigRepository / ISecretCipherService
   // are available for DaemonKeypairService and PairingService.
-  core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl });
+  core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl, relayBaseUrl });
   core.registerPlugin(SharedTerminalCorePlugin);
 
   // Bundled skills must live outside app.asar — Node's fs APIs throw ENOENT
