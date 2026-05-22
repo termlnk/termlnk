@@ -19,9 +19,17 @@ import { createIdentifier } from '@termlnk/core';
 
 // Master key derivation and lifecycle. Main-process only.
 //
-// The key never persists; users re-derive it on every login. lock() zeroes the in-memory key
-// (called on explicit logout or after long inactivity). Derivation runs entirely client-side:
-// email + server-issued salt -> Argon2id -> HKDF into auth/enc/index sub-keys.
+// derive() runs entirely client-side: email + server-issued salt -> Argon2id -> HKDF into
+// auth/enc/index sub-keys. After a successful derive() the wrapped key is persisted via
+// IAuthKeyValueStorage so tryRestoreFromStorage() can re-install it on the next app launch
+// without asking the user for the password again. Trust model: persistence is encrypted by
+// the OS keystore (Electron safeStorage: macOS Keychain / Windows DPAPI / Linux libsecret);
+// an attacker with an already-unlocked device can recover the vault, but the key never
+// leaves the main process and is never written in clear.
+//
+// lock() zeroes the in-memory key but leaves the persisted wrap intact, so restart can
+// auto-recover. clearPersistedKey() must be called on explicit logout / session revocation
+// to drop the wrap.
 export interface IMasterKeyService {
   readonly state$: Observable<MasterKeyState>;
 
@@ -34,6 +42,16 @@ export interface IMasterKeyService {
   getCurrent(): IMasterKey | null;
 
   getState(): MasterKeyState;
+
+  // Called at app start (after token/user restore). Reads the wrapped key from
+  // IAuthKeyValueStorage, decrypts via the OS keystore, and installs it as the current key.
+  // Returns true on success, false when no wrap exists or it is unreadable (in which case
+  // a corrupt blob is removed so the next derive() starts clean).
+  tryRestoreFromStorage(): Promise<boolean>;
+
+  // Drops the persisted wrap so the next launch cannot auto-restore. Idempotent; called
+  // from logout() and from token-revocation paths in HttpAuthService.
+  clearPersistedKey(): Promise<void>;
 }
 
 export const IMasterKeyService = createIdentifier<IMasterKeyService>('auth.master-key-service');

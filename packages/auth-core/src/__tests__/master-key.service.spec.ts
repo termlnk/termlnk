@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IArgon2idParams, IPasswordHasher } from '@termlnk/auth';
+import type { IArgon2idParams, IAuthKeyValueStorage, IPasswordHasher } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import { Buffer } from 'node:buffer';
-import { IPasswordHasher as IPasswordHasherId, MasterKeyState } from '@termlnk/auth';
+import { IAuthKeyValueStorage as IAuthKeyValueStorageId, IPasswordHasher as IPasswordHasherId, MasterKeyState } from '@termlnk/auth';
 import { ILogService as ILogServiceId, Injector } from '@termlnk/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MasterKeyService } from '../services/master-key.service';
@@ -24,6 +24,7 @@ import { MasterKeyService } from '../services/master-key.service';
 const TEST_EMAIL = 'alice@example.com';
 const TEST_PASSWORD = 'correct horse battery staple';
 const TEST_SALT_B64 = Buffer.from('static-test-salt-32-bytes-fixed!').toString('base64');
+const WRAPPED_KEY_STORAGE_KEY = 'wrappedMasterKey';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -50,20 +51,44 @@ class FakePasswordHasher implements IPasswordHasher {
   }
 }
 
-function createTestBed(): { injector: Injector; service: MasterKeyService } {
+class FakeAuthKeyValueStorage implements IAuthKeyValueStorage {
+  readonly map = new Map<string, string>();
+  async getString(key: string): Promise<string | null> {
+    return this.map.get(key) ?? null;
+  }
+
+  async setString(key: string, value: string): Promise<void> {
+    this.map.set(key, value);
+  }
+
+  async deleteKey(key: string): Promise<void> {
+    this.map.delete(key);
+  }
+}
+
+interface ITestBed {
+  injector: Injector;
+  service: MasterKeyService;
+  storage: FakeAuthKeyValueStorage;
+}
+
+function createTestBed(): ITestBed {
   const injector = new Injector();
+  const storage = new FakeAuthKeyValueStorage();
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
   injector.add([IPasswordHasherId, { useClass: FakePasswordHasher }]);
+  injector.add([IAuthKeyValueStorageId, { useValue: storage }]);
   injector.add([MasterKeyService]);
-  return { injector, service: injector.get(MasterKeyService) };
+  return { injector, service: injector.get(MasterKeyService), storage };
 }
 
 describe('MasterKeyService', () => {
   let injector: Injector;
   let service: MasterKeyService;
+  let storage: FakeAuthKeyValueStorage;
 
   beforeEach(() => {
-    ({ injector, service } = createTestBed());
+    ({ injector, service, storage } = createTestBed());
   });
 
   afterEach(() => {
@@ -185,4 +210,84 @@ describe('MasterKeyService', () => {
     expect(service.getCurrent()).toBeNull();
     sub.unsubscribe();
   }, 30_000);
+
+  it('derive() persists a wrapped blob containing all three sub keys', async () => {
+    await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+
+    const raw = storage.map.get(WRAPPED_KEY_STORAGE_KEY);
+    expect(raw).toBeDefined();
+    const blob = JSON.parse(raw!) as { email: string; authKey: string; encKey: string; indexKey: string };
+    expect(blob.email).toBe(TEST_EMAIL);
+    expect(typeof blob.authKey).toBe('string');
+    expect(typeof blob.encKey).toBe('string');
+    expect(typeof blob.indexKey).toBe('string');
+    // base64 of 32 bytes is 44 chars (with padding).
+    expect(blob.authKey.length).toBeGreaterThanOrEqual(43);
+  }, 30_000);
+
+  it('tryRestoreFromStorage() round-trips: derive → simulate restart → restored key matches', async () => {
+    const original = await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    const authSnapshot = new Uint8Array(original.authKey);
+    const encSnapshot = new Uint8Array(original.encKey);
+    const indexSnapshot = new Uint8Array(original.indexKey);
+
+    // Simulate process restart: drop the in-memory key but keep the persisted blob.
+    service.lock();
+    expect(service.getCurrent()).toBeNull();
+
+    const restored = await service.tryRestoreFromStorage();
+    expect(restored).toBe(true);
+    expect(service.getState()).toBe(MasterKeyState.Unlocked);
+    const current = service.getCurrent()!;
+    expect(current.email).toBe(TEST_EMAIL);
+    expect(current.authKey).toEqual(authSnapshot);
+    expect(current.encKey).toEqual(encSnapshot);
+    expect(current.indexKey).toEqual(indexSnapshot);
+  }, 60_000);
+
+  it('tryRestoreFromStorage() returns false and self-heals when the blob is corrupt', async () => {
+    storage.map.set(WRAPPED_KEY_STORAGE_KEY, '{not valid json');
+
+    const ok = await service.tryRestoreFromStorage();
+
+    expect(ok).toBe(false);
+    expect(service.getState()).toBe(MasterKeyState.Locked);
+    expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(false);
+  });
+
+  it('tryRestoreFromStorage() returns false when no wrap exists', async () => {
+    expect(await service.tryRestoreFromStorage()).toBe(false);
+    expect(service.getState()).toBe(MasterKeyState.Locked);
+  });
+
+  it('lock() does NOT remove the persisted wrap — restart can still restore', async () => {
+    await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(true);
+
+    service.lock();
+    expect(service.getCurrent()).toBeNull();
+    // Wrap survives lock — that is the whole point of OS-keystore persistence.
+    expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(true);
+
+    const restored = await service.tryRestoreFromStorage();
+    expect(restored).toBe(true);
+    expect(service.getState()).toBe(MasterKeyState.Unlocked);
+  }, 30_000);
+
+  it('clearPersistedKey() removes the wrap so tryRestoreFromStorage returns false next time', async () => {
+    await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(true);
+
+    await service.clearPersistedKey();
+    expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(false);
+
+    service.lock();
+    expect(await service.tryRestoreFromStorage()).toBe(false);
+  }, 30_000);
+
+  it('clearPersistedKey() is idempotent and a no-op when no wrap exists', async () => {
+    await service.clearPersistedKey();
+    await service.clearPersistedKey();
+    expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(false);
+  });
 });

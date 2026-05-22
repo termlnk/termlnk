@@ -15,7 +15,7 @@
 
 import type { ILogService, LogLevel } from '@termlnk/core';
 import { Buffer } from 'node:buffer';
-import { IMasterKeyService, IPasswordHasher } from '@termlnk/auth';
+import { IAuthKeyValueStorage, IMasterKeyService, IPasswordHasher } from '@termlnk/auth';
 import { HashWasmPasswordHasher, MasterKeyService } from '@termlnk/auth-core';
 import { ILogService as ILogServiceId, Injector } from '@termlnk/core';
 import { SYNC_PAYLOAD_PREFIX } from '@termlnk/sync';
@@ -38,6 +38,21 @@ class NoopLogService implements ILogService {
   setLogLevel(_level: LogLevel): void {}
 }
 
+class InMemoryAuthKeyValueStorage implements IAuthKeyValueStorage {
+  private readonly _map = new Map<string, string>();
+  async getString(key: string): Promise<string | null> {
+    return this._map.get(key) ?? null;
+  }
+
+  async setString(key: string, value: string): Promise<void> {
+    this._map.set(key, value);
+  }
+
+  async deleteKey(key: string): Promise<void> {
+    this._map.delete(key);
+  }
+}
+
 interface ITestBed {
   injector: Injector;
   masterKeyService: MasterKeyService;
@@ -50,6 +65,9 @@ function createTestBed(): ITestBed {
   // MasterKeyService takes IPasswordHasher as a constructor dep so React Native can
   // swap in a native Argon2id binding. Tests stay on the WebAssembly default under Node.
   injector.add([IPasswordHasher, { useClass: HashWasmPasswordHasher }]);
+  // MasterKeyService persists the wrapped key via IAuthKeyValueStorage so restart can
+  // auto-restore. Tests use an in-memory fake — no platform keystore involvement.
+  injector.add([IAuthKeyValueStorage, { useClass: InMemoryAuthKeyValueStorage }]);
   injector.add([IMasterKeyService, { useClass: MasterKeyService }]);
   injector.add([SyncCryptoService]);
 

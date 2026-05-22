@@ -53,6 +53,12 @@ class FakeMasterKeyService implements IMasterKeyService {
     return null;
   }
 
+  async tryRestoreFromStorage(): Promise<boolean> {
+    return false;
+  }
+
+  async clearPersistedKey(): Promise<void> {}
+
   getState(): MasterKeyState {
     return this._state$.getValue();
   }
@@ -104,7 +110,7 @@ interface ITestBed {
   probe: StubIdleProbe;
   config: ConfigService;
   controller: IdleLockController;
-  authService: FakeAuthService | null;
+  authService: FakeAuthService | undefined;
 }
 
 function createBed(opts: { autoLockMinutes: number; withAuthService?: boolean }): ITestBed {
@@ -112,7 +118,7 @@ function createBed(opts: { autoLockMinutes: number; withAuthService?: boolean })
   const probe = new StubIdleProbe();
   const config = new ConfigService();
   config.setConfig(AUTH_PLUGIN_CONFIG_KEY, { autoLockIdleMinutes: opts.autoLockMinutes });
-  const authService = opts.withAuthService ? new FakeAuthService(master) : null;
+  const authService = opts.withAuthService ? new FakeAuthService(master) : undefined;
   const controller = new IdleLockController(
     master,
     probe,

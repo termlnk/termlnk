@@ -38,6 +38,10 @@ class FakeMasterKeyService implements IMasterKeyService {
   current: IMasterKey | null = null;
   derivedFor: { password: string; material: IDerivationMaterial } | null = null;
   lockCalls = 0;
+  tryRestoreCalls = 0;
+  clearPersistedCalls = 0;
+  // When set, tryRestoreFromStorage() installs this key and returns true.
+  pendingRestore: IMasterKey | null = null;
 
   async derive(password: string, material: IDerivationMaterial): Promise<IMasterKey> {
     this.derivedFor = { password, material };
@@ -65,6 +69,20 @@ class FakeMasterKeyService implements IMasterKeyService {
 
   getState(): never {
     return AuthState.Unauthenticated as never;
+  }
+
+  async tryRestoreFromStorage(): Promise<boolean> {
+    this.tryRestoreCalls++;
+    if (this.pendingRestore) {
+      this.current = this.pendingRestore;
+      return true;
+    }
+    return false;
+  }
+
+  async clearPersistedKey(): Promise<void> {
+    this.clearPersistedCalls++;
+    this.pendingRestore = null;
   }
 }
 
@@ -487,6 +505,9 @@ describe('HttpAuthService — logout', () => {
     await auth.logout();
 
     expect(bed.masterKey.lockCalls).toBeGreaterThan(0);
+    // logout MUST drop the persisted wrap; otherwise the next launch would auto-restore
+    // an authenticated session against the user's explicit will.
+    expect(bed.masterKey.clearPersistedCalls).toBeGreaterThan(0);
     expect(bed.storage.data).toBeNull();
     expect(bed.userStorage.data).toBeNull();
     expect(auth.getCurrentUser()).toBeNull();
@@ -568,6 +589,9 @@ describe('HttpAuthService — restore', () => {
     expect(userEmissions[1]).toEqual({ ...TEST_USER, displayName: 'stale name' });
     expect(userEmissions[userEmissions.length - 1]).toEqual(freshUser);
     expect(stateEmissions).toContain(AuthState.Authenticated);
+    // After a successful /auth/me, the master key restore path runs so sync can encrypt
+    // immediately without forcing a re-login.
+    expect(bed.masterKey.tryRestoreCalls).toBe(1);
 
     userSub.unsubscribe();
     stateSub.unsubscribe();
@@ -648,6 +672,9 @@ describe('HttpAuthService — restore', () => {
     expect(bed.userStorage.data).toBeNull();
     expect(bed.storage.data).toBeNull();
     expect(bed.masterKey.lockCalls).toBeGreaterThan(0);
+    // Server-revoked path must also nuke the persisted wrap so the next launch cannot
+    // auto-restore into a session the server no longer trusts.
+    expect(bed.masterKey.clearPersistedCalls).toBeGreaterThan(0);
     auth.dispose();
   });
 

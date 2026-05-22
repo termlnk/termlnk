@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AuthErrorCode, IAuthError, IAuthKeyValueStorage, IAuthService, IDevice, IDeviceNameProvider, ILoginInput, IMasterKeyService, IRegisterInput, ISrpClientService, ITokenManager, ITokenPair, IUserAccount, IUserStorageService } from '@termlnk/auth';
+import type { AuthErrorCode, IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, ITokenPair, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage as IAuthKeyValueStorageId, IDeviceNameProvider as IDeviceNameProviderId, IMasterKeyService as IMasterKeyServiceId, ISrpClientService as ISrpClientServiceId, ITokenManager as ITokenManagerId, IUserStorageService as IUserStorageServiceId, randomBytes } from '@termlnk/auth';
-import { Disposable, generateRandomId, ILogService, Inject, Optional } from '@termlnk/core';
+import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage, IDeviceNameProvider, IMasterKeyService, ISrpClientService, ITokenManager, IUserStorageService, randomBytes } from '@termlnk/auth';
+import { Disposable, generateRandomId, ILogService, Optional } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 
 // Random component length (bytes) of the Argon2id salt; combined with the email to form
@@ -192,15 +192,16 @@ export class HttpAuthService extends Disposable implements IAuthService {
 
   constructor(
     private readonly _config: IHttpAuthServiceConfig,
-    @Inject(IMasterKeyServiceId) private readonly _masterKey: IMasterKeyService,
-    @Inject(ISrpClientServiceId) private readonly _srp: ISrpClientService,
-    @Inject(ITokenManagerId) private readonly _tokenManager: ITokenManager,
-    @Inject(IAuthKeyValueStorageId) private readonly _storage: IAuthKeyValueStorage,
-    @Inject(IUserStorageServiceId) private readonly _userStorage: IUserStorageService,
-    @Inject(ILogService) private readonly _logService: ILogService,
-    @Optional(IDeviceNameProviderId) private readonly _deviceNameProvider: IDeviceNameProvider | null = null
+    @IMasterKeyService private readonly _masterKey: IMasterKeyService,
+    @ISrpClientService private readonly _srp: ISrpClientService,
+    @ITokenManager private readonly _tokenManager: ITokenManager,
+    @IAuthKeyValueStorage private readonly _storage: IAuthKeyValueStorage,
+    @IUserStorageService private readonly _userStorage: IUserStorageService,
+    @ILogService private readonly _logService: ILogService,
+    @Optional(IDeviceNameProvider) private readonly _deviceNameProvider?: IDeviceNameProvider
   ) {
     super();
+
     this._fetchFn = _config.fetchFn ?? DEFAULT_FETCH_FN;
   }
 
@@ -344,6 +345,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
     }
 
     this._masterKey.lock();
+    await this._masterKey.clearPersistedKey();
     await this._tokenManager.clear();
     await this._userStorage.clear();
     this._currentUser$.next(null);
@@ -389,6 +391,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
         this._logService.log('[HttpAuthService] /auth/me rejected token; clearing session');
         await this._userStorage.clear();
         await this._tokenManager.clear();
+        await this._masterKey.clearPersistedKey();
         this._masterKey.lock();
         this._currentUser$.next(null);
         this._authState$.next(AuthState.Unauthenticated);
@@ -396,6 +399,12 @@ export class HttpAuthService extends Disposable implements IAuthService {
       }
       this._logService.warn('[HttpAuthService] /auth/me self-heal failed (keeping cached user):', err);
     }
+
+    // Token + user are valid → reinstall the master key from the OS-keystore-wrapped blob
+    // so the sync layer can encrypt/decrypt immediately, without forcing a re-login.
+    // Failure is silent: the user keeps a working logged-in session but sync stays paused
+    // until they sign in again (which re-derives + re-wraps the key).
+    await this._masterKey.tryRestoreFromStorage();
   }
 
   private async _completeAuthSession(resp: IRegisterResponseBody | ISrpVerifyResponseBody): Promise<void> {
@@ -553,6 +562,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
     if (!this._deviceNameProvider) {
       return FALLBACK_DEVICE_NAME;
     }
+
     try {
       const name = this._deviceNameProvider.getName();
       return name && name.length > 0 ? name : FALLBACK_DEVICE_NAME;

@@ -13,12 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ILogService, LogLevel } from '@termlnk/core';
+import type { LogLevel } from '@termlnk/core';
 import type { BackupRepository, IBackupSnapshot } from '@termlnk/database';
 import { Buffer } from 'node:buffer';
-import { IMasterKeyService, IPasswordHasher } from '@termlnk/auth';
+import { IAuthKeyValueStorage, IMasterKeyService, IPasswordHasher } from '@termlnk/auth';
 import { HashWasmPasswordHasher, MasterKeyService } from '@termlnk/auth-core';
-import { ILogService as ILogServiceId, Injector } from '@termlnk/core';
+import { ILogService, Injector } from '@termlnk/core';
 import { BACKUP_PAYLOAD_PREFIX } from '@termlnk/sync';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BackupService } from '../services/backup.service';
@@ -36,6 +36,21 @@ class NoopLogService implements ILogService {
   error(): void {}
   deprecate(): void {}
   setLogLevel(_level: LogLevel): void {}
+}
+
+class InMemoryAuthKeyValueStorage implements IAuthKeyValueStorage {
+  private readonly _map = new Map<string, string>();
+  async getString(key: string): Promise<string | null> {
+    return this._map.get(key) ?? null;
+  }
+
+  async setString(key: string, value: string): Promise<void> {
+    this._map.set(key, value);
+  }
+
+  async deleteKey(key: string): Promise<void> {
+    this._map.delete(key);
+  }
 }
 
 function makeEmptySnapshot(): IBackupSnapshot {
@@ -124,9 +139,9 @@ interface ITestBed {
 
 function createTestBed(): ITestBed {
   const injector = new Injector();
-  injector.add([ILogServiceId, { useClass: NoopLogService }]);
-  // MasterKeyService requires IPasswordHasher; bind the Wasm impl since these tests run under Node.
+  injector.add([ILogService, { useClass: NoopLogService }]);
   injector.add([IPasswordHasher, { useClass: HashWasmPasswordHasher }]);
+  injector.add([IAuthKeyValueStorage, { useClass: InMemoryAuthKeyValueStorage }]);
   injector.add([IMasterKeyService, { useClass: MasterKeyService }]);
   const cryptoService = new SyncCryptoService(
     injector.get(IMasterKeyService),
