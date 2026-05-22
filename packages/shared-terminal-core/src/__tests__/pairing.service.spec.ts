@@ -112,12 +112,8 @@ class FakeCollabInviteTokenRepository {
 class CapturingTransport implements ICollabInviteTransportService {
   creates: ICollabInviteCreateInput[] = [];
   revokes: string[] = [];
-  available = true;
   pushCreateImpl: (input: ICollabInviteCreateInput) => Promise<void> = async () => {};
   pushRevokeImpl: (inviteId: string) => Promise<void> = async () => {};
-  isAvailable(): boolean {
-    return this.available;
-  }
 
   async pushCreate(input: ICollabInviteCreateInput): Promise<void> {
     this.creates.push(input);
@@ -134,7 +130,7 @@ class CapturingTransport implements ICollabInviteTransportService {
   }
 }
 
-function buildService(transport: ICollabInviteTransportService | null = null): {
+function buildService(transport: ICollabInviteTransportService | undefined = undefined): {
   service: PairingService;
   repo: FakeCollabInviteTokenRepository;
   config: IConfigService;
@@ -315,21 +311,6 @@ describe('PairingService', () => {
     expect(row?.serverSyncedAt).toBeNull();
     expect(logSpy).toHaveBeenCalled();
     logSpy.mockRestore();
-  });
-
-  it('skips transport push when cloud is unavailable', async () => {
-    const transport = new CapturingTransport();
-    transport.available = false;
-    const { service } = buildService(transport);
-    await bootstrapWait;
-
-    await service.createInvite({
-      sessionId: 'sid',
-      role: SharedTerminalRole.Observer,
-      ttlMs: 1000,
-      singleUse: true,
-    });
-    expect(transport.creates).toHaveLength(0);
   });
 
   it('throws when relayBaseUrl is missing', async () => {

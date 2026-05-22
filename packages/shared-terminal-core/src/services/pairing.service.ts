@@ -14,29 +14,10 @@
  */
 
 import type { CollabInviteStatus as DbCollabInviteStatus, ICollabInviteTokenEntity } from '@termlnk/database';
-import type {
-  CollabInviteStatus,
-  ICapability,
-  ICollabInvite,
-  ICollabInviteTransportService,
-  IInviteClaimResult,
-  IInviteCreateOptions,
-  IInviteTokenState,
-  IPairedDevice,
-  IPairingService,
-  ISharedTerminalCryptoService,
-  ISharedTerminalPluginConfig,
-  SharedTerminalRole,
-} from '@termlnk/shared-terminal';
+import type { CollabInviteStatus, ICapability, ICollabInvite, ICollabInviteTransportService, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IPairingService, ISharedTerminalPluginConfig, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { Disposable, IConfigService, ILogService, Inject, Optional } from '@termlnk/core';
 import { CollabInviteTokenRepository } from '@termlnk/database';
-import {
-  ICollabInviteTransportService as ICollabInviteTransportServiceId,
-  ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId,
-  SHARED_TERMINAL_CAPABILITY_VERSION,
-  SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS,
-  SHARED_TERMINAL_PLUGIN_CONFIG_KEY,
-} from '@termlnk/shared-terminal';
+import { ICollabInviteTransportService as ICollabInviteTransportServiceId, ISharedTerminalCryptoService, SHARED_TERMINAL_CAPABILITY_VERSION, SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { computeCapabilityHash } from '../utils/capability-hash';
 import { bytesToBase64Url } from '../utils/encoding';
@@ -70,18 +51,15 @@ export class PairingService extends Disposable implements IPairingService {
 
   private _refreshing = false;
 
-  private readonly _transport: ICollabInviteTransportService | null;
-
   constructor(
-    @Inject(IConfigService) private readonly _configService: IConfigService,
-    @Inject(ISharedTerminalCryptoServiceId) private readonly _crypto: ISharedTerminalCryptoService,
+    @IConfigService private readonly _configService: IConfigService,
+    @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService,
     @Inject(CollabInviteTokenRepository) private readonly _repo: CollabInviteTokenRepository,
-    @Inject(ILogService) private readonly _logService: ILogService,
-    @Optional(ICollabInviteTransportServiceId) transport: ICollabInviteTransportService | null
+    @ILogService private readonly _logService: ILogService,
+    @Optional(ICollabInviteTransportServiceId) private readonly _transportService?: ICollabInviteTransportService
   ) {
     super();
-    this._transport = transport;
-    // Async bootstrap: hydrate from disk, run expiry sweep, then emit initial state.
+
     void this._bootstrap();
   }
 
@@ -107,15 +85,15 @@ export class PairingService extends Disposable implements IPairingService {
     const ttlMs = Number.isFinite(options.ttlMs) && options.ttlMs > 0
       ? options.ttlMs
       : SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS;
-    const inviteId = bytesToBase64Url(this._crypto.randomBytes(24));
-    const eph = this._crypto.generateKeypair();
-    const sessionId = options.sessionId ?? bytesToBase64Url(this._crypto.randomBytes(32));
+    const inviteId = bytesToBase64Url(this._cryptoService.randomBytes(24));
+    const eph = this._cryptoService.generateKeypair();
+    const sessionId = options.sessionId ?? bytesToBase64Url(this._cryptoService.randomBytes(32));
     const capability: ICapability = {
       v: SHARED_TERMINAL_CAPABILITY_VERSION,
       sid: sessionId,
       role: options.role,
       exp: Math.min(now + ttlMs, Number.MAX_SAFE_INTEGER),
-      nonce: bytesToBase64Url(this._crypto.randomBytes(16)),
+      nonce: bytesToBase64Url(this._cryptoService.randomBytes(16)),
     };
     const capabilityHash = await computeCapabilityHash(capability);
     const ephPrivB64 = bytesToBase64Url(eph.secretKey);
@@ -149,9 +127,9 @@ export class PairingService extends Disposable implements IPairingService {
     };
 
     // Best-effort server push; never block the owner UX on cloud availability.
-    if (this._transport?.isAvailable()) {
+    if (this._transportService) {
       try {
-        await this._transport.pushCreate({
+        await this._transportService.pushCreate({
           inviteId,
           sessionId,
           role: capability.role,
@@ -185,9 +163,9 @@ export class PairingService extends Disposable implements IPairingService {
     }
     await this._repo.markRevoked(inviteId, Date.now());
 
-    if (this._transport?.isAvailable()) {
+    if (this._transportService) {
       try {
-        await this._transport.pushRevoke(inviteId);
+        await this._transportService.pushRevoke(inviteId);
         await this._repo.markServerSynced(inviteId, Date.now());
       } catch (err) {
         this._logService.warn('[PairingService] server pushRevoke failed (offline-first; will retry):', err);

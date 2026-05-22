@@ -13,13 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITokenManager } from '@termlnk/auth';
 import type { Dependency } from '@termlnk/core';
-import type { ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
 import type { ISharedTerminalCoreConfig } from './controllers/config.schema';
-import { ITokenManager as ITokenManagerId } from '@termlnk/auth';
-import { DependentOn, IConfigService, ILogService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
-import { ICollabInviteTransportService, IDaemonKeypairService, IDevicePairingService, IFrameCodecService, IPairingService, IParticipantService, IPtyMultiplexerService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { ICollabInviteTransportService, IDaemonKeypairService, IDevicePairingService, IFrameCodecService, IPairingService, IParticipantService, IPtyMultiplexerService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { defaultPluginConfig, SHARED_TERMINAL_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { CompositeTransportService } from './services/composite-transport.service';
 import { SharedTerminalCryptoService } from './services/crypto.service';
@@ -81,17 +78,8 @@ export class SharedTerminalCorePlugin extends Plugin {
       [ISharedTerminalTransportService, { useClass: CompositeTransportService }],
       [IParticipantService, { useClass: ParticipantClientService }],
       [IDevicePairingService, { useClass: DevicePairingService }],
+      [ICollabInviteTransportService, { useClass: HttpCollabInviteTransportService }],
     ];
-
-    const config = this._configService.getConfig<ISharedTerminalPluginConfig>(SHARED_TERMINAL_PLUGIN_CONFIG_KEY);
-    if (config?.cloudBaseUrl) {
-      const cloudBaseUrl = config.cloudBaseUrl;
-      dependencies.push([ICollabInviteTransportService, {
-        useFactory: (tokenManager: ITokenManager, logService: ILogService) =>
-          new HttpCollabInviteTransportService({ baseUrl: cloudBaseUrl }, tokenManager, logService),
-        deps: [ITokenManagerId, ILogService],
-      }]);
-    }
 
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
   }

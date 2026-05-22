@@ -138,9 +138,6 @@ class FakeRepo {
 class TransportMock implements ICollabInviteTransportService {
   creates: ICollabInviteCreateInput[] = [];
   revokes: string[] = [];
-  isAvailable(): boolean {
-    return true;
-  }
 
   async pushCreate(input: ICollabInviteCreateInput): Promise<void> {
     this.creates.push(input);
@@ -155,7 +152,7 @@ class TransportMock implements ICollabInviteTransportService {
   }
 }
 
-function buildPairing(transport: ICollabInviteTransportService | null = null): {
+function buildPairing(transport: ICollabInviteTransportService | undefined = undefined): {
   service: PairingService;
   repo: FakeRepo;
   config: IConfigService;
@@ -297,7 +294,7 @@ describe('collaboration lifecycle', () => {
           return daemonKp;
         },
       };
-      const mux = new PtyMultiplexerService(new NoopLogService(), crypto, daemon);
+      const mux = new PtyMultiplexerService(crypto, new NoopLogService(), daemon);
       const pty = createPtySource('s1');
       mux.register(pty.source);
 
@@ -339,7 +336,7 @@ describe('collaboration lifecycle', () => {
       };
       const transport = new TransportMock();
       const { service } = buildPairing(transport);
-      const mux = new PtyMultiplexerService(new NoopLogService(), crypto, daemon);
+      const mux = new PtyMultiplexerService(crypto, new NoopLogService(), daemon);
       const pty = createPtySource('s2');
       mux.register(pty.source);
 

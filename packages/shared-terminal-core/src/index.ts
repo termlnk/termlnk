@@ -20,7 +20,7 @@ export { SharedTerminalCryptoService } from './services/crypto.service';
 export { DaemonKeypairService } from './services/daemon-keypair.service';
 export { FrameCodecService } from './services/frame-codec.service';
 export { HttpCollabInviteTransportService } from './services/http-collab-invite-transport.service';
-export type { CollabHttpFetchFn, IHttpCollabInviteTransportConfig } from './services/http-collab-invite-transport.service';
+export type { CollabHttpFetchFn } from './services/http-collab-invite-transport.service';
 export { PairingService } from './services/pairing.service';
 export { PtyMultiplexerService } from './services/pty-multiplexer.service';
 export { RelayTransportService } from './services/relay-transport.service';

@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITokenManager } from '@termlnk/auth';
-import type { ICollabInviteCreateInput, ICollabInviteServerView, ICollabInviteTransportService } from '@termlnk/shared-terminal';
-import { HttpRequestError, ITokenManager as ITokenManagerId } from '@termlnk/auth';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import type { ICollabInviteCreateInput, ICollabInviteServerView, ICollabInviteTransportService, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
+import { HttpRequestError, ITokenManager } from '@termlnk/auth';
+import { Disposable, IConfigService, ILogService } from '@termlnk/core';
+import { DEFAULT_CLOUD_BASE_URL, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
 
 /**
  * Subsettable fetch — same shape used by HttpSyncTransportService for testability.
@@ -38,12 +38,6 @@ const DEFAULT_FETCH_FN: CollabHttpFetchFn = async (url, init) => {
   };
 };
 
-export interface IHttpCollabInviteTransportConfig {
-  /** HTTPS root for `/collab/*` endpoints; e.g. `https://termlnk-server.example.com/v1`. */
-  readonly baseUrl: string;
-  readonly fetchFn?: CollabHttpFetchFn;
-}
-
 /**
  * Wire format (mirror of termlnk-server /v1/collab/invite/{create,revoke,list}):
  *
@@ -61,19 +55,12 @@ export interface IHttpCollabInviteTransportConfig {
  * ```
  */
 export class HttpCollabInviteTransportService extends Disposable implements ICollabInviteTransportService {
-  private readonly _fetchFn: CollabHttpFetchFn;
-
   constructor(
-    private readonly _config: IHttpCollabInviteTransportConfig,
-    @Inject(ITokenManagerId) private readonly _tokenManager: ITokenManager,
-    @Inject(ILogService) private readonly _logService: ILogService
+    @ITokenManager private readonly _tokenManager: ITokenManager,
+    @IConfigService private readonly _configService: IConfigService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
-    this._fetchFn = _config.fetchFn ?? DEFAULT_FETCH_FN;
-  }
-
-  isAvailable(): boolean {
-    return typeof this._config.baseUrl === 'string' && this._config.baseUrl.length > 0;
   }
 
   async pushCreate(input: ICollabInviteCreateInput): Promise<void> {
@@ -94,15 +81,16 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
   }
 
   private _joinUrl(path: string): string {
-    const base = this._config.baseUrl.replace(/\/+$/, '');
+    const base = this._getCloudBaseUrl().replace(/\/+$/, '');
     return `${base}${path}`;
   }
 
-  private async _fetchAuthorized(
-    url: string,
-    method: 'POST' | 'GET',
-    body?: unknown
-  ): Promise<{ json: () => Promise<unknown>; text: () => Promise<string> }> {
+  private _getCloudBaseUrl(): string {
+    const config = this._configService.getConfig<ISharedTerminalPluginConfig>(SHARED_TERMINAL_PLUGIN_CONFIG_KEY);
+    return config?.cloudBaseUrl || DEFAULT_CLOUD_BASE_URL;
+  }
+
+  private async _fetchAuthorized(url: string, method: 'POST' | 'GET', body?: unknown): Promise<{ json: () => Promise<unknown>; text: () => Promise<string> }> {
     const token = await this._tokenManager.getAccessToken();
     if (!token) {
       throw new Error('[HttpCollabInviteTransportService] unauthenticated: no access token available');
@@ -114,7 +102,8 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
     }
-    const resp = await this._fetchFn(url, {
+
+    const resp = await DEFAULT_FETCH_FN(url, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,

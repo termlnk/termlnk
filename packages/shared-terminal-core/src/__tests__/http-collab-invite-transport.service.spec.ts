@@ -14,11 +14,10 @@
  */
 
 import type { ITokenManager } from '@termlnk/auth';
-import type { ILogService, LogLevel } from '@termlnk/core';
-import type { ICollabInviteServerView } from '@termlnk/shared-terminal';
-import type { CollabHttpFetchFn } from '../services/http-collab-invite-transport.service';
-import { SharedTerminalRole } from '@termlnk/shared-terminal';
-import { describe, expect, it } from 'vitest';
+import type { IConfigService, ILogService, LogLevel } from '@termlnk/core';
+import type { ICollabInviteServerView, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
+import { SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalRole } from '@termlnk/shared-terminal';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HttpCollabInviteTransportService } from '../services/http-collab-invite-transport.service';
 
 class NoopLogService implements ILogService {
@@ -37,6 +36,19 @@ class FixedTokenManager {
   }
 }
 
+// Service reads cloudBaseUrl from IConfigService now (fallback DEFAULT_CLOUD_BASE_URL if
+// nothing configured). For testing we only need getConfig to return the test base url.
+function fakeConfigService(cloudBaseUrl: string | undefined): IConfigService {
+  return {
+    getConfig<T>(key: string): T | undefined {
+      if (key === SHARED_TERMINAL_PLUGIN_CONFIG_KEY) {
+        return { cloudBaseUrl } as unknown as T;
+      }
+      return undefined;
+    },
+  } as unknown as IConfigService;
+}
+
 interface IRecordedCall {
   url: string;
   method?: string;
@@ -44,11 +56,13 @@ interface IRecordedCall {
   body?: string;
 }
 
-function recordingFetch(
+// Stubs globalThis.fetch and records every call. Lets each spec verify URL, method,
+// headers and body without touching the real network.
+function stubFetch(
   responses: Record<string, { ok: boolean; status: number; body: unknown }>
-): { fetchFn: CollabHttpFetchFn; calls: IRecordedCall[] } {
+): IRecordedCall[] {
   const calls: IRecordedCall[] = [];
-  const fetchFn: CollabHttpFetchFn = async (url, init) => {
+  const fetchStub = async (url: string, init: { method?: string; headers?: Record<string, string>; body?: string }) => {
     calls.push({ url, method: init.method, headers: init.headers, body: init.body });
     const key = `${init.method ?? 'GET'} ${url}`;
     const resp = responses[key] ?? { ok: false, status: 404, body: { error: 'not registered' } };
@@ -60,35 +74,28 @@ function recordingFetch(
       text: async () => JSON.stringify(resp.body),
     };
   };
-  return { fetchFn, calls };
+  vi.stubGlobal('fetch', fetchStub);
+  return calls;
+}
+
+function buildService(cloudBaseUrl: string | undefined, token: string | null): HttpCollabInviteTransportService {
+  return new HttpCollabInviteTransportService(
+    new FixedTokenManager(token) as unknown as ITokenManager,
+    fakeConfigService(cloudBaseUrl),
+    new NoopLogService()
+  );
 }
 
 describe('HttpCollabInviteTransportService', () => {
-  it('isAvailable reflects baseUrl configuration', () => {
-    const { fetchFn } = recordingFetch({});
-    const svc = new HttpCollabInviteTransportService(
-      { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager('tok') as unknown as ITokenManager,
-      new NoopLogService()
-    );
-    expect(svc.isAvailable()).toBe(true);
-    const empty = new HttpCollabInviteTransportService(
-      { baseUrl: '', fetchFn },
-      new FixedTokenManager('tok') as unknown as ITokenManager,
-      new NoopLogService()
-    );
-    expect(empty.isAvailable()).toBe(false);
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('pushCreate sends inviteId + capability + ephPub, with Bearer auth', async () => {
-    const { fetchFn, calls } = recordingFetch({
+    const calls = stubFetch({
       'POST https://example.test/v1/collab/invite': { ok: true, status: 200, body: { invite: {} } },
     });
-    const svc = new HttpCollabInviteTransportService(
-      { baseUrl: 'https://example.test/v1/', fetchFn },
-      new FixedTokenManager('my-jwt') as unknown as ITokenManager,
-      new NoopLogService()
-    );
+    const svc = buildService('https://example.test/v1/', 'my-jwt');
     await svc.pushCreate({
       inviteId: 'inv-1',
       sessionId: 'sess',
@@ -110,14 +117,10 @@ describe('HttpCollabInviteTransportService', () => {
   });
 
   it('pushRevoke encodes the inviteId in the path', async () => {
-    const { fetchFn, calls } = recordingFetch({
+    const calls = stubFetch({
       'POST https://example.test/v1/collab/invite/inv%2F1/revoke': { ok: true, status: 204, body: {} },
     });
-    const svc = new HttpCollabInviteTransportService(
-      { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager('jwt') as unknown as ITokenManager,
-      new NoopLogService()
-    );
+    const svc = buildService('https://example.test/v1', 'jwt');
     await svc.pushRevoke('inv/1');
     expect(calls[0]!.url).toBe('https://example.test/v1/collab/invite/inv%2F1/revoke');
   });
@@ -133,25 +136,17 @@ describe('HttpCollabInviteTransportService', () => {
       status: 'active',
       createdAt: '2026-05-10T00:00:00.000Z',
     }];
-    const { fetchFn } = recordingFetch({
+    stubFetch({
       'GET https://example.test/v1/collab/invite': { ok: true, status: 200, body: { invites: fixture } },
     });
-    const svc = new HttpCollabInviteTransportService(
-      { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager('jwt') as unknown as ITokenManager,
-      new NoopLogService()
-    );
+    const svc = buildService('https://example.test/v1', 'jwt');
     const got = await svc.list();
     expect(got).toEqual(fixture);
   });
 
   it('throws when no access token is available', async () => {
-    const { fetchFn } = recordingFetch({});
-    const svc = new HttpCollabInviteTransportService(
-      { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager(null) as unknown as ITokenManager,
-      new NoopLogService()
-    );
+    stubFetch({});
+    const svc = buildService('https://example.test/v1', null);
     await expect(svc.pushCreate({
       inviteId: 'inv',
       sessionId: 'sess',
@@ -165,14 +160,10 @@ describe('HttpCollabInviteTransportService', () => {
   });
 
   it('surfaces non-2xx responses as errors', async () => {
-    const { fetchFn } = recordingFetch({
+    stubFetch({
       'POST https://example.test/v1/collab/invite': { ok: false, status: 409, body: { error: 'duplicate' } },
     });
-    const svc = new HttpCollabInviteTransportService(
-      { baseUrl: 'https://example.test/v1', fetchFn },
-      new FixedTokenManager('jwt') as unknown as ITokenManager,
-      new NoopLogService()
-    );
+    const svc = buildService('https://example.test/v1', 'jwt');
     await expect(svc.pushCreate({
       inviteId: 'inv',
       sessionId: 'sess',

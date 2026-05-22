@@ -45,3 +45,6 @@ export const SHARED_TERMINAL_RECONNECT_MAX_MS = 30_000;
 
 // Default invite TTL. Owner UI can change it to 1h / 24h / never.
 export const SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS = 15 * 60 * 1000;
+
+// Default cloud url
+export const DEFAULT_CLOUD_BASE_URL = 'https://cloud.termlnk.com/v1';

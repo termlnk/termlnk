@@ -26,9 +26,6 @@ import { createIdentifier } from '@termlnk/core';
  * failure — PairingService treats failures as soft (offline-first) and retries.
  */
 export interface ICollabInviteTransportService {
-  /** True when the underlying HTTP base URL is configured. */
-  isAvailable(): boolean;
-
   pushCreate(input: ICollabInviteCreateInput): Promise<void>;
 
   pushRevoke(inviteId: string): Promise<void>;
