@@ -16,7 +16,8 @@
 import type { Nullable } from '@termlnk/core';
 import type { ICapability, IFrame, IParticipantConnectInput, IParticipantConnectResult, IParticipantFrame, IParticipantService, IParticipantSnapshot, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
 import type { Observable, Subscription } from 'rxjs';
-import { Disposable, IConfigService, ILogService } from '@termlnk/core';
+import { ITokenManager } from '@termlnk/auth';
+import { Disposable, IConfigService, ILogService, Optional } from '@termlnk/core';
 import { ClientConnectionState, FrameChannel, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, TransportState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 
@@ -56,7 +57,8 @@ export class ParticipantClientService extends Disposable implements IParticipant
     @ILogService private readonly _logService: ILogService,
     @IConfigService private readonly _configService: IConfigService,
     @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService,
-    @ISharedTerminalTransportService private readonly _transportService: ISharedTerminalTransportService
+    @ISharedTerminalTransportService private readonly _transportService: ISharedTerminalTransportService,
+    @Optional(ITokenManager) private readonly _tokenManager?: ITokenManager
   ) {
     super();
   }
@@ -95,6 +97,17 @@ export class ParticipantClientService extends Disposable implements IParticipant
       throw err;
     }
 
+    // Relay routes by (userId, sessionId), where userId is derived from the JWT the
+    // joiner sends through the WebSocket Bearer subprotocol. Without a token the
+    // server rejects the upgrade with 401 — surface that as a "please sign in"
+    // error before we even open the socket.
+    const accountToken = await this._tokenManager?.getAccessToken();
+    if (!accountToken) {
+      const err = new Error('shared-terminal: sign in before joining a shared session — the relay requires the joiner\'s access token.');
+      this._fail(err, 'access token unavailable');
+      throw err;
+    }
+
     // Derive the shared key from the invite's ephemeral private key + the daemon's
     // public key embedded in the capability. The relay enforces TTL + capability
     // hash matching server-side; we don't replicate that check here.
@@ -113,7 +126,7 @@ export class ParticipantClientService extends Disposable implements IParticipant
       await this._transportService.connect({
         relayBaseUrl,
         sessionId: parsed.capability.sid,
-        accountToken: '',
+        accountToken,
         mode: 'client',
       }, sharedKey);
     } catch (err) {
