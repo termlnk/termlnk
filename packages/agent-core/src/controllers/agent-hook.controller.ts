@@ -16,7 +16,7 @@
 import type { IAgentHookConfig } from '@termlnk/agent';
 import process from 'node:process';
 import { AGENT_HOOK_CONFIG_KEY, DEFAULT_AGENT_HOOK_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IHookLauncherService } from '@termlnk/agent';
-import { Disposable, IConfigService, ILogService } from '@termlnk/core';
+import { Disposable, IConfigService, ILogService, Inject, Injector } from '@termlnk/core';
 import { ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { ClaudeCodeHookAdapter } from '../services/hook/adapters/claude-code-adapter';
 import { CodeBuddyHookAdapter } from '../services/hook/adapters/codebuddy-adapter';
@@ -35,7 +35,8 @@ export class AgentHookController extends Disposable {
     @IAgentMonitorService private readonly _agentMonitorService: IAgentMonitorService,
     @ITerminalSessionNotifyService private readonly _sessionNotifyService: ITerminalSessionNotifyService,
     @IConfigService private readonly _configService: IConfigService,
-    @ILogService private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @Inject(Injector) private readonly _injector: Injector
   ) {
     super();
 
@@ -57,14 +58,14 @@ export class AgentHookController extends Disposable {
 
     const launcherPath = this._hookLauncherService.getLauncherPath();
     const adapters = [
-      new ClaudeCodeHookAdapter(this._logService, launcherPath),
-      new CodexHookAdapter(this._logService, launcherPath),
-      new CursorHookAdapter(this._logService, launcherPath),
-      new GeminiHookAdapter(this._logService, launcherPath),
-      new CopilotHookAdapter(this._logService, launcherPath),
-      new CodeBuddyHookAdapter(this._logService, launcherPath),
-      new OpenCodeHookAdapter(this._logService, launcherPath),
-      new KimiCodeHookAdapter(this._logService, launcherPath),
+      this._injector.createInstance(ClaudeCodeHookAdapter, launcherPath),
+      this._injector.createInstance(CodexHookAdapter, launcherPath),
+      this._injector.createInstance(CursorHookAdapter, launcherPath),
+      this._injector.createInstance(GeminiHookAdapter, launcherPath),
+      this._injector.createInstance(CopilotHookAdapter, launcherPath),
+      this._injector.createInstance(CodeBuddyHookAdapter, launcherPath),
+      this._injector.createInstance(OpenCodeHookAdapter, launcherPath),
+      this._injector.createInstance(KimiCodeHookAdapter, launcherPath),
     ];
 
     for (const adapter of adapters) {
@@ -93,11 +94,6 @@ export class AgentHookController extends Disposable {
       });
   }
 
-  /**
-   * Enable external terminal monitoring unconditionally — the hook server
-   * publishes its port via `<configPath>/runtime.json` so agents running in
-   * terminals outside Termlnk can discover and report events.
-   */
   private _initExternalMonitor(): void {
     this._hookServerService.setExternalMonitorEnabled(true).catch((err) => {
       this._logService.warn('[AgentHookController]', 'Failed to enable external monitor:', err);
@@ -115,8 +111,8 @@ export class AgentHookController extends Disposable {
 
   override dispose(): void {
     // Best-effort uninstall on shutdown
-    this._hookRegistryService.uninstallAll().catch(() => {
-      // Ignore errors during shutdown
+    this._hookRegistryService.uninstallAll().catch((err) => {
+      this._logService.warn('[AgentHookController] uninstallAll on shutdown failed:', err);
     });
 
     void this._hookServerService.stop();

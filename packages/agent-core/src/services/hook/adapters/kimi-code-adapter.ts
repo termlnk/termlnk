@@ -14,14 +14,13 @@
  */
 
 import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
-import type { ILogService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
 import type { IAgentWireFormatter } from '../wire-formatters';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { TERMLNK_HOOK_MARKER } from '@termlnk/agent';
-import { Disposable, toDisposable } from '@termlnk/core';
+import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { GenericWireFormatter, parseUniformQuestionSet } from '../wire-formatters';
 
@@ -57,8 +56,6 @@ export class KimiCodeHookAdapter extends Disposable implements IAgentHookAdapter
     configDir: '.kimi',
     configFile: 'config.toml',
     disableEnvVar: 'TERMLNK_KIMI_HOOKS_DISABLED',
-    // Kimi's TOML format is unique; the format tag is a stub used only to
-    // satisfy IAgentHookDefinition — install/uninstall are fully overridden.
     format: { type: 'plugin-config' },
     events: [
       { agentEvent: 'SessionStart', termlnkEvent: 'session-start' },
@@ -91,10 +88,11 @@ export class KimiCodeHookAdapter extends Disposable implements IAgentHookAdapter
   private readonly _wireFormatter: IAgentWireFormatter = new GenericWireFormatter();
 
   constructor(
-    private readonly _logService: ILogService,
-    private readonly _launcherPath: string
+    private readonly _launcherPath: string,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
+
     this.disposeWithMe(toDisposable(() => {
       this._installed$.complete();
     }));

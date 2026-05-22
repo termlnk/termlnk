@@ -14,13 +14,12 @@
  */
 
 import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
-import type { ILogService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
 import type { IAgentWireFormatter } from '../wire-formatters';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { Disposable, toDisposable } from '@termlnk/core';
+import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { GenericWireFormatter, parseUniformQuestionSet } from '../wire-formatters';
 
@@ -67,10 +66,11 @@ export class OpenCodeHookAdapter extends Disposable implements IAgentHookAdapter
   private readonly _wireFormatter: IAgentWireFormatter = new GenericWireFormatter();
 
   constructor(
-    private readonly _logService: ILogService,
-    private readonly _launcherPath: string
+    private readonly _launcherPath: string,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
+
     this.disposeWithMe(toDisposable(() => {
       this._installed$.complete();
     }));

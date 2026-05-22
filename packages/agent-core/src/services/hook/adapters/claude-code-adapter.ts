@@ -14,11 +14,11 @@
  */
 
 import type { ExternalAgentType, IAgentHookDefinition, IAskUserQuestionSet } from '@termlnk/agent';
-import type { ILogService } from '@termlnk/core';
 import type { IAgentWireFormatter } from '../wire-formatters';
 import { existsSync, unlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { ILogService } from '@termlnk/core';
 import { ClaudeCodeWireFormatter, parseUniformQuestionSet } from '../wire-formatters';
 import { BaseConfigFileAdapter } from './base-config-adapter';
 
@@ -84,8 +84,11 @@ export class ClaudeCodeHookAdapter extends BaseConfigFileAdapter {
     ],
   };
 
-  constructor(logService: ILogService, launcherPath: string) {
-    super(logService, launcherPath);
+  constructor(
+    protected override readonly _launcherPath: string,
+    @ILogService protected override readonly _logService: ILogService
+  ) {
+    super(_launcherPath, _logService);
   }
 
   override async install(port: number, token: string): Promise<void> {

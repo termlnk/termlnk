@@ -14,7 +14,6 @@
  */
 
 import type { AgentHookEventType, ExternalAgentType, IAgentHookAdapter, IAgentHookDefinition, IAgentHookEventMapping, IAskUserQuestionSet, IPermissionDecision } from '@termlnk/agent';
-import type { ILogService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
 import type { IAgentWireFormatter } from '../wire-formatters';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -22,7 +21,7 @@ import { homedir, platform } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { TERMLNK_HOOK_MARKER } from '@termlnk/agent';
-import { Disposable, toDisposable } from '@termlnk/core';
+import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { GenericWireFormatter } from '../wire-formatters';
 
@@ -53,8 +52,8 @@ export abstract class BaseConfigFileAdapter extends Disposable implements IAgent
   protected readonly _wireFormatter: IAgentWireFormatter = new GenericWireFormatter();
 
   constructor(
-    protected readonly _logService: ILogService,
-    protected readonly _launcherPath: string
+    protected readonly _launcherPath: string,
+    @ILogService protected readonly _logService: ILogService
   ) {
     super();
     this.disposeWithMe(toDisposable(() => {
