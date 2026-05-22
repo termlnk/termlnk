@@ -42,17 +42,20 @@ export function MultiplayerControl(): React.JSX.Element | null {
   const [copied, setCopied] = useState(false);
   // Cache the invite URL across re-renders so the user can copy again without re-creating.
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  // Hold the active "Copied" timer so consecutive clicks restart the countdown
-  // rather than clearing the visual feedback prematurely.
+  // Track the active "Copied" timer so consecutive clicks restart the countdown
+  // rather than letting the visual feedback drop mid-flight.
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (copyTimerRef.current !== null) {
-        clearTimeout(copyTimerRef.current);
-      }
-    };
+  const clearCopyTimer = useCallback((): void => {
+    if (copyTimerRef.current !== null) {
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = null;
+    }
   }, []);
+
+  useEffect(() => {
+    return () => clearCopyTimer();
+  }, [clearCopyTimer]);
 
   const activeEntry = useMemo(() => {
     if (!activeSessionId) {
@@ -105,9 +108,7 @@ export function MultiplayerControl(): React.JSX.Element | null {
       }
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      if (copyTimerRef.current !== null) {
-        clearTimeout(copyTimerRef.current);
-      }
+      clearCopyTimer();
       copyTimerRef.current = setTimeout(() => {
         setCopied(false);
         copyTimerRef.current = null;
@@ -118,7 +119,7 @@ export function MultiplayerControl(): React.JSX.Element | null {
     } finally {
       setBusy(false);
     }
-  }, [client, activeEntry, inviteUrl, localeService, logService]);
+  }, [client, activeEntry, inviteUrl, localeService, logService, clearCopyTimer]);
 
   const handleStop = useCallback(async (): Promise<void> => {
     if (!client || !activeEntry) {
@@ -129,16 +130,13 @@ export function MultiplayerControl(): React.JSX.Element | null {
       await client.stopSharing(activeEntry.sessionId);
       setInviteUrl(null);
       setCopied(false);
-      if (copyTimerRef.current !== null) {
-        clearTimeout(copyTimerRef.current);
-        copyTimerRef.current = null;
-      }
+      clearCopyTimer();
     } catch (err) {
       logService.error('[MultiplayerControl] stop failed:', err);
     } finally {
       setBusy(false);
     }
-  }, [client, activeEntry, logService]);
+  }, [client, activeEntry, logService, clearCopyTimer]);
 
   const handleTakeKeyboard = useCallback(async (participantId: string): Promise<void> => {
     if (!client || !activeEntry) {
