@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "10adb65b-b1f0-46f1-9fa8-71e96598b58e",
+  "id": "6bff79e2-f779-4b4b-8c96-9115b8b80414",
   "prevIds": [
     "b1ad8e90-4f89-482d-b7dd-2276f14da64a"
   ],
@@ -12,6 +12,10 @@
     },
     {
       "name": "chat_session",
+      "entityType": "tables"
+    },
+    {
+      "name": "collab_invite_token",
       "entityType": "tables"
     },
     {
@@ -295,6 +299,166 @@
       "name": "updated_at",
       "entityType": "columns",
       "table": "chat_session"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "invite_id",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "session_id",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "role",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "capability_hash",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "capability_version",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "capability_nonce",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "eph_pub_b64",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "eph_priv_cipher",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "exp",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "single_use",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "note",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "consumed_at",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "revoked_at",
+      "entityType": "columns",
+      "table": "collab_invite_token"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "server_synced_at",
+      "entityType": "columns",
+      "table": "collab_invite_token"
     },
     {
       "type": "text",
@@ -1637,6 +1801,15 @@
     },
     {
       "columns": [
+        "invite_id"
+      ],
+      "nameExplicit": false,
+      "name": "collab_invite_token_pk",
+      "table": "collab_invite_token",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
         "key"
       ],
       "nameExplicit": false,
@@ -1765,6 +1938,48 @@
       "name": "idx_message_sort",
       "entityType": "indexes",
       "table": "chat_message"
+    },
+    {
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_collab_invite_token_status",
+      "entityType": "indexes",
+      "table": "collab_invite_token"
+    },
+    {
+      "columns": [
+        {
+          "value": "exp",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_collab_invite_token_exp",
+      "entityType": "indexes",
+      "table": "collab_invite_token"
+    },
+    {
+      "columns": [
+        {
+          "value": "session_id",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "name": "idx_collab_invite_token_session_id",
+      "entityType": "indexes",
+      "table": "collab_invite_token"
     },
     {
       "columns": [
