@@ -124,9 +124,9 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     this._ws?.send(JSON.stringify({ type: 'revoke', connectionId }));
   }
 
-  private async _openSocket(): Promise<void> {
+  private _openSocket(): Promise<void> {
     if (!this._options || !this._sharedKey || this._ws) {
-      return;
+      return Promise.resolve();
     }
     this._state$.next(
       this._state$.getValue() === TransportState.Disconnected
@@ -134,26 +134,45 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
         : TransportState.Connecting
     );
 
-    const ws = new this._webSocketCtor(this._buildUrl(this._options), [`Bearer.${this._options.accountToken}`]);
-    ws.addEventListener('open', () => {
-      this._reconnectBackoff = SHARED_TERMINAL_RECONNECT_INITIAL_MS;
-      this._state$.next(TransportState.Connected);
-      this._startHeartbeat();
+    // The returned promise resolves on first 'open' and rejects if 'close' fires
+    // before 'open' (the server's typical signal for upgrade rejection — e.g. 401
+    // from createWsBearerAuthMiddleware). Steady-state 'close' after a successful
+    // open feeds _scheduleReconnect; settled is the guard between these phases.
+    return new Promise<void>((resolve, reject) => {
+      const ws = new this._webSocketCtor(this._buildUrl(this._options!), [`Bearer.${this._options!.accountToken}`]);
+      let settled = false;
+
+      ws.addEventListener('open', () => {
+        this._reconnectBackoff = SHARED_TERMINAL_RECONNECT_INITIAL_MS;
+        this._state$.next(TransportState.Connected);
+        this._startHeartbeat();
+        if (!settled) {
+          settled = true;
+          resolve();
+        }
+      });
+      ws.addEventListener('message', (event) => this._handleSocketMessage(event.data));
+      ws.addEventListener('close', () => {
+        this._clearHeartbeat();
+        this._ws = null;
+        this._state$.next(TransportState.Disconnected);
+        if (!settled) {
+          settled = true;
+          reject(new Error('[RelayTransportService] WebSocket closed before open (server rejected upgrade)'));
+          return;
+        }
+        if (!this._stopped) {
+          this._scheduleReconnect();
+        }
+      });
+      // 'error' is followed by 'close' on every runtime we target; leave settlement
+      // to the close handler so we don't double-settle on the (error, close) pair.
+      ws.addEventListener('error', (event) => {
+        this._logService.warn('[RelayTransportService] WebSocket error:', event);
+        this._state$.next(TransportState.Error);
+      });
+      this._ws = ws;
     });
-    ws.addEventListener('message', (event) => this._handleSocketMessage(event.data));
-    ws.addEventListener('close', () => {
-      this._clearHeartbeat();
-      this._ws = null;
-      this._state$.next(TransportState.Disconnected);
-      if (!this._stopped) {
-        this._scheduleReconnect();
-      }
-    });
-    ws.addEventListener('error', (event) => {
-      this._logService.warn('[RelayTransportService] WebSocket error:', event);
-      this._state$.next(TransportState.Error);
-    });
-    this._ws = ws;
   }
 
   private _handleSocketMessage(data: unknown): void {
@@ -231,7 +250,10 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     );
     this._reconnectTimer = setTimeout(() => {
       this._reconnectTimer = null;
-      void this._openSocket();
+      // Reconnect runs fire-and-forget; swallow the rejection so a transient failure
+      // doesn't escalate to an unhandled promise. Failure handling already runs
+      // through the 'close' listener which schedules the next retry.
+      this._openSocket().catch(() => undefined);
     }, delay);
   }
 

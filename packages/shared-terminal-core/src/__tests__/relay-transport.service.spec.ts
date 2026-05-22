@@ -95,13 +95,14 @@ describe('RelayTransportService', () => {
     const states: TransportState[] = [];
     service.state$.subscribe((state) => states.push(state));
 
-    await service.connect({
+    const connectPromise = service.connect({
       relayBaseUrl: 'wss://relay.example.test/v1',
       sessionId: 'session-1',
       accountToken: 'token-1',
       mode: 'client',
     }, { bytes: new Uint8Array(32).fill(1) });
     sockets[0]!.emit('open', {});
+    await connectPromise;
 
     expect(sockets[0]!.url).toContain('/v1/shared-terminal?');
     expect(sockets[0]!.url).toContain('mode=client');
@@ -111,13 +112,14 @@ describe('RelayTransportService', () => {
   });
 
   it('encrypts outbound frame into relay envelope', async () => {
-    await service.connect({
+    const connectPromise = service.connect({
       relayBaseUrl: 'wss://relay.example.test/v1',
       sessionId: 'session-1',
       accountToken: 'token-1',
       mode: 'daemon',
     }, { bytes: new Uint8Array(32).fill(2) });
     sockets[0]!.emit('open', {});
+    await connectPromise;
 
     service.send(frame('hello'), { target: 'broadcast' });
     const sent = JSON.parse(sockets[0]!.sent[0] as string) as { type: string; target: string; payload: string };
@@ -133,12 +135,14 @@ describe('RelayTransportService', () => {
     service.frames$.subscribe((inbound) => {
       received.push(new TextDecoder().decode(inbound.frame.payload));
     });
-    await service.connect({
+    const connectPromise = service.connect({
       relayBaseUrl: 'wss://relay.example.test/v1',
       sessionId: 'session-1',
       accountToken: 'token-1',
       mode: 'client',
     }, key);
+    sockets[0]!.emit('open', {});
+    await connectPromise;
 
     const encrypted = codec.encrypt(frame('from-daemon'), key);
     let binary = '';
@@ -157,14 +161,30 @@ describe('RelayTransportService', () => {
   });
 
   it('rejects daemon-only operations in client mode', async () => {
-    await service.connect({
+    const connectPromise = service.connect({
       relayBaseUrl: 'wss://relay.example.test/v1',
       sessionId: 'session-1',
       accountToken: 'token-1',
       mode: 'client',
     }, { bytes: new Uint8Array(32).fill(4) });
+    sockets[0]!.emit('open', {});
+    await connectPromise;
 
     await expect(service.rekey(new Uint8Array(32).fill(5))).rejects.toThrow(/daemon mode/);
     await expect(service.revokeConnection('c1')).rejects.toThrow(/daemon mode/);
+  });
+
+  it('rejects connect when the WebSocket closes before opening', async () => {
+    const connectPromise = service.connect({
+      relayBaseUrl: 'wss://relay.example.test/v1',
+      sessionId: 'session-1',
+      accountToken: 'bad-token',
+      mode: 'client',
+    }, { bytes: new Uint8Array(32).fill(6) });
+    // Server rejected upgrade (e.g. 401 unauth) — runtime emits 'close' with no
+    // prior 'open'. The connect promise must surface the failure instead of
+    // silently resolving and leaving the caller to think the join succeeded.
+    sockets[0]!.emit('close', {});
+    await expect(connectPromise).rejects.toThrow(/closed before open/);
   });
 });
