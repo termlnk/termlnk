@@ -17,7 +17,7 @@ import type { CollabInviteStatus as DbCollabInviteStatus, ICollabInviteTokenEnti
 import type { CollabInviteStatus, ICapability, ICollabInvite, ICollabInviteTransportService, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IPairingService, ISharedTerminalPluginConfig, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { Disposable, IConfigService, ILogService, Inject, Optional } from '@termlnk/core';
 import { CollabInviteTokenRepository } from '@termlnk/database';
-import { ICollabInviteTransportService as ICollabInviteTransportServiceId, ISharedTerminalCryptoService, SHARED_TERMINAL_CAPABILITY_VERSION, SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
+import { ICollabInviteTransportService as ICollabInviteTransportServiceId, IDaemonKeypairService, ISharedTerminalCryptoService, SHARED_TERMINAL_CAPABILITY_VERSION, SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { computeCapabilityHash } from '../utils/capability-hash';
 import { bytesToBase64Url } from '../utils/encoding';
@@ -54,6 +54,7 @@ export class PairingService extends Disposable implements IPairingService {
   constructor(
     @IConfigService private readonly _configService: IConfigService,
     @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService,
+    @IDaemonKeypairService private readonly _daemonKeypairService: IDaemonKeypairService,
     @Inject(CollabInviteTokenRepository) private readonly _repo: CollabInviteTokenRepository,
     @ILogService private readonly _logService: ILogService,
     @Optional(ICollabInviteTransportServiceId) private readonly _transportService?: ICollabInviteTransportService
@@ -92,12 +93,17 @@ export class PairingService extends Disposable implements IPairingService {
     const inviteId = bytesToBase64Url(this._cryptoService.randomBytes(24));
     const eph = this._cryptoService.generateKeypair();
     const sessionId = options.sessionId ?? bytesToBase64Url(this._cryptoService.randomBytes(32));
+    // Daemon long-term X25519 public key — joiner uses it together with the fragment's
+    // ephPriv to derive the same sharedKey we will use on the owner side. Without this
+    // the joiner falls back to an all-zero key and every relay frame fails to open.
+    const daemonKeypair = await this._daemonKeypairService.getOrCreate();
     const capability: ICapability = {
       v: SHARED_TERMINAL_CAPABILITY_VERSION,
       sid: sessionId,
       role: options.role,
       exp: Math.min(now + ttlMs, Number.MAX_SAFE_INTEGER),
       nonce: bytesToBase64Url(this._cryptoService.randomBytes(16)),
+      daemonPub: bytesToBase64Url(daemonKeypair.publicKey),
     };
     const capabilityHash = await computeCapabilityHash(capability);
     const ephPrivB64 = bytesToBase64Url(eph.secretKey);

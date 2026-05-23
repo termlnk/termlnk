@@ -15,13 +15,32 @@
 
 import type { IConfigService, ILogService, LogLevel } from '@termlnk/core';
 import type { CollabInviteTokenRepository, ICollabInviteTokenEntity, ICollabInviteTokenEntityInsert } from '@termlnk/database';
-import type { ICollabInviteCreateInput, ICollabInviteTransportService } from '@termlnk/shared-terminal';
+import type { ICollabInviteCreateInput, ICollabInviteTransportService, IDaemonKeypairService, IKeypair } from '@termlnk/shared-terminal';
 import { ConfigService, IConfigService as IConfigServiceId, Injector } from '@termlnk/core';
 import { SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { firstValueFrom, skipWhile } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SharedTerminalCryptoService } from '../services/crypto.service';
 import { PairingService } from '../services/pairing.service';
+
+class FixedDaemonKeypairService implements IDaemonKeypairService {
+  private readonly _kp: IKeypair = {
+    publicKey: new Uint8Array(32).fill(7),
+    secretKey: new Uint8Array(32).fill(8),
+  };
+
+  async getOrCreate(): Promise<IKeypair> {
+    return this._kp;
+  }
+
+  async getPublicKey(): Promise<Uint8Array> {
+    return this._kp.publicKey;
+  }
+
+  async rotate(): Promise<IKeypair> {
+    return this._kp;
+  }
+}
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -145,6 +164,7 @@ function buildService(transport: ICollabInviteTransportService | undefined = und
   const service = new PairingService(
     config,
     new SharedTerminalCryptoService(),
+    new FixedDaemonKeypairService(),
     repo as unknown as CollabInviteTokenRepository,
     new NoopLogService(),
     transport

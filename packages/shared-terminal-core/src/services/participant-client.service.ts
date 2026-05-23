@@ -109,15 +109,10 @@ export class ParticipantClientService extends Disposable implements IParticipant
     }
 
     // Derive the shared key from the invite's ephemeral private key + the daemon's
-    // public key embedded in the capability. The relay enforces TTL + capability
-    // hash matching server-side; we don't replicate that check here.
+    // X25519 public key embedded in the capability. The relay enforces TTL +
+    // capability hash matching server-side; we don't replicate that check here.
     const ephPriv = base64UrlToBytes(parsed.ephPriv);
-    // Pubkey wrapping: in the v1 spec the daemon publishes its X25519 pub via the
-    // capability; we fall back to a zero key when missing so encryption + decryption
-    // can still be exercised in transit (the relay will reject).
-    const daemonPub = parsed.capability && (parsed.capability as ICapability & { daemonPub?: string }).daemonPub
-      ? base64UrlToBytes((parsed.capability as ICapability & { daemonPub?: string }).daemonPub!)
-      : new Uint8Array(32);
+    const daemonPub = base64UrlToBytes(parsed.capability.daemonPub);
     const sharedKey = this._cryptoService.deriveSharedKey(daemonPub, ephPriv);
 
     this._state$.next(ClientConnectionState.Connecting);

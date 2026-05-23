@@ -20,7 +20,12 @@ export type CollabInviteStatus = 'active' | 'consumed' | 'revoked' | 'expired';
 /**
  * Capability declaration embedded in an invite URL fragment. The relay only sees the hash
  * for audit/rate-limiting; the plaintext stays client-side. Capability is NOT a decryption key —
- * decryption uses ephemeral X25519 wrapping via ICollabInvite.ephPriv.
+ * decryption uses ephemeral X25519 wrapping via ICollabInvite.ephPriv combined with daemonPub
+ * below to derive the per-invite sharedKey.
+ *
+ * Hashing note: `daemonPub` is **not** included in the canonical hash (see capability-hash.ts).
+ * The hash signs the access metadata (sid/role/exp/nonce) so the relay can dedupe; the key
+ * material rides the fragment which the relay never sees.
  */
 export interface ICapability {
   readonly v: number;
@@ -28,6 +33,10 @@ export interface ICapability {
   readonly role: SharedTerminalRole;
   readonly exp: number;
   readonly nonce: string;
+  /** Daemon long-term X25519 public key (base64url, 32 bytes). The joiner combines this with
+   *  the fragment's ephPriv to derive sharedKey — without this, decryption would fall back
+   *  to an all-zero key and every relay frame would fail to open. */
+  readonly daemonPub: string;
 }
 
 /**

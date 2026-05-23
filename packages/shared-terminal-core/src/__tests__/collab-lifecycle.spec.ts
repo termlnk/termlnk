@@ -165,9 +165,23 @@ function buildPairing(transport: ICollabInviteTransportService | undefined = und
   });
   const repo = new FakeRepo();
   const cipher = new FakeCipher();
+  const crypto = new SharedTerminalCryptoService();
+  const daemonKp = crypto.generateKeypair();
+  const daemonKeypairService = {
+    async getOrCreate(): Promise<IKeypair> {
+      return daemonKp;
+    },
+    async getPublicKey(): Promise<Uint8Array> {
+      return daemonKp.publicKey;
+    },
+    async rotate(): Promise<IKeypair> {
+      return daemonKp;
+    },
+  };
   const service = new PairingService(
     config,
-    new SharedTerminalCryptoService(),
+    crypto,
+    daemonKeypairService,
     repo as unknown as CollabInviteTokenRepository,
     new NoopLogService(),
     transport
