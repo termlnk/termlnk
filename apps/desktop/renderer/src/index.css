@@ -11,6 +11,9 @@
 @source "../../../../packages/settings-ui/src";
 @source "../../../../packages/extension-ui/src";
 @source "../../../../packages/agent-ui/src";
+@source "../../../../packages/auth-ui/src";
+@source "../../../../packages/shared-terminal-ui/src";
+@source "../../../../packages/sync-ui/src";
 
 body,
 #root {
