@@ -104,6 +104,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
       open
       width={580}
       style={{ height: 320 }}
+      className={cn('tm:w-[580px] tm:max-w-[580px]')}
       onOpenChange={(open) => {
         if (!open) {
           handleDismiss();
@@ -133,11 +134,13 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
         </div>
       )}
     >
-      <div className={cn('tm:flex tm:flex-col tm:gap-3 tm:px-1 tm:py-2 tm:text-sm tm:text-light-grey')}>
+      <div className={cn('tm:flex tm:min-w-0 tm:flex-col tm:gap-3 tm:px-1 tm:py-2 tm:text-sm tm:text-light-grey')}>
         <p className={cn('tm:text-grey-fg')}>
           {localeService.t('shared-terminal-ui.join-dialog.description')}
         </p>
-        <div className={cn('tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-2 tm:font-mono tm:text-xs')}>
+        <div
+          className={cn('tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-2 tm:font-mono tm:text-xs')}
+        >
           <div className={cn('tm:flex tm:min-w-0 tm:items-center tm:justify-between tm:gap-2')}>
             <span className={cn('tm:min-w-0 tm:flex-1 tm:truncate tm:text-light-grey')}>{pending.rawUrl}</span>
             <Button
@@ -153,9 +156,13 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
         </div>
         {cap
           ? (
-            <div className={cn('tm:grid tm:grid-cols-[auto_1fr] tm:items-center tm:gap-x-3 tm:gap-y-1 tm:text-xs')}>
+            <div
+              className={cn(`
+                tm:grid tm:min-w-0 tm:grid-cols-[auto_minmax(0,1fr)] tm:items-center tm:gap-x-3 tm:gap-y-1 tm:text-xs
+              `)}
+            >
               <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.session-label')}</span>
-              <span className={cn('tm:truncate tm:font-mono tm:text-light-grey')}>{cap.sid}</span>
+              <span className={cn('tm:min-w-0 tm:truncate tm:font-mono tm:text-light-grey')}>{cap.sid}</span>
               <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.role-label')}</span>
               <span>
                 <Badge variant="secondary" className={cn('tm:bg-grey-fg/20 tm:text-grey-fg')}>
@@ -165,7 +172,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
               {expiryDate && (
                 <>
                   <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.expires-label')}</span>
-                  <span className={cn('tm:text-light-grey')}>{expiryDate.toLocaleString()}</span>
+                  <span className={cn('tm:min-w-0 tm:truncate tm:text-light-grey')}>{expiryDate.toLocaleString()}</span>
                 </>
               )}
             </div>
@@ -178,7 +185,11 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
             </div>
           )}
         {errorMessage && (
-          <div className={cn('tm:rounded-md tm:border tm:border-red/40 tm:bg-red/10 tm:p-2 tm:text-xs tm:text-red')}>
+          <div
+            className={cn(`
+              tm:min-w-0 tm:rounded-md tm:border tm:border-red/40 tm:bg-red/10 tm:p-2 tm:text-xs tm:text-red
+            `)}
+          >
             <div>{localeService.t('shared-terminal-ui.join-dialog.join-failed')}</div>
             <div className={cn('tm:mt-1 tm:font-mono tm:break-all tm:text-red/80')}>{errorMessage}</div>
           </div>
