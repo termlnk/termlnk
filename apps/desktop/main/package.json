@@ -13,6 +13,7 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
+    "@roamhq/wrtc": "^0.10.0",
     "@termlnk/agent": "workspace:*",
     "@termlnk/agent-core": "workspace:*",
     "@termlnk/auth": "workspace:*",
