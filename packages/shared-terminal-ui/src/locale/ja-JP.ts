@@ -36,8 +36,12 @@ const locale: typeof enUS = {
     },
     remote: {
       'viewing-only': '閲覧のみ',
+      driving: '操作中',
       'waiting-for-frames': 'ホストからの最初のフレームを待っています…',
-      'read-only-hint': '閲覧者として参加しました。ホストパネルの「キーボードを取得」ボタンでドライバー権を申請できます。',
+      'read-only-hint': '閲覧者として参加しました。「キーボード取得」ボタンでドライバー権を申請できます。',
+      'driver-hint': 'キーボードを取得しました。入力はホストの端末で実行されます。「解放」で戻せます。',
+      'request-keyboard': 'キーボード取得',
+      'release-keyboard': 'キーボード解放',
       state: {
         pairing: 'ホストとペアリング中…',
         connecting: 'リレーに接続中…',

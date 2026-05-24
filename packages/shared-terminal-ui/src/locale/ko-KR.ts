@@ -36,8 +36,12 @@ const locale: typeof enUS = {
     },
     remote: {
       'viewing-only': '읽기 전용',
+      driving: '제어 중',
       'waiting-for-frames': '호스트의 첫 출력 대기 중…',
-      'read-only-hint': '관찰자로 참여했습니다. 호스트 패널의 "키보드 가져오기" 버튼으로 드라이버 권한을 요청할 수 있습니다.',
+      'read-only-hint': '관찰자로 참여했습니다. "키보드 요청" 버튼으로 드라이버 권한을 요청할 수 있습니다.',
+      'driver-hint': '키보드를 가져왔습니다. 입력은 호스트의 터미널에서 실행됩니다. "해제"로 권한을 돌려주세요.',
+      'request-keyboard': '키보드 요청',
+      'release-keyboard': '키보드 해제',
       state: {
         pairing: '호스트와 페어링 중…',
         connecting: '릴레이에 연결 중…',

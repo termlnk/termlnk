@@ -34,8 +34,12 @@ const locale = {
     },
     remote: {
       'viewing-only': 'Viewing (read-only)',
+      driving: 'Driving',
       'waiting-for-frames': 'Waiting for the host\'s first frame…',
-      'read-only-hint': 'You are joined as an observer. Press the "Take keyboard" button in the host\'s panel to request driver control.',
+      'read-only-hint': 'You are joined as an observer. Press the "Request keyboard" button to take driver control.',
+      'driver-hint': 'You hold the keyboard. Your keystrokes execute on the host\'s terminal; press "Release" to hand it back.',
+      'request-keyboard': 'Request keyboard',
+      'release-keyboard': 'Release keyboard',
       state: {
         pairing: 'Pairing with host…',
         connecting: 'Connecting to relay…',

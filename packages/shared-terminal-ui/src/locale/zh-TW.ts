@@ -36,8 +36,12 @@ const locale: typeof enUS = {
     },
     remote: {
       'viewing-only': '唯讀旁觀',
+      driving: '正在駕駛',
       'waiting-for-frames': '等待主機的首批輸出…',
-      'read-only-hint': '你以旁觀者身分加入。點擊主機面板的「取鍵盤」按鈕可申請駕駛權。',
+      'read-only-hint': '你以旁觀者身分加入。點擊「申請鍵盤」可申請駕駛權。',
+      'driver-hint': '你正在駕駛。鍵入的命令會在主機終端上執行，點擊「讓出鍵盤」可交回控制權。',
+      'request-keyboard': '申請鍵盤',
+      'release-keyboard': '讓出鍵盤',
       state: {
         pairing: '正在與主機配對…',
         connecting: '正在連接中繼…',

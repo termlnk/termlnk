@@ -36,8 +36,12 @@ const locale: typeof enUS = {
     },
     remote: {
       'viewing-only': '只读旁观',
+      driving: '正在驾驶',
       'waiting-for-frames': '等待主机的首批输出…',
-      'read-only-hint': '你以旁观者身份加入。点击主机面板中的"取键盘"按钮可申请驾驶权。',
+      'read-only-hint': '你以旁观者身份加入。点击"申请键盘"可申请驾驶权。',
+      'driver-hint': '你正在驾驶。键入的命令会在主机终端上执行，点击"让出键盘"可交回控制权。',
+      'request-keyboard': '申请键盘',
+      'release-keyboard': '让出键盘',
       state: {
         pairing: '正在与主机配对…',
         connecting: '正在连接中继…',
