@@ -36,14 +36,14 @@
     "@termlnk/rpc-server": "workspace:*",
     "@trpc/server": "^11.17.0",
     "hash-wasm": "^4.12.0",
-    "ws": "^8.20.1"
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "@types/ws": "^8.18.1",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.13",
+    "vite": "^8.0.14",
     "vitest": "^4.1.7"
   },
   "publishConfig": {
