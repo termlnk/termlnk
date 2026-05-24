@@ -14,6 +14,8 @@
  */
 
 import type { IDriverState, IParticipantFrame, IParticipantSnapshot } from '@termlnk/shared-terminal';
+import type { ITerminalViewProps } from '@termlnk/terminal-ui';
+import type { IXtermTheme } from '@termlnk/themes';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { ClientConnectionState, ISharedTerminalService } from '@termlnk/shared-terminal';
@@ -21,21 +23,43 @@ import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import { CrownIcon, EyeIcon, KeyboardIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { EMPTY } from 'rxjs';
 import '@xterm/xterm/css/xterm.css';
 
 const PTY_DATA_CHANNEL = 1;
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 
+const FALLBACK_THEME: IXtermTheme = {
+  background: '#1a1c20',
+  foreground: '#c8ccd4',
+  cursor: '#c8ccd4',
+  cursorAccent: '#1a1c20',
+  selectionBackground: '#3b4048',
+  selectionForeground: '#c8ccd4',
+  black: '#1a1c20',
+  red: '#c84e4e',
+  green: '#82c272',
+  yellow: '#deb46b',
+  blue: '#6a9fb5',
+  magenta: '#aa759f',
+  cyan: '#75b5aa',
+  white: '#c8ccd4',
+  brightBlack: '#5c6370',
+  brightRed: '#e06c75',
+  brightGreen: '#98c379',
+  brightYellow: '#e5c07b',
+  brightBlue: '#61afef',
+  brightMagenta: '#c678dd',
+  brightCyan: '#56b6c2',
+  brightWhite: '#dcdcdc',
+};
+
 /**
- * Joiner-side terminal view.
- *
- * Renders inbound PtyData frames into a real xterm.js terminal so ANSI escape
- * sequences (color, cursor positioning, screen clear, etc.) appear as on the
- * owner's machine. Keystrokes captured by the terminal go upstream via
- * `ISharedTerminalService.sendParticipantInput` — they execute on the owner's
- * PTY, never locally (per principle 2). Output then echoes back through the
- * relay broadcast and into `participantFrames$`.
+ * Joiner-side terminal view, mounted as a 'remote'-type tab by the bridge
+ * controller. Each tab has its own props.sessionId — the view subscribes
+ * exclusively to per-session streams (state$/frames$/snapshot$/metadata$/...)
+ * so two remote tabs render independently with no cross-talk.
  *
  * Driver arbitration:
  *   - Read-only joiners (observer / non-driver co-pilot) get an `xterm` with
@@ -47,35 +71,54 @@ const DEFAULT_ROWS = 24;
  *     via participantFrames$ on the SessionEvent channel. The button text
  *     swaps to "Release" when this client is the active driver.
  */
-export function RemoteTerminalView(): React.JSX.Element | null {
+export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element | null {
+  const { sessionId, theme, allowTransparency } = props;
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
   const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
-  const snapshot = useObservable<IParticipantSnapshot | null>(client?.participantSnapshot$ ?? null, null);
-  const connectionState = useObservable<ClientConnectionState>(
-    client?.participantState$ ?? null,
-    ClientConnectionState.Idle
+
+  const stateObservable = useMemo(
+    () => client?.participantState$(sessionId) ?? EMPTY,
+    [client, sessionId]
   );
-  // Authoritative identifiers from ParticipantClientService, NOT inferred from
-  // broadcast events. The participantSessionId$ subscription doesn't depend on
-  // snapshot delivery, so the driver UI works even if the snapshot is lost or
-  // delayed. The participantConnectionId$ subscription avoids the race where
-  // a second joiner's participant_joined event could overwrite this client's
-  // own id capture.
-  const myClientId = useObservable<string | null>(client?.participantConnectionId$ ?? null, null);
-  const mySessionId = useObservable<string | null>(client?.participantSessionId$ ?? null, null);
-  const lastError = useObservable<string | null>(client?.participantLastError$ ?? null, null);
+  const connectionState = useObservable<ClientConnectionState>(stateObservable, ClientConnectionState.Idle);
+
+  const snapshotObservable = useMemo(
+    () => client?.participantSnapshot$(sessionId) ?? EMPTY,
+    [client, sessionId]
+  );
+  const snapshot = useObservable<IParticipantSnapshot | null>(snapshotObservable, null);
+
+  const connectionIdObservable = useMemo(
+    () => client?.participantConnectionId$(sessionId) ?? EMPTY,
+    [client, sessionId]
+  );
+  const myClientId = useObservable<string | null>(connectionIdObservable, null);
+
+  const lastErrorObservable = useMemo(
+    () => client?.participantLastError$(sessionId) ?? EMPTY,
+    [client, sessionId]
+  );
+  const lastError = useObservable<string | null>(lastErrorObservable, null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  // Capture initial transparency + theme in refs so the init effect doesn't
+  // depend on them (which would destroy + recreate xterm on every theme prop
+  // change, wiping scrollback). The theme effect below applies new themes via
+  // `term.options.theme = ...` in place.
+  const allowTransparencyRef = useRef(allowTransparency);
+  const initialThemeRef = useRef(theme ?? FALLBACK_THEME);
   const [driverState, setDriverState] = useState<IDriverState | null>(null);
   const isDriver = useMemo(
     () => driverState?.driverId !== null && driverState?.driverId === myClientId,
     [driverState, myClientId]
   );
 
-  // Initialise the xterm instance once the dialog opens. We avoid recreating
-  // it on every state change so scrollback isn't wiped.
+  // Initialise xterm exactly once. Theme + allowTransparency are read from
+  // the refs above so a re-render with a fresh theme object doesn't trigger
+  // a tear-down. Theme changes flow through a separate effect.
   useEffect(() => {
     if (!containerRef.current || termRef.current) {
       return undefined;
@@ -87,11 +130,8 @@ export function RemoteTerminalView(): React.JSX.Element | null {
       fontFamily: 'Menlo, monospace',
       fontSize: 13,
       scrollback: 5000,
-      allowTransparency: true,
-      theme: {
-        background: '#1a1c20',
-        foreground: '#c8ccd4',
-      },
+      allowTransparency: allowTransparencyRef.current ?? true,
+      theme: initialThemeRef.current,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -119,6 +159,17 @@ export function RemoteTerminalView(): React.JSX.Element | null {
     };
   }, [logService]);
 
+  // Apply theme changes in-place; never recreate the terminal. Matches the
+  // useXterm hook's behaviour in @termlnk/terminal-ui so a user-driven theme
+  // switch preserves scrollback for shared sessions too.
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) {
+      return;
+    }
+    term.options.theme = theme ?? FALLBACK_THEME;
+  }, [theme]);
+
   // Hydrate the buffer from the inbound snapshot whenever it lands.
   useEffect(() => {
     if (!snapshot || !termRef.current) {
@@ -137,14 +188,13 @@ export function RemoteTerminalView(): React.JSX.Element | null {
   }, [snapshot, logService]);
 
   // Stream inbound PtyData frames into the terminal. Drop other channels —
-  // SessionEvent is handled by ParticipantClientService (snapshot$) and
-  // Control by ParticipantClientService too (rekey). Our identifier comes
-  // from `participantConnectionId$` so we don't infer from broadcast events.
+  // SessionEvent is handled by ParticipantClientService (snapshot$/metadata$)
+  // and Control by ParticipantClientService too (rekey).
   useEffect(() => {
     if (!client) {
       return undefined;
     }
-    const sub = client.participantFrames$.subscribe((frame: IParticipantFrame) => {
+    const sub = client.participantFrames$(sessionId).subscribe((frame: IParticipantFrame) => {
       if (frame.channel !== PTY_DATA_CHANNEL) {
         return;
       }
@@ -155,20 +205,16 @@ export function RemoteTerminalView(): React.JSX.Element | null {
       term.write(base64UrlToBytes(frame.payloadBase64));
     });
     return () => sub.unsubscribe();
-  }, [client]);
+  }, [client, sessionId]);
 
-  // Subscribe to the driver state once we know our sessionId. Using
-  // participantSessionId$ (authoritative from ParticipantClientService)
-  // instead of waiting for snapshot.sessionId removes the dependency on
-  // snapshot delivery — the driver UI becomes interactive immediately after
-  // connect, not later when the first snapshot arrives.
+  // Subscribe to driver state for this specific session.
   useEffect(() => {
-    if (!client || !mySessionId) {
+    if (!client) {
       return undefined;
     }
-    const sub = client.driverState$(mySessionId).subscribe(setDriverState);
+    const sub = client.driverState$(sessionId).subscribe(setDriverState);
     return () => sub.unsubscribe();
-  }, [client, mySessionId]);
+  }, [client, sessionId]);
 
   // Forward keystrokes upstream when present + connected. xterm raises onData
   // for every key (including non-driver), but if we're not the driver the
@@ -184,17 +230,16 @@ export function RemoteTerminalView(): React.JSX.Element | null {
       if (connectionState !== ClientConnectionState.Connected) {
         return;
       }
-      void client.sendParticipantInput(encoder.encode(data)).catch((err) => {
+      void client.sendParticipantInput(sessionId, encoder.encode(data)).catch((err) => {
         logService.warn('[RemoteTerminalView] sendParticipantInput failed:', err);
       });
     });
     return () => disp.dispose();
-  }, [client, connectionState, logService]);
+  }, [client, connectionState, logService, sessionId]);
 
   // Container resize → refit the xterm. We do NOT send a resize control frame
   // upstream — joiners must not change the owner's PTY dimensions. Instead
   // the snapshot above keeps the xterm's logical size in sync with the owner.
-  // FitAddon.fit may slightly adjust pixel cell sizing within those bounds.
   useEffect(() => {
     if (!containerRef.current) {
       return undefined;
@@ -215,32 +260,29 @@ export function RemoteTerminalView(): React.JSX.Element | null {
       return;
     }
     try {
-      await client.sendParticipantControl({ type: 'driver_request' });
+      await client.sendParticipantControl(sessionId, { type: 'driver_request' });
     } catch (err) {
       logService.warn('[RemoteTerminalView] driver_request failed:', err);
     }
-  }, [client, logService]);
+  }, [client, logService, sessionId]);
 
   const handleReleaseKeyboard = useCallback(async () => {
     if (!client) {
       return;
     }
     try {
-      await client.sendParticipantControl({ type: 'driver_release' });
+      await client.sendParticipantControl(sessionId, { type: 'driver_release' });
     } catch (err) {
       logService.warn('[RemoteTerminalView] driver_release failed:', err);
     }
-  }, [client, logService]);
+  }, [client, logService, sessionId]);
 
   if (!client) {
     return null;
   }
-  if (connectionState === ClientConnectionState.Idle) {
-    return null;
-  }
 
   return (
-    <div className={cn('tm:flex tm:flex-col tm:gap-2')}>
+    <div className={cn('tm:flex tm:size-full tm:flex-col tm:gap-2 tm:p-2')}>
       <div className={cn('tm:flex tm:items-center tm:justify-between tm:gap-2 tm:text-xs tm:text-grey-fg')}>
         <div className={cn('tm:flex tm:items-center tm:gap-2')}>
           {isDriver
@@ -273,7 +315,7 @@ export function RemoteTerminalView(): React.JSX.Element | null {
       </div>
       <div
         ref={containerRef}
-        className={cn('tm:h-[420px] tm:overflow-hidden tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-2')}
+        className={cn('tm:min-h-0 tm:flex-1 tm:overflow-hidden tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-2')}
       />
       {lastError && (
         <div className={cn('tm:rounded-md tm:border tm:border-red/40 tm:bg-red/10 tm:p-2 tm:text-xs tm:text-red')}>

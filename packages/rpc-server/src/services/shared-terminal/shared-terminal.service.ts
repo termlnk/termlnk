@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ClientConnectionState, ICollabInvite, IDriverState, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IParticipant, IParticipantConnectResult, IParticipantFrame, IParticipantSnapshot, IRemoteAnnouncedSession, IShareableSession, ISharedSession, ISharedTerminalService } from '@termlnk/shared-terminal';
+import type { ClientConnectionState, ICollabInvite, IDriverState, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IParticipant, IParticipantConnectResult, IParticipantFrame, IParticipantSessionMetadata, IParticipantSnapshot, IRemoteAnnouncedSession, IShareableSession, ISharedSession, ISharedTerminalService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { Disposable, ILogService, Optional } from '@termlnk/core';
 import { IDevicePairingService, IPairingService, IParticipantService, IPtyMultiplexerService } from '@termlnk/shared-terminal';
@@ -135,44 +135,52 @@ export class SharedTerminalService extends Disposable implements ISharedTerminal
     return this._deepLinks?.url$ ?? EMPTY;
   }
 
-  get participantState$(): Observable<ClientConnectionState> {
-    return this._participant?.state$ ?? EMPTY;
+  get participantSessions$(): Observable<readonly string[]> {
+    return this._participant?.sessions$ ?? EMPTY;
   }
 
-  get participantFrames$(): Observable<IParticipantFrame> {
-    return this._participant?.frames$ ?? EMPTY;
+  participantState$(sessionId: string): Observable<ClientConnectionState> {
+    return this._participant?.state$(sessionId) ?? EMPTY;
   }
 
-  get participantSnapshot$(): Observable<IParticipantSnapshot | null> {
-    return this._participant?.snapshot$ ?? EMPTY;
+  participantFrames$(sessionId: string): Observable<IParticipantFrame> {
+    return this._participant?.frames$(sessionId) ?? EMPTY;
   }
 
-  get participantLastError$(): Observable<string | null> {
-    return this._participant?.lastError$ ?? EMPTY;
+  participantSnapshot$(sessionId: string): Observable<IParticipantSnapshot | null> {
+    return this._participant?.snapshot$(sessionId) ?? EMPTY;
   }
 
-  get participantConnectionId$(): Observable<string | null> {
-    return this._participant?.currentConnectionId$ ?? EMPTY;
+  participantLastError$(sessionId: string): Observable<string | null> {
+    return this._participant?.lastError$(sessionId) ?? EMPTY;
   }
 
-  get participantSessionId$(): Observable<string | null> {
-    return this._participant?.currentSessionId$ ?? EMPTY;
+  participantConnectionId$(sessionId: string): Observable<string | null> {
+    return this._participant?.connectionId$(sessionId) ?? EMPTY;
+  }
+
+  participantMetadata$(sessionId: string): Observable<IParticipantSessionMetadata | null> {
+    return this._participant?.metadata$(sessionId) ?? EMPTY;
   }
 
   async connectAsParticipant(inviteUrl: string): Promise<IParticipantConnectResult> {
     return this._requireParticipant().connect({ inviteUrl });
   }
 
-  async disconnectParticipant(): Promise<void> {
-    await this._requireParticipant().disconnect();
+  async disconnectParticipant(sessionId: string): Promise<void> {
+    await this._requireParticipant().disconnect(sessionId);
   }
 
-  async sendParticipantInput(data: Uint8Array): Promise<void> {
-    await this._requireParticipant().sendInput(data);
+  async sendParticipantInput(sessionId: string, data: Uint8Array): Promise<void> {
+    await this._requireParticipant().sendInput(sessionId, data);
   }
 
-  async sendParticipantControl(message: object): Promise<void> {
-    await this._requireParticipant().sendControl(message);
+  async sendParticipantControl(sessionId: string, message: object): Promise<void> {
+    await this._requireParticipant().sendControl(sessionId, message);
+  }
+
+  async setSharedSessionTitle(sessionId: string, title: string): Promise<void> {
+    this._requireShare().setSessionTitle(sessionId, title);
   }
 
   get remoteSessions$(): Observable<readonly IRemoteAnnouncedSession[]> {

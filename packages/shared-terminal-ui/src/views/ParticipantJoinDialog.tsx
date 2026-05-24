@@ -19,6 +19,7 @@ import { Badge, Button, cn, Dialog, useDependency } from '@termlnk/design';
 import { ISharedTerminalService } from '@termlnk/shared-terminal';
 import { CheckIcon, ClipboardCopyIcon, LinkIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { RemoteSessionBridgeController } from '../controllers/remote-session-bridge.controller';
 
 interface IInvitePayload {
   inviteId?: string;
@@ -41,6 +42,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
   const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
+  const bridge = useDependency(RemoteSessionBridgeController, Quantity.OPTIONAL);
   const [pending, setPending] = useState<IInvitePayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -82,6 +84,12 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
     setBusy(true);
     setErrorMessage(null);
     try {
+      // Tell the bridge controller this attach is user-driven so the new tab
+      // becomes active. Without this signal, server-pushed reattaches would
+      // also steal focus from whichever tab the user is currently typing in.
+      // We mark BEFORE awaiting connect because participantSessions$ emits
+      // can land before the mutation resolves.
+      bridge?.markUserInitiated(pending.capability.sid);
       await client.connectAsParticipant(pending.rawUrl);
       setPending(null);
     } catch (err) {

@@ -2137,6 +2137,9 @@ importers:
       '@termlnk/shared-terminal':
         specifier: workspace:*
         version: link:../shared-terminal
+      '@termlnk/terminal-ui':
+        specifier: workspace:*
+        version: link:../terminal-ui
       '@termlnk/themes':
         specifier: workspace:*
         version: link:../themes

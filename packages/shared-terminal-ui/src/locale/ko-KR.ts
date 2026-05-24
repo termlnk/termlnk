@@ -35,6 +35,7 @@ const locale: typeof enUS = {
       'join-failed': '세션 참여에 실패했습니다:',
     },
     remote: {
+      'tab-name': '공유 세션',
       'viewing-only': '읽기 전용',
       driving: '제어 중',
       'waiting-for-frames': '호스트의 첫 출력 대기 중…',

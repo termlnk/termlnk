@@ -124,9 +124,13 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   }
 
   async rekey(newSessionKey: Uint8Array): Promise<void> {
-    if (this._options?.mode !== 'daemon') {
-      throw new Error('[RelayTransportService] rekey is only available in daemon mode');
-    }
+    // Local-only key swap: both daemon and client transports update their
+    // `_sessionKey` so subsequent encrypt/decrypt uses the new symmetric key.
+    // The wire never sees a 'rekey' broadcast from this method — for the
+    // daemon, the mux is the actual initiator that delivers a 'rekey' Control
+    // frame to every attached client; for the client, the new key arrives
+    // pre-wrapped inside that Control frame and is fed back into this method
+    // so the same socket can decrypt the next inbound frame.
     this._sessionKey = { bytes: new Uint8Array(newSessionKey) };
   }
 

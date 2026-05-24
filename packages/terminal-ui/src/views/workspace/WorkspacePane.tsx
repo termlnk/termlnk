@@ -128,6 +128,13 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
     if (!session) {
       return;
     }
+    // Remote (multiplayer joiner) tabs cannot be split: the joiner doesn't
+    // own the underlying PTY, so dropping a local PTY beside it would be a
+    // surprise; spawning a parallel join for the same sid would mean two xterm
+    // instances racing each other's keystrokes through one driver lock.
+    if (session.type === 'remote') {
+      return;
+    }
 
     try {
       let newId: string;
@@ -345,6 +352,7 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
               e.stopPropagation();
               handleSplit('horizontal');
             }}
+            disabled={session.type === 'remote'}
           >
             <Columns2 size={12} strokeWidth={1.5} />
           </PaneActionButton>
@@ -355,6 +363,7 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
               e.stopPropagation();
               handleSplit('vertical');
             }}
+            disabled={session.type === 'remote'}
           >
             <Rows2 size={12} strokeWidth={1.5} />
           </PaneActionButton>
@@ -544,11 +553,12 @@ function ConnectionDot({ type, status }: { type: string; status: TerminalSession
   );
 }
 
-function PaneActionButton({ labelKey, commandId, onClick, children }: {
+function PaneActionButton({ labelKey, commandId, onClick, children, disabled }: {
   labelKey: string;
   commandId?: string;
   onClick: (e: MouseEvent) => void;
   children: ReactNode;
+  disabled?: boolean;
 }) {
   return (
     <TooltipWrapper side="bottom" labelKey={labelKey} commandId={commandId}>
@@ -561,6 +571,7 @@ function PaneActionButton({ labelKey, commandId, onClick, children }: {
         "
         onPointerDown={(e) => e.stopPropagation()}
         onClick={onClick}
+        disabled={disabled}
       >
         {children}
       </Button>

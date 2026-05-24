@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ClientConnectionState, ICollabInvite, IDriverState, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IParticipant, IParticipantConnectResult, IParticipantFrame, IParticipantSnapshot, IRemoteAnnouncedSession, IShareableSession, ISharedSession, ISharedTerminalService } from '@termlnk/shared-terminal';
+import type { ClientConnectionState, ICollabInvite, IDriverState, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IParticipant, IParticipantConnectResult, IParticipantFrame, IParticipantSessionMetadata, IParticipantSnapshot, IRemoteAnnouncedSession, IShareableSession, ISharedSession, ISharedTerminalService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
-import { shareReplay } from 'rxjs';
+import { share, shareReplay } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
 
 /**
@@ -31,6 +31,29 @@ export class SharedTerminalService extends Disposable implements ISharedTerminal
     @IRPCClientService private readonly _rpcClientService: IRPCClientService
   ) {
     super();
+    // Drop per-sid observable cache entries when the main process retires the
+    // session. Without this the caches grow with every join+disconnect cycle.
+    // The subscription is owned by the service lifetime; participantSessions$
+    // is shareReplay'd so this doesn't open an extra tRPC subscription.
+    this.disposeWithMe(
+      this.participantSessions$.subscribe((sessions) => {
+        const alive = new Set(sessions);
+        this._pruneCache(this._stateCache, alive);
+        this._pruneCache(this._framesCache, alive);
+        this._pruneCache(this._snapshotCache, alive);
+        this._pruneCache(this._lastErrorCache, alive);
+        this._pruneCache(this._connectionIdCache, alive);
+        this._pruneCache(this._metadataCache, alive);
+      })
+    );
+  }
+
+  private _pruneCache<T>(cache: Map<string, Observable<T>>, alive: Set<string>): void {
+    for (const sid of [...cache.keys()]) {
+      if (!alive.has(sid)) {
+        cache.delete(sid);
+      }
+    }
   }
 
   private get _client() {
@@ -129,39 +152,105 @@ export class SharedTerminalService extends Disposable implements ISharedTerminal
     (opts) => this._client.inviteUrl$.subscribe(undefined, opts)
   );
 
-  readonly participantState$: Observable<ClientConnectionState> = trpcSubscriptionToObservable<ClientConnectionState>(
-    (opts) => this._client.participantState$.subscribe(undefined, opts)
+  readonly participantSessions$: Observable<readonly string[]> = trpcSubscriptionToObservable<readonly string[]>(
+    (opts) => this._client.participantSessions$.subscribe(undefined, opts)
   ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
-  readonly participantFrames$: Observable<IParticipantFrame> = trpcSubscriptionToObservable<IParticipantFrame>(
-    (opts) => this._client.participantFrames$.subscribe(undefined, opts)
-  );
+  /**
+   * Per-sid observable caches: a tab's RemoteTerminalView and the
+   * RemoteSessionBridgeController both subscribe to the same state/snapshot/
+   * connectionId/lastError/metadata streams. Without caching, every consumer
+   * would open an independent tRPC subscription over Electron IPC, doubling
+   * traffic per stream. `shareReplay({bufferSize:1, refCount:true})` keeps
+   * one upstream subscription alive while ≥1 downstream is subscribed and
+   * replays the latest value to new subscribers.
+   *
+   * `participantFrames$` intentionally uses `share()` (no replay): replaying
+   * old PtyData bytes to a fresh subscriber would re-write characters that
+   * the snapshot has already covered.
+   */
+  private readonly _stateCache = new Map<string, Observable<ClientConnectionState>>();
+  private readonly _framesCache = new Map<string, Observable<IParticipantFrame>>();
+  private readonly _snapshotCache = new Map<string, Observable<IParticipantSnapshot | null>>();
+  private readonly _lastErrorCache = new Map<string, Observable<string | null>>();
+  private readonly _connectionIdCache = new Map<string, Observable<string | null>>();
+  private readonly _metadataCache = new Map<string, Observable<IParticipantSessionMetadata | null>>();
 
-  readonly participantSnapshot$: Observable<IParticipantSnapshot | null> = trpcSubscriptionToObservable<IParticipantSnapshot | null>(
-    (opts) => this._client.participantSnapshot$.subscribe(undefined, opts)
-  ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  participantState$(sessionId: string): Observable<ClientConnectionState> {
+    let cached = this._stateCache.get(sessionId);
+    if (!cached) {
+      cached = trpcSubscriptionToObservable<ClientConnectionState>(
+        (opts) => this._client.participantState$.subscribe(sessionId, opts)
+      ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      this._stateCache.set(sessionId, cached);
+    }
+    return cached;
+  }
 
-  readonly participantLastError$: Observable<string | null> = trpcSubscriptionToObservable<string | null>(
-    (opts) => this._client.participantLastError$.subscribe(undefined, opts)
-  ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  participantFrames$(sessionId: string): Observable<IParticipantFrame> {
+    let cached = this._framesCache.get(sessionId);
+    if (!cached) {
+      cached = trpcSubscriptionToObservable<IParticipantFrame>(
+        (opts) => this._client.participantFrames$.subscribe(sessionId, opts)
+      ).pipe(share());
+      this._framesCache.set(sessionId, cached);
+    }
+    return cached;
+  }
 
-  readonly participantConnectionId$: Observable<string | null> = trpcSubscriptionToObservable<string | null>(
-    (opts) => this._client.participantConnectionId$.subscribe(undefined, opts)
-  ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  participantSnapshot$(sessionId: string): Observable<IParticipantSnapshot | null> {
+    let cached = this._snapshotCache.get(sessionId);
+    if (!cached) {
+      cached = trpcSubscriptionToObservable<IParticipantSnapshot | null>(
+        (opts) => this._client.participantSnapshot$.subscribe(sessionId, opts)
+      ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      this._snapshotCache.set(sessionId, cached);
+    }
+    return cached;
+  }
 
-  readonly participantSessionId$: Observable<string | null> = trpcSubscriptionToObservable<string | null>(
-    (opts) => this._client.participantSessionId$.subscribe(undefined, opts)
-  ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  participantLastError$(sessionId: string): Observable<string | null> {
+    let cached = this._lastErrorCache.get(sessionId);
+    if (!cached) {
+      cached = trpcSubscriptionToObservable<string | null>(
+        (opts) => this._client.participantLastError$.subscribe(sessionId, opts)
+      ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      this._lastErrorCache.set(sessionId, cached);
+    }
+    return cached;
+  }
+
+  participantConnectionId$(sessionId: string): Observable<string | null> {
+    let cached = this._connectionIdCache.get(sessionId);
+    if (!cached) {
+      cached = trpcSubscriptionToObservable<string | null>(
+        (opts) => this._client.participantConnectionId$.subscribe(sessionId, opts)
+      ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      this._connectionIdCache.set(sessionId, cached);
+    }
+    return cached;
+  }
+
+  participantMetadata$(sessionId: string): Observable<IParticipantSessionMetadata | null> {
+    let cached = this._metadataCache.get(sessionId);
+    if (!cached) {
+      cached = trpcSubscriptionToObservable<IParticipantSessionMetadata | null>(
+        (opts) => this._client.participantMetadata$.subscribe(sessionId, opts)
+      ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      this._metadataCache.set(sessionId, cached);
+    }
+    return cached;
+  }
 
   async connectAsParticipant(inviteUrl: string): Promise<IParticipantConnectResult> {
     return this._client.connectAsParticipant.mutate({ inviteUrl }) as Promise<IParticipantConnectResult>;
   }
 
-  async disconnectParticipant(): Promise<void> {
-    await this._client.disconnectParticipant.mutate();
+  async disconnectParticipant(sessionId: string): Promise<void> {
+    await this._client.disconnectParticipant.mutate(sessionId);
   }
 
-  async sendParticipantInput(data: Uint8Array): Promise<void> {
+  async sendParticipantInput(sessionId: string, data: Uint8Array): Promise<void> {
     // Defensive copy: `data` may be a typed-array sub-view with an offset; the
     // String.fromCharCode loop indexes by .length but a sub-view's underlying
     // buffer could be much larger. Copying into a fresh Uint8Array guarantees
@@ -171,11 +260,15 @@ export class SharedTerminalService extends Disposable implements ISharedTerminal
     for (let i = 0; i < bytes.length; i++) {
       binary += String.fromCharCode(bytes[i]!);
     }
-    await this._client.sendParticipantInput.mutate({ dataB64: globalThis.btoa(binary) });
+    await this._client.sendParticipantInput.mutate({ sessionId, dataB64: globalThis.btoa(binary) });
   }
 
-  async sendParticipantControl(message: object): Promise<void> {
-    await this._client.sendParticipantControl.mutate({ message: message as Record<string, unknown> });
+  async sendParticipantControl(sessionId: string, message: object): Promise<void> {
+    await this._client.sendParticipantControl.mutate({ sessionId, message: message as Record<string, unknown> });
+  }
+
+  async setSharedSessionTitle(sessionId: string, title: string): Promise<void> {
+    await this._client.setSharedSessionTitle.mutate({ sessionId, title });
   }
 
   readonly remoteSessions$: Observable<readonly IRemoteAnnouncedSession[]> = trpcSubscriptionToObservable<readonly IRemoteAnnouncedSession[]>(

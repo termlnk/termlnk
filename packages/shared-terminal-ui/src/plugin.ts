@@ -17,12 +17,15 @@ import type { Dependency, Injector } from '@termlnk/core';
 import type { ISharedTerminalUIPluginConfig } from './controllers/config.schema';
 import { DependentOn, IConfigService, InjectSelf, merge, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { TerminalUIPlugin } from '@termlnk/terminal-ui';
 import { defaultPluginConfig, SHARED_TERMINAL_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { MultiplayerMountController } from './controllers/multiplayer-mount.controller';
+import { RemoteSessionBridgeController } from './controllers/remote-session-bridge.controller';
+import { SharedSessionTitleSyncController } from './controllers/shared-session-title-sync.controller';
 
 export const SHARED_TERMINAL_UI_PLUGIN_NAME = 'SHARED_TERMINAL_UI_PLUGIN';
 
-@DependentOn(SharedTerminalPlugin)
+@DependentOn(SharedTerminalPlugin, TerminalUIPlugin)
 export class SharedTerminalUIPlugin extends Plugin {
   static override pluginName = SHARED_TERMINAL_UI_PLUGIN_NAME;
 
@@ -44,11 +47,15 @@ export class SharedTerminalUIPlugin extends Plugin {
   override onReady(): void {
     const deps: Dependency[] = [
       [MultiplayerMountController],
+      [RemoteSessionBridgeController],
+      [SharedSessionTitleSyncController],
     ];
     registerDependencies(this._injector, deps);
 
     touchDependencies(this._injector, [
       [MultiplayerMountController],
+      [RemoteSessionBridgeController],
+      [SharedSessionTitleSyncController],
     ]);
   }
 }

@@ -14,22 +14,20 @@
  */
 
 import { ParticipantJoinDialog } from './ParticipantJoinDialog';
-import { RemoteTerminalView } from './RemoteTerminalView';
 
 /**
- * Renders the always-mounted multiplayer overlays:
- *   - ParticipantJoinDialog: subscribes to inviteUrl$ to surface incoming invites.
- *   - RemoteTerminalView: streams the joined remote PTY once the user accepts.
+ * Renders the always-mounted multiplayer overlays at the workbench GLOBAL slot.
  *
- * Both must be mounted at app startup (not gated behind a settings tab) so that
- * a termlnk:// deep link arriving from the OS can trigger the dialog regardless
- * of which page the user is currently on.
+ * Currently this is only the `ParticipantJoinDialog`, which subscribes to
+ * `inviteUrl$` so deep-link invites can surface even before the user opens any
+ * settings page. The joiner-side terminal viewer (`RemoteTerminalView`) used
+ * to live here too, but it is now registered with `ITerminalViewRegistry` as
+ * the `'remote'` view type and rendered inside a normal terminal tab via
+ * `RemoteSessionBridgeController`, so users can have several concurrent
+ * shared sessions and switch between them like any other tab.
  */
 export function MultiplayerGlobalMount(): React.JSX.Element {
   return (
-    <>
-      <ParticipantJoinDialog />
-      <RemoteTerminalView />
-    </>
+    <ParticipantJoinDialog />
   );
 }

@@ -15,6 +15,7 @@
 
 import type { IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
+import { IAuthService } from '@termlnk/auth';
 import { createIdentifier, Disposable, ILogService, Optional } from '@termlnk/core';
 import { ISSHSessionService, ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { IPtyMultiplexerService, IShareDaemonService as IShareDaemonServiceId } from '@termlnk/shared-terminal';
@@ -59,6 +60,15 @@ export interface IShareSessionService {
 
   /** Whether the session is currently being shared. */
   isShared(sessionId: string): boolean;
+
+  /**
+   * Renderer-driven title sync. When the owner's terminal tab title changes
+   * (e.g. local PTY OSC update, manual rename), the renderer forwards the new
+   * title here; we update our internal meta and push the new value through
+   * IShareDaemonService.pushSessionMetadata so every joiner's tab title
+   * matches the owner's. No-op if the session isn't being shared.
+   */
+  setSessionTitle(sessionId: string, title: string): void;
 }
 
 export const IShareSessionService = createIdentifier<IShareSessionService>('rpc-server.share-session-service');
@@ -68,6 +78,19 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
   private readonly _sessions = new Map<string, ISessionMeta>();
   private readonly _shareable$ = new BehaviorSubject<readonly IShareableSession[]>([]);
   readonly shareable$: Observable<readonly IShareableSession[]> = this._shareable$.asObservable();
+  /**
+   * Current owner display label (from IAuthService.currentUser$). Cached so we
+   * can push it on every shareXxxSession + react to user changes. Falls back to
+   * email when displayName is empty, then to `undefined` (no label) when the
+   * user isn't signed in.
+   */
+  private _ownerLabel: string | undefined;
+  /**
+   * Titles set via setSessionTitle before the corresponding sessionCreated$
+   * event arrives. Drained when the meta lands so the renderer's debounced
+   * title push isn't silently dropped on a tight share-then-rename race.
+   */
+  private readonly _pendingTitles = new Map<string, string>();
 
   constructor(
     @ILogService private readonly _logService: ILogService,
@@ -75,7 +98,8 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
     @IPTYSessionService private readonly _ptySessionService: IPTYSessionService,
     @ITerminalSessionNotifyService private readonly _notifyService: ITerminalSessionNotifyService,
     @Optional(IPtyMultiplexerService) private readonly _mux?: IPtyMultiplexerServiceType,
-    @Optional(IShareDaemonServiceId) private readonly _shareDaemon?: IShareDaemonService
+    @Optional(IShareDaemonServiceId) private readonly _shareDaemon?: IShareDaemonService,
+    @Optional(IAuthService) private readonly _authService?: IAuthService
   ) {
     super();
 
@@ -84,12 +108,21 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
 
   private _init() {
     this.disposeWithMe(this._notifyService.sessionCreated$.subscribe((event) => {
+      const queuedTitle = this._pendingTitles.get(event.sessionId);
+      this._pendingTitles.delete(event.sessionId);
+      const fallbackTitle = event.hostLabel ?? `${event.type}:${event.sessionId.slice(0, 8)}`;
       this._sessions.set(event.sessionId, {
         sessionId: event.sessionId,
         kind: event.type,
-        title: event.hostLabel ?? `${event.type}:${event.sessionId.slice(0, 8)}`,
+        // A title that arrived via setSessionTitle before this event takes
+        // precedence over the auto-generated fallback — the renderer-side
+        // OSC update would otherwise be lost on a tight share+rename race.
+        title: queuedTitle ?? fallbackTitle,
         hostId: event.hostId,
       });
+      if (queuedTitle !== undefined && this._registrations.has(event.sessionId) && this._shareDaemon) {
+        this._shareDaemon.pushSessionMetadata(event.sessionId, { title: queuedTitle });
+      }
       this._publish();
     }));
 
@@ -99,8 +132,30 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
         void this.stopSharing(event.sessionId);
       }
       this._sessions.delete(event.sessionId);
+      this._pendingTitles.delete(event.sessionId);
       this._publish();
     }));
+
+    if (this._authService) {
+      // Track the owner display label across sign-in/out + profile updates.
+      // We rebroadcast to every shared session whenever it changes so joiners'
+      // tab "Shared: <name>" stays accurate without manual refresh. Sign-out
+      // sends `null` (not undefined) so the daemon clears the cached value
+      // and joiners' tabs drop the previous owner's name.
+      this.disposeWithMe(this._authService.currentUser$.subscribe((user) => {
+        const next = user?.displayName?.trim() || user?.email || undefined;
+        if (next === this._ownerLabel) {
+          return;
+        }
+        this._ownerLabel = next;
+        if (!this._shareDaemon) {
+          return;
+        }
+        for (const sid of this._registrations.keys()) {
+          this._shareDaemon.pushSessionMetadata(sid, { ownerLabel: next ?? null });
+        }
+      }));
+    }
   }
 
   override dispose(): void {
@@ -139,6 +194,7 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
       startedAt: Date.now(),
     });
     this._logService.log(`[ShareSessionService] sharing SSH session ${sessionId} as "${source.title}"`);
+    this._pushInitialMetadata(sessionId);
     this._publish();
   }
 
@@ -163,6 +219,7 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
       startedAt: Date.now(),
     });
     this._logService.log(`[ShareSessionService] sharing local PTY session ${sessionId}`);
+    this._pushInitialMetadata(sessionId);
     this._publish();
   }
 
@@ -200,6 +257,41 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
 
   isShared(sessionId: string): boolean {
     return this._registrations.has(sessionId);
+  }
+
+  setSessionTitle(sessionId: string, title: string): void {
+    const meta = this._sessions.get(sessionId);
+    if (!meta) {
+      // sessionCreated$ hasn't fanned out for this sid yet — queue the title
+      // and apply on arrival. Without this the renderer's first OSC-driven
+      // title push for a freshly-created shared session would be silently
+      // dropped here, leaving joiners on the fallback name.
+      this._pendingTitles.set(sessionId, title);
+      return;
+    }
+    if (meta.title === title) {
+      return;
+    }
+    this._sessions.set(sessionId, { ...meta, title });
+    this._publish();
+    if (this._registrations.has(sessionId) && this._shareDaemon) {
+      this._shareDaemon.pushSessionMetadata(sessionId, { title });
+    }
+  }
+
+  private _pushInitialMetadata(sessionId: string): void {
+    if (!this._shareDaemon) {
+      return;
+    }
+    const meta = this._sessions.get(sessionId);
+    const payload: { ownerLabel?: string; title?: string } = {};
+    if (this._ownerLabel !== undefined) {
+      payload.ownerLabel = this._ownerLabel;
+    }
+    if (meta) {
+      payload.title = meta.title;
+    }
+    this._shareDaemon.pushSessionMetadata(sessionId, payload);
   }
 
   private _publish(): void {

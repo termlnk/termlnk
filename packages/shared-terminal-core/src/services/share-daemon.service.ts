@@ -24,8 +24,21 @@ import { RelayTransportService } from './relay-transport.service';
 interface IAttachedSession {
   readonly transport: RelayTransportService;
   readonly subscriptions: Subscription[];
-  /** Per-session control-channel seq for daemon-initiated error frames. */
-  errorSeq: number;
+  /**
+   * Seq counter for daemon-initiated frames emitted directly through this
+   * transport (errors on the Control channel, session_metadata on the
+   * SessionEvent channel). This is a SEPARATE namespace from PtyMultiplexer's
+   * per-runtime seq counters — mux owns its own seq stream for snapshot /
+   * driver_handover / participant_* events and writes them through this same
+   * transport but via mux.outbound$. Joiners therefore observe two
+   * monotonically-increasing seq streams on the SessionEvent channel
+   * (mux-originated and daemon-originated) that are NOT globally ordered.
+   * Today the joiner does not dedupe by (channel, seq) so the namespace
+   * split is benign; any future replay-protection on the joiner side must
+   * scope its dedup map by emitter id rather than assuming a single seq
+   * series per channel.
+   */
+  daemonSeq: number;
   /**
    * Candidate ECDH sharedKeys, one per active invite. `RelayTransport` calls
    * back into `_resolveKeys` and we yield every entry — the transport then
@@ -63,6 +76,13 @@ interface IAttachedSession {
  */
 export class ShareDaemonService extends Disposable implements IShareDaemonService {
   private readonly _attached = new Map<string, IAttachedSession>();
+  /**
+   * Per-session metadata cache (ownerLabel + visible title). pushSessionMetadata
+   * merges new values in and broadcasts; on client_join we unicast the cached
+   * entry back to the new joiner so they don't miss a previous owner-side
+   * update (the broadcast that originally fired may pre-date their attach).
+   */
+  private readonly _metadataCache = new Map<string, { ownerLabel?: string; title?: string }>();
 
   constructor(
     @ILogService private readonly _logService: ILogService,
@@ -177,7 +197,7 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
       this._handleInboundFrame(sessionId, inbound.source, inbound.frame);
     }));
 
-    this._attached.set(sessionId, { transport, subscriptions, errorSeq: 0, candidateKeys });
+    this._attached.set(sessionId, { transport, subscriptions, daemonSeq: 0, candidateKeys });
   }
 
   async detachSession(sessionId: string): Promise<void> {
@@ -194,6 +214,7 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
       this._logService.warn(`[ShareDaemonService] transport.disconnect failed for ${sessionId}:`, err);
     }
     this._attached.delete(sessionId);
+    this._metadataCache.delete(sessionId);
   }
 
   private _handleInboundFrame(sessionId: string, source: string, frame: IFrame): void {
@@ -214,10 +235,12 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
         const displayName = typeof parsed.displayName === 'string' ? parsed.displayName : undefined;
         try {
           this._mux.attachClient(sessionId, source, role, displayName, publicKey);
+          // Unicast the cached session_metadata to the new joiner so their tab
+          // title matches the owner immediately — without this they only see
+          // updates that happen AFTER their attach.
+          this._sendMetadataToClient(sessionId, source);
         } catch (err) {
           // mux throws `unknown session` when the PTY hasn't been registered.
-          // Surface a control-error frame back to the joiner so the UI shows
-          // a real failure instead of leaving them stuck at "Connecting".
           this._logService.error('[ShareDaemonService] mux.attachClient failed:', err);
           const reason = err instanceof Error ? err.message : String(err);
           this._sendErrorToClient(sessionId, source, reason);
@@ -243,8 +266,8 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
     if (!att) {
       return;
     }
-    const seq = att.errorSeq;
-    att.errorSeq = (seq + 1) >>> 0;
+    const seq = att.daemonSeq;
+    att.daemonSeq = (seq + 1) >>> 0;
     const payload = new TextEncoder().encode(JSON.stringify({ type: 'error', reason }));
     try {
       att.transport.send(
@@ -254,6 +277,107 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
     } catch (err) {
       this._logService.warn('[ShareDaemonService] failed to send error frame:', err);
     }
+  }
+
+  pushSessionMetadata(sessionId: string, metadata: { ownerLabel?: string | null; title?: string | null }): void {
+    // `undefined` means "leave this field alone"; `null` means "the caller
+    // explicitly cleared this field" (e.g. owner signed out). We need both
+    // signals to make it across the wire so joiners can clear a previously
+    // shown label/title — the cache delete branches below implement the
+    // null semantics; the JSON serialiser drops `undefined` so the joiner
+    // only sees keys that the owner meant to set or clear.
+    const ownerLabelTouched = metadata.ownerLabel !== undefined;
+    const titleTouched = metadata.title !== undefined;
+
+    // Prime the cache even when the payload is empty: this lets callers seed
+    // an entry at attachSession time before ownerLabel/title is known, so the
+    // first new joiner sees a consistent "session exists, nothing to push
+    // yet" state rather than no entry at all. Wire send is gated separately.
+    const cached = this._metadataCache.get(sessionId) ?? {};
+    const merged: { ownerLabel?: string; title?: string } = { ...cached };
+    if (ownerLabelTouched) {
+      if (metadata.ownerLabel === null) {
+        delete merged.ownerLabel;
+      } else {
+        merged.ownerLabel = metadata.ownerLabel;
+      }
+    }
+    if (titleTouched) {
+      if (metadata.title === null) {
+        delete merged.title;
+      } else {
+        merged.title = metadata.title;
+      }
+    }
+    this._metadataCache.set(sessionId, merged);
+
+    if (!ownerLabelTouched && !titleTouched) {
+      // Caller just wanted to prime the cache; no need to wake the relay.
+      return;
+    }
+
+    const att = this._attached.get(sessionId);
+    if (!att) {
+      return;
+    }
+    const seq = att.daemonSeq;
+    att.daemonSeq = (seq + 1) >>> 0;
+    const payload = this._encodeMetadataPayload(sessionId, {
+      ownerLabel: ownerLabelTouched ? (metadata.ownerLabel ?? null) : undefined,
+      title: titleTouched ? (metadata.title ?? null) : undefined,
+    });
+    try {
+      att.transport.send(
+        { channel: FrameChannel.SessionEvent, flags: FrameFlag.None, seq, payload },
+        { target: 'broadcast' }
+      );
+    } catch (err) {
+      this._logService.warn(`[ShareDaemonService] pushSessionMetadata failed for ${sessionId}:`, err);
+    }
+  }
+
+  /**
+   * Unicast the cached session_metadata to a single newly-joined client. Used
+   * inside client_join handling so the joiner's tab title reflects the owner's
+   * current state right away instead of waiting for the next title change.
+   */
+  private _sendMetadataToClient(sessionId: string, clientId: string): void {
+    const cached = this._metadataCache.get(sessionId);
+    if (!cached || (cached.ownerLabel === undefined && cached.title === undefined)) {
+      return;
+    }
+    const att = this._attached.get(sessionId);
+    if (!att) {
+      return;
+    }
+    const seq = att.daemonSeq;
+    att.daemonSeq = (seq + 1) >>> 0;
+    // For new joiners we forward the cached values (never null — null is the
+    // "explicitly cleared" signal which only makes sense for already-attached
+    // clients that had the prior value).
+    const payload = this._encodeMetadataPayload(sessionId, cached);
+    try {
+      att.transport.send(
+        { channel: FrameChannel.SessionEvent, flags: FrameFlag.None, seq, payload },
+        { target: clientId }
+      );
+    } catch (err) {
+      this._logService.warn(`[ShareDaemonService] _sendMetadataToClient failed for ${sessionId}/${clientId}:`, err);
+    }
+  }
+
+  private _encodeMetadataPayload(sessionId: string, metadata: { ownerLabel?: string | null; title?: string | null }): Uint8Array {
+    const event: Record<string, unknown> = {
+      type: 'session_metadata',
+      sessionId,
+    };
+    if (metadata.ownerLabel !== undefined) {
+      event.ownerLabel = metadata.ownerLabel;
+    }
+    if (metadata.title !== undefined) {
+      event.title = metadata.title;
+    }
+    return new TextEncoder().encode(JSON.stringify(event));
   }
 }
 

@@ -14,74 +14,64 @@
  */
 
 import type { Nullable } from '@termlnk/core';
-import type { ICapability, ICollabInviteTransportService, IFrame, IParticipantConnectInput, IParticipantConnectResult, IParticipantFrame, IParticipantService, IParticipantSnapshot, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
+import type { ICapability, ICollabInviteTransportService, IFrame, IFrameCodecService, IParticipantConnectInput, IParticipantConnectResult, IParticipantFrame, IParticipantService, IParticipantSessionMetadata, IParticipantSnapshot, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
 import type { Observable, Subscription } from 'rxjs';
 import { ITokenManager } from '@termlnk/auth';
 import { Disposable, IConfigService, ILogService, Optional } from '@termlnk/core';
-import { ClientConnectionState, FrameChannel, FrameFlag, ICollabInviteTransportService as ICollabInviteTransportServiceId, ISharedTerminalCryptoService, ISharedTerminalTransportService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, TransportState } from '@termlnk/shared-terminal';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { ClientConnectionState, FrameChannel, FrameFlag, ICollabInviteTransportService as ICollabInviteTransportServiceId, IFrameCodecService as IFrameCodecServiceId, ISharedTerminalCryptoService, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, TransportState } from '@termlnk/shared-terminal';
+import { BehaviorSubject, EMPTY, Subject } from 'rxjs';
+import { RelayTransportService } from './relay-transport.service';
 import { computeCapabilityHash } from '../utils/capability-hash';
 
+const HEARTBEAT_INTERVAL_MS = 5_000;
+
+interface IParticipantConnection {
+  readonly sessionId: string;
+  readonly transport: RelayTransportService;
+  readonly subscriptions: Subscription[];
+  readonly state$: BehaviorSubject<ClientConnectionState>;
+  readonly frames$: Subject<IParticipantFrame>;
+  readonly snapshot$: BehaviorSubject<IParticipantSnapshot | null>;
+  readonly lastError$: BehaviorSubject<string | null>;
+  readonly connectionId$: BehaviorSubject<string | null>;
+  readonly metadata$: BehaviorSubject<IParticipantSessionMetadata | null>;
+  readonly daemonPub: Uint8Array;
+  userSecretKey: Nullable<Uint8Array>;
+  heartbeatTimer: Nullable<ReturnType<typeof setInterval>>;
+  outboundSeq: Record<FrameChannel, number>;
+}
+
 /**
- * Joiner-side orchestrator: parses an invite URL, derives the shared key with the
- * relay/peer, and streams inbound frames to the renderer.
+ * Joiner-side orchestrator: holds N concurrent attachments to shared sessions,
+ * one per sessionId. Each connection owns its own RelayTransportService socket
+ * (mirroring the daemon-side pattern in ShareDaemonService), independent state
+ * subjects, and an independent heartbeat timer. Disconnecting one attachment
+ * never touches the others.
  *
- * Lives in the main process so it can hold the shared key + transport socket
- * without exposing them to the renderer. The renderer consumes `state$ + frames$`
- * via the tRPC multiplayer router.
- *
- * NOTE (M4b): connecting actually establishes the relay socket using the existing
- * ISharedTerminalTransportService. Without a deployed relay (M5 prerequisite) the
- * transport will surface a connection error on `state$`; the renderer's
- * RemoteTerminalView shows that to the user. Once the relay is reachable this
- * service stays unchanged.
+ * Renderers consume `state$(sid) / frames$(sid) / ...` per tab. `sessions$`
+ * gives the global "which sids am I attached to right now" stream that the
+ * bridge controller uses to drive ITerminalUIService.addSession/removeSession.
  */
 export class ParticipantClientService extends Disposable implements IParticipantService {
-  private readonly _state$ = new BehaviorSubject<ClientConnectionState>(ClientConnectionState.Idle);
-  readonly state$: Observable<ClientConnectionState> = this._state$.asObservable();
+  private readonly _connections = new Map<string, IParticipantConnection>();
 
-  private readonly _frames$ = new Subject<IParticipantFrame>();
-  readonly frames$: Observable<IParticipantFrame> = this._frames$.asObservable();
-
-  private readonly _snapshot$ = new BehaviorSubject<IParticipantSnapshot | null>(null);
-  readonly snapshot$: Observable<IParticipantSnapshot | null> = this._snapshot$.asObservable();
-
-  private readonly _lastError$ = new BehaviorSubject<string | null>(null);
-  readonly lastError$: Observable<string | null> = this._lastError$.asObservable();
+  private readonly _sessions$ = new BehaviorSubject<readonly string[]>([]);
+  readonly sessions$: Observable<readonly string[]> = this._sessions$.asObservable();
 
   /**
-   * Server-assigned connectionId for the current participant attach (or null
-   * when idle/disconnected). The renderer compares this against
-   * `driverState.driverId` to figure out whether THIS client is currently the
-   * driver — relying on broadcast `participant_joined` events to learn one's
-   * own id race-y when multiple joiners arrive close together.
+   * In-flight `connect()` promises keyed by sessionId. A second call for the
+   * same sid joins the existing promise instead of opening a parallel
+   * transport — closes the race where two awaits between parseInviteUrl and
+   * the map registration would both call `_createConnection` and leak the
+   * first half-built connection.
    */
-  private readonly _currentConnectionId$ = new BehaviorSubject<string | null>(null);
-  readonly currentConnectionId$: Observable<string | null> = this._currentConnectionId$.asObservable();
-
-  /** SessionId of the currently joined shared session. */
-  private readonly _currentSessionId$ = new BehaviorSubject<string | null>(null);
-  readonly currentSessionId$: Observable<string | null> = this._currentSessionId$.asObservable();
-
-  private _transportSub: Subscription | null = null;
-  private _transportStateSub: Subscription | null = null;
-  private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  private _currentSessionId: Nullable<string> = null;
-  private _currentConnectionId: Nullable<string> = null;
-  /** Joiner-side ephemeral keypair used to receive sessionKey rekey wraps. */
-  private _userSecretKey: Nullable<Uint8Array> = null;
-  /** Sequence counters for PtyData frames we send back upstream (driver input + heartbeats). */
-  private _outboundSeq: Record<FrameChannel, number> = {
-    [FrameChannel.Control]: 0,
-    [FrameChannel.PtyData]: 0,
-    [FrameChannel.SessionEvent]: 0,
-  };
+  private readonly _inflightConnects = new Map<string, Promise<IParticipantConnectResult>>();
 
   constructor(
     @ILogService private readonly _logService: ILogService,
     @IConfigService private readonly _configService: IConfigService,
     @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService,
-    @ISharedTerminalTransportService private readonly _transportService: ISharedTerminalTransportService,
+    @IFrameCodecServiceId private readonly _codec: IFrameCodecService,
     @Optional(ITokenManager) private readonly _tokenManager?: ITokenManager,
     @Optional(ICollabInviteTransportServiceId) private readonly _inviteTransport?: ICollabInviteTransportService
   ) {
@@ -90,71 +80,108 @@ export class ParticipantClientService extends Disposable implements IParticipant
 
   override dispose(): void {
     super.dispose();
-    this._cleanupSubscriptions();
-    this._stopHeartbeat();
-    this._state$.complete();
-    this._frames$.complete();
-    this._snapshot$.complete();
-    this._lastError$.complete();
-    this._currentConnectionId$.complete();
-    this._currentSessionId$.complete();
+    for (const sessionId of [...this._connections.keys()]) {
+      this._tearDown(sessionId);
+    }
+    this._connections.clear();
+    this._inflightConnects.clear();
+    this._sessions$.complete();
+  }
+
+  getSessions(): readonly string[] {
+    return this._sessions$.getValue();
+  }
+
+  state$(sessionId: string): Observable<ClientConnectionState> {
+    const conn = this._connections.get(sessionId);
+    return conn ? conn.state$.asObservable() : EMPTY;
+  }
+
+  frames$(sessionId: string): Observable<IParticipantFrame> {
+    const conn = this._connections.get(sessionId);
+    return conn ? conn.frames$.asObservable() : EMPTY;
+  }
+
+  snapshot$(sessionId: string): Observable<IParticipantSnapshot | null> {
+    const conn = this._connections.get(sessionId);
+    return conn ? conn.snapshot$.asObservable() : EMPTY;
+  }
+
+  lastError$(sessionId: string): Observable<string | null> {
+    const conn = this._connections.get(sessionId);
+    return conn ? conn.lastError$.asObservable() : EMPTY;
+  }
+
+  connectionId$(sessionId: string): Observable<string | null> {
+    const conn = this._connections.get(sessionId);
+    return conn ? conn.connectionId$.asObservable() : EMPTY;
+  }
+
+  metadata$(sessionId: string): Observable<IParticipantSessionMetadata | null> {
+    const conn = this._connections.get(sessionId);
+    return conn ? conn.metadata$.asObservable() : EMPTY;
   }
 
   async connect(input: IParticipantConnectInput): Promise<IParticipantConnectResult> {
-    const previous = this._state$.getValue();
-    if (previous === ClientConnectionState.Connected || previous === ClientConnectionState.Connecting) {
-      await this.disconnect();
+    const parsed = parseInviteUrl(input.inviteUrl);
+    const sessionId = parsed.capability.sid;
+
+    // Re-clicking the same invite while still connected is benign — return the
+    // existing connection's identity. The renderer's join dialog stays open
+    // briefly then closes; the tab is already there.
+    const existing = this._connections.get(sessionId);
+    if (existing) {
+      const state = existing.state$.getValue();
+      if (state === ClientConnectionState.Connected || state === ClientConnectionState.Connecting || state === ClientConnectionState.Pairing) {
+        return {
+          sessionId,
+          connectionId: existing.connectionId$.getValue() ?? parsed.inviteId,
+          snapshot: existing.snapshot$.getValue() ?? undefined,
+        };
+      }
+      // Stale / errored entry — tear it down before re-attaching.
+      this._tearDown(sessionId);
     }
 
-    this._state$.next(ClientConnectionState.Pairing);
-    this._lastError$.next(null);
-
-    let parsed: IParsedInvite;
+    // Dedupe concurrent connect() calls for the same sid: the second caller
+    // joins the in-flight promise instead of opening a parallel transport.
+    // Without this an over-eager UI (double-click on Join, tRPC retry, deep
+    // link race) would race past every check up to _registerConnection and
+    // leak the first connection (its transport / heartbeat orphaned).
+    const inflight = this._inflightConnects.get(sessionId);
+    if (inflight) {
+      return inflight;
+    }
+    const promise = this._performConnect(parsed);
+    this._inflightConnects.set(sessionId, promise);
     try {
-      parsed = parseInviteUrl(input.inviteUrl);
-    } catch (err) {
-      this._fail(err, 'invite parse failed');
-      throw err;
+      return await promise;
+    } finally {
+      this._inflightConnects.delete(sessionId);
     }
+  }
+
+  private async _performConnect(parsed: IParsedInvite): Promise<IParticipantConnectResult> {
+    const sessionId = parsed.capability.sid;
 
     const config = this._configService.getConfig<ISharedTerminalPluginConfig>(SHARED_TERMINAL_PLUGIN_CONFIG_KEY);
     const relayBaseUrl = config?.relayBaseUrl?.replace(/\/+$/, '');
     if (!relayBaseUrl) {
-      const err = new Error('shared-terminal: relayBaseUrl not configured (set ISharedTerminalPluginConfig.relayBaseUrl or deploy a relay).');
-      this._fail(err, 'relay not configured');
-      throw err;
+      throw new Error('shared-terminal: relayBaseUrl not configured (set ISharedTerminalPluginConfig.relayBaseUrl or deploy a relay).');
     }
 
-    // Relay routes by (userId, sessionId), where userId is derived from the JWT the
-    // joiner sends through the WebSocket Bearer subprotocol. Without a token the
-    // server rejects the upgrade with 401 — surface that as a "please sign in"
-    // error before we even open the socket.
+    // Relay routes by (userId, sessionId); userId comes from the joiner's JWT.
     const accountToken = await this._tokenManager?.getAccessToken();
     if (!accountToken) {
-      const err = new Error('shared-terminal: sign in before joining a shared session — the relay requires the joiner\'s access token.');
-      this._fail(err, 'access token unavailable');
-      throw err;
+      throw new Error('shared-terminal: sign in before joining a shared session — the relay requires the joiner\'s access token.');
     }
 
-    // Derive the shared key from the invite's ephemeral private key + the daemon's
-    // X25519 public key embedded in the capability. The relay enforces TTL +
-    // capability hash matching server-side; we don't replicate that check here.
     const ephPriv = base64UrlToBytes(parsed.ephPriv);
     const daemonPub = base64UrlToBytes(parsed.capability.daemonPub);
     const sharedKey = this._cryptoService.deriveSharedKey(daemonPub, ephPriv);
 
-    // Joiner-side long-term-ish keypair used to (a) receive the per-session symmetric
-    // key wrapped by the daemon, (b) sign future driver requests. Lifetime = this
-    // connection — discarded on disconnect().
     const userKp = this._cryptoService.generateKeypair();
-    this._userSecretKey = userKp.secretKey;
-    this._resetOutboundSeq();
 
-    // Claim the invite server-side. The server marks the invite consumed
-    // atomically and returns a `connectionId` + (cross-account) a one-shot
-    // `relayClaimToken` we use as the relay WS RelayToken subprotocol. Claim
-    // failure (already consumed / revoked / expired / wrong hash) surfaces as
-    // a network error that the dialog displays.
     let claimedConnectionId: string | undefined;
     let relayClaimToken: string | undefined;
     if (this._inviteTransport) {
@@ -165,107 +192,87 @@ export class ParticipantClientService extends Disposable implements IParticipant
         relayClaimToken = claim.relayClaimToken;
       } catch (err) {
         // Server might not have claim plumbed up yet (older deployments).
-        // We log a warning but proceed with same-account semantics so existing
-        // tests + dev environments keep working.
         this._logService.warn('[ParticipantClientService] invite claim failed; falling back to same-account attach:', err);
       }
     }
 
-    this._state$.next(ClientConnectionState.Connecting);
+    // Build the connection (subjects + transport) but do NOT publish it on
+    // _sessions$ yet — that emission is what the renderer's bridge controller
+    // uses to add a tab, so publishing before the relay accepts the socket
+    // would create a tab that flashes in and immediately out on connect
+    // failure, with no error surface for the user.
+    const conn = this._createConnection(sessionId, daemonPub);
+    conn.userSecretKey = userKp.secretKey;
+    conn.state$.next(ClientConnectionState.Connecting);
+
+    // Wire transport subscriptions BEFORE transport.connect so SessionEvents
+    // the daemon pushes during/right-after WS open (concurrent owner-side
+    // title pushes etc.) are not dropped into a no-subscriber Subject.
+    this._wireTransport(conn);
 
     try {
-      await this._transportService.connect({
+      await conn.transport.connect({
         relayBaseUrl,
-        sessionId: parsed.capability.sid,
+        sessionId,
         accountToken,
         mode: 'client',
         connectionId: claimedConnectionId,
         relayClaimToken,
       }, sharedKey);
     } catch (err) {
-      this._fail(err, 'transport connect failed');
+      // Failure path: dispose the partially-built connection without ever
+      // adding it to _connections or emitting on _sessions$. The error
+      // surfaces through the rejected promise to the renderer's join dialog,
+      // which already shows it inline. The bridge never sees a tab.
+      this._destroyConnection(conn);
+      const message = err instanceof Error ? err.message : String(err);
+      this._logService.error(`[ParticipantClientService] transport connect failed for ${sessionId}: ${message}`);
       throw err;
     }
 
-    this._currentSessionId = parsed.capability.sid;
-    // Prefer the server-assigned connectionId (matches the relay routing key);
-    // fall back to inviteId for legacy / pre-claim flows.
     const effectiveConnectionId = claimedConnectionId ?? parsed.inviteId;
-    this._currentConnectionId = effectiveConnectionId;
-    // Publish to the observable streams so the renderer can identify itself
-    // without inferring from broadcast events (which is race-y).
-    this._currentSessionId$.next(parsed.capability.sid);
-    this._currentConnectionId$.next(effectiveConnectionId);
+    conn.connectionId$.next(effectiveConnectionId);
 
-    this._startHeartbeat();
-
-    this._transportStateSub = this._transportService.state$.subscribe((state) => {
-      switch (state) {
-        case TransportState.Connected:
-          this._state$.next(ClientConnectionState.Connected);
-          break;
-        case TransportState.Connecting:
-        case TransportState.Reconnecting:
-          this._state$.next(ClientConnectionState.Connecting);
-          break;
-        case TransportState.Disconnected:
-        case TransportState.Idle:
-          this._state$.next(ClientConnectionState.Disconnected);
-          break;
-        case TransportState.Error:
-          this._state$.next(ClientConnectionState.Error);
-          break;
-      }
-    });
-
-    this._transportSub = this._transportService.frames$.subscribe((inbound) => {
-      const frame = inbound.frame;
-      if (frame.channel === FrameChannel.SessionEvent) {
-        this._consumeSessionEvent(frame);
-      } else if (frame.channel === FrameChannel.Control) {
-        this._consumeControlFrame(frame, daemonPub);
-      }
-      this._frames$.next(toClientFrame(frame));
-    });
-
-    // Announce ourselves to the daemon-side multiplexer. The daemon doesn't get any
-    // "new client" notification from the relay — it relies on this control frame to
-    // know who connected, with which role, and what their X25519 pubkey is (so it
-    // can wrap the next sessionKey for us). The frame is encrypted with `sharedKey`
-    // which the daemon can derive from the invite's ephPub + its own secret.
-    this._sendClientJoin(parsed, userKp.publicKey);
+    // Publish only after the relay accepted us — the bridge controller now
+    // sees the new sid and addSession()s a tab.
+    this._registerConnection(conn);
+    this._startHeartbeat(conn);
+    this._sendClientJoin(conn, parsed, userKp.publicKey);
 
     return {
-      sessionId: parsed.capability.sid,
+      sessionId,
       connectionId: effectiveConnectionId,
-      snapshot: this._snapshot$.getValue() ?? undefined,
+      snapshot: conn.snapshot$.getValue() ?? undefined,
     };
   }
 
-  async disconnect(): Promise<void> {
-    this._cleanupSubscriptions();
-    this._stopHeartbeat();
-    try {
-      await this._transportService.disconnect();
-    } catch (err) {
-      this._logService.error('[ParticipantClientService] transport disconnect threw:', err);
-    }
-    this._currentSessionId = null;
-    this._currentConnectionId = null;
-    this._userSecretKey = null;
-    this._currentSessionId$.next(null);
-    this._currentConnectionId$.next(null);
-    this._snapshot$.next(null);
-    this._state$.next(ClientConnectionState.Disconnected);
-  }
-
-  async sendInput(data: Uint8Array): Promise<void> {
-    if (this._state$.getValue() !== ClientConnectionState.Connected) {
-      // Surfacing as a no-op (rather than throw) keeps the renderer key-handler
-      // simple — typing while reconnecting just drops the input.
+  async disconnect(sessionId: string): Promise<void> {
+    const conn = this._connections.get(sessionId);
+    if (!conn) {
       return;
     }
-    const seq = this._nextSeq(FrameChannel.PtyData);
+    this._stopHeartbeat(conn);
+    this._cleanupSubscriptions(conn);
+    try {
+      await conn.transport.disconnect();
+    } catch (err) {
+      this._logService.error(`[ParticipantClientService] transport disconnect threw for ${sessionId}:`, err);
+    }
+    conn.state$.next(ClientConnectionState.Disconnected);
+    this._tearDown(sessionId);
+  }
+
+  async sendInput(sessionId: string, data: Uint8Array): Promise<void> {
+    const conn = this._connections.get(sessionId);
+    if (!conn) {
+      return;
+    }
+    if (conn.state$.getValue() !== ClientConnectionState.Connected) {
+      // No-op when not yet connected — matches the original behaviour so the
+      // renderer key handler doesn't need to gate on state explicitly.
+      return;
+    }
+    const seq = this._nextSeq(conn, FrameChannel.PtyData);
     const frame: IFrame = {
       channel: FrameChannel.PtyData,
       flags: FrameFlag.None,
@@ -273,17 +280,21 @@ export class ParticipantClientService extends Disposable implements IParticipant
       payload: data,
     };
     try {
-      this._transportService.send(frame, { target: 'daemon' });
+      conn.transport.send(frame, { target: 'daemon' });
     } catch (err) {
-      this._logService.warn('[ParticipantClientService] sendInput send failed:', err);
+      this._logService.warn(`[ParticipantClientService] sendInput failed for ${sessionId}:`, err);
     }
   }
 
-  async sendControl(message: object): Promise<void> {
-    if (this._state$.getValue() !== ClientConnectionState.Connected) {
+  async sendControl(sessionId: string, message: object): Promise<void> {
+    const conn = this._connections.get(sessionId);
+    if (!conn) {
       return;
     }
-    const seq = this._nextSeq(FrameChannel.Control);
+    if (conn.state$.getValue() !== ClientConnectionState.Connected) {
+      return;
+    }
+    const seq = this._nextSeq(conn, FrameChannel.Control);
     const frame: IFrame = {
       channel: FrameChannel.Control,
       flags: FrameFlag.None,
@@ -291,32 +302,151 @@ export class ParticipantClientService extends Disposable implements IParticipant
       payload: new TextEncoder().encode(JSON.stringify(message)),
     };
     try {
-      this._transportService.send(frame, { target: 'daemon' });
+      conn.transport.send(frame, { target: 'daemon' });
     } catch (err) {
-      this._logService.warn('[ParticipantClientService] sendControl send failed:', err);
+      this._logService.warn(`[ParticipantClientService] sendControl failed for ${sessionId}:`, err);
     }
   }
 
-  private _consumeSessionEvent(frame: IFrame): void {
+  private _createConnection(sessionId: string, daemonPub: Uint8Array): IParticipantConnection {
+    const transport = new RelayTransportService(this._codec, this._logService);
+    return {
+      sessionId,
+      transport,
+      subscriptions: [],
+      state$: new BehaviorSubject<ClientConnectionState>(ClientConnectionState.Pairing),
+      frames$: new Subject<IParticipantFrame>(),
+      snapshot$: new BehaviorSubject<IParticipantSnapshot | null>(null),
+      lastError$: new BehaviorSubject<string | null>(null),
+      connectionId$: new BehaviorSubject<string | null>(null),
+      metadata$: new BehaviorSubject<IParticipantSessionMetadata | null>(null),
+      daemonPub,
+      userSecretKey: null,
+      heartbeatTimer: null,
+      outboundSeq: {
+        [FrameChannel.Control]: 0,
+        [FrameChannel.PtyData]: 0,
+        [FrameChannel.SessionEvent]: 0,
+      },
+    };
+  }
+
+  /**
+   * Publish a freshly-built connection: install it under its sessionId and
+   * emit on `_sessions$` so the renderer's bridge controller sees the new
+   * attachment and adds a tab. Must run AFTER `transport.connect` resolves so
+   * we never publish a sid that ends up failing the WS handshake.
+   */
+  private _registerConnection(conn: IParticipantConnection): void {
+    this._connections.set(conn.sessionId, conn);
+    this._sessions$.next([...this._sessions$.getValue(), conn.sessionId]);
+  }
+
+  /**
+   * Discard a connection that never made it to `_registerConnection`: no
+   * `_sessions$` mutation, no map removal — just tear down its subjects and
+   * transport. Used on connect-time failure so the renderer never observes
+   * a transient sid.
+   */
+  private _destroyConnection(conn: IParticipantConnection): void {
+    this._stopHeartbeat(conn);
+    this._cleanupSubscriptions(conn);
+    conn.state$.complete();
+    conn.frames$.complete();
+    conn.snapshot$.complete();
+    conn.lastError$.complete();
+    conn.connectionId$.complete();
+    conn.metadata$.complete();
+    try {
+      conn.transport.dispose();
+    } catch (err) {
+      this._logService.warn(`[ParticipantClientService] transport.dispose threw during destroy for ${conn.sessionId}:`, err);
+    }
+    conn.userSecretKey = null;
+  }
+
+  private _wireTransport(conn: IParticipantConnection): void {
+    conn.subscriptions.push(conn.transport.state$.subscribe((state) => {
+      switch (state) {
+        case TransportState.Connected:
+          conn.state$.next(ClientConnectionState.Connected);
+          break;
+        case TransportState.Connecting:
+        case TransportState.Reconnecting:
+          conn.state$.next(ClientConnectionState.Connecting);
+          break;
+        case TransportState.Disconnected:
+          conn.state$.next(ClientConnectionState.Disconnected);
+          break;
+        case TransportState.Error:
+          conn.state$.next(ClientConnectionState.Error);
+          break;
+        case TransportState.Idle:
+          // Skip the initial BehaviorSubject emission: this method subscribes
+          // BEFORE `transport.connect()` to close the frames$ race window, so
+          // the very first state we observe is the pre-connect Idle. Mapping
+          // it to Disconnected would clobber the Pairing/Connecting state we
+          // just set in `_performConnect`.
+          break;
+      }
+    }));
+
+    conn.subscriptions.push(conn.transport.frames$.subscribe((inbound) => {
+      const frame = inbound.frame;
+      if (frame.channel === FrameChannel.SessionEvent) {
+        this._consumeSessionEvent(conn, frame);
+      } else if (frame.channel === FrameChannel.Control) {
+        this._consumeControlFrame(conn, frame);
+      }
+      conn.frames$.next(toClientFrame(frame));
+    }));
+  }
+
+  private _consumeSessionEvent(conn: IParticipantConnection, frame: IFrame): void {
     try {
       const text = new TextDecoder().decode(frame.payload);
       const event = JSON.parse(text) as { type?: string };
       if (event.type === 'snapshot') {
         const snap = event as unknown as IParticipantSnapshot;
-        this._snapshot$.next({
+        conn.snapshot$.next({
           sessionId: snap.sessionId,
           cols: snap.cols,
           rows: snap.rows,
           serialized: snap.serialized,
           observedSeq: snap.observedSeq,
         });
+      } else if (event.type === 'session_metadata') {
+        // null = field explicitly cleared by the owner; undefined (absent
+        // key) = no change. Distinguish so a sign-out wipes the cached
+        // ownerLabel instead of inheriting the previous value forever.
+        const meta = event as { ownerLabel?: string | null; title?: string | null };
+        const previous = conn.metadata$.getValue() ?? {};
+        const merged: { ownerLabel?: string; title?: string } = {
+          ownerLabel: previous.ownerLabel,
+          title: previous.title,
+        };
+        if ('ownerLabel' in meta) {
+          if (meta.ownerLabel === null || meta.ownerLabel === undefined) {
+            delete merged.ownerLabel;
+          } else {
+            merged.ownerLabel = meta.ownerLabel;
+          }
+        }
+        if ('title' in meta) {
+          if (meta.title === null || meta.title === undefined) {
+            delete merged.title;
+          } else {
+            merged.title = meta.title;
+          }
+        }
+        conn.metadata$.next(merged);
       }
     } catch (err) {
       this._logService.error('[ParticipantClientService] session event decode failed:', err);
     }
   }
 
-  private _consumeControlFrame(frame: IFrame, daemonPub: Uint8Array): void {
+  private _consumeControlFrame(conn: IParticipantConnection, frame: IFrame): void {
     let message: { type?: string; wrappedKey?: string; senderPublicKey?: string; reason?: string };
     try {
       message = JSON.parse(new TextDecoder().decode(frame.payload));
@@ -325,49 +455,44 @@ export class ParticipantClientService extends Disposable implements IParticipant
       return;
     }
     if (message.type === 'rekey' && message.wrappedKey) {
-      if (!this._userSecretKey) {
+      if (!conn.userSecretKey) {
         this._logService.warn('[ParticipantClientService] rekey arrived without joiner secret key');
         return;
       }
       try {
         const senderPub = message.senderPublicKey
           ? base64UrlToBytes(message.senderPublicKey)
-          : daemonPub;
+          : conn.daemonPub;
         const wrapped = base64UrlToBytes(message.wrappedKey);
-        const sessionKey = this._cryptoService.unwrapSessionKey(wrapped, senderPub, this._userSecretKey);
-        this._transportService.rekey(sessionKey).catch((err) => {
-          // Surface the failure to the UI rather than swallow it — without this,
-          // daemon has already swapped to the new sessionKey and every subsequent
-          // frame the joiner receives will fail secretbox.open silently.
+        const sessionKey = this._cryptoService.unwrapSessionKey(wrapped, senderPub, conn.userSecretKey);
+        conn.transport.rekey(sessionKey).catch((err) => {
           const reason = err instanceof Error ? err.message : String(err);
           this._logService.error('[ParticipantClientService] transport.rekey failed:', err);
-          this._lastError$.next(`rekey failed: ${reason}`);
-          this._state$.next(ClientConnectionState.Error);
+          conn.lastError$.next(`rekey failed: ${reason}`);
+          conn.state$.next(ClientConnectionState.Error);
         });
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
         this._logService.error('[ParticipantClientService] rekey unwrap failed:', err);
-        this._lastError$.next(`rekey unwrap failed: ${reason}`);
-        this._state$.next(ClientConnectionState.Error);
+        conn.lastError$.next(`rekey unwrap failed: ${reason}`);
+        conn.state$.next(ClientConnectionState.Error);
       }
       return;
     }
     if (message.type === 'error' && typeof message.reason === 'string') {
-      // Daemon-side error feedback (e.g. session not registered, attachClient
-      // failure). Surface in lastError$ so the UI can show the user.
-      this._lastError$.next(`daemon error: ${message.reason}`);
-      this._state$.next(ClientConnectionState.Error);
+      conn.lastError$.next(`daemon error: ${message.reason}`);
+      conn.state$.next(ClientConnectionState.Error);
     }
   }
 
-  private _sendClientJoin(parsed: IParsedInvite, userPublicKey: Uint8Array): void {
+  private _sendClientJoin(conn: IParticipantConnection, parsed: IParsedInvite, userPublicKey: Uint8Array): void {
     const message = {
       type: 'client_join',
       inviteId: parsed.inviteId,
       role: parsed.capability.role,
       userPublicKey: bytesToBase64Url(userPublicKey),
     };
-    const seq = this._nextSeq(FrameChannel.Control);
+    const seq = this._nextSeq(conn, FrameChannel.Control);
     const frame: IFrame = {
       channel: FrameChannel.Control,
       flags: FrameFlag.None,
@@ -375,63 +500,71 @@ export class ParticipantClientService extends Disposable implements IParticipant
       payload: new TextEncoder().encode(JSON.stringify(message)),
     };
     try {
-      this._transportService.send(frame, { target: 'daemon' });
+      conn.transport.send(frame, { target: 'daemon' });
     } catch (err) {
       this._logService.warn('[ParticipantClientService] client_join send failed:', err);
     }
   }
 
-  private _nextSeq(channel: FrameChannel): number {
-    const seq = this._outboundSeq[channel];
-    this._outboundSeq[channel] = (seq + 1) >>> 0;
+  private _nextSeq(conn: IParticipantConnection, channel: FrameChannel): number {
+    const seq = conn.outboundSeq[channel];
+    conn.outboundSeq[channel] = (seq + 1) >>> 0;
     return seq;
   }
 
-  private _resetOutboundSeq(): void {
-    this._outboundSeq[FrameChannel.Control] = 0;
-    this._outboundSeq[FrameChannel.PtyData] = 0;
-    this._outboundSeq[FrameChannel.SessionEvent] = 0;
-  }
-
   /**
-   * Periodic heartbeat upstream. The relay server does not notify the daemon
-   * when this joiner's WebSocket closes; without these heartbeats, mux on the
-   * owner side keeps a stale `client` entry forever and the forward-secrecy
-   * detach-rekey never fires when the joiner actually leaves. The daemon
-   * reaps any client that hasn't heartbeat'd within the threshold.
+   * Periodic heartbeat upstream. The relay does not notify the daemon when
+   * this joiner's WebSocket closes; without these heartbeats, mux on the
+   * owner side would keep a stale `client` entry forever and the forward-
+   * secrecy detach-rekey would never fire when the joiner actually leaves.
    */
-  private _startHeartbeat(): void {
-    this._stopHeartbeat();
-    const HEARTBEAT_INTERVAL_MS = 5_000;
-    this._heartbeatTimer = setInterval(() => {
-      // sendControl guards on state internally and silently no-ops if we're
-      // not Connected — safe to call on every tick.
-      void this.sendControl({ type: 'heartbeat' });
+  private _startHeartbeat(conn: IParticipantConnection): void {
+    this._stopHeartbeat(conn);
+    conn.heartbeatTimer = setInterval(() => {
+      void this.sendControl(conn.sessionId, { type: 'heartbeat' });
     }, HEARTBEAT_INTERVAL_MS);
-    if (typeof this._heartbeatTimer === 'object' && this._heartbeatTimer !== null && 'unref' in this._heartbeatTimer) {
-      (this._heartbeatTimer as { unref: () => void }).unref();
+    if (typeof conn.heartbeatTimer === 'object' && conn.heartbeatTimer !== null && 'unref' in conn.heartbeatTimer) {
+      (conn.heartbeatTimer as { unref: () => void }).unref();
     }
   }
 
-  private _stopHeartbeat(): void {
-    if (this._heartbeatTimer !== null) {
-      clearInterval(this._heartbeatTimer);
-      this._heartbeatTimer = null;
+  private _stopHeartbeat(conn: IParticipantConnection): void {
+    if (conn.heartbeatTimer !== null) {
+      clearInterval(conn.heartbeatTimer);
+      conn.heartbeatTimer = null;
     }
   }
 
-  private _cleanupSubscriptions(): void {
-    this._transportSub?.unsubscribe();
-    this._transportSub = null;
-    this._transportStateSub?.unsubscribe();
-    this._transportStateSub = null;
+  private _cleanupSubscriptions(conn: IParticipantConnection): void {
+    for (const sub of conn.subscriptions) {
+      sub.unsubscribe();
+    }
+    conn.subscriptions.length = 0;
   }
 
-  private _fail(err: unknown, label: string): void {
-    const message = err instanceof Error ? err.message : String(err);
-    this._logService.error(`[ParticipantClientService] ${label}: ${message}`);
-    this._lastError$.next(message);
-    this._state$.next(ClientConnectionState.Error);
+  private _tearDown(sessionId: string): void {
+    const conn = this._connections.get(sessionId);
+    if (!conn) {
+      return;
+    }
+    this._stopHeartbeat(conn);
+    this._cleanupSubscriptions(conn);
+    conn.state$.complete();
+    conn.frames$.complete();
+    conn.snapshot$.complete();
+    conn.lastError$.complete();
+    conn.connectionId$.complete();
+    conn.metadata$.complete();
+    try {
+      conn.transport.dispose();
+    } catch (err) {
+      this._logService.warn(`[ParticipantClientService] transport.dispose threw for ${sessionId}:`, err);
+    }
+    // Drop the joiner's X25519 secret right after the transport closes —
+    // matches the lifetime contract "secret lives only for this connection".
+    conn.userSecretKey = null;
+    this._connections.delete(sessionId);
+    this._sessions$.next(this._sessions$.getValue().filter((sid) => sid !== sessionId));
   }
 }
 

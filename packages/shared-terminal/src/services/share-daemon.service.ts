@@ -72,6 +72,19 @@ export interface IShareDaemonService {
 
   /** Remove a candidate sharedKey on invite revoke / consume / expire. */
   removeCandidateKey(sessionId: string, inviteId: string): void;
+
+  /**
+   * Broadcast a session_metadata SessionEvent to every attached client of the
+   * session. Used by ShareSessionService to push the owner's displayName +
+   * latest visible title; joiners apply it as their tab title. No-op when the
+   * session isn't attached (we don't buffer — every attach starts with an
+   * implicit push from the caller).
+   *
+   * Pass `null` for `ownerLabel` / `title` to explicitly clear a previously
+   * sent value (e.g. owner signs out). An `undefined` field means "no change
+   * to this field" — the daemon's cache merge preserves the previous value.
+   */
+  pushSessionMetadata(sessionId: string, metadata: { ownerLabel?: string | null; title?: string | null }): void;
 }
 
 export const IShareDaemonService = createIdentifier<IShareDaemonService>(

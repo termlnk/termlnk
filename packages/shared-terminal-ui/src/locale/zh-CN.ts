@@ -35,6 +35,7 @@ const locale: typeof enUS = {
       'join-failed': '加入会话失败：',
     },
     remote: {
+      'tab-name': '共享会话',
       'viewing-only': '只读旁观',
       driving: '正在驾驶',
       'waiting-for-frames': '等待主机的首批输出…',

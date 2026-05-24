@@ -17,7 +17,7 @@ import type { MouseEvent, PointerEventHandler } from 'react';
 import type { TerminalSessionStatus } from '../../services/terminal/terminal-ui.service';
 import { Button, cn } from '@termlnk/design';
 import { TooltipWrapper } from '@termlnk/ui';
-import { Loader2, Terminal, X } from 'lucide-react';
+import { Loader2, Terminal, Users, X } from 'lucide-react';
 import { CloseActiveTabCommand } from '../../commands/close-active-tab.command';
 
 export interface ITerminalTabItemProps {
@@ -114,9 +114,22 @@ export function TerminalTabItem(props: ITerminalTabItemProps) {
                 })}
               />
             )
-            : (['connecting', 'authenticating', 'opening_shell'].includes(status)
-              ? <Loader2 size={14} strokeWidth={1.5} className="tm:animate-spin" />
-              : <Terminal size={14} strokeWidth={1.5} />)}
+            : type === 'remote'
+              ? (
+                <Users
+                  size={14}
+                  strokeWidth={1.5}
+                  className={cn({
+                    'tm:text-green': status === 'ready',
+                    'tm:animate-pulse tm:text-yellow': ['connecting', 'authenticating', 'opening_shell'].includes(status),
+                    'tm:text-red': status === 'error' || status === 'auth_failed',
+                    'tm:text-grey': status === 'closed' || status === 'idle',
+                  })}
+                />
+              )
+              : (['connecting', 'authenticating', 'opening_shell'].includes(status)
+                  ? <Loader2 size={14} strokeWidth={1.5} className="tm:animate-spin" />
+                  : <Terminal size={14} strokeWidth={1.5} />)}
         </div>
 
         <span

@@ -201,6 +201,7 @@ export const SESSION_EVENT_TYPES = [
   'session_started',
   'session_closed',
   'snapshot',
+  'session_metadata',
 ] as const;
 export type SessionEventType = (typeof SESSION_EVENT_TYPES)[number];
 
@@ -260,6 +261,23 @@ export interface ISnapshotSessionEvent extends ISessionEventBase, ISessionSnapsh
   readonly type: 'snapshot';
 }
 
+/**
+ * Owner-pushed metadata: ownerLabel (display name) and current title. Sent by
+ * the daemon at attachSession time and again whenever the renderer reports a
+ * title change for the shared session. Joiners use it to keep their tab in
+ * sync with the owner's visible session name.
+ *
+ * `null` means "this field was explicitly cleared by the owner" (e.g.
+ * sign-out clears ownerLabel). Missing field means "no change — keep the
+ * previously cached value". The joiner's merge in
+ * ParticipantClientService._consumeSessionEvent honours that distinction.
+ */
+export interface ISessionMetadataSessionEvent extends ISessionEventBase {
+  readonly type: 'session_metadata';
+  readonly ownerLabel?: string | null;
+  readonly title?: string | null;
+}
+
 export type ISessionEvent =
   | IParticipantJoinedSessionEvent
   | IParticipantLeftSessionEvent
@@ -269,4 +287,5 @@ export type ISessionEvent =
   | IInviteSessionEvent
   | IRekeySessionEvent
   | ISessionLifecycleEvent
-  | ISnapshotSessionEvent;
+  | ISnapshotSessionEvent
+  | ISessionMetadataSessionEvent;

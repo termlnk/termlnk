@@ -17,7 +17,7 @@ export { DEFAULT_CLOUD_BASE_URL, SHARED_TERMINAL_CAPABILITY_VERSION, SHARED_TERM
 export type { ISharedTerminalPluginConfig } from './controllers/config.schema';
 export { SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IDriverHandover, IDriverState } from './models/driver';
-export type { ControlMessageType, IControlMessage, IControlMessageBase, IDriverHandoverControlMessage, IDriverLockControlMessage, IDriverReleaseControlMessage, IDriverRequestControlMessage, IDriverUnlockControlMessage, IErrorControlMessage, IFrame, IHeartbeatControlMessage, IInviteAcceptControlMessage, IInviteClaimControlMessage, IInviteRejectControlMessage, IInviteSessionEvent, IKickControlMessage, IParticipantJoinedSessionEvent, IParticipantKickedSessionEvent, IParticipantLeftSessionEvent, IRekeyControlMessage, IRekeySessionEvent, IResizeControlMessage, IRoleChangedSessionEvent, ISessionEvent, ISessionEventBase, ISessionLifecycleEvent, ISnapshotSessionEvent, SessionEventType } from './models/frame';
+export type { ControlMessageType, IControlMessage, IControlMessageBase, IDriverHandoverControlMessage, IDriverLockControlMessage, IDriverReleaseControlMessage, IDriverRequestControlMessage, IDriverUnlockControlMessage, IErrorControlMessage, IFrame, IHeartbeatControlMessage, IInviteAcceptControlMessage, IInviteClaimControlMessage, IInviteRejectControlMessage, IInviteSessionEvent, IKickControlMessage, IParticipantJoinedSessionEvent, IParticipantKickedSessionEvent, IParticipantLeftSessionEvent, IRekeyControlMessage, IRekeySessionEvent, IResizeControlMessage, IRoleChangedSessionEvent, ISessionEvent, ISessionEventBase, ISessionLifecycleEvent, ISessionMetadataSessionEvent, ISnapshotSessionEvent, SessionEventType } from './models/frame';
 export { CONTROL_MESSAGE_TYPES, FrameChannel, FrameFlag, SESSION_EVENT_TYPES } from './models/frame';
 export type { CollabInviteStatus, ICapability, ICollabInvite, IInviteClaimPayload, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState } from './models/invite';
 export type { IKeypair, ISharedKey } from './models/keypair';
@@ -35,7 +35,7 @@ export type { IRemoteAnnouncedSession } from './services/device-pairing.service'
 export { IDevicePairingService } from './services/device-pairing.service';
 export { IFrameCodecService } from './services/frame-codec.service';
 export { IPairingService } from './services/pairing.service';
-export type { IParticipantConnectInput, IParticipantConnectResult, IParticipantFrame, IParticipantSnapshot } from './services/participant-client.service';
+export type { IParticipantConnectInput, IParticipantConnectResult, IParticipantFrame, IParticipantSessionMetadata, IParticipantSnapshot } from './services/participant-client.service';
 export { IParticipantService } from './services/participant-client.service';
 export type { IOutboundFrame, IPtySource, IRegisteredPty, IRekeyResult, RekeyReason } from './services/pty-multiplexer.service';
 export { IPtyMultiplexerService } from './services/pty-multiplexer.service';

@@ -33,6 +33,7 @@ const locale = {
       'join-failed': 'Could not join the session:',
     },
     remote: {
+      'tab-name': 'Shared session',
       'viewing-only': 'Viewing (read-only)',
       driving: 'Driving',
       'waiting-for-frames': 'Waiting for the host\'s first frame…',

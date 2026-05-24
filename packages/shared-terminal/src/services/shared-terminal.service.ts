@@ -19,7 +19,7 @@ import type { ICollabInvite, IInviteClaimResult, IInviteCreateOptions, IInviteTo
 import type { IPairedDevice } from '../models/pairing';
 import type { ClientConnectionState, IParticipant, ISharedSession } from '../models/session';
 import type { IRemoteAnnouncedSession } from './device-pairing.service';
-import type { IParticipantConnectResult, IParticipantFrame, IParticipantSnapshot } from './participant-client.service';
+import type { IParticipantConnectResult, IParticipantFrame, IParticipantSessionMetadata, IParticipantSnapshot } from './participant-client.service';
 import { createIdentifier } from '@termlnk/core';
 
 /**
@@ -109,21 +109,32 @@ export interface ISharedTerminalService {
    */
   readonly inviteUrl$: Observable<string>;
 
-  // Participant (joiner) side: connect to a shared session, stream inbound frames
+  // Participant (joiner) side: multi-session attachments to shared sessions.
 
-  readonly participantState$: Observable<ClientConnectionState>;
-  readonly participantFrames$: Observable<IParticipantFrame>;
-  readonly participantSnapshot$: Observable<IParticipantSnapshot | null>;
-  readonly participantLastError$: Observable<string | null>;
-  readonly participantConnectionId$: Observable<string | null>;
-  readonly participantSessionId$: Observable<string | null>;
+  /** SessionIds of every active participant attachment. */
+  readonly participantSessions$: Observable<readonly string[]>;
+
+  participantState$(sessionId: string): Observable<ClientConnectionState>;
+  participantFrames$(sessionId: string): Observable<IParticipantFrame>;
+  participantSnapshot$(sessionId: string): Observable<IParticipantSnapshot | null>;
+  participantLastError$(sessionId: string): Observable<string | null>;
+  participantConnectionId$(sessionId: string): Observable<string | null>;
+  participantMetadata$(sessionId: string): Observable<IParticipantSessionMetadata | null>;
 
   connectAsParticipant(inviteUrl: string): Promise<IParticipantConnectResult>;
-  disconnectParticipant(): Promise<void>;
+  disconnectParticipant(sessionId: string): Promise<void>;
   /** Forward joiner keystroke bytes to the owner's PTY (driver mode only). */
-  sendParticipantInput(data: Uint8Array): Promise<void>;
+  sendParticipantInput(sessionId: string, data: Uint8Array): Promise<void>;
   /** Forward a JSON Control message (driver_request / driver_release / resize / ...). */
-  sendParticipantControl(message: object): Promise<void>;
+  sendParticipantControl(sessionId: string, message: object): Promise<void>;
+
+  /**
+   * Renderer → daemon: tell the daemon that an owner-side session's visible
+   * title has changed (e.g. local PTY OSC update). The daemon forwards the new
+   * title to every joiner via a session_metadata SessionEvent so their tab UI
+   * stays in sync with the owner's.
+   */
+  setSharedSessionTitle(sessionId: string, title: string): Promise<void>;
 
   // Same-account device pairing — sessions announced by the user's other devices
 

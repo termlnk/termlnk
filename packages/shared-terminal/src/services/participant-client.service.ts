@@ -36,6 +36,12 @@ export interface IParticipantSnapshot {
   readonly observedSeq: number;
 }
 
+/** Owner-pushed metadata for a joined session: live title + display name. */
+export interface IParticipantSessionMetadata {
+  readonly ownerLabel?: string;
+  readonly title?: string;
+}
+
 export interface IParticipantConnectInput {
   readonly inviteUrl: string;
 }
@@ -49,25 +55,32 @@ export interface IParticipantConnectResult {
 /**
  * Owner-process service that drives the joiner side of a multiplayer session.
  *
+ * Multi-session: the joiner can hold N concurrent attachments at once. Every
+ * stream below is per-session and lazily returns an empty Observable when the
+ * sessionId is unknown — callers don't have to gate on `sessions$` first.
+ *
  * Renderer triggers `connect(inviteUrl)`; the implementation parses the invite,
  * negotiates the session key with the relay, and starts streaming inbound frames.
- * The `frames$` stream is consumed by the renderer's RemoteTerminalView.
- *
- * Lives in shared-terminal contract layer so both rpc-server (impl) and
- * rpc-client (facade) can share the type without circular deps.
+ * The `frames$(sessionId)` stream is consumed by the renderer's RemoteTerminalView
+ * for the corresponding tab.
  */
 export interface IParticipantService {
-  readonly state$: Observable<ClientConnectionState>;
-  readonly frames$: Observable<IParticipantFrame>;
-  readonly snapshot$: Observable<IParticipantSnapshot | null>;
-  readonly lastError$: Observable<string | null>;
-  /** Server-assigned connectionId for the active attach, or null when idle. */
-  readonly currentConnectionId$: Observable<string | null>;
-  /** SessionId of the currently joined shared session, or null when idle. */
-  readonly currentSessionId$: Observable<string | null>;
+  /** SessionIds of every active attachment. Emits on add/remove. */
+  readonly sessions$: Observable<readonly string[]>;
+  /** Snapshot of the current sessions list. */
+  getSessions(): readonly string[];
+
+  state$(sessionId: string): Observable<ClientConnectionState>;
+  frames$(sessionId: string): Observable<IParticipantFrame>;
+  snapshot$(sessionId: string): Observable<IParticipantSnapshot | null>;
+  lastError$(sessionId: string): Observable<string | null>;
+  /** Server-assigned connectionId for the attachment, or null while pending. */
+  connectionId$(sessionId: string): Observable<string | null>;
+  /** Owner-pushed metadata (label + live title) for the attachment. */
+  metadata$(sessionId: string): Observable<IParticipantSessionMetadata | null>;
 
   connect(input: IParticipantConnectInput): Promise<IParticipantConnectResult>;
-  disconnect(): Promise<void>;
+  disconnect(sessionId: string): Promise<void>;
 
   /**
    * Forward joiner keystrokes upstream to the owner's PTY. Encrypts a PtyData
@@ -76,14 +89,14 @@ export interface IParticipantService {
    * only when the joiner is the current driver (read-only joiners are silently
    * dropped server-side).
    */
-  sendInput(data: Uint8Array): Promise<void>;
+  sendInput(sessionId: string, data: Uint8Array): Promise<void>;
 
   /**
    * Send a JSON-encoded Control message (driver_request, driver_release,
    * resize, heartbeat, ...) to the daemon. Used by the renderer's
    * RemoteTerminalView for driver arbitration.
    */
-  sendControl(message: object): Promise<void>;
+  sendControl(sessionId: string, message: object): Promise<void>;
 }
 
 export const IParticipantService = createIdentifier<IParticipantService>(

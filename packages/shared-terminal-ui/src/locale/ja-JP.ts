@@ -35,6 +35,7 @@ const locale: typeof enUS = {
       'join-failed': 'セッションへの参加に失敗しました:',
     },
     remote: {
+      'tab-name': '共有セッション',
       'viewing-only': '閲覧のみ',
       driving: '操作中',
       'waiting-for-frames': 'ホストからの最初のフレームを待っています…',
