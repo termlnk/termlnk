@@ -19,6 +19,29 @@ import { join } from 'node:path';
 import { parseUniformQuestionSet } from '../wire-formatters';
 import { BaseConfigFileAdapter } from './base-config-adapter';
 
+/**
+ * Anchored at the start of a line (multiline), optionally consuming a
+ * trailing newline so the deleted entry does not leave a blank line behind.
+ * `[ \t]` instead of `\s` avoids eating surrounding line breaks, and
+ * `[^\n]*` matches the value regardless of whether it is bare (`true`),
+ * quoted (`"true"`), or anything else the user typed.
+ */
+const LEGACY_CODEX_HOOKS_LINE = /^[ \t]*codex_hooks[ \t]*=[^\n]*\n?/gm;
+
+/**
+ * Pure transform: strip every `codex_hooks = ...` line from a config.toml
+ * body. Returns `null` if nothing changed so callers can skip the write.
+ * Exported for unit testing — the surrounding adapter methods only handle
+ * filesystem and logging.
+ */
+export function stripLegacyCodexHooksFlag(content: string): string | null {
+  if (!content.includes('codex_hooks')) {
+    return null;
+  }
+  const cleaned = content.replace(LEGACY_CODEX_HOOKS_LINE, '');
+  return cleaned === content ? null : cleaned;
+}
+
 export class CodexHookAdapter extends BaseConfigFileAdapter {
   readonly agentType: ExternalAgentType = 'codex';
 
@@ -54,50 +77,25 @@ export class CodexHookAdapter extends BaseConfigFileAdapter {
     return parseUniformQuestionSet(toolInput);
   }
 
-  /**
-   * Override install to add codex_hooks feature flag in config.toml.
-   * Codex requires `codex_hooks = true` under [features] to enable hooks.
-   */
   override async install(port: number, token: string): Promise<void> {
     await super.install(port, token);
-    this._enableCodexHooksConfig();
+    this._cleanupLegacyCodexHooksFlag();
+  }
+
+  override async uninstall(): Promise<void> {
+    await super.uninstall();
+    this._cleanupLegacyCodexHooksFlag();
   }
 
   /**
-   * Override uninstall to remove codex_hooks feature flag from config.toml.
+   * Older Termlnk releases wrote `[features].codex_hooks = true` to enable
+   * Codex lifecycle hooks. Codex has renamed the flag to `hooks` (Stable,
+   * defaults to true), so the old name now prints a deprecation warning on
+   * every launch. Strip the legacy line whenever we install/uninstall so
+   * upgraded users stop seeing the warning. No replacement is written
+   * because the new flag is on by default.
    */
-  override async uninstall(): Promise<void> {
-    await super.uninstall();
-    this._disableCodexHooksConfig();
-  }
-
-  private _enableCodexHooksConfig(): void {
-    const configDir = this._resolveConfigDir();
-    const configPath = join(configDir, 'config.toml');
-
-    try {
-      let content = '';
-      if (existsSync(configPath)) {
-        content = readFileSync(configPath, 'utf-8');
-      }
-
-      if (content.includes('codex_hooks')) {
-        // Replace existing value
-        content = content.replace(/codex_hooks\s*=\s*\w+/, 'codex_hooks = true');
-      } else if (content.includes('[features]')) {
-        content = content.replace('[features]', '[features]\ncodex_hooks = true');
-      } else {
-        content = `${content}\n[features]\ncodex_hooks = true\n`;
-      }
-
-      writeFileSync(configPath, content, 'utf-8');
-      this._logService.log('[CodexAdapter]', `Enabled codex_hooks in ${configPath}`);
-    } catch (err) {
-      this._logService.warn('[CodexAdapter]', 'Failed to enable codex_hooks in config.toml:', err);
-    }
-  }
-
-  private _disableCodexHooksConfig(): void {
+  private _cleanupLegacyCodexHooksFlag(): void {
     const configDir = this._resolveConfigDir();
     const configPath = join(configDir, 'config.toml');
 
@@ -106,16 +104,15 @@ export class CodexHookAdapter extends BaseConfigFileAdapter {
         return;
       }
 
-      let content = readFileSync(configPath, 'utf-8');
-      if (!content.includes('codex_hooks')) {
+      const cleaned = stripLegacyCodexHooksFlag(readFileSync(configPath, 'utf-8'));
+      if (cleaned === null) {
         return;
       }
 
-      content = content.replace(/\n?codex_hooks\s*=\s*\w+/, '');
-      writeFileSync(configPath, content, 'utf-8');
-      this._logService.log('[CodexAdapter]', 'Removed codex_hooks from config.toml');
+      writeFileSync(configPath, cleaned, 'utf-8');
+      this._logService.log('[CodexAdapter]', `Removed legacy codex_hooks flag from ${configPath}`);
     } catch (err) {
-      this._logService.warn('[CodexAdapter]', 'Failed to remove codex_hooks from config.toml:', err);
+      this._logService.warn('[CodexAdapter]', 'Failed to clean legacy codex_hooks from config.toml:', err);
     }
   }
 }
