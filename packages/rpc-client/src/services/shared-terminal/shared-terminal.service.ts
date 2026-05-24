@@ -145,12 +145,37 @@ export class SharedTerminalService extends Disposable implements ISharedTerminal
     (opts) => this._client.participantLastError$.subscribe(undefined, opts)
   ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
 
+  readonly participantConnectionId$: Observable<string | null> = trpcSubscriptionToObservable<string | null>(
+    (opts) => this._client.participantConnectionId$.subscribe(undefined, opts)
+  ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
+  readonly participantSessionId$: Observable<string | null> = trpcSubscriptionToObservable<string | null>(
+    (opts) => this._client.participantSessionId$.subscribe(undefined, opts)
+  ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+
   async connectAsParticipant(inviteUrl: string): Promise<IParticipantConnectResult> {
     return this._client.connectAsParticipant.mutate({ inviteUrl }) as Promise<IParticipantConnectResult>;
   }
 
   async disconnectParticipant(): Promise<void> {
     await this._client.disconnectParticipant.mutate();
+  }
+
+  async sendParticipantInput(data: Uint8Array): Promise<void> {
+    // Defensive copy: `data` may be a typed-array sub-view with an offset; the
+    // String.fromCharCode loop indexes by .length but a sub-view's underlying
+    // buffer could be much larger. Copying into a fresh Uint8Array guarantees
+    // every read is in-bounds and the bytes start at offset 0.
+    const bytes = new Uint8Array(data);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]!);
+    }
+    await this._client.sendParticipantInput.mutate({ dataB64: globalThis.btoa(binary) });
+  }
+
+  async sendParticipantControl(message: object): Promise<void> {
+    await this._client.sendParticipantControl.mutate({ message: message as Record<string, unknown> });
   }
 
   readonly remoteSessions$: Observable<readonly IRemoteAnnouncedSession[]> = trpcSubscriptionToObservable<readonly IRemoteAnnouncedSession[]>(

@@ -57,3 +57,13 @@ export const announceDeviceSessionInputSchema = z.object({
 export const connectAsParticipantInputSchema = z.object({
   inviteUrl: z.string().min(1),
 });
+
+export const sendParticipantInputSchema = z.object({
+  /** base64-encoded bytes — keeps the transport agnostic about utf-8 vs binary. */
+  dataB64: z.string().regex(/^[A-Za-z0-9+/=]*$/, 'dataB64 must be standard base64'),
+});
+
+export const sendParticipantControlSchema = z.object({
+  /** JSON-serializable control message; the daemon-side mux interprets `type`. */
+  message: z.record(z.string(), z.unknown()),
+});

@@ -151,12 +151,28 @@ export class SharedTerminalService extends Disposable implements ISharedTerminal
     return this._participant?.lastError$ ?? EMPTY;
   }
 
+  get participantConnectionId$(): Observable<string | null> {
+    return this._participant?.currentConnectionId$ ?? EMPTY;
+  }
+
+  get participantSessionId$(): Observable<string | null> {
+    return this._participant?.currentSessionId$ ?? EMPTY;
+  }
+
   async connectAsParticipant(inviteUrl: string): Promise<IParticipantConnectResult> {
     return this._requireParticipant().connect({ inviteUrl });
   }
 
   async disconnectParticipant(): Promise<void> {
     await this._requireParticipant().disconnect();
+  }
+
+  async sendParticipantInput(data: Uint8Array): Promise<void> {
+    await this._requireParticipant().sendInput(data);
+  }
+
+  async sendParticipantControl(message: object): Promise<void> {
+    await this._requireParticipant().sendControl(message);
   }
 
   get remoteSessions$(): Observable<readonly IRemoteAnnouncedSession[]> {

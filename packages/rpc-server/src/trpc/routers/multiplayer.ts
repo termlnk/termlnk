@@ -15,7 +15,7 @@
 
 import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { ISharedTerminalService } from '@termlnk/shared-terminal';
-import { announceDeviceSessionInputSchema, connectAsParticipantInputSchema, createInviteInputSchema, deviceIdSchema, inviteIdSchema, kickInputSchema, lockDriverInputSchema, sessionIdSchema, setDriverInputSchema } from '../schema/multiplayer.schema';
+import { announceDeviceSessionInputSchema, connectAsParticipantInputSchema, createInviteInputSchema, deviceIdSchema, inviteIdSchema, kickInputSchema, lockDriverInputSchema, sendParticipantControlSchema, sendParticipantInputSchema, sessionIdSchema, setDriverInputSchema } from '../schema/multiplayer.schema';
 import { publicProcedure, router } from '../trpc';
 
 export type MultiplayerRouter = typeof multiplayerRouter;
@@ -182,6 +182,24 @@ export const multiplayerRouter = router({
       await ctx.injector.get(ISharedTerminalService).disconnectParticipant();
     }),
 
+  sendParticipantInput: publicProcedure
+    .input(sendParticipantInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      let bytes: Uint8Array;
+      try {
+        bytes = Uint8Array.from(globalThis.atob(input.dataB64), (c) => c.charCodeAt(0));
+      } catch (err) {
+        throw new Error(`invalid dataB64: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      await ctx.injector.get(ISharedTerminalService).sendParticipantInput(bytes);
+    }),
+
+  sendParticipantControl: publicProcedure
+    .input(sendParticipantControlSchema)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.injector.get(ISharedTerminalService).sendParticipantControl(input.message);
+    }),
+
   participantState$: publicProcedure
     .subscription(async function* ({ ctx }) {
       yield* observableToAsyncGenerator(ctx.injector.get(ISharedTerminalService).participantState$);
@@ -200,6 +218,16 @@ export const multiplayerRouter = router({
   participantLastError$: publicProcedure
     .subscription(async function* ({ ctx }) {
       yield* observableToAsyncGenerator(ctx.injector.get(ISharedTerminalService).participantLastError$);
+    }),
+
+  participantConnectionId$: publicProcedure
+    .subscription(async function* ({ ctx }) {
+      yield* observableToAsyncGenerator(ctx.injector.get(ISharedTerminalService).participantConnectionId$);
+    }),
+
+  participantSessionId$: publicProcedure
+    .subscription(async function* ({ ctx }) {
+      yield* observableToAsyncGenerator(ctx.injector.get(ISharedTerminalService).participantSessionId$);
     }),
 
   // ---------------------------------------------------------------------------
