@@ -21,6 +21,9 @@ import { timestamps } from './base';
 export const skillEntity = sqliteTable('skill', {
   id: text('id').primaryKey().notNull(),
   name: text('name').notNull(),
+  // Directory name relative to the per-source root (`bundledSkillsDir` for `builtin`,
+  // `userSkillsDir` for `user`). Stored relative so DB rows stay valid across devices —
+  // absolute paths break under cross-device sync.
   path: text('path').notNull(),
   source: text('source').notNull().$type<SkillSource>(),
   registryId: text('registry_id'),

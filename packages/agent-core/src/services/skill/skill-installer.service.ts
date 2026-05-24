@@ -22,7 +22,8 @@ import { AGENT_PLUGIN_CONFIG_KEY, SKILL_CONFIG_KEY, SKILL_USER_DIR } from '@term
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository, SkillRepository } from '@termlnk/database';
 import { resolveConfigPath } from '@termlnk/rpc';
-import { buildProxyEnvVars, buildSkillRepositoryLocalPath, cloneGitHubRepository, getSkillRepositoryScanRoot, isSkillPathManagedByRepository, normalizeGitHubRepositoryInput } from './skill-repository.utils';
+import { resolveSkillAbsolutePath } from './skill-path.utils';
+import { buildProxyEnvVars, buildSkillRepositoryLocalPath, cloneGitHubRepository, getSkillRepositoryScanRoot, normalizeGitHubRepositoryInput } from './skill-repository.utils';
 
 export class SkillInstallerService extends Disposable implements ISkillInstallerService {
   constructor(
@@ -197,17 +198,14 @@ export class SkillInstallerService extends Disposable implements ISkillInstaller
       throw new Error(`Skill not found: ${id}`);
     }
 
-    const repositories = await this.getRepositories();
-    if (isSkillPathManagedByRepository(skill.path, repositories)) {
-      throw new Error('Repository-managed skills must be removed from the repository list');
-    }
-
     if (skill.source === 'builtin') {
       throw new Error('Cannot uninstall builtin skills');
     }
 
-    if (existsSync(skill.path)) {
-      rmSync(skill.path, { recursive: true, force: true });
+    const config = this._configService.getConfig<IAgentCorePluginConfig>(SKILL_CONFIG_KEY) ?? {};
+    const absolutePath = resolveSkillAbsolutePath(skill, config);
+    if (existsSync(absolutePath)) {
+      rmSync(absolutePath, { recursive: true, force: true });
     }
 
     await this._skillRepository.delete(id);

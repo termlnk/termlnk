@@ -16,14 +16,16 @@
 import type { ISkill, ISkillPromptService } from '@termlnk/agent';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ISkillStateService } from '@termlnk/agent';
-import { Disposable } from '@termlnk/core';
+import { ISkillStateService, SKILL_CONFIG_KEY } from '@termlnk/agent';
+import { Disposable, IConfigService } from '@termlnk/core';
+import { resolveSkillAbsolutePath } from './skill-path.utils';
 
 export class SkillPromptService extends Disposable implements ISkillPromptService {
   private _cachedSkills: ISkill[] = [];
 
   constructor(
-    @ISkillStateService private readonly _stateService: ISkillStateService
+    @ISkillStateService private readonly _stateService: ISkillStateService,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
 
@@ -53,7 +55,8 @@ export class SkillPromptService extends Disposable implements ISkillPromptServic
       throw new Error(`Skill not found or disabled: ${name}`);
     }
 
-    const skillFile = join(skill.path, 'SKILL.md');
+    const dirs = this._configService.getConfig<{ bundledSkillsDir?: string; userSkillsDir?: string }>(SKILL_CONFIG_KEY) ?? {};
+    const skillFile = join(resolveSkillAbsolutePath(skill, dirs), 'SKILL.md');
     return readFileSync(skillFile, 'utf-8');
   }
 

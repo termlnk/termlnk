@@ -121,10 +121,11 @@ export class SkillDiscoveryService extends Disposable implements ISkillDiscovery
 
           const checksum = createHash('md5').update(content).digest('hex');
 
+          // Store path relative to per-source root so DB rows stay portable across devices.
           skills.push({
-            discoveryKey: `${source}:${skillDir}`,
+            discoveryKey: `${source}:${entry}`,
             name: parsed.frontmatter.name,
-            path: skillDir,
+            path: entry,
             source,
             frontmatter: parsed.frontmatter,
             checksum,

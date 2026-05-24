@@ -22,6 +22,7 @@ import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDepend
 import { DEFAULT_DB_ADAPTOR } from './config/config';
 import { DATABASE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
+import { runSkillRelativePathRuntimeMigration } from './migrations/runtime/skill-relative-path.runtime';
 import { BackupRepository } from './repositories/backup';
 import { ChatRepository } from './repositories/chat';
 import { CollabInviteTokenRepository } from './repositories/collab-invite-token';
@@ -74,6 +75,7 @@ export class DatabasePlugin extends Plugin {
     // Fire-and-forget: a migration failure must not block startup. Repositories already
     // tolerate plaintext rows on read, so the next launch will retry.
     void this._runEncryptSecretsMigration();
+    void this._runSkillRelativePathMigration();
   }
 
   private _initDependencies(): void {
@@ -126,6 +128,22 @@ export class DatabasePlugin extends Plugin {
       }
     } catch (error) {
       this._logService.error('[DatabasePlugin] Secret encryption migration failed:', error);
+    }
+  }
+
+  // Idempotent: rows whose `path` is already a basename are left untouched.
+  private async _runSkillRelativePathMigration(): Promise<void> {
+    try {
+      const dbService = this._injector.get(IDBAdaptorService);
+      const db = dbService.db as BetterSQLite3Database<typeof entities>;
+      const result = await runSkillRelativePathRuntimeMigration(db);
+      if (result.rewritten > 0) {
+        this._logService.log(
+          `[DatabasePlugin] Rewrote skill paths to per-source basenames — ${result.rewritten}/${result.scanned}`
+        );
+      }
+    } catch (error) {
+      this._logService.error('[DatabasePlugin] Skill relative-path migration failed:', error);
     }
   }
 }

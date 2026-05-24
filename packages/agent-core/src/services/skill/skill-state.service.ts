@@ -16,10 +16,11 @@
 import type { IDiscoveredSkill, ISkill, ISkillState, ISkillStateService } from '@termlnk/agent';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ISkillDiscoveryService } from '@termlnk/agent';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { ISkillDiscoveryService, SKILL_CONFIG_KEY } from '@termlnk/agent';
+import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { SkillRepository } from '@termlnk/database';
 import { BehaviorSubject, map } from 'rxjs';
+import { resolveSkillAbsolutePath } from './skill-path.utils';
 
 export class SkillStateService extends Disposable implements ISkillStateService {
   private readonly _state$ = new BehaviorSubject<ISkillState>({
@@ -38,7 +39,8 @@ export class SkillStateService extends Disposable implements ISkillStateService 
   constructor(
     @Inject(SkillRepository) private readonly _skillRepository: SkillRepository,
     @ISkillDiscoveryService private readonly _discoveryService: ISkillDiscoveryService,
-    @ILogService private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
   }
@@ -161,7 +163,8 @@ export class SkillStateService extends Disposable implements ISkillStateService 
       throw new Error(`Skill not found: ${id}`);
     }
 
-    const skillFile = join(skill.path, 'SKILL.md');
+    const dirs = this._configService.getConfig<{ bundledSkillsDir?: string; userSkillsDir?: string }>(SKILL_CONFIG_KEY) ?? {};
+    const skillFile = join(resolveSkillAbsolutePath(skill, dirs), 'SKILL.md');
     return readFileSync(skillFile, 'utf-8');
   }
 }

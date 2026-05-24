@@ -20,6 +20,8 @@ export { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity, chatMessa
 export type { IAICustomModelEntity, IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntity, IAIProviderModelEntityInsert, IChatMessageEntity, IChatMessageEntityInsert, IChatSessionEntity, IChatSessionEntityInsert, ICollabInviteTokenEntity, ICollabInviteTokenEntityInsert, IConfigEntity, IConfigEntityInsert, IHostEntity, IHostEntityInsert, IMcpOAuthTokenEntity, IMcpOAuthTokenEntityInsert, IMcpServerEntity, IMcpServerEntityInsert, ISkillEntity, ISkillEntityInsert, ISyncCursorEntity, ISyncCursorEntityInsert, ISyncFieldMetaEntity, ISyncFieldMetaEntityInsert, ISyncOutboxEntity, ISyncOutboxEntityInsert, ISyncRowMetaEntity, ISyncRowMetaEntityInsert, ITerminalSessionBackupEntity, ITerminalSessionBackupEntityInsert } from './entities';
 export { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
 export type { IEncryptSecretsResult } from './migrations/runtime/encrypt-secrets.runtime';
+export { runSkillRelativePathRuntimeMigration } from './migrations/runtime/skill-relative-path.runtime';
+export type { ISkillRelativePathResult } from './migrations/runtime/skill-relative-path.runtime';
 export type { IConfigChangeEvent, IConfigEntry } from './models/config';
 export { DATABASE_PLUGIN_NAME, DatabasePlugin } from './plugin';
 export { BackupRepository } from './repositories/backup';
