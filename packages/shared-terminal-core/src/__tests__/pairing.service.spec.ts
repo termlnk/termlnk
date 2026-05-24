@@ -147,6 +147,10 @@ class CapturingTransport implements ICollabInviteTransportService {
   async list(): Promise<readonly never[]> {
     return [];
   }
+
+  async claim(): Promise<never> {
+    throw new Error('CapturingTransport.claim not supported');
+  }
 }
 
 function buildService(transport: ICollabInviteTransportService | undefined = undefined): {
@@ -167,7 +171,8 @@ function buildService(transport: ICollabInviteTransportService | undefined = und
     new FixedDaemonKeypairService(),
     repo as unknown as CollabInviteTokenRepository,
     new NoopLogService(),
-    transport
+    transport,
+    undefined
   );
   return { service, repo, config };
 }

@@ -150,6 +150,10 @@ class TransportMock implements ICollabInviteTransportService {
   async list(): Promise<readonly never[]> {
     return [];
   }
+
+  async claim(): Promise<never> {
+    throw new Error('TransportMock.claim not supported');
+  }
 }
 
 function buildPairing(transport: ICollabInviteTransportService | undefined = undefined): {
@@ -184,7 +188,8 @@ function buildPairing(transport: ICollabInviteTransportService | undefined = und
     daemonKeypairService,
     repo as unknown as CollabInviteTokenRepository,
     new NoopLogService(),
-    transport
+    transport,
+    undefined
   );
   // suppress unused
   void cipher;

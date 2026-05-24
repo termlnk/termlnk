@@ -15,7 +15,7 @@
 
 import type { ITokenManager } from '@termlnk/auth';
 import type { IConfigService, ILogService, LogLevel } from '@termlnk/core';
-import type { ICollabInviteServerView, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
+import type { ICollabInviteServerView } from '@termlnk/shared-terminal';
 import { SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HttpCollabInviteTransportService } from '../services/http-collab-invite-transport.service';

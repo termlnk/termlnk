@@ -14,10 +14,10 @@
  */
 
 import type { CollabInviteStatus as DbCollabInviteStatus, ICollabInviteTokenEntity } from '@termlnk/database';
-import type { CollabInviteStatus, ICapability, ICollabInvite, ICollabInviteTransportService, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IPairingService, ISharedTerminalPluginConfig, SharedTerminalRole } from '@termlnk/shared-terminal';
+import type { CollabInviteStatus, ICapability, ICollabInvite, ICollabInviteTransportService, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState, IPairedDevice, IPairingService, IShareDaemonService, ISharedKey, ISharedTerminalPluginConfig, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { Disposable, IConfigService, ILogService, Inject, Optional } from '@termlnk/core';
 import { CollabInviteTokenRepository } from '@termlnk/database';
-import { ICollabInviteTransportService as ICollabInviteTransportServiceId, IDaemonKeypairService, ISharedTerminalCryptoService, SHARED_TERMINAL_CAPABILITY_VERSION, SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
+import { ICollabInviteTransportService as ICollabInviteTransportServiceId, IDaemonKeypairService, IShareDaemonService as IShareDaemonServiceId, ISharedTerminalCryptoService, SHARED_TERMINAL_CAPABILITY_VERSION, SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { computeCapabilityHash } from '../utils/capability-hash';
 import { bytesToBase64Url } from '../utils/encoding';
@@ -57,7 +57,8 @@ export class PairingService extends Disposable implements IPairingService {
     @IDaemonKeypairService private readonly _daemonKeypairService: IDaemonKeypairService,
     @Inject(CollabInviteTokenRepository) private readonly _repo: CollabInviteTokenRepository,
     @ILogService private readonly _logService: ILogService,
-    @Optional(ICollabInviteTransportServiceId) private readonly _transportService?: ICollabInviteTransportService
+    @Optional(ICollabInviteTransportServiceId) private readonly _transportService?: ICollabInviteTransportService,
+    @Optional(IShareDaemonServiceId) private readonly _shareDaemon?: IShareDaemonService
   ) {
     super();
 
@@ -158,6 +159,34 @@ export class PairingService extends Disposable implements IPairingService {
 
     await this._refresh();
 
+    // Owner-side relay attach. The sharedKey derived here is the same one the
+    // joiner will compute (ECDH(daemonPriv, ephPub) === ECDH(ephPriv, daemonPub)),
+    // so the daemon-mode WebSocket can decrypt the joiner's first client_join
+    // control frame. Failure here is non-fatal for invite creation — the user
+    // will still get the URL, but join attempts will fail until attach succeeds.
+    if (this._shareDaemon) {
+      const sharedKey: ISharedKey = this._cryptoService.deriveSharedKey(
+        eph.publicKey,
+        daemonKeypair.secretKey
+      );
+      if (this._shareDaemon.isAttached(sessionId)) {
+        // Same session already shared — this is a SECOND (or later) invite.
+        // Push the new sharedKey into the daemon's candidate-key map BEFORE
+        // returning the URL so the joiner can't race ahead of us.
+        this._shareDaemon.registerCandidateKey(sessionId, inviteId, sharedKey);
+      } else {
+        try {
+          await this._shareDaemon.attachSession(sessionId, sharedKey);
+          // Also register under the explicit inviteId so revoke/consume can
+          // selectively prune it without affecting the seed key under
+          // '<initial>'. Idempotent.
+          this._shareDaemon.registerCandidateKey(sessionId, inviteId, sharedKey);
+        } catch (err) {
+          this._logService.warn(`[PairingService] ShareDaemonService.attachSession failed for ${sessionId}:`, err);
+        }
+      }
+    }
+
     const url = this._buildInviteUrl(inviteBaseUrl, inviteId, ephPrivB64, capability);
     return { invite, url };
   }
@@ -172,6 +201,11 @@ export class PairingService extends Disposable implements IPairingService {
       return;
     }
     await this._repo.markRevoked(inviteId, Date.now());
+
+    // Prune the candidate sharedKey so the daemon stops trying to decrypt
+    // incoming frames with it (and so a revoked joiner can't quietly keep
+    // joining if they cached the URL).
+    this._shareDaemon?.removeCandidateKey(row.sessionId, inviteId);
 
     if (this._transportService) {
       try {
@@ -201,6 +235,11 @@ export class PairingService extends Disposable implements IPairingService {
       return;
     }
     await this._repo.markConsumed(inviteId, Date.now());
+    // Single-use invites become unusable after consume; drop the candidate so
+    // no subsequent decrypt attempts spin on a key only the (now-completed)
+    // first joiner needs. Non-single-use invites get refreshed via re-create
+    // if needed.
+    this._shareDaemon?.removeCandidateKey(row.sessionId, inviteId);
     await this._refresh();
   }
 

@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession } from '@termlnk/shared-terminal';
+import type { IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { createIdentifier, Disposable, ILogService, Optional } from '@termlnk/core';
 import { ISSHSessionService, ITerminalSessionNotifyService } from '@termlnk/rpc';
-import { IPtyMultiplexerService } from '@termlnk/shared-terminal';
+import { IPtyMultiplexerService, IShareDaemonService as IShareDaemonServiceId } from '@termlnk/shared-terminal';
 import { IPTYSessionService } from '@termlnk/terminal';
 import { BehaviorSubject } from 'rxjs';
 import { LocalPtySource, SSHPtySource } from './pty-source.adapters';
@@ -74,7 +74,8 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
     @ISSHSessionService private readonly _sshSessionService: ISSHSessionService,
     @IPTYSessionService private readonly _ptySessionService: IPTYSessionService,
     @ITerminalSessionNotifyService private readonly _notifyService: ITerminalSessionNotifyService,
-    @Optional(IPtyMultiplexerService) private readonly _mux?: IPtyMultiplexerServiceType
+    @Optional(IPtyMultiplexerService) private readonly _mux?: IPtyMultiplexerServiceType,
+    @Optional(IShareDaemonServiceId) private readonly _shareDaemon?: IShareDaemonService
   ) {
     super();
 
@@ -177,6 +178,18 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
     }
     reg.source.dispose();
     this._registrations.delete(sessionId);
+    // Tear down the daemon-mode relay socket associated with this session.
+    // Without this the WebSocket stays connected to the relay (server keeps
+    // the daemon slot occupied), and any re-share of the same sessionId
+    // would observe `isAttached(sid) === true` and silently drop the new
+    // sharedKey, breaking joiners.
+    if (this._shareDaemon) {
+      try {
+        await this._shareDaemon.detachSession(sessionId);
+      } catch (err) {
+        this._logService.warn(`[ShareSessionService] shareDaemon.detachSession ${sessionId} failed:`, err);
+      }
+    }
     this._logService.log(`[ShareSessionService] stopped sharing ${sessionId}`);
     this._publish();
   }

@@ -43,6 +43,18 @@ interface IRelayEnvelope {
 
 const DEFAULT_WEBSOCKET_CTOR: RelayWebSocketCtor = globalThis.WebSocket as unknown as RelayWebSocketCtor;
 
+/**
+ * Caller-supplied resolver that returns the decryption key to use for an
+ * inbound frame from `sourceConnectionId`. If it returns null the transport
+ * will try a chain of fallbacks (`sessionKey`, then candidates the resolver
+ * surfaces). Used by ShareDaemonService to pick the correct sharedKey for
+ * multi-invite sessions where the daemon must hold N candidate keys.
+ */
+export type KeyResolver = (
+  sourceConnectionId: string,
+  ciphertext: Uint8Array
+) => Iterable<ISharedKey>;
+
 export class RelayTransportService extends Disposable implements ISharedTerminalTransportService {
   private readonly _state$ = new BehaviorSubject<TransportState>(TransportState.Idle);
   readonly state$ = this._state$.asObservable();
@@ -60,6 +72,7 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private _sessionKey: Nullable<ISharedKey> = null;
   private _connectionId: Nullable<string> = null;
+  private _keyResolver: KeyResolver | null = null;
 
   constructor(
     @IFrameCodecService private readonly _codecService: IFrameCodecService,
@@ -122,6 +135,22 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
       throw new Error('[RelayTransportService] revokeConnection is only available in daemon mode');
     }
     this._ws?.send(JSON.stringify({ type: 'revoke', connectionId }));
+  }
+
+  /**
+   * Register a callback that returns candidate decryption keys for an inbound
+   * frame from `sourceConnectionId`. The transport tries each yielded key in
+   * order until one decrypts. This is the mechanism daemon-side bridges
+   * (ShareDaemonService) use to support multi-invite sessions where every
+   * joiner has a distinct ECDH sharedKey but all eventually swap to one
+   * symmetric sessionKey.
+   *
+   * The transport's own `_currentKey()` is appended after the resolver yields,
+   * so callers that only need single-key behavior (client mode) can leave the
+   * resolver unset.
+   */
+  setKeyResolver(resolver: KeyResolver | null): void {
+    this._keyResolver = resolver;
   }
 
   private _openSocket(): Promise<void> {
@@ -196,15 +225,38 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
       return;
     }
 
-    try {
-      const frame = this._codecService.decrypt(this._base64ToBytes(envelope.payload), this._currentKey());
-      this._frames$.next({
-        source: envelope.source ?? (this._options?.mode === 'daemon' ? 'client' : 'daemon'),
-        frame,
-      });
-    } catch (err) {
-      this._logService.warn('[RelayTransportService] failed to decrypt relay frame:', err);
+    const cipher = this._base64ToBytes(envelope.payload);
+    const sourceId = envelope.source ?? (this._options?.mode === 'daemon' ? 'client' : 'daemon');
+    // Try candidate keys from the resolver first (multi-invite daemon case),
+    // then fall back to the current key. This matters when the daemon holds
+    // multiple ECDH sharedKeys (one per active invite) plus the symmetric
+    // sessionKey, and an inbound client_join is encrypted with the joiner's
+    // own sharedKey rather than the current sessionKey.
+    const candidates: ISharedKey[] = [];
+    if (this._keyResolver) {
+      for (const key of this._keyResolver(sourceId, cipher)) {
+        candidates.push(key);
+      }
     }
+    const currentKey = this._sessionKey ?? this._sharedKey;
+    if (currentKey) {
+      candidates.push(currentKey);
+    }
+    let frame: IFrame | null = null;
+    let lastErr: unknown = null;
+    for (const key of candidates) {
+      try {
+        frame = this._codecService.decrypt(cipher, key);
+        break;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    if (!frame) {
+      this._logService.warn('[RelayTransportService] failed to decrypt relay frame (tried %d key(s)):', candidates.length, lastErr);
+      return;
+    }
+    this._frames$.next({ source: sourceId, frame });
   }
 
   private _buildUrl(options: ITransportConnectOptions): string {

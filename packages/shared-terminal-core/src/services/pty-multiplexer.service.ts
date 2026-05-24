@@ -33,6 +33,7 @@ interface ISessionRuntime {
   readonly clients: Map<string, IClientEntry>;
   readonly participantsSubject: BehaviorSubject<readonly IParticipant[]>;
   readonly driverSubject: BehaviorSubject<IDriverState>;
+  readonly sessionKeySubject: BehaviorSubject<Uint8Array | null>;
   readonly outputSub: Subscription;
   driverId: string | null;
   driverHeartbeatAt: number;
@@ -70,6 +71,16 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   private readonly _sessions = new Map<string, ISessionRuntime>();
   private readonly _sessionsSubject = new BehaviorSubject<readonly ISharedSession[]>([]);
   private readonly _outboundSubject = new Subject<IOutboundFrame>();
+  /**
+   * Per-session sessionKey subjects. Kept in a separate map (not in the
+   * runtime) so callers can subscribe BEFORE `register()` is called for the
+   * matching sessionId — needed because PairingService.createInvite triggers
+   * ShareDaemonService.attachSession, which subscribes to sessionKey$
+   * eagerly, but in a programmatic flow the PTY might not be registered yet.
+   * Lazy-created on first subscribe or on `register`, whichever lands first.
+   * Completed and removed in `_destroySession`.
+   */
+  private readonly _sessionKeySubjects = new Map<string, BehaviorSubject<Uint8Array | null>>();
 
   readonly sessions$ = this._sessionsSubject.asObservable();
   readonly outbound$ = this._outboundSubject.asObservable();
@@ -82,8 +93,11 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     @Optional(IDaemonKeypairService) private readonly _daemonKeypairService?: IDaemonKeypairService
   ) {
     super();
-    // Scan for stale drivers every second.
-    this._heartbeatTimer = setInterval(() => this._reapStaleDrivers(), 1000);
+    // Scan for stale drivers + abandoned clients every second.
+    this._heartbeatTimer = setInterval(() => {
+      this._reapStaleDrivers();
+      this._reapStaleClients();
+    }, 1000);
     if (typeof this._heartbeatTimer === 'object' && this._heartbeatTimer !== null && 'unref' in this._heartbeatTimer) {
       (this._heartbeatTimer as { unref: () => void }).unref();
     }
@@ -137,6 +151,13 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       lastHeartbeatAt: 0,
       locked: false,
     });
+    // Reuse an existing pending subject if one was created before `register`
+    // landed (subscribe-before-register path). Otherwise create a fresh one.
+    let sessionKeySubject = this._sessionKeySubjects.get(source.id);
+    if (!sessionKeySubject) {
+      sessionKeySubject = new BehaviorSubject<Uint8Array | null>(null);
+      this._sessionKeySubjects.set(source.id, sessionKeySubject);
+    }
 
     const outputSub = source.output$.subscribe({
       next: (chunk) => this._handlePtyOutput(source.id, chunk),
@@ -150,6 +171,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       clients: new Map(),
       participantsSubject,
       driverSubject,
+      sessionKeySubject,
       outputSub,
       driverId: null,
       driverHeartbeatAt: 0,
@@ -241,6 +263,18 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     return runtime?.sessionKey ?? null;
   }
 
+  sessionKey$(sessionId: string): Observable<Uint8Array | null> {
+    // Lazy-create a subject so callers subscribing BEFORE `register(sessionId)`
+    // still receive the eventual key generation. The subject is hand-off
+    // shared with the runtime when `register` runs.
+    let subject = this._sessionKeySubjects.get(sessionId);
+    if (!subject) {
+      subject = new BehaviorSubject<Uint8Array | null>(null);
+      this._sessionKeySubjects.set(sessionId, subject);
+    }
+    return subject.asObservable();
+  }
+
   async rekey(sessionId: string, reason: RekeyReason): Promise<IRekeyResult> {
     const runtime = this._requireSession(sessionId);
     runtime.sessionKey = this._cryptoService.generateSessionKey();
@@ -290,12 +324,49 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       });
       recipientCount += 1;
     }
+    // Emit on the public stream AFTER queueing every wrapped rekey frame on
+    // outbound$. Daemon-side bridges (ShareDaemonService) treat this as the
+    // signal to swap their transport encryption key — rekey frames carrying
+    // the new key must be transmitted under the OLD key first, otherwise the
+    // joiner cannot open them.
+    runtime.sessionKeySubject.next(sessionKey);
     return {
       sessionId: runtime.source.id,
       reason,
       recipientCount,
       unwrappedClientIds,
     };
+  }
+
+  /**
+   * Wrap the EXISTING sessionKey for a single new keyed client. Used when a
+   * second (or later) joiner attaches mid-session: the key hasn't rotated, so
+   * existing clients don't need to be re-notified, but the newcomer needs a
+   * wrapped copy to decrypt subsequent broadcasts. Does NOT emit on
+   * sessionKey$ since the key did not change — the daemon transport already
+   * holds it.
+   */
+  private async _wrapSessionKeyForClient(
+    runtime: ISessionRuntime,
+    clientId: string,
+    reason: RekeyReason
+  ): Promise<void> {
+    const sessionKey = runtime.sessionKey;
+    if (!sessionKey || !this._daemonKeypairService) {
+      return;
+    }
+    const client = runtime.clients.get(clientId);
+    if (!client?.publicKey) {
+      return;
+    }
+    const daemon = await this._daemonKeypairService.getOrCreate();
+    const wrapped = this._cryptoService.wrapSessionKey(sessionKey, client.publicKey, daemon.secretKey);
+    this._sendControlToClient(runtime.source.id, clientId, {
+      type: 'rekey',
+      wrappedKey: bytesToBase64Url(wrapped),
+      senderPublicKey: bytesToBase64Url(daemon.publicKey),
+      reason,
+    });
   }
 
   attachClient(
@@ -339,12 +410,29 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       publicKey: publicKey ?? null,
     });
 
-    // First keyed participant: generate the per-session symmetric key + wrap it for them.
-    if (publicKey && runtime.sessionKey === null && this._daemonKeypairService) {
-      runtime.sessionKey = this._cryptoService.generateSessionKey();
-      // Fire-and-forget: wrap+broadcast happens via rekey() so the new client receives
-      // the wrapped K via the same control-frame path as future rotations.
-      void this._wrapAndBroadcastSessionKey(runtime, 'manual');
+    // Keyed participant attach: ensure a per-session symmetric key exists, and
+    // make sure THIS specific joiner can decrypt frames encrypted under it.
+    //   - First keyed attach: generate the key and broadcast a wrapped copy to
+    //     everyone (mostly just this newcomer at this point). The broadcast
+    //     ends with `sessionKey$.next(...)` so daemon-side bridges swap their
+    //     transport encryption key AFTER the rekey frame is queued under the
+    //     old key.
+    //   - Subsequent keyed attach: the key already exists; we MUST unicast a
+    //     wrapped copy to the new client only — without this, the newcomer
+    //     never learns the session key and silently loses every subsequent
+    //     PtyData / SessionEvent frame. Existing clients are not re-notified
+    //     because the key hasn't changed, so sessionKey$ does NOT emit.
+    if (publicKey && this._daemonKeypairService) {
+      if (runtime.sessionKey === null) {
+        runtime.sessionKey = this._cryptoService.generateSessionKey();
+        // Fire-and-forget: wrap+broadcast happens via rekey() so the new client receives
+        // the wrapped K via the same control-frame path as future rotations.
+        void this._wrapAndBroadcastSessionKey(runtime, 'manual');
+      } else {
+        void this._wrapSessionKeyForClient(runtime, clientId, 'manual').catch((err) => {
+          this._logService.error(`[PtyMultiplexerService] wrap-for-client ${clientId} failed:`, err);
+        });
+      }
     }
 
     this._refreshRuntimeState(runtime);
@@ -414,6 +502,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       } else {
         // Last keyed participant left — drop the key so the next attach generates a fresh one.
         runtime.sessionKey = null;
+        runtime.sessionKeySubject.next(null);
       }
     }
   }
@@ -663,6 +752,10 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     runtime.headless.dispose();
     runtime.participantsSubject.complete();
     runtime.driverSubject.complete();
+    runtime.sessionKey = null;
+    runtime.sessionKeySubject.next(null);
+    runtime.sessionKeySubject.complete();
+    this._sessionKeySubjects.delete(sessionId);
     this._sessions.delete(sessionId);
     this._publishSessions();
   }
@@ -695,6 +788,28 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
           fromClientId: previous,
           toClientId: null,
         });
+      }
+    }
+  }
+
+  /**
+   * Reap clients whose periodic `heartbeat` control frame stopped arriving for
+   * longer than CLIENT_REAP_TIMEOUT_MS. The relay server does not notify the
+   * daemon when a joiner's WebSocket closes, so this presence-by-heartbeat is
+   * how mux discovers ghost participants — without it, mux.clients leaks
+   * forever, the participants$ list misreports state, and forward-secrecy
+   * rekey on detach never runs even though the joiner is gone.
+   */
+  private _reapStaleClients(): void {
+    const now = Date.now();
+    const REAP_THRESHOLD_MS = SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS * 6;
+    for (const runtime of this._sessions.values()) {
+      for (const [clientId, entry] of runtime.clients) {
+        if (now - entry.lastHeartbeatAt <= REAP_THRESHOLD_MS) {
+          continue;
+        }
+        this._logService.log(`[PtyMultiplexerService] reaping stale client ${clientId} (no heartbeat for ${now - entry.lastHeartbeatAt}ms)`);
+        this._detachClientInternal(runtime, clientId, 'detach');
       }
     }
   }
