@@ -26,7 +26,7 @@ export { isWriterRole, SharedTerminalRole } from './models/role';
 export type { IParticipant, ISessionSnapshot, ISharedSession } from './models/session';
 export { ClientConnectionState, DaemonState, SharedSessionState } from './models/session';
 export { SHARED_TERMINAL_PLUGIN_NAME, SharedTerminalPlugin } from './plugin';
-export type { ICollabInviteCreateInput, ICollabInviteServerView } from './services/collab-invite-transport.service';
+export type { ICollabInviteClaimInput, ICollabInviteClaimResponse, ICollabInviteCreateInput, ICollabInviteServerView } from './services/collab-invite-transport.service';
 export { ICollabInviteTransportService } from './services/collab-invite-transport.service';
 export { ISharedTerminalCryptoService } from './services/crypto.service';
 export type { IPersistedDaemonKeypair } from './services/daemon-keypair.service';
@@ -39,6 +39,7 @@ export type { IParticipantConnectInput, IParticipantConnectResult, IParticipantF
 export { IParticipantService } from './services/participant-client.service';
 export type { IOutboundFrame, IPtySource, IRegisteredPty, IRekeyResult, RekeyReason } from './services/pty-multiplexer.service';
 export { IPtyMultiplexerService } from './services/pty-multiplexer.service';
+export { IShareDaemonService } from './services/share-daemon.service';
 export type { IShareableSession, ISharedTerminalError, SharedTerminalErrorCode } from './services/shared-terminal.service';
 export { ISharedTerminalService } from './services/shared-terminal.service';
 export type { IInboundFrame, ITransportConnectOptions, ITransportSendOptions } from './services/transport.service';

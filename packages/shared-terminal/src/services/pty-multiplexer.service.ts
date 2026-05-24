@@ -83,6 +83,22 @@ export interface IPtyMultiplexerService {
   getSessionKey(sessionId: string): Uint8Array | null;
 
   /**
+   * Hot stream of the current session key for a given sessionId.
+   *
+   * Daemon-side bridges (e.g. ShareDaemonService) subscribe to this to keep their
+   * outbound RelayTransport's encryption key in sync with mux's wrap-and-broadcast
+   * cycle. Emits whenever the key transitions — initial value (null), first attach
+   * generation, kick/detach-triggered rotation, manual rekey, and back to null on
+   * session destroy.
+   *
+   * Ordering guarantee: when mux generates a new key in response to attach/detach,
+   * the corresponding wrapped control frame is pushed to `outbound$` BEFORE
+   * `sessionKey$` emits, so the bridge can transmit the rekey frame with the old
+   * key before swapping its own encryption key.
+   */
+  sessionKey$(sessionId: string): Observable<Uint8Array | null>;
+
+  /**
    * Rotate the session key, broadcasting the new key wrapped per-recipient via NaCl box
    * (daemon long-term private + recipient public key). Returns the count of recipients
    * we successfully wrapped for; clients without a registered pubkey are skipped.

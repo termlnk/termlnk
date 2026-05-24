@@ -115,9 +115,15 @@ export interface ISharedTerminalService {
   readonly participantFrames$: Observable<IParticipantFrame>;
   readonly participantSnapshot$: Observable<IParticipantSnapshot | null>;
   readonly participantLastError$: Observable<string | null>;
+  readonly participantConnectionId$: Observable<string | null>;
+  readonly participantSessionId$: Observable<string | null>;
 
   connectAsParticipant(inviteUrl: string): Promise<IParticipantConnectResult>;
   disconnectParticipant(): Promise<void>;
+  /** Forward joiner keystroke bytes to the owner's PTY (driver mode only). */
+  sendParticipantInput(data: Uint8Array): Promise<void>;
+  /** Forward a JSON Control message (driver_request / driver_release / resize / ...). */
+  sendParticipantControl(message: object): Promise<void>;
 
   // Same-account device pairing — sessions announced by the user's other devices
 

@@ -38,6 +38,13 @@ export interface ITransportConnectOptions {
   readonly accountToken: string;
   readonly mode: 'daemon' | 'client';
   readonly connectionId?: string;
+  /**
+   * One-shot relay-claim token minted by /v1/collab/invite/:id/claim.
+   * Required for cross-account joiners; presented to the relay via a second
+   * subprotocol entry `RelayToken.<token>` alongside the Bearer JWT.
+   * Same-account flows leave this undefined.
+   */
+  readonly relayClaimToken?: string;
 }
 
 export interface ITransportSendOptions {

@@ -33,9 +33,11 @@ export interface ICapability {
   readonly role: SharedTerminalRole;
   readonly exp: number;
   readonly nonce: string;
-  /** Daemon long-term X25519 public key (base64url, 32 bytes). The joiner combines this with
+  /**
+   * Daemon long-term X25519 public key (base64url, 32 bytes). The joiner combines this with
    *  the fragment's ephPriv to derive sharedKey — without this, decryption would fall back
-   *  to an all-zero key and every relay frame would fail to open. */
+   *  to an all-zero key and every relay frame would fail to open.
+   */
   readonly daemonPub: string;
 }
 

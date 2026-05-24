@@ -61,9 +61,29 @@ export interface IParticipantService {
   readonly frames$: Observable<IParticipantFrame>;
   readonly snapshot$: Observable<IParticipantSnapshot | null>;
   readonly lastError$: Observable<string | null>;
+  /** Server-assigned connectionId for the active attach, or null when idle. */
+  readonly currentConnectionId$: Observable<string | null>;
+  /** SessionId of the currently joined shared session, or null when idle. */
+  readonly currentSessionId$: Observable<string | null>;
 
   connect(input: IParticipantConnectInput): Promise<IParticipantConnectResult>;
   disconnect(): Promise<void>;
+
+  /**
+   * Forward joiner keystrokes upstream to the owner's PTY. Encrypts a PtyData
+   * frame with the current session key and routes it `target: 'daemon'` through
+   * the relay. The owner's PtyMultiplexer writes the bytes to its source PTY
+   * only when the joiner is the current driver (read-only joiners are silently
+   * dropped server-side).
+   */
+  sendInput(data: Uint8Array): Promise<void>;
+
+  /**
+   * Send a JSON-encoded Control message (driver_request, driver_release,
+   * resize, heartbeat, ...) to the daemon. Used by the renderer's
+   * RemoteTerminalView for driver arbitration.
+   */
+  sendControl(message: object): Promise<void>;
 }
 
 export const IParticipantService = createIdentifier<IParticipantService>(

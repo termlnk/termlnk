@@ -32,6 +32,14 @@ export interface ICollabInviteTransportService {
 
   /** Pull the current server-side view (used by reconciliation). */
   list(): Promise<readonly ICollabInviteServerView[]>;
+
+  /**
+   * Claim an invite as the joining device. Server validates capabilityHash
+   * against the stored invite, atomically marks it consumed, and returns the
+   * connection metadata the joiner needs to attach to the relay — including
+   * an optional one-shot `relayClaimToken` for cross-account joiners.
+   */
+  claim(inviteId: string, input: ICollabInviteClaimInput): Promise<ICollabInviteClaimResponse>;
 }
 
 export const ICollabInviteTransportService = createIdentifier<ICollabInviteTransportService>(
@@ -65,4 +73,20 @@ export interface ICollabInviteServerView {
   readonly createdAt: string;
   readonly consumedAt?: string;
   readonly revokedAt?: string;
+}
+
+/** Payload sent to POST /v1/collab/invite/:id/claim. */
+export interface ICollabInviteClaimInput {
+  readonly capabilityHash: string;
+  readonly displayName?: string;
+}
+
+export interface ICollabInviteClaimResponse {
+  readonly sessionId: string;
+  readonly ephPubB64: string;
+  readonly role: SharedTerminalRole;
+  readonly connectionId: string;
+  readonly consumedAt: string;
+  /** One-shot HMAC; present only for cross-account claims. */
+  readonly relayClaimToken?: string;
 }
