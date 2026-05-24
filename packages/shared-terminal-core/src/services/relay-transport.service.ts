@@ -168,7 +168,16 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     // from createWsBearerAuthMiddleware). Steady-state 'close' after a successful
     // open feeds _scheduleReconnect; settled is the guard between these phases.
     return new Promise<void>((resolve, reject) => {
-      const ws = new this._webSocketCtor(this._buildUrl(this._options!), [`Bearer.${this._options!.accountToken}`]);
+      // sec-websocket-protocol: Bearer.<jwt> is always present. If the caller
+      // supplied a relay-claim token (cross-account joiner), include it as a
+      // second subprotocol entry — the server's shared-terminal controller
+      // verifies its HMAC and routes the attach into the OWNER's session
+      // bucket instead of the joiner's own.
+      const subprotocols = [`Bearer.${this._options!.accountToken}`];
+      if (this._options!.relayClaimToken) {
+        subprotocols.push(`RelayToken.${this._options!.relayClaimToken}`);
+      }
+      const ws = new this._webSocketCtor(this._buildUrl(this._options!), subprotocols);
       let settled = false;
 
       ws.addEventListener('open', () => {

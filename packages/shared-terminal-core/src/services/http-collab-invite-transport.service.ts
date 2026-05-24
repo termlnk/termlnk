@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ICollabInviteCreateInput, ICollabInviteServerView, ICollabInviteTransportService, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
+import type { ICollabInviteClaimInput, ICollabInviteClaimResponse, ICollabInviteCreateInput, ICollabInviteServerView, ICollabInviteTransportService, ISharedTerminalPluginConfig } from '@termlnk/shared-terminal';
 import { HttpRequestError, ITokenManager } from '@termlnk/auth';
 import { Disposable, IConfigService, ILogService } from '@termlnk/core';
 import { DEFAULT_CLOUD_BASE_URL, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
@@ -71,6 +71,12 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
   async pushRevoke(inviteId: string): Promise<void> {
     const url = this._joinUrl(`/collab/invite/${encodeURIComponent(inviteId)}/revoke`);
     await this._fetchAuthorized(url, 'POST', {});
+  }
+
+  async claim(inviteId: string, input: ICollabInviteClaimInput): Promise<ICollabInviteClaimResponse> {
+    const url = this._joinUrl(`/collab/invite/${encodeURIComponent(inviteId)}/claim`);
+    const resp = await this._fetchAuthorized(url, 'POST', input);
+    return await resp.json() as ICollabInviteClaimResponse;
   }
 
   async list(): Promise<readonly ICollabInviteServerView[]> {
