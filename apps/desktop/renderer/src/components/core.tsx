@@ -69,21 +69,21 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   const core = new Core(defaultOptions);
   core.registerPlugin(RPCPlugin);
   core.registerPlugin(RPCClientPlugin);
+  core.registerPlugin(UIPlugin, {
+    container: ref!,
+  });
+  core.registerPlugin(ElectronPlugin);
+  core.registerPlugin(ElectronRendererPlugin);
   // Auth/Sync views resolve IAuthService as OPTIONAL so AuthGate falls back to a
   // placeholder when cloudBaseUrl is unset.
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthUIPlugin);
   core.registerPlugin(SyncPlugin);
   core.registerPlugin(SyncUIPlugin);
-  core.registerPlugin(SharedTerminalPlugin);
-  core.registerPlugin(SharedTerminalUIPlugin);
-  core.registerPlugin(UIPlugin, {
-    container: ref!,
-  });
-  core.registerPlugin(ElectronPlugin);
-  core.registerPlugin(ElectronRendererPlugin);
   core.registerPlugin(TerminalPlugin);
   core.registerPlugin(TerminalUIPlugin, terminalUIConfig);
+  core.registerPlugin(SharedTerminalPlugin);
+  core.registerPlugin(SharedTerminalUIPlugin);
   core.registerPlugin(SFTPUIPlugin);
   core.registerPlugin(SettingsUIPlugin);
   core.registerPlugin(ExtensionPlugin);
