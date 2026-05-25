@@ -43,12 +43,16 @@ const locale: typeof enUS = {
       'driver-hint': '你正在驾驶。键入的命令会在主机终端上执行，点击"让出键盘"可交回控制权。',
       'request-keyboard': '申请键盘',
       'release-keyboard': '让出键盘',
+      popover: {
+        'aria-label': '共享会话控制',
+      },
       state: {
         pairing: '正在与主机配对…',
         connecting: '正在连接中继…',
         connected: '已连接',
         disconnected: '已断开',
         error: '连接错误',
+        idle: '等待加入…',
       },
     },
   },

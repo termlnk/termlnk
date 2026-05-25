@@ -43,12 +43,16 @@ const locale: typeof enUS = {
       'driver-hint': '你正在駕駛。鍵入的命令會在主機終端上執行，點擊「讓出鍵盤」可交回控制權。',
       'request-keyboard': '申請鍵盤',
       'release-keyboard': '讓出鍵盤',
+      popover: {
+        'aria-label': '共享會話控制',
+      },
       state: {
         pairing: '正在與主機配對…',
         connecting: '正在連接中繼…',
         connected: '已連接',
         disconnected: '已斷開',
         error: '連線錯誤',
+        idle: '等待加入…',
       },
     },
   },

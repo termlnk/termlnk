@@ -41,12 +41,16 @@ const locale = {
       'driver-hint': 'You hold the keyboard. Your keystrokes execute on the host\'s terminal; press "Release" to hand it back.',
       'request-keyboard': 'Request keyboard',
       'release-keyboard': 'Release keyboard',
+      popover: {
+        'aria-label': 'Shared session controls',
+      },
       state: {
         pairing: 'Pairing with host…',
         connecting: 'Connecting to relay…',
         connected: 'Connected',
         disconnected: 'Disconnected',
         error: 'Connection error',
+        idle: 'Waiting to join…',
       },
     },
   },

@@ -20,6 +20,7 @@ import { ILogService, Inject, LocaleService, Optional, RxDisposable } from '@ter
 import { ClientConnectionState, ISharedTerminalService } from '@termlnk/shared-terminal';
 import { ITerminalUIService, ITerminalViewRegistry } from '@termlnk/terminal-ui';
 import { takeUntil } from 'rxjs';
+import { RemoteTabAdornment } from '../views/RemoteTabAdornment';
 import { RemoteTerminalView } from '../views/RemoteTerminalView';
 
 export const REMOTE_SESSION_TYPE = 'remote';
@@ -117,6 +118,7 @@ export class RemoteSessionBridgeController extends RxDisposable {
 
   private _registerView(): void {
     this.disposeWithMe(this._viewRegistry.registerView(REMOTE_SESSION_TYPE, RemoteTerminalView));
+    this.disposeWithMe(this._viewRegistry.registerTabAdornment(REMOTE_SESSION_TYPE, RemoteTabAdornment));
   }
 
   /**

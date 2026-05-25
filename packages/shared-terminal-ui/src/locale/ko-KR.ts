@@ -43,12 +43,16 @@ const locale: typeof enUS = {
       'driver-hint': '키보드를 가져왔습니다. 입력은 호스트의 터미널에서 실행됩니다. "해제"로 권한을 돌려주세요.',
       'request-keyboard': '키보드 요청',
       'release-keyboard': '키보드 해제',
+      popover: {
+        'aria-label': '공유 세션 제어',
+      },
       state: {
         pairing: '호스트와 페어링 중…',
         connecting: '릴레이에 연결 중…',
         connected: '연결됨',
         disconnected: '연결 해제됨',
         error: '연결 오류',
+        idle: '참여 대기 중…',
       },
     },
   },

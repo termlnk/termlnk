@@ -43,12 +43,16 @@ const locale: typeof enUS = {
       'driver-hint': 'キーボードを取得しました。入力はホストの端末で実行されます。「解放」で戻せます。',
       'request-keyboard': 'キーボード取得',
       'release-keyboard': 'キーボード解放',
+      popover: {
+        'aria-label': '共有セッションの操作',
+      },
       state: {
         pairing: 'ホストとペアリング中…',
         connecting: 'リレーに接続中…',
         connected: '接続済み',
         disconnected: '切断',
         error: '接続エラー',
+        idle: '参加待ち…',
       },
     },
   },

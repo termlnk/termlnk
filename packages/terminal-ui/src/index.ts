@@ -36,7 +36,7 @@ export type { IPersistedTerminalSession, IPersistedTerminalState, IPersistedTerm
 export { ITerminalUIService, TerminalUIService } from './services/terminal/terminal-ui.service';
 export type { AddSessionParams, ITerminalSession, TerminalSessionStatus } from './services/terminal/terminal-ui.service';
 export { ITerminalViewRegistry, TerminalViewRegistry } from './services/terminal/terminal-view-registry.service';
-export type { ITerminalViewProps } from './services/terminal/terminal-view-registry.service';
+export type { ITabAdornmentProps, ITerminalViewProps } from './services/terminal/terminal-view-registry.service';
 export { IWorkspaceService, WorkspaceService } from './services/workspace/workspace.service';
 export { detectShellType, escapePathForShell, escapePathsForShell } from './utils/shell-path-escape';
 export type { ShellType } from './utils/shell-path-escape';

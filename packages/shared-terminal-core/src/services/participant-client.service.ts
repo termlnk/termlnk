@@ -370,6 +370,13 @@ export class ParticipantClientService extends Disposable implements IParticipant
       switch (state) {
         case TransportState.Connected:
           conn.state$.next(ClientConnectionState.Connected);
+          // Clear a sticky error from a previous transient failure (e.g.
+          // rekey failed, then a successful reconnect). Without this the
+          // BehaviorSubject keeps the stale string forever, which downstream
+          // UI surfaces as a permanent error indicator.
+          if (conn.lastError$.getValue() !== null) {
+            conn.lastError$.next(null);
+          }
           break;
         case TransportState.Connecting:
         case TransportState.Reconnecting:

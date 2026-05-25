@@ -15,10 +15,13 @@
 
 import type { MouseEvent, PointerEventHandler } from 'react';
 import type { TerminalSessionStatus } from '../../services/terminal/terminal-ui.service';
-import { Button, cn } from '@termlnk/design';
+import { Quantity } from '@termlnk/core';
+import { Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { TooltipWrapper } from '@termlnk/ui';
 import { Loader2, Terminal, Users, X } from 'lucide-react';
+import { EMPTY } from 'rxjs';
 import { CloseActiveTabCommand } from '../../commands/close-active-tab.command';
+import { ITerminalViewRegistry } from '../../services/terminal/terminal-view-registry.service';
 
 export interface ITerminalTabItemProps {
   className?: string;
@@ -39,6 +42,7 @@ export interface ITerminalTabItemProps {
 export function TerminalTabItem(props: ITerminalTabItemProps) {
   const {
     className,
+    id,
     type,
     label,
     status,
@@ -52,6 +56,13 @@ export function TerminalTabItem(props: ITerminalTabItemProps) {
     onClose,
   } = props;
 
+  const viewRegistry = useDependency(ITerminalViewRegistry, Quantity.OPTIONAL);
+  // Re-render when adornments register/unregister so a late-arriving plugin
+  // (e.g. SharedTerminalUIPlugin loaded after the first tab paint) still
+  // surfaces its right-side icon.
+  useObservable(viewRegistry?.adornmentsChanged$ ?? EMPTY);
+  const AdornmentComponent = isFloating ? undefined : viewRegistry?.getTabAdornment(type);
+
   const handleClose = (e: MouseEvent) => {
     e.stopPropagation();
     onClose?.();
@@ -61,6 +72,11 @@ export function TerminalTabItem(props: ITerminalTabItemProps) {
     e.stopPropagation();
     onClick?.();
   };
+
+  const isConnecting = status === 'connecting' || status === 'authenticating' || status === 'opening_shell';
+  const isError = status === 'error' || status === 'auth_failed';
+  const isReady = status === 'ready';
+  const isClosed = status === 'closed' || status === 'idle';
 
   return (
     <div
@@ -107,29 +123,38 @@ export function TerminalTabItem(props: ITerminalTabItemProps) {
             ? (
               <div
                 className={cn('tm:size-2 tm:rounded-full', {
-                  'tm:bg-green': status === 'ready',
-                  'tm:animate-pulse tm:bg-yellow': ['connecting', 'authenticating', 'opening_shell'].includes(status),
-                  'tm:bg-red': status === 'error' || status === 'auth_failed',
-                  'tm:bg-grey': status === 'closed' || status === 'idle',
+                  'tm:bg-green': isReady,
+                  'tm:animate-pulse tm:bg-yellow': isConnecting,
+                  'tm:bg-red': isError,
+                  'tm:bg-grey': isClosed,
                 })}
               />
             )
             : type === 'remote'
               ? (
-                <Users
-                  size={14}
-                  strokeWidth={1.5}
-                  className={cn({
-                    'tm:text-green': status === 'ready',
-                    'tm:animate-pulse tm:text-yellow': ['connecting', 'authenticating', 'opening_shell'].includes(status),
-                    'tm:text-red': status === 'error' || status === 'auth_failed',
-                    'tm:text-grey': status === 'closed' || status === 'idle',
-                  })}
-                />
+                isConnecting
+                  ? (
+                    <Loader2
+                      size={14}
+                      strokeWidth={1.5}
+                      className="tm:animate-spin"
+                    />
+                  )
+                  : (
+                    <Users
+                      size={14}
+                      strokeWidth={1.5}
+                      className={cn({
+                        'tm:text-green': isReady,
+                        'tm:text-red': isError,
+                        'tm:text-grey': isClosed,
+                      })}
+                    />
+                  )
               )
-              : (['connecting', 'authenticating', 'opening_shell'].includes(status)
-                  ? <Loader2 size={14} strokeWidth={1.5} className="tm:animate-spin" />
-                  : <Terminal size={14} strokeWidth={1.5} />)}
+              : (isConnecting
+                ? <Loader2 size={14} strokeWidth={1.5} className="tm:animate-spin" />
+                : <Terminal size={14} strokeWidth={1.5} />)}
         </div>
 
         <span
@@ -137,6 +162,10 @@ export function TerminalTabItem(props: ITerminalTabItemProps) {
         >
           {label}
         </span>
+
+        {AdornmentComponent && (
+          <AdornmentComponent sessionId={id} />
+        )}
 
         <TooltipWrapper
           side="bottom"
