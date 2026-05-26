@@ -15,99 +15,80 @@
 
 import type { IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRegisteredPty, IRekeyResult, ISessionSnapshot, ISharedSession, RekeyReason, SharedTerminalRole } from '@termlnk/shared-terminal';
 import type { Observable, Subscription } from 'rxjs';
-import { Disposable, ILogService, Optional } from '@termlnk/core';
-import { FrameChannel, FrameFlag, IDaemonKeypairService, ISharedTerminalCryptoService, isWriterRole, SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS, SHARED_TERMINAL_RING_BUFFER_BYTES, SharedSessionState } from '@termlnk/shared-terminal';
-import { BehaviorSubject, EMPTY, Subject } from 'rxjs';
-import { bytesToBase64Url } from '../utils/encoding';
-import { HeadlessSession } from '../utils/headless-session';
-import { RingBuffer } from '../utils/ring-buffer';
+import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { FrameChannel, FrameFlag, isWriterRole, SharedSessionState } from '@termlnk/shared-terminal';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { DriverArbitrationService } from './driver-arbitration.service';
+import { SessionKeyService } from './session-key.service';
+import { SessionScrollback } from './session-scrollback';
 
 /** Lines of scrollback to include in a snapshot. */
 const DEFAULT_SNAPSHOT_SCROLLBACK_LINES = 1000;
 
-/** Per-session runtime state. */
+/**
+ * Per-session runtime state held by the mux.
+ *
+ * The mux is now an orchestrator: it owns the fanout subjects, the seq
+ * counters, and the per-client metadata (role / displayName / publicKey /
+ * joinedAt) — everything else (scrollback, driver arbitration, session keys)
+ * is delegated to single-responsibility collaborators.
+ */
 interface ISessionRuntime {
   readonly source: IPtySource;
-  readonly ringBuffer: RingBuffer;
-  readonly headless: HeadlessSession;
+  readonly scrollback: SessionScrollback;
   readonly clients: Map<string, IClientEntry>;
   readonly participantsSubject: BehaviorSubject<readonly IParticipant[]>;
-  readonly driverSubject: BehaviorSubject<IDriverState>;
-  readonly sessionKeySubject: BehaviorSubject<Uint8Array | null>;
   readonly outputSub: Subscription;
-  driverId: string | null;
-  driverHeartbeatAt: number;
-  driverLocked: boolean;
+  readonly arbitrationSubs: Subscription[];
   state: SharedSessionState;
   cols: number;
   rows: number;
   readonly seqCounters: Record<FrameChannel, number>;
-  /** Current 32-byte symmetric session key used to encrypt PTY frames. */
-  sessionKey: Uint8Array | null;
 }
 
 interface IClientEntry {
   readonly role: SharedTerminalRole;
   readonly displayName: string;
   readonly joinedAt: number;
-  lastHeartbeatAt: number;
-  /** Recipient's X25519 public key for session-key wrapping; null = legacy paired-device flow. */
+  /** Recipient X25519 public key for sessionKey wrapping; null = legacy paired-device path. */
   publicKey: Uint8Array | null;
 }
 
 /**
- * PTY multiplexer — fans out a single PTY to multiple attached clients.
+ * PTY multiplexer — fans a single PTY out to multiple attached clients.
  *
- * Key invariants:
- * - PTY output fans out to all attached clients (PtyData channel, target='broadcast').
- * - PTY output is also written to a ring buffer so late-attaching clients catch up.
- * - Only the driver client's inbound PtyData frames reach the underlying PTY.
- * - Driver heartbeat timeout (5s) auto-clears the driver so another writer can take over.
- * - Frame seq is a per-channel monotonically-increasing uint32.
+ * Architecture (post-refactor):
+ *   - PTY output → scrollback.write + outbound$ (PtyData, broadcast)
+ *   - Inbound PtyData → only the current driver's bytes reach the PTY
+ *   - Inbound Control → mux interprets driver_request/release/resize, ignores SessionEvent
+ *   - Driver state + heartbeat reap → DriverArbitrationService (mux just forwards
+ *     handover notifications as session_event frames)
+ *   - Session key lifecycle + per-recipient wrap → SessionKeyService (mux turns
+ *     wrap results into Control frames and enforces the rekey ordering: every
+ *     wrap is queued under the OLD key, then commitRotation publishes the NEW)
+ *   - Ring buffer + xterm-headless snapshot → SessionScrollback
  *
- * Each session maintains an xterm-headless instance for serialized state snapshots.
+ * Mux is the single place that touches `seqCounters` and `outbound$`. Every
+ * outbound frame on the wire flows through `_broadcast` / `_unicast` so seq
+ * monotonicity is preserved per channel.
  */
 export class PtyMultiplexerService extends Disposable implements IPtyMultiplexerService {
   private readonly _sessions = new Map<string, ISessionRuntime>();
   private readonly _sessionsSubject = new BehaviorSubject<readonly ISharedSession[]>([]);
   private readonly _outboundSubject = new Subject<IOutboundFrame>();
-  /**
-   * Per-session sessionKey subjects. Kept in a separate map (not in the
-   * runtime) so callers can subscribe BEFORE `register()` is called for the
-   * matching sessionId — needed because PairingService.createInvite triggers
-   * ShareDaemonService.attachSession, which subscribes to sessionKey$
-   * eagerly, but in a programmatic flow the PTY might not be registered yet.
-   * Lazy-created on first subscribe or on `register`, whichever lands first.
-   * Completed and removed in `_destroySession`.
-   */
-  private readonly _sessionKeySubjects = new Map<string, BehaviorSubject<Uint8Array | null>>();
 
   readonly sessions$ = this._sessionsSubject.asObservable();
   readonly outbound$ = this._outboundSubject.asObservable();
 
-  private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-
   constructor(
-    @ISharedTerminalCryptoService private readonly _cryptoService: ISharedTerminalCryptoService,
-    @ILogService private readonly _logService: ILogService,
-    @Optional(IDaemonKeypairService) private readonly _daemonKeypairService?: IDaemonKeypairService
+    @Inject(DriverArbitrationService) private readonly _driver: DriverArbitrationService,
+    @Inject(SessionKeyService) private readonly _keyService: SessionKeyService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
-    // Scan for stale drivers + abandoned clients every second.
-    this._heartbeatTimer = setInterval(() => {
-      this._reapStaleDrivers();
-      this._reapStaleClients();
-    }, 1000);
-    if (typeof this._heartbeatTimer === 'object' && this._heartbeatTimer !== null && 'unref' in this._heartbeatTimer) {
-      (this._heartbeatTimer as { unref: () => void }).unref();
-    }
   }
 
   override dispose(): void {
-    if (this._heartbeatTimer !== null) {
-      clearInterval(this._heartbeatTimer);
-      this._heartbeatTimer = null;
-    }
     for (const sessionId of [...this._sessions.keys()]) {
       this._destroySession(sessionId);
     }
@@ -117,22 +98,13 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   }
 
   driverState$(sessionId: string): Observable<IDriverState> {
-    // Return EMPTY for unknown sessions rather than throwing — the renderer
-    // may briefly subscribe to a session that was just unregistered (race
-    // between sessions$ removal and a re-render iterating sessions.map). A
-    // sync throw here propagates through the tRPC subscription and stalls
-    // the main process event loop.
-    const runtime = this._sessions.get(sessionId);
-    if (!runtime) {
-      return EMPTY;
-    }
-    return runtime.driverSubject.asObservable();
+    return this._driver.driverState$(sessionId);
   }
 
   participants$(sessionId: string): Observable<readonly IParticipant[]> {
     const runtime = this._sessions.get(sessionId);
     if (!runtime) {
-      return EMPTY;
+      return new BehaviorSubject<readonly IParticipant[]>([]).asObservable();
     }
     return runtime.participantsSubject.asObservable();
   }
@@ -142,22 +114,10 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       throw new Error(`[PtyMultiplexerService] session already registered: ${source.id}`);
     }
 
-    const ringBuffer = new RingBuffer(SHARED_TERMINAL_RING_BUFFER_BYTES);
-    const headless = new HeadlessSession({ cols: source.cols, rows: source.rows });
+    const scrollback = new SessionScrollback(source.cols, source.rows);
     const participantsSubject = new BehaviorSubject<readonly IParticipant[]>([]);
-    const driverSubject = new BehaviorSubject<IDriverState>({
-      sessionId: source.id,
-      driverId: null,
-      lastHeartbeatAt: 0,
-      locked: false,
-    });
-    // Reuse an existing pending subject if one was created before `register`
-    // landed (subscribe-before-register path). Otherwise create a fresh one.
-    let sessionKeySubject = this._sessionKeySubjects.get(source.id);
-    if (!sessionKeySubject) {
-      sessionKeySubject = new BehaviorSubject<Uint8Array | null>(null);
-      this._sessionKeySubjects.set(source.id, sessionKeySubject);
-    }
+    this._driver.registerSession(source.id);
+    this._keyService.registerSession(source.id);
 
     const outputSub = source.output$.subscribe({
       next: (chunk) => this._handlePtyOutput(source.id, chunk),
@@ -166,16 +126,11 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
 
     const runtime: ISessionRuntime = {
       source,
-      ringBuffer,
-      headless,
+      scrollback,
       clients: new Map(),
       participantsSubject,
-      driverSubject,
-      sessionKeySubject,
       outputSub,
-      driverId: null,
-      driverHeartbeatAt: 0,
-      driverLocked: false,
+      arbitrationSubs: [],
       state: SharedSessionState.Idle,
       cols: source.cols,
       rows: source.rows,
@@ -184,9 +139,36 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         [FrameChannel.PtyData]: 0,
         [FrameChannel.SessionEvent]: 0,
       },
-      sessionKey: null,
     };
     this._sessions.set(source.id, runtime);
+
+    // Translate arbitration state into wire events. Handover → SessionEvent
+    // broadcast; client reap → just drop the participant (the disconnected
+    // socket is what the client sees; no need to spam them with a synthetic
+    // SessionEvent — the daemon already lost their attach).
+    runtime.arbitrationSubs.push(
+      this._driver.handovers$.subscribe((notice) => {
+        if (notice.sessionId !== source.id) {
+          return;
+        }
+        this._broadcastSessionEvent(source.id, {
+          type: 'driver_handover',
+          sessionId: source.id,
+          fromClientId: notice.fromClientId,
+          toClientId: notice.toClientId,
+        });
+        this._publishSessions();
+      })
+    );
+    runtime.arbitrationSubs.push(
+      this._driver.reaped$.subscribe((notice) => {
+        if (notice.sessionId !== source.id) {
+          return;
+        }
+        this._handleClientGone(runtime, notice.clientId, 'detach');
+      })
+    );
+
     this._publishSessions();
 
     return {
@@ -197,7 +179,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
 
   async snapshot(sessionId: string): Promise<ISessionSnapshot> {
     const runtime = this._requireSession(sessionId);
-    const serialized = await runtime.headless.serialize(DEFAULT_SNAPSHOT_SCROLLBACK_LINES);
+    const serialized = await runtime.scrollback.serialize(DEFAULT_SNAPSHOT_SCROLLBACK_LINES);
     return {
       sessionId,
       title: runtime.source.title,
@@ -206,47 +188,23 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       serialized,
       observedSeq: runtime.seqCounters[FrameChannel.PtyData],
       state: runtime.state,
-      driverId: runtime.driverId,
+      driverId: this._currentDriverId(sessionId),
     };
   }
 
   setDriver(sessionId: string, clientId: string | null): void {
-    const runtime = this._requireSession(sessionId);
-    if (clientId !== null && !runtime.clients.has(clientId)) {
-      throw new Error(`[PtyMultiplexerService] cannot set driver to non-attached client ${clientId}`);
-    }
-    if (clientId !== null) {
-      const role = runtime.clients.get(clientId)!.role;
-      if (!isWriterRole(role)) {
-        throw new Error(`[PtyMultiplexerService] role ${role} is not allowed to be driver`);
-      }
-    }
-    runtime.driverId = clientId;
-    runtime.driverHeartbeatAt = clientId ? Date.now() : 0;
-    this._publishDriver(runtime);
-    this._broadcastSessionEvent(sessionId, {
-      type: 'driver_handover',
-      sessionId,
-      fromClientId: null,
-      toClientId: clientId,
-    });
+    this._requireSession(sessionId);
+    this._driver.setDriver(sessionId, clientId);
   }
 
   lockDriver(sessionId: string, clientId: string): void {
-    const runtime = this._requireSession(sessionId);
-    if (!runtime.clients.has(clientId)) {
-      throw new Error(`[PtyMultiplexerService] cannot lock driver to non-attached client ${clientId}`);
-    }
-    runtime.driverId = clientId;
-    runtime.driverLocked = true;
-    runtime.driverHeartbeatAt = Date.now();
-    this._publishDriver(runtime);
+    this._requireSession(sessionId);
+    this._driver.lockDriver(sessionId, clientId);
   }
 
   unlockDriver(sessionId: string): void {
-    const runtime = this._requireSession(sessionId);
-    runtime.driverLocked = false;
-    this._publishDriver(runtime);
+    this._requireSession(sessionId);
+    this._driver.unlockDriver(sessionId);
   }
 
   kick(sessionId: string, clientId: string, reason?: string): void {
@@ -255,118 +213,20 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       return;
     }
     this._sendControlToClient(sessionId, clientId, { type: 'kick', reason });
-    this._detachClientInternal(runtime, clientId, 'kick');
+    this._handleClientGone(runtime, clientId, 'kick');
   }
 
   getSessionKey(sessionId: string): Uint8Array | null {
-    const runtime = this._sessions.get(sessionId);
-    return runtime?.sessionKey ?? null;
+    return this._keyService.getKey(sessionId);
   }
 
   sessionKey$(sessionId: string): Observable<Uint8Array | null> {
-    // Lazy-create a subject so callers subscribing BEFORE `register(sessionId)`
-    // still receive the eventual key generation. The subject is hand-off
-    // shared with the runtime when `register` runs.
-    let subject = this._sessionKeySubjects.get(sessionId);
-    if (!subject) {
-      subject = new BehaviorSubject<Uint8Array | null>(null);
-      this._sessionKeySubjects.set(sessionId, subject);
-    }
-    return subject.asObservable();
+    return this._keyService.key$(sessionId);
   }
 
   async rekey(sessionId: string, reason: RekeyReason): Promise<IRekeyResult> {
     const runtime = this._requireSession(sessionId);
-    runtime.sessionKey = this._cryptoService.generateSessionKey();
-    return this._wrapAndBroadcastSessionKey(runtime, reason);
-  }
-
-  /**
-   * Generate per-recipient wrapped keys + broadcast 'rekey' control frames. Returns the
-   * result envelope. Skips clients with no registered pubkey (legacy paired-device path).
-   */
-  private async _wrapAndBroadcastSessionKey(
-    runtime: ISessionRuntime,
-    reason: RekeyReason
-  ): Promise<IRekeyResult> {
-    const sessionKey = runtime.sessionKey;
-    if (!sessionKey) {
-      return {
-        sessionId: runtime.source.id,
-        reason,
-        recipientCount: 0,
-        unwrappedClientIds: [...runtime.clients.keys()],
-      };
-    }
-    if (!this._daemonKeypairService) {
-      // Daemon keypair service was not registered (e.g. test harness). Nothing to broadcast.
-      return {
-        sessionId: runtime.source.id,
-        reason,
-        recipientCount: 0,
-        unwrappedClientIds: [...runtime.clients.keys()],
-      };
-    }
-    const daemon = await this._daemonKeypairService.getOrCreate();
-    const unwrappedClientIds: string[] = [];
-    let recipientCount = 0;
-    for (const [clientId, entry] of runtime.clients) {
-      if (!entry.publicKey) {
-        unwrappedClientIds.push(clientId);
-        continue;
-      }
-      const wrapped = this._cryptoService.wrapSessionKey(sessionKey, entry.publicKey, daemon.secretKey);
-      this._sendControlToClient(runtime.source.id, clientId, {
-        type: 'rekey',
-        wrappedKey: bytesToBase64Url(wrapped),
-        senderPublicKey: bytesToBase64Url(daemon.publicKey),
-        reason,
-      });
-      recipientCount += 1;
-    }
-    // Emit on the public stream AFTER queueing every wrapped rekey frame on
-    // outbound$. Daemon-side bridges (ShareDaemonService) treat this as the
-    // signal to swap their transport encryption key — rekey frames carrying
-    // the new key must be transmitted under the OLD key first, otherwise the
-    // joiner cannot open them.
-    runtime.sessionKeySubject.next(sessionKey);
-    return {
-      sessionId: runtime.source.id,
-      reason,
-      recipientCount,
-      unwrappedClientIds,
-    };
-  }
-
-  /**
-   * Wrap the EXISTING sessionKey for a single new keyed client. Used when a
-   * second (or later) joiner attaches mid-session: the key hasn't rotated, so
-   * existing clients don't need to be re-notified, but the newcomer needs a
-   * wrapped copy to decrypt subsequent broadcasts. Does NOT emit on
-   * sessionKey$ since the key did not change — the daemon transport already
-   * holds it.
-   */
-  private async _wrapSessionKeyForClient(
-    runtime: ISessionRuntime,
-    clientId: string,
-    reason: RekeyReason
-  ): Promise<void> {
-    const sessionKey = runtime.sessionKey;
-    if (!sessionKey || !this._daemonKeypairService) {
-      return;
-    }
-    const client = runtime.clients.get(clientId);
-    if (!client?.publicKey) {
-      return;
-    }
-    const daemon = await this._daemonKeypairService.getOrCreate();
-    const wrapped = this._cryptoService.wrapSessionKey(sessionKey, client.publicKey, daemon.secretKey);
-    this._sendControlToClient(runtime.source.id, clientId, {
-      type: 'rekey',
-      wrappedKey: bytesToBase64Url(wrapped),
-      senderPublicKey: bytesToBase64Url(daemon.publicKey),
-      reason,
-    });
+    return this._rotateAndBroadcast(runtime, reason);
   }
 
   attachClient(
@@ -380,6 +240,39 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     this._attachClientRuntime(runtime, clientId, role, displayName, publicKey);
   }
 
+  detachClient(sessionId: string, clientId: string): void {
+    const runtime = this._sessions.get(sessionId);
+    if (!runtime || !runtime.clients.has(clientId)) {
+      return;
+    }
+    this._handleClientGone(runtime, clientId, 'detach');
+  }
+
+  handleInbound(sessionId: string, clientId: string, frame: IFrame): void {
+    const runtime = this._sessions.get(sessionId);
+    if (!runtime || !runtime.clients.has(clientId)) {
+      return;
+    }
+
+    this._driver.clientHeartbeat(sessionId, clientId);
+
+    switch (frame.channel) {
+      case FrameChannel.PtyData:
+        this._handleInputFrame(runtime, clientId, frame);
+        break;
+      case FrameChannel.Control:
+        this._handleControlFrame(runtime, clientId, frame);
+        break;
+      case FrameChannel.SessionEvent:
+        // Clients must not emit session events; ignore to prevent spoofing.
+        break;
+    }
+  }
+
+  clientHeartbeat(sessionId: string, clientId: string): void {
+    this._driver.clientHeartbeat(sessionId, clientId);
+  }
+
   private _attachClientRuntime(
     runtime: ISessionRuntime,
     clientId: string,
@@ -388,15 +281,15 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     publicKey?: Uint8Array
   ): void {
     if (runtime.clients.has(clientId)) {
-      // Re-attach: refresh role and heartbeat; keep prior pubkey unless caller supplies one.
+      // Re-attach: refresh role and keep prior publicKey unless the caller supplies one.
       const existing = runtime.clients.get(clientId)!;
       runtime.clients.set(clientId, {
         role,
         displayName: displayName ?? existing.displayName,
         joinedAt: existing.joinedAt,
-        lastHeartbeatAt: Date.now(),
         publicKey: publicKey ?? existing.publicKey,
       });
+      this._driver.refreshClientRole(runtime.source.id, clientId, role);
       this._publishParticipants(runtime);
       return;
     }
@@ -406,32 +299,31 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       role,
       displayName: displayName ?? clientId,
       joinedAt: now,
-      lastHeartbeatAt: now,
       publicKey: publicKey ?? null,
     });
+    this._driver.attachClient(runtime.source.id, clientId, role);
 
-    // Keyed participant attach: ensure a per-session symmetric key exists, and
-    // make sure THIS specific joiner can decrypt frames encrypted under it.
-    //   - First keyed attach: generate the key and broadcast a wrapped copy to
-    //     everyone (mostly just this newcomer at this point). The broadcast
-    //     ends with `sessionKey$.next(...)` so daemon-side bridges swap their
-    //     transport encryption key AFTER the rekey frame is queued under the
-    //     old key.
-    //   - Subsequent keyed attach: the key already exists; we MUST unicast a
-    //     wrapped copy to the new client only — without this, the newcomer
-    //     never learns the session key and silently loses every subsequent
-    //     PtyData / SessionEvent frame. Existing clients are not re-notified
-    //     because the key hasn't changed, so sessionKey$ does NOT emit.
-    if (publicKey && this._daemonKeypairService) {
-      if (runtime.sessionKey === null) {
-        runtime.sessionKey = this._cryptoService.generateSessionKey();
-        // Fire-and-forget: wrap+broadcast happens via rekey() so the new client receives
-        // the wrapped K via the same control-frame path as future rotations.
-        void this._wrapAndBroadcastSessionKey(runtime, 'manual');
-      } else {
-        void this._wrapSessionKeyForClient(runtime, clientId, 'manual').catch((err) => {
-          this._logService.error(`[PtyMultiplexerService] wrap-for-client ${clientId} failed:`, err);
+    // Keyed-participant flow — make sure THIS specific joiner can decrypt
+    // frames encrypted under the per-session symmetric key. First keyed
+    // attach generates the key and broadcasts a wrapped copy; subsequent
+    // keyed attaches receive a unicast wrap (the key did NOT rotate).
+    if (publicKey && this._keyService.isAvailable()) {
+      const existingKey = this._keyService.getKey(runtime.source.id);
+      if (!existingKey) {
+        void this._rotateAndBroadcast(runtime, 'manual').catch((err) => {
+          this._logService.error(`[PtyMultiplexerService] initial rekey for ${runtime.source.id} failed:`, err);
         });
+      } else {
+        void this._keyService
+          .wrapForClient(runtime.source.id, clientId, publicKey, 'manual')
+          .then((wrap) => {
+            if (wrap) {
+              this._sendControlToClient(runtime.source.id, clientId, SessionKeyService.toControlPayload(wrap));
+            }
+          })
+          .catch((err) => {
+            this._logService.error(`[PtyMultiplexerService] wrap-for-client ${clientId} failed:`, err);
+          });
       }
     }
 
@@ -454,34 +346,21 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     this._publishParticipants(runtime);
   }
 
-  detachClient(sessionId: string, clientId: string): void {
-    const runtime = this._sessions.get(sessionId);
-    if (!runtime || !runtime.clients.has(clientId)) {
-      return;
-    }
-    this._detachClientInternal(runtime, clientId, 'detach');
-  }
-
   /**
-   * Common detach path. Forward secrecy: if the departing client had a
-   * registered pubkey (i.e. it participated in sessionKey wrapping) we rotate the key
-   * so the kicked/disconnected participant cannot continue to decrypt new traffic via a
-   * stale relay buffer.
+   * Common "client is gone" path (detach, kick, heartbeat reap). Drops the
+   * runtime entry, propagates to arbitration (driver clears if it was them),
+   * broadcasts participant_left, and rotates the key when the gone client
+   * held a wrapped copy (forward secrecy).
    */
-  private _detachClientInternal(
+  private _handleClientGone(
     runtime: ISessionRuntime,
     clientId: string,
     reason: RekeyReason
   ): void {
-    const wasKeyed = Boolean(runtime.clients.get(clientId)?.publicKey);
+    const entry = runtime.clients.get(clientId);
+    const wasKeyed = Boolean(entry?.publicKey);
     runtime.clients.delete(clientId);
-
-    if (runtime.driverId === clientId) {
-      runtime.driverId = null;
-      runtime.driverLocked = false;
-      runtime.driverHeartbeatAt = 0;
-      this._publishDriver(runtime);
-    }
+    this._driver.detachClient(runtime.source.id, clientId);
 
     this._refreshRuntimeState(runtime);
 
@@ -492,53 +371,37 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     });
     this._publishParticipants(runtime);
 
-    // Rotate session key only when (a) the leaving participant actually held a wrapped
-    // copy of it AND (b) there are still keyed participants to wrap the new K for.
-    if (wasKeyed && runtime.sessionKey !== null) {
-      const hasRemainingKeyed = [...runtime.clients.values()].some((entry) => entry.publicKey);
+    if (wasKeyed && this._keyService.getKey(runtime.source.id) !== null) {
+      const hasRemainingKeyed = [...runtime.clients.values()].some((c) => c.publicKey);
       if (hasRemainingKeyed) {
-        runtime.sessionKey = this._cryptoService.generateSessionKey();
-        void this._wrapAndBroadcastSessionKey(runtime, reason);
+        void this._rotateAndBroadcast(runtime, reason).catch((err) => {
+          this._logService.error(`[PtyMultiplexerService] forward-secrecy rekey on detach failed:`, err);
+        });
       } else {
-        // Last keyed participant left — drop the key so the next attach generates a fresh one.
-        runtime.sessionKey = null;
-        runtime.sessionKeySubject.next(null);
+        this._keyService.clear(runtime.source.id);
       }
     }
   }
 
-  handleInbound(sessionId: string, clientId: string, frame: IFrame): void {
-    const runtime = this._sessions.get(sessionId);
-    if (!runtime || !runtime.clients.has(clientId)) {
-      return;
+  private async _rotateAndBroadcast(runtime: ISessionRuntime, reason: RekeyReason): Promise<IRekeyResult> {
+    const recipients = [...runtime.clients].map(([clientId, entry]) => ({
+      clientId,
+      publicKey: entry.publicKey,
+    }));
+    const broadcast = await this._keyService.rotate(runtime.source.id, recipients, reason);
+    // Queue every wrap under the OLD key first (the daemon-side transport
+    // hasn't seen the new key yet because we haven't called commitRotation).
+    for (const wrap of broadcast.wraps) {
+      this._sendControlToClient(runtime.source.id, wrap.clientId, SessionKeyService.toControlPayload(wrap));
     }
-
-    runtime.clients.get(clientId)!.lastHeartbeatAt = Date.now();
-
-    switch (frame.channel) {
-      case FrameChannel.PtyData:
-        this._handleInputFrame(runtime, clientId, frame);
-        break;
-      case FrameChannel.Control:
-        this._handleControlFrame(runtime, clientId, frame);
-        break;
-      case FrameChannel.SessionEvent:
-        // Clients must not emit session events; ignore to prevent spoofing.
-        break;
-    }
-  }
-
-  clientHeartbeat(sessionId: string, clientId: string): void {
-    const runtime = this._sessions.get(sessionId);
-    if (!runtime || !runtime.clients.has(clientId)) {
-      return;
-    }
-    const now = Date.now();
-    runtime.clients.get(clientId)!.lastHeartbeatAt = now;
-    if (runtime.driverId === clientId) {
-      runtime.driverHeartbeatAt = now;
-      this._publishDriver(runtime);
-    }
+    // Publish the new key — daemon transport swaps its encryption key now.
+    this._keyService.commitRotation(runtime.source.id);
+    return {
+      sessionId: broadcast.sessionId,
+      reason: broadcast.reason,
+      recipientCount: broadcast.wraps.length,
+      unwrappedClientIds: broadcast.unwrappedClientIds,
+    };
   }
 
   private _requireSession(sessionId: string): ISessionRuntime {
@@ -554,8 +417,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     if (!runtime) {
       return;
     }
-    runtime.ringBuffer.write(chunk);
-    runtime.headless.write(chunk);
+    runtime.scrollback.write(chunk);
     if (runtime.clients.size === 0) {
       return;
     }
@@ -563,12 +425,11 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
   }
 
   private _handleInputFrame(runtime: ISessionRuntime, clientId: string, frame: IFrame): void {
-    // Only the current driver may write to the PTY.
     const client = runtime.clients.get(clientId)!;
     if (!isWriterRole(client.role)) {
       return;
     }
-    if (runtime.driverId !== clientId) {
+    if (!this._driver.isDriver(runtime.source.id, clientId)) {
       return;
     }
     try {
@@ -588,22 +449,26 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     }
     switch (parsed.type) {
       case 'driver_request':
-        this._handleDriverRequest(runtime, clientId);
+        this._driver.requestDriver(runtime.source.id, clientId);
         break;
       case 'driver_release':
-        this._handleDriverRelease(runtime, clientId);
+        this._driver.releaseDriver(runtime.source.id, clientId);
         break;
       case 'heartbeat':
-        // Timestamp already updated above.
+        // Timestamp already updated in handleInbound.
         break;
       case 'resize': {
         const r = parsed as { type: 'resize'; cols?: number; rows?: number };
-        if (runtime.driverId === clientId && Number.isInteger(r.cols) && Number.isInteger(r.rows)) {
+        if (
+          this._driver.isDriver(runtime.source.id, clientId)
+          && Number.isInteger(r.cols)
+          && Number.isInteger(r.rows)
+        ) {
           const cols = r.cols!;
           const rows = r.rows!;
           try {
             runtime.source.resize(cols, rows);
-            runtime.headless.resize(cols, rows);
+            runtime.scrollback.resize(cols, rows);
             runtime.cols = cols;
             runtime.rows = rows;
             this._publishSessions();
@@ -617,35 +482,6 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         // Unknown types are ignored for forward compatibility.
         break;
     }
-  }
-
-  private _handleDriverRequest(runtime: ISessionRuntime, clientId: string): void {
-    if (runtime.driverLocked && runtime.driverId !== clientId) {
-      return;
-    }
-    const client = runtime.clients.get(clientId);
-    if (!client || !isWriterRole(client.role)) {
-      return;
-    }
-    const previous = runtime.driverId;
-    runtime.driverId = clientId;
-    runtime.driverHeartbeatAt = Date.now();
-    this._publishDriver(runtime);
-    this._broadcastSessionEvent(runtime.source.id, {
-      type: 'driver_handover',
-      sessionId: runtime.source.id,
-      fromClientId: previous,
-      toClientId: clientId,
-    });
-  }
-
-  private _handleDriverRelease(runtime: ISessionRuntime, clientId: string): void {
-    if (runtime.driverId !== clientId) {
-      return;
-    }
-    runtime.driverId = null;
-    runtime.driverHeartbeatAt = 0;
-    this._publishDriver(runtime);
   }
 
   private _broadcast(sessionId: string, channel: FrameChannel, flags: number, payload: Uint8Array): void {
@@ -709,20 +545,10 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         rows: runtime.rows,
         createdAt: runtime.participantsSubject.getValue()[0]?.joinedAt ?? Date.now(),
         participantIds: [...runtime.clients.keys()],
-        driverId: runtime.driverId,
+        driverId: this._currentDriverId(runtime.source.id),
       });
     }
     this._sessionsSubject.next(out);
-  }
-
-  private _publishDriver(runtime: ISessionRuntime): void {
-    runtime.driverSubject.next({
-      sessionId: runtime.source.id,
-      driverId: runtime.driverId,
-      lastHeartbeatAt: runtime.driverHeartbeatAt,
-      locked: runtime.driverLocked,
-    });
-    this._publishSessions();
   }
 
   private _publishParticipants(runtime: ISessionRuntime): void {
@@ -733,7 +559,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         displayName: entry.displayName,
         role: entry.role,
         joinedAt: entry.joinedAt,
-        isCurrent: false, // The daemon has no notion of "current"; client UI determines this.
+        isCurrent: false,
       });
     }
     runtime.participantsSubject.next(list);
@@ -746,71 +572,33 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       return;
     }
     runtime.outputSub.unsubscribe();
-    // Notify all attached clients.
+    for (const sub of runtime.arbitrationSubs) {
+      sub.unsubscribe();
+    }
+    // Notify all attached clients first; payload encode still uses the per-runtime seq counter.
     this._broadcastSessionEvent(sessionId, { type: 'session_closed', sessionId });
     runtime.state = SharedSessionState.Closed;
-    runtime.headless.dispose();
+    runtime.scrollback.dispose();
     runtime.participantsSubject.complete();
-    runtime.driverSubject.complete();
-    runtime.sessionKey = null;
-    runtime.sessionKeySubject.next(null);
-    runtime.sessionKeySubject.complete();
-    this._sessionKeySubjects.delete(sessionId);
+    this._driver.unregisterSession(sessionId);
+    this._keyService.unregisterSession(sessionId);
     this._sessions.delete(sessionId);
     this._publishSessions();
   }
 
-  private _refreshRuntimeState(runtime: ISessionRuntime, publish = true): void {
+  private _refreshRuntimeState(runtime: ISessionRuntime): void {
     if (runtime.clients.size > 0) {
       runtime.state = SharedSessionState.Active;
     } else {
       runtime.state = SharedSessionState.Idle;
     }
-    if (publish) {
-      this._publishSessions();
-    }
+    this._publishSessions();
   }
 
-  private _reapStaleDrivers(): void {
-    const now = Date.now();
-    for (const runtime of this._sessions.values()) {
-      if (runtime.driverId === null || runtime.driverLocked) {
-        continue;
-      }
-      if (now - runtime.driverHeartbeatAt > SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS) {
-        const previous = runtime.driverId;
-        runtime.driverId = null;
-        runtime.driverHeartbeatAt = 0;
-        this._publishDriver(runtime);
-        this._broadcastSessionEvent(runtime.source.id, {
-          type: 'driver_handover',
-          sessionId: runtime.source.id,
-          fromClientId: previous,
-          toClientId: null,
-        });
-      }
-    }
-  }
-
-  /**
-   * Reap clients whose periodic `heartbeat` control frame stopped arriving for
-   * longer than CLIENT_REAP_TIMEOUT_MS. The relay server does not notify the
-   * daemon when a joiner's WebSocket closes, so this presence-by-heartbeat is
-   * how mux discovers ghost participants — without it, mux.clients leaks
-   * forever, the participants$ list misreports state, and forward-secrecy
-   * rekey on detach never runs even though the joiner is gone.
-   */
-  private _reapStaleClients(): void {
-    const now = Date.now();
-    const REAP_THRESHOLD_MS = SHARED_TERMINAL_DRIVER_HEARTBEAT_TIMEOUT_MS * 6;
-    for (const runtime of this._sessions.values()) {
-      for (const [clientId, entry] of runtime.clients) {
-        if (now - entry.lastHeartbeatAt <= REAP_THRESHOLD_MS) {
-          continue;
-        }
-        this._logService.log(`[PtyMultiplexerService] reaping stale client ${clientId} (no heartbeat for ${now - entry.lastHeartbeatAt}ms)`);
-        this._detachClientInternal(runtime, clientId, 'detach');
-      }
-    }
+  private _currentDriverId(sessionId: string): string | null {
+    // Delegate to the arbitration service's explicit sync getter — avoids the
+    // implicit "driverState$ is a BehaviorSubject" assumption that a previous
+    // version relied on via subscribe/unsubscribe.
+    return this._driver.getDriverState(sessionId)?.driverId ?? null;
   }
 }

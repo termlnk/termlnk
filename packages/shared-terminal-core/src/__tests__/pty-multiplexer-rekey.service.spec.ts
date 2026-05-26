@@ -19,7 +19,9 @@ import { FrameChannel, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SharedTerminalCryptoService } from '../services/crypto.service';
+import { DriverArbitrationService } from '../services/driver-arbitration.service';
 import { PtyMultiplexerService } from '../services/pty-multiplexer.service';
+import { SessionKeyService } from '../services/session-key.service';
 import { base64UrlToBytes } from '../utils/encoding';
 
 class NoopLogService implements ILogService {
@@ -84,16 +86,23 @@ describe('PtyMultiplexer rekey', () => {
   let daemonKp: IKeypair;
   let daemonService: FakeDaemonKeypair;
   let mux: PtyMultiplexerService;
+  let driver: DriverArbitrationService;
+  let keyService: SessionKeyService;
 
   beforeEach(() => {
     crypto = new SharedTerminalCryptoService();
     daemonKp = crypto.generateKeypair();
     daemonService = new FakeDaemonKeypair(daemonKp);
-    mux = new PtyMultiplexerService(crypto, new NoopLogService(), daemonService);
+    const log = new NoopLogService();
+    driver = new DriverArbitrationService(log);
+    keyService = new SessionKeyService(crypto, log, daemonService);
+    mux = new PtyMultiplexerService(driver, keyService, log);
   });
 
   afterEach(() => {
     mux.dispose();
+    keyService.dispose();
+    driver.dispose();
   });
 
   it('generates a session key when the first keyed client attaches', async () => {
@@ -214,7 +223,10 @@ describe('PtyMultiplexer rekey', () => {
   });
 
   it('no rekey occurs when daemon keypair service is unavailable', async () => {
-    const mux2 = new PtyMultiplexerService(crypto, new NoopLogService());
+    const log = new NoopLogService();
+    const driver2 = new DriverArbitrationService(log);
+    const keyService2 = new SessionKeyService(crypto, log);
+    const mux2 = new PtyMultiplexerService(driver2, keyService2, log);
     const ts = createSource('s1');
     mux2.register(ts.source);
     const cop = crypto.generateKeypair();
@@ -223,5 +235,7 @@ describe('PtyMultiplexer rekey', () => {
     // No daemon keypair → session key remains null.
     expect(mux2.getSessionKey('s1')).toBeNull();
     mux2.dispose();
+    keyService2.dispose();
+    driver2.dispose();
   });
 });

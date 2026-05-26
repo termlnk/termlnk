@@ -22,12 +22,14 @@ import { CompositeTransportService } from './services/composite-transport.servic
 import { SharedTerminalCryptoService } from './services/crypto.service';
 import { DaemonKeypairService } from './services/daemon-keypair.service';
 import { DevicePairingService } from './services/device-pairing.service';
+import { DriverArbitrationService } from './services/driver-arbitration.service';
 import { FrameCodecService } from './services/frame-codec.service';
 import { HttpCollabInviteTransportService } from './services/http-collab-invite-transport.service';
 import { PairingService } from './services/pairing.service';
 import { ParticipantClientService } from './services/participant-client.service';
 import { PtyMultiplexerService } from './services/pty-multiplexer.service';
 import { RelayTransportService } from './services/relay-transport.service';
+import { SessionKeyService } from './services/session-key.service';
 import { ShareDaemonService } from './services/share-daemon.service';
 import { WebRTCTransportService } from './services/webrtc-transport.service';
 
@@ -59,6 +61,8 @@ export class SharedTerminalCorePlugin extends Plugin {
       [ISharedTerminalCryptoService],
       [IFrameCodecService],
       [IDaemonKeypairService],
+      [DriverArbitrationService],
+      [SessionKeyService],
       [IPtyMultiplexerService],
       [IShareDaemonService],
       [IPairingService],
@@ -73,6 +77,8 @@ export class SharedTerminalCorePlugin extends Plugin {
       [ISharedTerminalCryptoService, { useClass: SharedTerminalCryptoService }],
       [IFrameCodecService, { useClass: FrameCodecService }],
       [IDaemonKeypairService, { useClass: DaemonKeypairService }],
+      [DriverArbitrationService, { useClass: DriverArbitrationService }],
+      [SessionKeyService, { useClass: SessionKeyService }],
       [IPtyMultiplexerService, { useClass: PtyMultiplexerService }],
       [IShareDaemonService, { useClass: ShareDaemonService }],
       [IPairingService, { useClass: PairingService }],

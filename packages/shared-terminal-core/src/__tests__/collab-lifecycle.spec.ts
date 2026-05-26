@@ -33,8 +33,10 @@ import { SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalRole } from '@termlnk/
 import { Subject } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { SharedTerminalCryptoService } from '../services/crypto.service';
+import { DriverArbitrationService } from '../services/driver-arbitration.service';
 import { PairingService } from '../services/pairing.service';
 import { PtyMultiplexerService } from '../services/pty-multiplexer.service';
+import { SessionKeyService } from '../services/session-key.service';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -313,7 +315,11 @@ describe('collaboration lifecycle', () => {
           return daemonKp;
         },
       };
-      const mux = new PtyMultiplexerService(crypto, new NoopLogService(), daemon);
+      const mux = new PtyMultiplexerService(
+        new DriverArbitrationService(new NoopLogService()),
+        new SessionKeyService(crypto, new NoopLogService(), daemon),
+        new NoopLogService()
+      );
       const pty = createPtySource('s1');
       mux.register(pty.source);
 
@@ -355,7 +361,11 @@ describe('collaboration lifecycle', () => {
       };
       const transport = new TransportMock();
       const { service } = buildPairing(transport);
-      const mux = new PtyMultiplexerService(crypto, new NoopLogService(), daemon);
+      const mux = new PtyMultiplexerService(
+        new DriverArbitrationService(new NoopLogService()),
+        new SessionKeyService(crypto, new NoopLogService(), daemon),
+        new NoopLogService()
+      );
       const pty = createPtySource('s2');
       mux.register(pty.source);
 

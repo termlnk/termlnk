@@ -19,7 +19,9 @@ import { FrameChannel, FrameFlag, SharedTerminalRole } from '@termlnk/shared-ter
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SharedTerminalCryptoService } from '../services/crypto.service';
+import { DriverArbitrationService } from '../services/driver-arbitration.service';
 import { PtyMultiplexerService } from '../services/pty-multiplexer.service';
+import { SessionKeyService } from '../services/session-key.service';
 
 class FakeLogService implements ILogService {
   debug = vi.fn();
@@ -81,16 +83,23 @@ async function waitFor<T>(probe: () => T | Promise<T | undefined> | undefined, t
 
 describe('PtyMultiplexerService', () => {
   let mux: PtyMultiplexerService;
+  let driver: DriverArbitrationService;
+  let keyService: SessionKeyService;
   let outbound: IOutboundFrame[];
 
   beforeEach(() => {
-    mux = new PtyMultiplexerService(new SharedTerminalCryptoService(), new FakeLogService());
+    const log = new FakeLogService();
+    driver = new DriverArbitrationService(log);
+    keyService = new SessionKeyService(new SharedTerminalCryptoService(), log);
+    mux = new PtyMultiplexerService(driver, keyService, log);
     outbound = [];
     mux.outbound$.subscribe((f) => outbound.push(f));
   });
 
   afterEach(() => {
     mux.dispose();
+    keyService.dispose();
+    driver.dispose();
   });
 
   it('register makes session visible in sessions$', () => {
