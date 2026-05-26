@@ -19,7 +19,7 @@ import { IMcpRegistryService, IMcpService, ISkillService } from '@termlnk/agent'
 import { IAuthService } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IFileTransferService, INotifyService, RPCPlugin } from '@termlnk/rpc';
-import { ISharedTerminalService } from '@termlnk/shared-terminal';
+import { IDevicePairingService, IInviteService, IRemoteSessionService, ISharedSessionService } from '@termlnk/shared-terminal';
 import { IBackupClientService, ISyncService } from '@termlnk/sync';
 import { IPTYService } from '@termlnk/terminal';
 import { defaultPluginConfig, RPC_CLIENT_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
@@ -28,17 +28,20 @@ import { ChatSessionClientService, IChatSessionService } from './services/ai/cha
 import { IProviderConfigService, ProviderConfigClientService } from './services/ai/provider-config-client.service';
 import { AuthService } from './services/auth/auth.service';
 import { ConfigManagerService, IConfigManagerService } from './services/config/config-manager.service';
+import { DevicePairingService } from './services/device-pairing/device-pairing.service';
 import { ExtensionClientService, IExtensionClientService } from './services/extension/extension-client.service';
 import { FileTransferService } from './services/file-transfer/file-transfer.service';
 import { HostManagerService, IHostManagerService } from './services/host/host-manager.service';
+import { InviteService } from './services/invite/invite.service';
 import { McpRegistryService } from './services/mcp/mcp-registry.service';
 import { McpService } from './services/mcp/mcp.service';
 import { NotifyService } from './services/notify/notify.service';
 import { AgentToolPermissionService, IAgentToolPermissionService } from './services/permission/permission-client.service';
 import { IProxyService, ProxyClientService } from './services/proxy/proxy.service';
 import { PTYService } from './services/pty/pty.service';
+import { RemoteSessionService } from './services/remote-session/remote-session.service';
 import { ISFTPService, SFTPClientService } from './services/sftp/sftp.service';
-import { SharedTerminalService } from './services/shared-terminal/shared-terminal.service';
+import { SharedSessionService } from './services/shared-session/shared-session.service';
 import { SkillService } from './services/skill/skill.service';
 import { ISSHService, SSHService } from './services/ssh/ssh.service';
 import { BackupClientService } from './services/sync/backup-client.service';
@@ -83,17 +86,20 @@ export class RPCClientPlugin extends Plugin {
       [IChatSessionService, { useClass: ChatSessionClientService }],
       [IProviderConfigService, { useClass: ProviderConfigClientService }],
       [IConfigManagerService, { useClass: ConfigManagerService }],
+      [IDevicePairingService, { useClass: DevicePairingService }],
       [IExtensionClientService, { useClass: ExtensionClientService }],
       [IFileTransferService, { useClass: FileTransferService }],
       [IHostManagerService, { useClass: HostManagerService }],
+      [IInviteService, { useClass: InviteService }],
       [IMcpService, { useClass: McpService }],
       [IMcpRegistryService, { useClass: McpRegistryService }],
       [INotifyService, { useClass: NotifyService }],
       [IAgentToolPermissionService, { useClass: AgentToolPermissionService }],
       [IProxyService, { useClass: ProxyClientService }],
       [IPTYService, { useClass: PTYService }],
+      [IRemoteSessionService, { useClass: RemoteSessionService }],
       [ISFTPService, { useClass: SFTPClientService }],
-      [ISharedTerminalService, { useClass: SharedTerminalService }],
+      [ISharedSessionService, { useClass: SharedSessionService }],
       [ISkillService, { useClass: SkillService }],
       [ISSHService, { useClass: SSHService }],
       [ISyncService, { useClass: SyncClientService }],

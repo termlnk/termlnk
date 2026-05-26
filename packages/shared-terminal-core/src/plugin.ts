@@ -16,7 +16,7 @@
 import type { Dependency } from '@termlnk/core';
 import type { ISharedTerminalCoreConfig } from './controllers/config.schema';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
-import { ICollabInviteTransportService, IDaemonKeypairService, IDevicePairingService, IFrameCodecService, IPairingService, IParticipantService, IPtyMultiplexerService, IShareDaemonService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { ICollabInviteTransportService, IDaemonKeypairService, IDevicePairingService, IFrameCodecService, IPairingService, IPtyMultiplexerService, IRemoteSessionService, IShareDaemonService, ISharedTerminalCryptoService, ISharedTerminalTransportService, SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { defaultPluginConfig, SHARED_TERMINAL_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { CompositeTransportService } from './services/composite-transport.service';
 import { SharedTerminalCryptoService } from './services/crypto.service';
@@ -26,9 +26,9 @@ import { DriverArbitrationService } from './services/driver-arbitration.service'
 import { FrameCodecService } from './services/frame-codec.service';
 import { HttpCollabInviteTransportService } from './services/http-collab-invite-transport.service';
 import { PairingService } from './services/pairing.service';
-import { ParticipantClientService } from './services/participant-client.service';
 import { PtyMultiplexerService } from './services/pty-multiplexer.service';
 import { RelayTransportService } from './services/relay-transport.service';
+import { RemoteSessionService } from './services/remote-session.service';
 import { SessionKeyService } from './services/session-key.service';
 import { ShareDaemonService } from './services/share-daemon.service';
 import { WebRTCTransportService } from './services/webrtc-transport.service';
@@ -67,7 +67,7 @@ export class SharedTerminalCorePlugin extends Plugin {
       [IShareDaemonService],
       [IPairingService],
       [ISharedTerminalTransportService],
-      [IParticipantService],
+      [IRemoteSessionService],
       [IDevicePairingService],
     ]);
   }
@@ -85,7 +85,7 @@ export class SharedTerminalCorePlugin extends Plugin {
       [WebRTCTransportService, { useClass: WebRTCTransportService }],
       [RelayTransportService, { useClass: RelayTransportService }],
       [ISharedTerminalTransportService, { useClass: CompositeTransportService }],
-      [IParticipantService, { useClass: ParticipantClientService }],
+      [IRemoteSessionService, { useClass: RemoteSessionService }],
       [IDevicePairingService, { useClass: DevicePairingService }],
       [ICollabInviteTransportService, { useClass: HttpCollabInviteTransportService }],
     ];

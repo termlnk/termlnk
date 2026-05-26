@@ -13,14 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService } from '@termlnk/shared-terminal';
+import type { IDriverState, IParticipant, IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService, ISharedSession, ISharedSessionService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { IAuthService } from '@termlnk/auth';
-import { createIdentifier, Disposable, ILogService, Optional } from '@termlnk/core';
+import { Disposable, ILogService, Optional } from '@termlnk/core';
 import { ISSHSessionService, ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { IPtyMultiplexerService, IShareDaemonService as IShareDaemonServiceId } from '@termlnk/shared-terminal';
 import { IPTYSessionService } from '@termlnk/terminal';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, EMPTY, firstValueFrom } from 'rxjs';
 import { LocalPtySource, SSHPtySource } from './pty-source.adapters';
 
 interface ISharedRegistration {
@@ -39,56 +39,29 @@ interface ISessionMeta {
 }
 
 /**
- * IShareSessionService — explicit "start sharing" / "stop sharing" coordinator for the
- * owner-side desktop UI.
+ * Owner-side control plane implementation — implements `ISharedSessionService`.
+ *
+ * Composes the per-process PtyMultiplexer (sessions / participants / driver
+ * arbitration) with the share registration ledger (which SSH/PTY sessions are
+ * exposed). Title sync forwards renderer-side title changes into the daemon's
+ * `pushSessionMetadata` broadcast.
  */
-export interface IShareSessionService {
-  /** Real-time list of every active SSH + local PTY session, each annotated with shared flag. */
-  readonly shareable$: Observable<readonly IShareableSession[]>;
-
-  /** Share the SSH session with the given id; idempotent. Throws if unknown. */
-  shareSshSession(sessionId: string): Promise<void>;
-
-  /** Share the local PTY session with the given id; idempotent. */
-  sharePtySession(sessionId: string): Promise<void>;
-
-  /** Stop sharing the session. No-op if not currently shared. */
-  stopSharing(sessionId: string): Promise<void>;
-
-  /** Snapshot of currently active shareable sessions (UI hydrate before subscription lands). */
-  listShareable(): readonly IShareableSession[];
-
-  /** Whether the session is currently being shared. */
-  isShared(sessionId: string): boolean;
-
-  /**
-   * Renderer-driven title sync. When the owner's terminal tab title changes
-   * (e.g. local PTY OSC update, manual rename), the renderer forwards the new
-   * title here; we update our internal meta and push the new value through
-   * IShareDaemonService.pushSessionMetadata so every joiner's tab title
-   * matches the owner's. No-op if the session isn't being shared.
-   */
-  setSessionTitle(sessionId: string, title: string): void;
-}
-
-export const IShareSessionService = createIdentifier<IShareSessionService>('rpc-server.share-session-service');
-
-export class ShareSessionService extends Disposable implements IShareSessionService {
+export class SharedSessionService extends Disposable implements ISharedSessionService {
   private readonly _registrations = new Map<string, ISharedRegistration>();
   private readonly _sessions = new Map<string, ISessionMeta>();
   private readonly _shareable$ = new BehaviorSubject<readonly IShareableSession[]>([]);
   readonly shareable$: Observable<readonly IShareableSession[]> = this._shareable$.asObservable();
+
   /**
    * Current owner display label (from IAuthService.currentUser$). Cached so we
    * can push it on every shareXxxSession + react to user changes. Falls back to
-   * email when displayName is empty, then to `undefined` (no label) when the
-   * user isn't signed in.
+   * email when displayName is empty, then to `undefined` when not signed in.
    */
   private _ownerLabel: string | undefined;
   /**
    * Titles set via setSessionTitle before the corresponding sessionCreated$
-   * event arrives. Drained when the meta lands so the renderer's debounced
-   * title push isn't silently dropped on a tight share-then-rename race.
+   * event arrives. Drained when the meta lands so a tight share-then-rename
+   * race does not lose the renderer's first OSC-driven title push.
    */
   private readonly _pendingTitles = new Map<string, string>();
 
@@ -102,9 +75,174 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
     @Optional(IAuthService) private readonly _authService?: IAuthService
   ) {
     super();
-
     this._init();
   }
+
+  override dispose(): void {
+    super.dispose();
+    for (const reg of this._registrations.values()) {
+      try {
+        reg.registered.unregister();
+      } catch (err) {
+        this._logService.error(`[SharedSessionService] unregister ${reg.sessionId} failed:`, err);
+      }
+      reg.source.dispose();
+    }
+    this._registrations.clear();
+    this._sessions.clear();
+    this._shareable$.complete();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sessions (mux passthrough)
+  // ---------------------------------------------------------------------------
+
+  get sessions$(): Observable<readonly ISharedSession[]> {
+    return this._mux?.sessions$ ?? EMPTY;
+  }
+
+  async listSessions(): Promise<readonly ISharedSession[]> {
+    if (!this._mux) {
+      return [];
+    }
+    return firstValueFrom(this._mux.sessions$);
+  }
+
+  participants$(sessionId: string): Observable<readonly IParticipant[]> {
+    return this._mux?.participants$(sessionId) ?? EMPTY;
+  }
+
+  driverState$(sessionId: string): Observable<IDriverState> {
+    return this._mux?.driverState$(sessionId) ?? EMPTY;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Driver arbitration
+  // ---------------------------------------------------------------------------
+
+  async setDriver(sessionId: string, clientId: string | null): Promise<void> {
+    this._requireMux().setDriver(sessionId, clientId);
+  }
+
+  async lockDriver(sessionId: string, clientId: string): Promise<void> {
+    this._requireMux().lockDriver(sessionId, clientId);
+  }
+
+  async unlockDriver(sessionId: string): Promise<void> {
+    this._requireMux().unlockDriver(sessionId);
+  }
+
+  async kick(sessionId: string, clientId: string, reason?: string): Promise<void> {
+    this._requireMux().kick(sessionId, clientId, reason);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sharing lifecycle
+  // ---------------------------------------------------------------------------
+
+  async listShareable(): Promise<readonly IShareableSession[]> {
+    return this._shareable$.getValue();
+  }
+
+  async shareSshSession(sessionId: string): Promise<void> {
+    if (this._registrations.has(sessionId)) {
+      return;
+    }
+    if (!this._mux) {
+      throw new Error('[SharedSessionService] shared-terminal core is not registered in this process');
+    }
+    const session = this._sshSessionService.getSession(sessionId);
+    if (!session) {
+      throw new Error(`[SharedSessionService] SSH session ${sessionId} not found`);
+    }
+    const source = new SSHPtySource(session);
+    const registered = this._mux.register(source);
+    this._registrations.set(sessionId, {
+      sessionId,
+      kind: 'ssh',
+      source,
+      registered,
+      startedAt: Date.now(),
+    });
+    this._logService.log(`[SharedSessionService] sharing SSH session ${sessionId} as "${source.title}"`);
+    this._pushInitialMetadata(sessionId);
+    this._publish();
+  }
+
+  async sharePtySession(sessionId: string): Promise<void> {
+    if (this._registrations.has(sessionId)) {
+      return;
+    }
+    if (!this._mux) {
+      throw new Error('[SharedSessionService] shared-terminal core is not registered in this process');
+    }
+    const session = this._ptySessionService.getSession(sessionId);
+    if (!session) {
+      throw new Error(`[SharedSessionService] PTY session ${sessionId} not found`);
+    }
+    const source = new LocalPtySource(session);
+    const registered = this._mux.register(source);
+    this._registrations.set(sessionId, {
+      sessionId,
+      kind: 'local',
+      source,
+      registered,
+      startedAt: Date.now(),
+    });
+    this._logService.log(`[SharedSessionService] sharing local PTY session ${sessionId}`);
+    this._pushInitialMetadata(sessionId);
+    this._publish();
+  }
+
+  async stopSharing(sessionId: string): Promise<void> {
+    const reg = this._registrations.get(sessionId);
+    if (!reg) {
+      return;
+    }
+    try {
+      reg.registered.unregister();
+    } catch (err) {
+      this._logService.error(`[SharedSessionService] unregister ${sessionId} failed:`, err);
+    }
+    reg.source.dispose();
+    this._registrations.delete(sessionId);
+    // Tear down the daemon-mode relay socket associated with this session.
+    // Without this the WebSocket stays connected to the relay (server keeps
+    // the daemon slot occupied), and any re-share of the same sessionId
+    // would observe `isAttached(sid) === true` and silently drop the new
+    // sharedKey, breaking joiners.
+    if (this._shareDaemon) {
+      try {
+        await this._shareDaemon.detachSession(sessionId);
+      } catch (err) {
+        this._logService.warn(`[SharedSessionService] shareDaemon.detachSession ${sessionId} failed:`, err);
+      }
+    }
+    this._logService.log(`[SharedSessionService] stopped sharing ${sessionId}`);
+    this._publish();
+  }
+
+  async setSessionTitle(sessionId: string, title: string): Promise<void> {
+    const meta = this._sessions.get(sessionId);
+    if (!meta) {
+      // sessionCreated$ hasn't fanned out for this sid yet — queue the title
+      // and apply on arrival.
+      this._pendingTitles.set(sessionId, title);
+      return;
+    }
+    if (meta.title === title) {
+      return;
+    }
+    this._sessions.set(sessionId, { ...meta, title });
+    this._publish();
+    if (this._registrations.has(sessionId) && this._shareDaemon) {
+      this._shareDaemon.pushSessionMetadata(sessionId, { title });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internals
+  // ---------------------------------------------------------------------------
 
   private _init() {
     this.disposeWithMe(this._notifyService.sessionCreated$.subscribe((event) => {
@@ -114,9 +252,6 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
       this._sessions.set(event.sessionId, {
         sessionId: event.sessionId,
         kind: event.type,
-        // A title that arrived via setSessionTitle before this event takes
-        // precedence over the auto-generated fallback — the renderer-side
-        // OSC update would otherwise be lost on a tight share+rename race.
         title: queuedTitle ?? fallbackTitle,
         hostId: event.hostId,
       });
@@ -128,7 +263,6 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
 
     this.disposeWithMe(this._notifyService.sessionClosed$.subscribe((event) => {
       if (this._registrations.has(event.sessionId)) {
-        // Implicit stop on PTY exit. Errors swallowed; logged inside stopSharing.
         void this.stopSharing(event.sessionId);
       }
       this._sessions.delete(event.sessionId);
@@ -137,11 +271,6 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
     }));
 
     if (this._authService) {
-      // Track the owner display label across sign-in/out + profile updates.
-      // We rebroadcast to every shared session whenever it changes so joiners'
-      // tab "Shared: <name>" stays accurate without manual refresh. Sign-out
-      // sends `null` (not undefined) so the daemon clears the cached value
-      // and joiners' tabs drop the previous owner's name.
       this.disposeWithMe(this._authService.currentUser$.subscribe((user) => {
         const next = user?.displayName?.trim() || user?.email || undefined;
         if (next === this._ownerLabel) {
@@ -155,127 +284,6 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
           this._shareDaemon.pushSessionMetadata(sid, { ownerLabel: next ?? null });
         }
       }));
-    }
-  }
-
-  override dispose(): void {
-    super.dispose();
-    for (const reg of this._registrations.values()) {
-      try {
-        reg.registered.unregister();
-      } catch (err) {
-        this._logService.error(`[ShareSessionService] unregister ${reg.sessionId} failed:`, err);
-      }
-      reg.source.dispose();
-    }
-    this._registrations.clear();
-    this._sessions.clear();
-    this._shareable$.complete();
-  }
-
-  async shareSshSession(sessionId: string): Promise<void> {
-    if (this._registrations.has(sessionId)) {
-      return;
-    }
-    if (!this._mux) {
-      throw new Error('[ShareSessionService] shared-terminal core is not registered in this process');
-    }
-    const session = this._sshSessionService.getSession(sessionId);
-    if (!session) {
-      throw new Error(`[ShareSessionService] SSH session ${sessionId} not found`);
-    }
-    const source = new SSHPtySource(session);
-    const registered = this._mux.register(source);
-    this._registrations.set(sessionId, {
-      sessionId,
-      kind: 'ssh',
-      source,
-      registered,
-      startedAt: Date.now(),
-    });
-    this._logService.log(`[ShareSessionService] sharing SSH session ${sessionId} as "${source.title}"`);
-    this._pushInitialMetadata(sessionId);
-    this._publish();
-  }
-
-  async sharePtySession(sessionId: string): Promise<void> {
-    if (this._registrations.has(sessionId)) {
-      return;
-    }
-    if (!this._mux) {
-      throw new Error('[ShareSessionService] shared-terminal core is not registered in this process');
-    }
-    const session = this._ptySessionService.getSession(sessionId);
-    if (!session) {
-      throw new Error(`[ShareSessionService] PTY session ${sessionId} not found`);
-    }
-    const source = new LocalPtySource(session);
-    const registered = this._mux.register(source);
-    this._registrations.set(sessionId, {
-      sessionId,
-      kind: 'local',
-      source,
-      registered,
-      startedAt: Date.now(),
-    });
-    this._logService.log(`[ShareSessionService] sharing local PTY session ${sessionId}`);
-    this._pushInitialMetadata(sessionId);
-    this._publish();
-  }
-
-  async stopSharing(sessionId: string): Promise<void> {
-    const reg = this._registrations.get(sessionId);
-    if (!reg) {
-      return;
-    }
-    try {
-      reg.registered.unregister();
-    } catch (err) {
-      this._logService.error(`[ShareSessionService] unregister ${sessionId} failed:`, err);
-    }
-    reg.source.dispose();
-    this._registrations.delete(sessionId);
-    // Tear down the daemon-mode relay socket associated with this session.
-    // Without this the WebSocket stays connected to the relay (server keeps
-    // the daemon slot occupied), and any re-share of the same sessionId
-    // would observe `isAttached(sid) === true` and silently drop the new
-    // sharedKey, breaking joiners.
-    if (this._shareDaemon) {
-      try {
-        await this._shareDaemon.detachSession(sessionId);
-      } catch (err) {
-        this._logService.warn(`[ShareSessionService] shareDaemon.detachSession ${sessionId} failed:`, err);
-      }
-    }
-    this._logService.log(`[ShareSessionService] stopped sharing ${sessionId}`);
-    this._publish();
-  }
-
-  listShareable(): readonly IShareableSession[] {
-    return this._shareable$.getValue();
-  }
-
-  isShared(sessionId: string): boolean {
-    return this._registrations.has(sessionId);
-  }
-
-  setSessionTitle(sessionId: string, title: string): void {
-    const meta = this._sessions.get(sessionId);
-    if (!meta) {
-      // sessionCreated$ hasn't fanned out for this sid yet — queue the title
-      // and apply on arrival. Without this the renderer's first OSC-driven
-      // title push for a freshly-created shared session would be silently
-      // dropped here, leaving joiners on the fallback name.
-      this._pendingTitles.set(sessionId, title);
-      return;
-    }
-    if (meta.title === title) {
-      return;
-    }
-    this._sessions.set(sessionId, { ...meta, title });
-    this._publish();
-    if (this._registrations.has(sessionId) && this._shareDaemon) {
-      this._shareDaemon.pushSessionMetadata(sessionId, { title });
     }
   }
 
@@ -307,5 +315,12 @@ export class ShareSessionService extends Disposable implements IShareSessionServ
     }
     out.sort((a, b) => a.title.localeCompare(b.title));
     this._shareable$.next(out);
+  }
+
+  private _requireMux(): IPtyMultiplexerServiceType {
+    if (!this._mux) {
+      throw new Error('[SharedSessionService] PtyMultiplexerService is unavailable in this runtime');
+    }
+    return this._mux;
   }
 }

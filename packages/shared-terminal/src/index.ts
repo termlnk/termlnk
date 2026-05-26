@@ -22,6 +22,8 @@ export { CONTROL_MESSAGE_TYPES, FrameChannel, FrameFlag, SESSION_EVENT_TYPES } f
 export type { CollabInviteStatus, ICapability, ICollabInvite, IInviteClaimPayload, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState } from './models/invite';
 export type { IKeypair, ISharedKey } from './models/keypair';
 export type { IPairedDevice, ISessionAcceptPayload, ISessionClaimPayload, ISessionRejectPayload } from './models/pairing';
+export type { IRemoteDriverHandoverEvent, IRemoteParticipantJoinedEvent, IRemoteParticipantLeftEvent, IRemoteSessionClosedEvent, IRemoteSessionMetadataEvent, IRemoteSnapshotEvent, RemoteSessionEvent } from './models/remote-session';
+export { RemoteSessionStatus } from './models/remote-session';
 export { isWriterRole, SharedTerminalRole } from './models/role';
 export type { IParticipant, ISessionSnapshot, ISharedSession } from './models/session';
 export { ClientConnectionState, DaemonState, SharedSessionState } from './models/session';
@@ -34,13 +36,14 @@ export { DAEMON_KEYPAIR_CONFIG_SUBKEY, IDaemonKeypairService } from './services/
 export type { IRemoteAnnouncedSession } from './services/device-pairing.service';
 export { IDevicePairingService } from './services/device-pairing.service';
 export { IFrameCodecService } from './services/frame-codec.service';
+export { IInviteService } from './services/invite.service';
 export { IPairingService } from './services/pairing.service';
-export type { IParticipantConnectInput, IParticipantConnectResult, IParticipantFrame, IParticipantSessionMetadata, IParticipantSnapshot } from './services/participant-client.service';
-export { IParticipantService } from './services/participant-client.service';
 export type { IOutboundFrame, IPtySource, IRegisteredPty, IRekeyResult, RekeyReason } from './services/pty-multiplexer.service';
 export { IPtyMultiplexerService } from './services/pty-multiplexer.service';
+export type { IRemoteSession, IRemoteSessionClosedEventNotify, IRemoteSessionCreatedEvent, IRemoteSessionCreateOptions, IRemoteSessionCreateResult } from './services/remote-session.service';
+export { IRemoteSessionService } from './services/remote-session.service';
 export { IShareDaemonService } from './services/share-daemon.service';
-export type { IShareableSession, ISharedTerminalError, SharedTerminalErrorCode } from './services/shared-terminal.service';
-export { ISharedTerminalService } from './services/shared-terminal.service';
+export type { IShareableSession } from './services/shared-session.service';
+export { ISharedSessionService } from './services/shared-session.service';
 export type { IInboundFrame, ITransportConnectOptions, ITransportSendOptions } from './services/transport.service';
 export { ISharedTerminalTransportService, TransportState } from './services/transport.service';

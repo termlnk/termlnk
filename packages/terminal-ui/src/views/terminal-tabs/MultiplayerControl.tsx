@@ -13,11 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IUserAccount } from '@termlnk/auth';
 import type { Nullable } from '@termlnk/core';
 import type { IDriverState, IParticipant, IShareableSession } from '@termlnk/shared-terminal';
+import { IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, toast, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
-import { ISharedTerminalService, SharedTerminalRole } from '@termlnk/shared-terminal';
+import { IInviteService, ISharedSessionService, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { TooltipWrapper } from '@termlnk/ui';
 import { CheckIcon, KeyboardIcon, LinkIcon, SquareIcon, UserIcon, UsersIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -34,10 +36,13 @@ export function MultiplayerControl(): React.JSX.Element | null {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
   const terminalUIService = useDependency(ITerminalUIService);
-  const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
+  const sharedSession = useDependency(ISharedSessionService, Quantity.OPTIONAL);
+  const inviteService = useDependency(IInviteService, Quantity.OPTIONAL);
+  const authService = useDependency(IAuthService, Quantity.OPTIONAL);
 
+  const currentUser = useObservable<IUserAccount | null>(authService?.currentUser$ ?? null, null);
   const activeSessionId = useObservable<Nullable<string>>(terminalUIService.activeSessionId$);
-  const shareable = useObservable<readonly IShareableSession[]>(client?.shareable$ ?? null, []);
+  const shareable = useObservable<readonly IShareableSession[]>(sharedSession?.shareable$ ?? null, []);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   // Cache the invite URL across re-renders so the user can copy again without re-creating.
@@ -67,37 +72,37 @@ export function MultiplayerControl(): React.JSX.Element | null {
   // Always subscribe (hooks must be unconditional) but pass EMPTY when no
   // session/sharing — useObservable then yields the seed value.
   const participantsObservable = useMemo(() => {
-    if (!client || !activeEntry?.shared) {
+    if (!sharedSession || !activeEntry?.shared) {
       return EMPTY;
     }
-    return client.participants$(activeEntry.sessionId);
-  }, [client, activeEntry?.sessionId, activeEntry?.shared]);
+    return sharedSession.participants$(activeEntry.sessionId);
+  }, [sharedSession, activeEntry?.sessionId, activeEntry?.shared]);
   const participants = useObservable<readonly IParticipant[]>(participantsObservable, []);
 
   const driverStateObservable = useMemo(() => {
-    if (!client || !activeEntry?.shared) {
+    if (!sharedSession || !activeEntry?.shared) {
       return EMPTY;
     }
-    return client.driverState$(activeEntry.sessionId);
-  }, [client, activeEntry?.sessionId, activeEntry?.shared]);
+    return sharedSession.driverState$(activeEntry.sessionId);
+  }, [sharedSession, activeEntry?.sessionId, activeEntry?.shared]);
   const driverState = useObservable<IDriverState | null>(driverStateObservable, null);
 
   const handleCopyLink = useCallback(async (): Promise<void> => {
-    if (!client || !activeEntry) {
+    if (!sharedSession || !inviteService || !activeEntry) {
       return;
     }
     setBusy(true);
     try {
       if (!activeEntry.shared) {
         if (activeEntry.kind === 'ssh') {
-          await client.shareSshSession(activeEntry.sessionId);
+          await sharedSession.shareSshSession(activeEntry.sessionId);
         } else {
-          await client.sharePtySession(activeEntry.sessionId);
+          await sharedSession.sharePtySession(activeEntry.sessionId);
         }
       }
       let url = inviteUrl;
       if (!url) {
-        const result = await client.createInvite({
+        const result = await inviteService.createInvite({
           sessionId: activeEntry.sessionId,
           role: SharedTerminalRole.CoPilot,
           ttlMs: 15 * 60 * 1000,
@@ -115,19 +120,21 @@ export function MultiplayerControl(): React.JSX.Element | null {
       }, 2000);
     } catch (err) {
       logService.error('[MultiplayerControl] copy-link failed:', err);
-      toast.error(localeService.t('terminal-ui.multiplayer.copy-failed'));
+      toast.error(localeService.t('terminal-ui.multiplayer.copy-failed'), {
+        description: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       setBusy(false);
     }
-  }, [client, activeEntry, inviteUrl, localeService, logService, clearCopyTimer]);
+  }, [sharedSession, inviteService, activeEntry, inviteUrl, localeService, logService, clearCopyTimer]);
 
   const handleStop = useCallback(async (): Promise<void> => {
-    if (!client || !activeEntry) {
+    if (!sharedSession || !activeEntry) {
       return;
     }
     setBusy(true);
     try {
-      await client.stopSharing(activeEntry.sessionId);
+      await sharedSession.stopSharing(activeEntry.sessionId);
       setInviteUrl(null);
       setCopied(false);
       clearCopyTimer();
@@ -136,20 +143,20 @@ export function MultiplayerControl(): React.JSX.Element | null {
     } finally {
       setBusy(false);
     }
-  }, [client, activeEntry, logService, clearCopyTimer]);
+  }, [sharedSession, activeEntry, logService, clearCopyTimer]);
 
   const handleTakeKeyboard = useCallback(async (participantId: string): Promise<void> => {
-    if (!client || !activeEntry) {
+    if (!sharedSession || !activeEntry) {
       return;
     }
     try {
-      await client.setDriver(activeEntry.sessionId, participantId);
+      await sharedSession.setDriver(activeEntry.sessionId, participantId);
     } catch (err) {
       logService.error('[MultiplayerControl] take-keyboard failed:', err);
     }
-  }, [client, activeEntry, logService]);
+  }, [sharedSession, activeEntry, logService]);
 
-  if (!client || !activeEntry) {
+  if (!sharedSession || !inviteService || !activeEntry || !currentUser) {
     return null;
   }
 

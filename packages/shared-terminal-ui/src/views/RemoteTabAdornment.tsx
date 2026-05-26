@@ -13,11 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState } from '@termlnk/shared-terminal';
 import type { ITabAdornmentProps } from '@termlnk/terminal-ui';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, useDependency, useObservable } from '@termlnk/design';
-import { ClientConnectionState, ISharedTerminalService } from '@termlnk/shared-terminal';
+import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-terminal';
 import { CrownIcon, EyeIcon, KeyboardIcon } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { EMPTY } from 'rxjs';
@@ -29,73 +28,72 @@ import { EMPTY } from 'rxjs';
  *
  * Mounted by `TerminalTabItem` via `ITerminalViewRegistry.getTabAdornment`
  * — instances are scoped to a single tab/sessionId and subscribe only to the
- * per-session streams on `ISharedTerminalService`, so two remote tabs render
+ * per-session streams on `IRemoteSessionService`, so two remote tabs render
  * independently with no cross-talk.
  */
 export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element | null {
   const { sessionId } = props;
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
-  const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
+  const remote = useDependency(IRemoteSessionService, Quantity.OPTIONAL);
   const [open, setOpen] = useState(false);
 
   const stateObservable = useMemo(
-    () => client?.participantState$(sessionId) ?? EMPTY,
-    [client, sessionId]
+    () => remote?.status$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
-  const connectionState = useObservable<ClientConnectionState>(stateObservable, ClientConnectionState.Idle);
+  const connectionState = useObservable<RemoteSessionStatus>(stateObservable, RemoteSessionStatus.IDLE);
 
-  const driverStateObservable = useMemo(
-    () => client?.driverState$(sessionId) ?? EMPTY,
-    [client, sessionId]
+  const driverIdObservable = useMemo(
+    () => remote?.driverId$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
-  const driverState = useObservable<IDriverState | null>(driverStateObservable, null);
+  const driverId = useObservable<string | null>(driverIdObservable, null);
 
   const connectionIdObservable = useMemo(
-    () => client?.participantConnectionId$(sessionId) ?? EMPTY,
-    [client, sessionId]
+    () => remote?.connectionId$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
   const myClientId = useObservable<string | null>(connectionIdObservable, null);
 
   const lastErrorObservable = useMemo(
-    () => client?.participantLastError$(sessionId) ?? EMPTY,
-    [client, sessionId]
+    () => remote?.error$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
   const lastError = useObservable<string | null>(lastErrorObservable, null);
 
   const isDriver = useMemo(
-    // First clause guards the idle case where BOTH `driverState.driverId` and
-    // `myClientId` are null (no driver yet, this client not connected). Without
-    // it the equality `null === null` would erroneously promote a not-yet-
-    // connected observer to "driver".
-    () => driverState?.driverId !== null && driverState?.driverId === myClientId,
-    [driverState, myClientId]
+    // First clause guards the idle case where BOTH driverId and myClientId
+    // are null. Without it `null === null` would erroneously promote a
+    // not-yet-connected observer to "driver".
+    () => driverId !== null && driverId === myClientId,
+    [driverId, myClientId]
   );
-  const isConnected = connectionState === ClientConnectionState.Connected;
+  const isConnected = connectionState === RemoteSessionStatus.CONNECTED;
 
   const handleRequestKeyboard = useCallback(async () => {
-    if (!client) {
+    if (!remote) {
       return;
     }
     try {
-      await client.sendParticipantControl(sessionId, { type: 'driver_request' });
+      await remote.sendControl(sessionId, { type: 'driver_request' });
     } catch (err) {
       logService.warn('[RemoteTabAdornment] driver_request failed:', err);
     }
-  }, [client, logService, sessionId]);
+  }, [remote, logService, sessionId]);
 
   const handleReleaseKeyboard = useCallback(async () => {
-    if (!client) {
+    if (!remote) {
       return;
     }
     try {
-      await client.sendParticipantControl(sessionId, { type: 'driver_release' });
+      await remote.sendControl(sessionId, { type: 'driver_release' });
     } catch (err) {
       logService.warn('[RemoteTabAdornment] driver_release failed:', err);
     }
-  }, [client, logService, sessionId]);
+  }, [remote, logService, sessionId]);
 
-  if (!client) {
+  if (!remote) {
     return null;
   }
 
@@ -185,19 +183,17 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
   );
 }
 
-function stateLabel(state: ClientConnectionState, locale: { t: (key: string) => string }): string {
+function stateLabel(state: RemoteSessionStatus, locale: { t: (key: string) => string }): string {
   switch (state) {
-    case ClientConnectionState.Pairing:
-      return locale.t('shared-terminal-ui.remote.state.pairing');
-    case ClientConnectionState.Connecting:
+    case RemoteSessionStatus.CONNECTING:
       return locale.t('shared-terminal-ui.remote.state.connecting');
-    case ClientConnectionState.Connected:
+    case RemoteSessionStatus.CONNECTED:
       return locale.t('shared-terminal-ui.remote.state.connected');
-    case ClientConnectionState.Disconnected:
+    case RemoteSessionStatus.CLOSED:
       return locale.t('shared-terminal-ui.remote.state.disconnected');
-    case ClientConnectionState.Error:
+    case RemoteSessionStatus.ERROR:
       return locale.t('shared-terminal-ui.remote.state.error');
-    case ClientConnectionState.Idle:
+    case RemoteSessionStatus.IDLE:
     default:
       return locale.t('shared-terminal-ui.remote.state.idle');
   }

@@ -16,7 +16,7 @@
 import type { ICapability } from '@termlnk/shared-terminal';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Dialog, useDependency } from '@termlnk/design';
-import { ISharedTerminalService } from '@termlnk/shared-terminal';
+import { IInviteService, IRemoteSessionService } from '@termlnk/shared-terminal';
 import { CheckIcon, ClipboardCopyIcon, LinkIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { RemoteSessionBridgeController } from '../controllers/remote-session-bridge.controller';
@@ -31,27 +31,28 @@ interface IInvitePayload {
 /**
  * Participant-side "you've been invited" dialog.
  *
- * Subscribes to ISharedTerminalService.inviteUrl$ (sourced from the OS
- * deep-link bus through electron-main → tRPC) and parses incoming termlnk:// /
- * https:// invite URLs. Displays the human-readable capability metadata so the
- * recipient can verify the session before opting in. Confirming routes through
- * ISharedTerminalService.connectAsParticipant; failures surface inline so the
- * user is not left wondering why nothing happened.
+ * Subscribes to IInviteService.inviteUrl$ (sourced from the OS deep-link bus
+ * through electron-main → tRPC) and parses incoming termlnk:// / https://
+ * invite URLs. Displays the human-readable capability metadata so the
+ * recipient can verify the session before opting in. Confirming routes
+ * through IRemoteSessionService.createSession; failures surface inline so
+ * the user is not left wondering why nothing happened.
  */
 export function ParticipantJoinDialog(): React.JSX.Element | null {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
-  const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
+  const inviteService = useDependency(IInviteService, Quantity.OPTIONAL);
+  const remoteService = useDependency(IRemoteSessionService, Quantity.OPTIONAL);
   const bridge = useDependency(RemoteSessionBridgeController, Quantity.OPTIONAL);
   const [pending, setPending] = useState<IInvitePayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!client) {
+    if (!inviteService) {
       return undefined;
     }
-    const sub = client.inviteUrl$.subscribe({
+    const sub = inviteService.inviteUrl$.subscribe({
       next: (url) => {
         setErrorMessage(null);
         setPending(parseInviteUrl(url, logService));
@@ -59,7 +60,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
       error: (err) => logService.error('[ParticipantJoinDialog] inviteUrl$ stream errored:', err),
     });
     return () => sub.unsubscribe();
-  }, [client, logService]);
+  }, [inviteService, logService]);
 
   const handleCopy = async (): Promise<void> => {
     if (!pending) {
@@ -78,19 +79,17 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
   };
 
   const handleJoin = async (): Promise<void> => {
-    if (!client || !pending?.capability) {
+    if (!remoteService || !pending?.capability) {
       return;
     }
     setBusy(true);
     setErrorMessage(null);
     try {
       // Tell the bridge controller this attach is user-driven so the new tab
-      // becomes active. Without this signal, server-pushed reattaches would
-      // also steal focus from whichever tab the user is currently typing in.
-      // We mark BEFORE awaiting connect because participantSessions$ emits
-      // can land before the mutation resolves.
+      // becomes active. We mark BEFORE awaiting createSession because
+      // sessionCreated$ can land before the mutation resolves.
       bridge?.markUserInitiated(pending.capability.sid);
-      await client.connectAsParticipant(pending.rawUrl);
+      await remoteService.createSession({ inviteUrl: pending.rawUrl });
       setPending(null);
     } catch (err) {
       logService.error('[ParticipantJoinDialog] join failed:', err);

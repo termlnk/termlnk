@@ -19,7 +19,7 @@ import { firstValueFrom, toArray } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 import { SharedTerminalCryptoService } from '../services/crypto.service';
 import { FrameCodecService } from '../services/frame-codec.service';
-import { ParticipantClientService } from '../services/participant-client.service';
+import { RemoteSessionService } from '../services/remote-session.service';
 
 class FakeLogService implements ILogService {
   debug = vi.fn();
@@ -31,15 +31,15 @@ class FakeLogService implements ILogService {
   setLogLevel = vi.fn();
 }
 
-function makeService(): ParticipantClientService {
+function makeService(): RemoteSessionService {
   const crypto = new SharedTerminalCryptoService();
   const codec = new FrameCodecService(crypto);
   const log = new FakeLogService();
   const config = new ConfigService();
-  return new ParticipantClientService(log, config, crypto, codec);
+  return new RemoteSessionService(log, config, crypto, codec);
 }
 
-describe('ParticipantClientService (multi-session contract)', () => {
+describe('RemoteSessionService (multi-session contract)', () => {
   it('starts with empty sessions list', () => {
     const svc = makeService();
     expect(svc.getSessions()).toEqual([]);
@@ -53,30 +53,30 @@ describe('ParticipantClientService (multi-session contract)', () => {
     svc.dispose();
   });
 
-  it('state$/frames$/snapshot$/lastError$/connectionId$/metadata$ return an empty observable for unknown sessionIds', async () => {
+  it('data$/status$/event$/error$/connectionId$/driverId$ return EMPTY for unknown sessionIds', async () => {
     const svc = makeService();
     // toArray over an Observable that never emits would hang; EMPTY completes
     // immediately so toArray resolves to []. We rely on that to detect that
     // the lookup returned EMPTY rather than a still-open subject.
-    expect(await firstValueFrom(svc.state$('unknown').pipe(toArray()))).toEqual([]);
-    expect(await firstValueFrom(svc.frames$('unknown').pipe(toArray()))).toEqual([]);
-    expect(await firstValueFrom(svc.snapshot$('unknown').pipe(toArray()))).toEqual([]);
-    expect(await firstValueFrom(svc.lastError$('unknown').pipe(toArray()))).toEqual([]);
+    expect(await firstValueFrom(svc.data$('unknown').pipe(toArray()))).toEqual([]);
+    expect(await firstValueFrom(svc.status$('unknown').pipe(toArray()))).toEqual([]);
+    expect(await firstValueFrom(svc.event$('unknown').pipe(toArray()))).toEqual([]);
+    expect(await firstValueFrom(svc.error$('unknown').pipe(toArray()))).toEqual([]);
     expect(await firstValueFrom(svc.connectionId$('unknown').pipe(toArray()))).toEqual([]);
-    expect(await firstValueFrom(svc.metadata$('unknown').pipe(toArray()))).toEqual([]);
+    expect(await firstValueFrom(svc.driverId$('unknown').pipe(toArray()))).toEqual([]);
     svc.dispose();
   });
 
-  it('sendInput/sendControl on unknown sessionIds is a silent no-op', async () => {
+  it('write/sendControl on unknown sessionIds is a silent no-op', async () => {
     const svc = makeService();
-    await expect(svc.sendInput('unknown', new Uint8Array([1, 2, 3]))).resolves.toBeUndefined();
+    await expect(svc.write('unknown', new Uint8Array([1, 2, 3]))).resolves.toBeUndefined();
     await expect(svc.sendControl('unknown', { type: 'heartbeat' })).resolves.toBeUndefined();
     svc.dispose();
   });
 
-  it('disconnect on unknown sessionIds is a silent no-op', async () => {
+  it('closeSession on unknown sessionIds is a silent no-op', async () => {
     const svc = makeService();
-    await expect(svc.disconnect('unknown')).resolves.toBeUndefined();
+    await expect(svc.closeSession('unknown')).resolves.toBeUndefined();
     svc.dispose();
   });
 });
