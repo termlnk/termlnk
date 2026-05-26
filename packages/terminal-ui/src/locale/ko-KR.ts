@@ -224,6 +224,7 @@ const locale: typeof enUS = {
       'take-keyboard': '키보드 가져오기',
       'release-keyboard': '키보드 반환',
       copied: '복사됨',
+      copying: '복사 중...',
       'copy-failed': '링크 복사에 실패했습니다. 네트워크 또는 로그인 상태를 확인하세요.',
       policy: {
         label: '공유 모드',

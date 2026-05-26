@@ -224,6 +224,7 @@ const locale: typeof enUS = {
       'take-keyboard': '接管鍵盤',
       'release-keyboard': '收回鍵盤',
       copied: '已複製',
+      copying: '複製中...',
       'copy-failed': '複製連結失敗，請檢查網路或登入狀態。',
       policy: {
         label: '分享模式',

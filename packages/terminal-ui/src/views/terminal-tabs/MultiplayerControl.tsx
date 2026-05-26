@@ -21,7 +21,7 @@ import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, toast, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { IInviteService, ISharedSessionService, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { TooltipWrapper } from '@termlnk/ui';
-import { CheckIcon, EyeIcon, KeyboardIcon, LinkIcon, SquareIcon, UserIcon, UsersIcon } from 'lucide-react';
+import { CheckIcon, EyeIcon, KeyboardIcon, LinkIcon, Loader2, SquareIcon, UserIcon, UsersIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY } from 'rxjs';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
@@ -65,6 +65,12 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
   const shareable = useObservable<readonly IShareableSession[]>(sharedSession?.shareable$ ?? null, []);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Tracks the initial "click Copy link while not yet shared" flow. While true
+  // the trigger button stays in a loading state and the Stop button is hidden,
+  // even though `isShared` may already have flipped true after the daemon
+  // accepted the share request — so the user does not briefly see two
+  // disabled buttons mid-transition.
+  const [copying, setCopying] = useState(false);
   // Cache the invite URL across re-renders so the user can copy again without re-creating.
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   /**
@@ -118,7 +124,11 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
     if (!sharedSession || !inviteService || !activeEntry) {
       return;
     }
+    const isInitialCopy = !activeEntry.shared;
     setBusy(true);
+    if (isInitialCopy) {
+      setCopying(true);
+    }
     try {
       if (!activeEntry.shared) {
         const options = { inputPolicy: pendingPolicy };
@@ -153,6 +163,9 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
       });
     } finally {
       setBusy(false);
+      if (isInitialCopy) {
+        setCopying(false);
+      }
     }
   }, [sharedSession, inviteService, activeEntry, inviteUrl, pendingPolicy, localeService, logService, clearCopyTimer]);
 
@@ -199,6 +212,15 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
   const effectivePolicy: ISharedSessionInputPolicy = isShared
     ? (activeEntry.inputPolicy ?? 'allow-input')
     : pendingPolicy;
+  // Share-mode toggle is owner-only and lives only before sharing begins. Hide
+  // it (with the surrounding divider) while sharing is active or while the
+  // initial copy is in flight — the owner must Stop sharing and start again
+  // to switch modes, matching Termius semantics.
+  const showShareModePicker = !isShared && !copying;
+  // "Stop multiplayer" must stay hidden during the initial copy flow even
+  // after the daemon flips `isShared = true`, so the user does not see two
+  // disabled buttons mid-handshake.
+  const showStopButton = isShared && !copying;
   // Driver-status dot colour on the multiplayer trigger:
   //   blue → owner is driving (sole participant or driverId === null)
   //   yellow → some joiner has taken the keyboard
@@ -219,10 +241,7 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
             {showDriverDot && (
               <span
                 className={cn(
-                  `
-                    tm:absolute tm:right-0.5 tm:bottom-0.5 tm:size-1.5 tm:rounded-full tm:ring-1
-                    tm:ring-black
-                  `,
+                  'tm:absolute tm:right-0.5 tm:bottom-0.5 tm:size-1.5 tm:rounded-full tm:ring-1 tm:ring-black',
                   {
                     'tm:bg-yellow': driverDotIsJoiner,
                     'tm:bg-blue': !driverDotIsJoiner,
@@ -250,23 +269,33 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
                 size="sm"
                 disabled={busy}
                 onClick={() => { void handleCopyLink(); }}
-                className={cn('tm:gap-1.5', { 'tm:text-green': copied })}
+                className={cn('tm:gap-1.5', {
+                  'tm:text-green': copied && !copying,
+                  'tm:text-grey-fg': copying,
+                })}
               >
-                {copied
+                {copying
                   ? (
                     <>
-                      <CheckIcon className={cn('tm:size-3.5')} />
-                      {localeService.t('terminal-ui.multiplayer.copied')}
+                      <Loader2 className={cn('tm:size-3.5 tm:animate-spin')} />
+                      {localeService.t('terminal-ui.multiplayer.copying')}
                     </>
                   )
-                  : (
-                    <>
-                      <LinkIcon className={cn('tm:size-3.5')} />
-                      {localeService.t('terminal-ui.multiplayer.copy-link')}
-                    </>
-                  )}
+                  : copied
+                    ? (
+                      <>
+                        <CheckIcon className={cn('tm:size-3.5')} />
+                        {localeService.t('terminal-ui.multiplayer.copied')}
+                      </>
+                    )
+                    : (
+                      <>
+                        <LinkIcon className={cn('tm:size-3.5')} />
+                        {localeService.t('terminal-ui.multiplayer.copy-link')}
+                      </>
+                    )}
               </Button>
-              {isShared && (
+              {showStopButton && (
                 <Button
                   variant="destructive"
                   size="sm"
@@ -281,14 +310,17 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
             </div>
           </div>
 
-          <div className={cn('tm:h-px tm:bg-line')} />
-
-          <InputPolicyToggle
-            policy={effectivePolicy}
-            locked={isShared}
-            onChange={setPendingPolicy}
-            localeService={localeService}
-          />
+          {showShareModePicker && (
+            <>
+              <div className={cn('tm:h-px tm:bg-line')} />
+              <InputPolicyToggle
+                policy={effectivePolicy}
+                locked={isShared}
+                onChange={setPendingPolicy}
+                localeService={localeService}
+              />
+            </>
+          )}
 
           <div className={cn('tm:h-px tm:bg-line')} />
 
@@ -428,8 +460,7 @@ function PolicyChoiceButton(props: IPolicyChoiceButtonProps): React.JSX.Element 
       onClick={onSelect}
       className={cn(
         `
-          tm:flex tm:flex-col tm:items-start tm:gap-1 tm:rounded-md tm:border tm:p-2
-          tm:text-left tm:transition-colors
+          tm:flex tm:flex-col tm:items-start tm:gap-1 tm:rounded-md tm:border tm:p-2 tm:text-left tm:transition-colors
           tm:disabled:cursor-not-allowed tm:disabled:opacity-60
         `,
         {

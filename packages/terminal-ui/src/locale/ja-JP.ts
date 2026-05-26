@@ -224,6 +224,7 @@ const locale: typeof enUS = {
       'take-keyboard': 'キーボードを取得',
       'release-keyboard': 'キーボードを解放',
       copied: 'コピー済み',
+      copying: 'コピー中...',
       'copy-failed': 'リンクのコピーに失敗しました。ネットワークまたはサインイン状態を確認してください。',
       policy: {
         label: '共有モード',

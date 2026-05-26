@@ -222,6 +222,7 @@ const locale = {
       'take-keyboard': 'Take keyboard',
       'release-keyboard': 'Release keyboard',
       copied: 'Copied',
+      copying: 'Copying...',
       'copy-failed': 'Failed to copy link. Check your network or sign-in.',
       policy: {
         label: 'Share mode',
