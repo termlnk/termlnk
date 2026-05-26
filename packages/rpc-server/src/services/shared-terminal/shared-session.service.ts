@@ -13,12 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState, IParticipant, IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService, ISharedSession, ISharedSessionService } from '@termlnk/shared-terminal';
+import type { IDriverState, IPairingService, IParticipant, IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService, ISharedSession, ISharedSessionService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { IAuthService } from '@termlnk/auth';
 import { Disposable, ILogService, Optional } from '@termlnk/core';
 import { ISSHSessionService, ITerminalSessionNotifyService } from '@termlnk/rpc';
-import { IPtyMultiplexerService, IShareDaemonService as IShareDaemonServiceId } from '@termlnk/shared-terminal';
+import { IPairingService as IPairingServiceId, IPtyMultiplexerService, IShareDaemonService as IShareDaemonServiceId } from '@termlnk/shared-terminal';
 import { IPTYSessionService } from '@termlnk/terminal';
 import { BehaviorSubject, EMPTY, firstValueFrom } from 'rxjs';
 import { LocalPtySource, SSHPtySource } from './pty-source.adapters';
@@ -72,7 +72,8 @@ export class SharedSessionService extends Disposable implements ISharedSessionSe
     @ITerminalSessionNotifyService private readonly _notifyService: ITerminalSessionNotifyService,
     @Optional(IPtyMultiplexerService) private readonly _mux?: IPtyMultiplexerServiceType,
     @Optional(IShareDaemonServiceId) private readonly _shareDaemon?: IShareDaemonService,
-    @Optional(IAuthService) private readonly _authService?: IAuthService
+    @Optional(IAuthService) private readonly _authService?: IAuthService,
+    @Optional(IPairingServiceId) private readonly _pairingService?: IPairingService
   ) {
     super();
     this._init();
@@ -206,6 +207,27 @@ export class SharedSessionService extends Disposable implements ISharedSessionSe
     }
     reg.source.dispose();
     this._registrations.delete(sessionId);
+    // Revoke every active invite for this session BEFORE detaching the daemon.
+    // Without this, a participant who cached the URL could re-claim it through
+    // /v1/collab/invite/:id/claim and reattach to a relay bucket where the
+    // daemon has already left — relay would happily accept the client and the
+    // joiner would see "Connected" with no terminal data forever. Each revoke
+    // is isolated so a transient failure on one invite (e.g. DB lock) does not
+    // strand the rest of the active set; revokeInvite itself is idempotent.
+    if (this._pairingService) {
+      const pairingService = this._pairingService;
+      try {
+        const invites = await pairingService.listInvites();
+        const active = invites.filter((i) => i.sessionId === sessionId && i.status === 'active');
+        await Promise.all(active.map((invite) =>
+          pairingService.revokeInvite(invite.inviteId).catch((err) => {
+            this._logService.warn(`[SharedSessionService] revoke invite ${invite.inviteId} failed:`, err);
+          })
+        ));
+      } catch (err) {
+        this._logService.warn(`[SharedSessionService] listInvites for ${sessionId} failed:`, err);
+      }
+    }
     // Tear down the daemon-mode relay socket associated with this session.
     // Without this the WebSocket stays connected to the relay (server keeps
     // the daemon slot occupied), and any re-share of the same sessionId

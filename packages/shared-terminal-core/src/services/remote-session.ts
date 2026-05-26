@@ -253,6 +253,24 @@ export class RemoteSession extends Disposable implements IRemoteSession {
     this._subscriptions.push(this._transport.connectionId$.subscribe((id) => {
       this._connectionId$.next(id);
     }));
+
+    // Terminal-domain failures from the relay are surfaced separately from
+    // frame channels so the heartbeat and reconnect loop can be stopped.
+    // Distinguish graceful owner-initiated end (4002 / 'owner_left') from
+    // genuine failures: the former is a normal CLOSED, the latter must land
+    // on ERROR so the tab adornment flags it as an error condition rather
+    // than a soft close.
+    this._subscriptions.push(this._transport.terminalError$.subscribe(({ code, reason }) => {
+      const isOwnerLeft = code === 4002 || reason === 'owner_left';
+      if (isOwnerLeft) {
+        this._error$.next('owner ended the share');
+        this._status$.next(RemoteSessionStatus.CLOSED);
+      } else {
+        this._error$.next(`relay error: ${reason}`);
+        this._status$.next(RemoteSessionStatus.ERROR);
+      }
+      this._stopHeartbeat();
+    }));
   }
 
   private _consumeSessionEvent(frame: IFrame): void {
