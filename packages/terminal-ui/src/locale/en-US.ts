@@ -220,6 +220,7 @@ const locale = {
       participants: 'Participants:',
       you: 'You',
       'take-keyboard': 'Take keyboard',
+      'release-keyboard': 'Release keyboard',
       copied: 'Copied',
       'copy-failed': 'Failed to copy link. Check your network or sign-in.',
     },

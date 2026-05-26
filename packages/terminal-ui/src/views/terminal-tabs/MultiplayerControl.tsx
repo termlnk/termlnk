@@ -165,14 +165,14 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
     }
   }, [sharedSession, activeEntry, logService, clearCopyTimer]);
 
-  const handleTakeKeyboard = useCallback(async (participantId: string): Promise<void> => {
+  const handleToggleKeyboard = useCallback(async (participantId: string, currentlyDriving: boolean): Promise<void> => {
     if (!sharedSession || !activeEntry) {
       return;
     }
     try {
-      await sharedSession.setDriver(activeEntry.sessionId, participantId);
+      await sharedSession.setDriver(activeEntry.sessionId, currentlyDriving ? null : participantId);
     } catch (err) {
-      logService.error('[MultiplayerControl] take-keyboard failed:', err);
+      logService.error('[MultiplayerControl] toggle-keyboard failed:', err);
     }
   }, [sharedSession, activeEntry, logService]);
 
@@ -203,7 +203,7 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
       >
         <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
           <div className={cn('tm:flex tm:items-center tm:justify-between tm:gap-2')}>
-            <div className={cn('tm:flex tm:items-center tm:gap-2 tm:text-sm tm:text-light-grey')}>
+            <div className={cn('tm:flex tm:items-center tm:gap-2 tm:text-sm tm:text-white')}>
               <UsersIcon className={cn('tm:size-4')} />
               <span>{localeService.t('terminal-ui.multiplayer.title')}</span>
             </div>
@@ -254,7 +254,7 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
             )
             : (
               <div className={cn('tm:flex tm:flex-col tm:gap-2')}>
-                <span className={cn('tm:text-xs tm:text-grey-fg')}>
+                <span className={cn('tm:text-xs tm:text-white')}>
                   {localeService.t('terminal-ui.multiplayer.participants')}
                 </span>
                 {participants.map((p) => {
@@ -289,10 +289,10 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
                           <Button
                             variant="ghost"
                             size="icon"
-                            disabled={isDriver || busy}
-                            onClick={() => { void handleTakeKeyboard(p.connectionId); }}
+                            disabled={busy}
+                            onClick={() => { void handleToggleKeyboard(p.connectionId, isDriver); }}
                             className={cn('tm:size-7', {
-                              'tm:text-blue': isDriver,
+                              'tm:bg-blue/15 tm:text-blue tm:hover:bg-blue/25': isDriver,
                               'tm:text-grey-fg tm:hover:text-light-grey': !isDriver,
                             })}
                           >
@@ -300,7 +300,9 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {localeService.t('terminal-ui.multiplayer.take-keyboard')}
+                          {localeService.t(isDriver
+                            ? 'terminal-ui.multiplayer.release-keyboard'
+                            : 'terminal-ui.multiplayer.take-keyboard')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
