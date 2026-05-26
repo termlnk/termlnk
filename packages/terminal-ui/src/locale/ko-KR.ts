@@ -225,6 +225,14 @@ const locale: typeof enUS = {
       'release-keyboard': '키보드 반환',
       copied: '복사됨',
       'copy-failed': '링크 복사에 실패했습니다. 네트워크 또는 로그인 상태를 확인하세요.',
+      policy: {
+        label: '공유 모드',
+        'allow-input': '입력 허용',
+        'allow-input-hint': '참여자가 키보드를 요청할 수 있습니다. 한 번에 한 사람만 입력할 수 있습니다.',
+        'view-only': '읽기 전용',
+        'view-only-hint': '참여자는 보기만 가능하고 입력할 수 없습니다. 데모에 적합합니다.',
+        'locked-hint': '공유 중에는 모드가 고정됩니다. 모드를 전환하려면 공유를 중지하세요.',
+      },
     },
   },
 };

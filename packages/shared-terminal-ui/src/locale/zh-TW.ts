@@ -43,6 +43,8 @@ const locale: typeof enUS = {
       'driver-hint': '你正在控制鍵盤。鍵入的命令會在主機終端上執行，點擊「讓出鍵盤」可交回控制權。',
       'request-keyboard': '申請鍵盤',
       'release-keyboard': '讓出鍵盤',
+      'view-only-badge': '唯讀分享',
+      'view-only-hint': '主機以唯讀模式分享此會話。如需輸入，請聯絡主機切換為「允許輸入」模式。',
       popover: {
         'aria-label': '共享會話控制',
       },

@@ -14,6 +14,7 @@
  */
 
 import type { SharedTerminalRole } from './role';
+import type { ISharedSessionInputPolicy } from './session';
 
 /**
  * Lifecycle of a joiner-side attachment, modeled to align with SSHSessionStatus /
@@ -39,7 +40,8 @@ export type RemoteSessionEvent =
   | IRemoteDriverHandoverEvent
   | IRemoteParticipantJoinedEvent
   | IRemoteParticipantLeftEvent
-  | IRemoteSessionClosedEvent;
+  | IRemoteSessionClosedEvent
+  | IRemoteInputPolicyEvent;
 
 export interface IRemoteSnapshotEvent {
   readonly type: 'snapshot';
@@ -92,4 +94,15 @@ export interface IRemoteParticipantLeftEvent {
 
 export interface IRemoteSessionClosedEvent {
   readonly type: 'session_closed';
+}
+
+/**
+ * Daemon-pushed input policy for the session. Sent once right after attach so
+ * joiner UI knows whether to surface the "request keyboard" affordance. Mode
+ * is locked for the lifetime of the share, so this is effectively a one-shot
+ * notification — re-sent only on rare daemon-side broadcasts (e.g. snapshot).
+ */
+export interface IRemoteInputPolicyEvent {
+  readonly type: 'input_policy';
+  readonly policy: ISharedSessionInputPolicy;
 }

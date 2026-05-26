@@ -14,7 +14,7 @@
  */
 
 import type { ILogService, Nullable } from '@termlnk/core';
-import type { ICapability, IFrame, IFrameCodecService, IRemoteSession, ISharedTerminalCryptoService, RemoteSessionEvent } from '@termlnk/shared-terminal';
+import type { ICapability, IFrame, IFrameCodecService, IRemoteSession, ISharedSessionInputPolicy, ISharedTerminalCryptoService, RemoteSessionEvent } from '@termlnk/shared-terminal';
 import type { Observable, Subscription } from 'rxjs';
 import type { RelayTransportService } from './relay-transport.service';
 import { Disposable } from '@termlnk/core';
@@ -59,6 +59,15 @@ export class RemoteSession extends Disposable implements IRemoteSession {
 
   private readonly _driverId$ = new BehaviorSubject<string | null>(null);
   readonly driverId$: Observable<string | null> = this._driverId$.asObservable();
+
+  /**
+   * Session input policy as last announced by the daemon. Seed with
+   * `allow-input` so legacy daemons that never send the event keep the
+   * pre-policy behaviour; the first incoming `input_policy` SessionEvent
+   * overwrites this.
+   */
+  private readonly _inputPolicy$ = new BehaviorSubject<ISharedSessionInputPolicy>('allow-input');
+  readonly inputPolicy$: Observable<ISharedSessionInputPolicy> = this._inputPolicy$.asObservable();
 
   /**
    * Merged session_metadata cache. Daemon sends partial deltas — RemoteSession
@@ -197,6 +206,7 @@ export class RemoteSession extends Disposable implements IRemoteSession {
     this._error$.complete();
     this._connectionId$.complete();
     this._driverId$.complete();
+    this._inputPolicy$.complete();
   }
 
   private _wireTransport(): void {
@@ -382,6 +392,21 @@ export class RemoteSession extends Disposable implements IRemoteSession {
         this._event$.next({ type: 'session_closed' });
         this._status$.next(RemoteSessionStatus.CLOSED);
         break;
+      case 'input_policy': {
+        // Daemon-decided policy for the share. The value is validated against
+        // the type guard so an unknown wire string can never widen the
+        // BehaviorSubject's typed state.
+        const ev = parsed as { policy?: string };
+        if (!isValidInputPolicy(ev.policy)) {
+          this._logService.warn(`[RemoteSession] input_policy unknown value: ${ev.policy}`);
+          break;
+        }
+        if (this._inputPolicy$.getValue() !== ev.policy) {
+          this._inputPolicy$.next(ev.policy);
+        }
+        this._event$.next({ type: 'input_policy', policy: ev.policy });
+        break;
+      }
       default:
         // Unknown session events ignored for forward compatibility.
         break;
@@ -458,6 +483,10 @@ function isValidRole(value: string): value is SharedTerminalRole {
   // Object.values on a string enum produces the runtime string set — matching
   // against it gives us a real boundary check rather than trusting the wire.
   return (Object.values(SharedTerminalRole) as readonly string[]).includes(value);
+}
+
+function isValidInputPolicy(value: unknown): value is ISharedSessionInputPolicy {
+  return value === 'view-only' || value === 'allow-input';
 }
 
 function base64UrlToBytes(input: string): Uint8Array {

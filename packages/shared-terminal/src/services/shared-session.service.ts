@@ -15,7 +15,7 @@
 
 import type { Observable } from 'rxjs';
 import type { IDriverState } from '../models/driver';
-import type { IParticipant, ISharedSession } from '../models/session';
+import type { IParticipant, ISharedSession, ISharedSessionInputPolicy } from '../models/session';
 import { createIdentifier } from '@termlnk/core';
 
 /**
@@ -29,6 +29,18 @@ export interface IShareableSession {
   readonly title: string;
   readonly hostId?: string;
   readonly shared: boolean;
+  /** Effective input policy when `shared` is true; null when not shared. */
+  readonly inputPolicy: ISharedSessionInputPolicy | null;
+}
+
+/**
+ * Options accepted by `shareSshSession` / `sharePtySession`. Kept as an
+ * interface so the binding stays a session-level decision and new toggles
+ * (recording, banner text, ...) can land without breaking existing callers.
+ */
+export interface IShareSessionOptions {
+  /** Defaults to `allow-input` when omitted. */
+  readonly inputPolicy?: ISharedSessionInputPolicy;
 }
 
 /**
@@ -56,8 +68,8 @@ export interface ISharedSessionService {
   // Sharing lifecycle (which local/SSH sessions are exposed)
   readonly shareable$: Observable<readonly IShareableSession[]>;
   listShareable(): Promise<readonly IShareableSession[]>;
-  shareSshSession(sessionId: string): Promise<void>;
-  sharePtySession(sessionId: string): Promise<void>;
+  shareSshSession(sessionId: string, options?: IShareSessionOptions): Promise<void>;
+  sharePtySession(sessionId: string, options?: IShareSessionOptions): Promise<void>;
   stopSharing(sessionId: string): Promise<void>;
 
   /**

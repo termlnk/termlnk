@@ -225,6 +225,14 @@ const locale: typeof enUS = {
       'release-keyboard': 'キーボードを解放',
       copied: 'コピー済み',
       'copy-failed': 'リンクのコピーに失敗しました。ネットワークまたはサインイン状態を確認してください。',
+      policy: {
+        label: '共有モード',
+        'allow-input': '入力を許可',
+        'allow-input-hint': '参加者はキーボードをリクエストできます。同時に入力できるのは 1 名のみです。',
+        'view-only': '閲覧のみ',
+        'view-only-hint': '参加者は閲覧のみで入力できません。デモに最適です。',
+        'locked-hint': '共有中はモードがロックされます。モードを切り替えるには共有を停止してください。',
+      },
     },
   },
 };

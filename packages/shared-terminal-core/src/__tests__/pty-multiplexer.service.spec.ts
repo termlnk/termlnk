@@ -162,11 +162,16 @@ describe('PtyMultiplexerService', () => {
 
     mux.attachClient('s1', 'clientA', SharedTerminalRole.CoPilot, 'Alice');
 
-    // The snapshot is dispatched asynchronously (headless serialize must wait
-    // for write flush). Wait up to 1s for a SessionEvent frame targeted at clientA.
-    const snapshotFrame = await waitFor(() => outbound.find(
-      (f) => f.target === 'clientA' && f.frame.channel === FrameChannel.SessionEvent
-    ));
+    // attach now emits multiple unicast SessionEvent frames (snapshot,
+    // input_policy). Locate the snapshot explicitly so the assertion does
+    // not depend on whichever happens to be flushed first.
+    const snapshotFrame = await waitFor(() => outbound.find((f) => {
+      if (f.target !== 'clientA' || f.frame.channel !== FrameChannel.SessionEvent) {
+        return false;
+      }
+      const payload = JSON.parse(new TextDecoder().decode(f.frame.payload));
+      return payload.type === 'snapshot';
+    }));
     const snap = JSON.parse(new TextDecoder().decode(snapshotFrame.frame.payload));
     expect(snap.type).toBe('snapshot');
     expect(snap.sessionId).toBe('s1');
@@ -236,6 +241,50 @@ describe('PtyMultiplexerService', () => {
       drv = s;
     });
     expect(drv.driverId).toBe('a');
+  });
+
+  it('view-only sessions silently drop driver_request frames', () => {
+    const ts = createSource('s1');
+    mux.register(ts.source, { inputPolicy: 'view-only' });
+    mux.attachClient('s1', 'a', SharedTerminalRole.CoPilot);
+    mux.attachClient('s1', 'b', SharedTerminalRole.CoPilot);
+    outbound = [];
+
+    mux.handleInbound('s1', 'b', controlFrame({ type: 'driver_request' }));
+
+    // No handover event should leave the daemon — driver stays unset.
+    const handover = outbound.find((f) => {
+      if (f.frame.channel !== FrameChannel.SessionEvent) {
+        return false;
+      }
+      const payload = JSON.parse(new TextDecoder().decode(f.frame.payload));
+      return payload.type === 'driver_handover';
+    });
+    expect(handover).toBeUndefined();
+
+    let drv: { driverId: string | null } = { driverId: 'sentinel' };
+    mux.driverState$('s1').subscribe((s) => {
+      drv = s;
+    });
+    expect(drv.driverId).toBeNull();
+  });
+
+  it('attach pushes input_policy SessionEvent to the new joiner', async () => {
+    const ts = createSource('s1');
+    mux.register(ts.source, { inputPolicy: 'view-only' });
+    outbound = [];
+
+    mux.attachClient('s1', 'a', SharedTerminalRole.CoPilot);
+
+    const policyFrame = await waitFor(() => outbound.find((f) => {
+      if (f.target !== 'a' || f.frame.channel !== FrameChannel.SessionEvent) {
+        return false;
+      }
+      const payload = JSON.parse(new TextDecoder().decode(f.frame.payload));
+      return payload.type === 'input_policy';
+    }));
+    const event = JSON.parse(new TextDecoder().decode(policyFrame.frame.payload));
+    expect(event.policy).toBe('view-only');
   });
 
   it('detachClient removes participant + clears driver if applicable', () => {

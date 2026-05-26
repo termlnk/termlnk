@@ -15,6 +15,7 @@
 
 import type { Observable } from 'rxjs';
 import type { RemoteSessionEvent, RemoteSessionStatus } from '../models/remote-session';
+import type { ISharedSessionInputPolicy } from '../models/session';
 import { createIdentifier } from '@termlnk/core';
 
 export interface IRemoteSessionCreateOptions {
@@ -61,6 +62,13 @@ export interface IRemoteSession {
   readonly connectionId$: Observable<string | null>;
   /** Current driver clientId observed via SessionEvent; null when no one drives. */
   readonly driverId$: Observable<string | null>;
+  /**
+   * Owner-decided input policy for this share. `view-only` means joiners must
+   * not be offered any keyboard-request affordance; `allow-input` enables the
+   * single-driver soft lock. Defaults to `allow-input` until the daemon pushes
+   * the first `input_policy` SessionEvent (matches legacy invite behaviour).
+   */
+  readonly inputPolicy$: Observable<ISharedSessionInputPolicy>;
 
   write(data: string | Uint8Array): Promise<void>;
   resize(rows: number, cols: number): Promise<void>;
@@ -86,6 +94,7 @@ export interface IRemoteSessionService {
   error$(sessionId: string): Observable<string | null>;
   connectionId$(sessionId: string): Observable<string | null>;
   driverId$(sessionId: string): Observable<string | null>;
+  inputPolicy$(sessionId: string): Observable<ISharedSessionInputPolicy>;
 
   createSession(options: IRemoteSessionCreateOptions): Promise<IRemoteSessionCreateResult>;
   closeSession(sessionId: string): Promise<void>;

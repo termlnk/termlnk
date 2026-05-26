@@ -13,17 +13,24 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRegisteredPty, IRekeyResult, ISessionSnapshot, ISharedSession, RekeyReason, SharedTerminalRole } from '@termlnk/shared-terminal';
+import type { IDriverState, IFrame, IOutboundFrame, IParticipant, IPtyMultiplexerService, IPtySource, IRegisteredPty, IRegisterOptions, IRekeyResult, ISessionSnapshot, ISharedSession, ISharedSessionInputPolicy, RekeyReason, SharedTerminalRole } from '@termlnk/shared-terminal';
 import type { Observable, Subscription } from 'rxjs';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { FrameChannel, FrameFlag, isWriterRole, SharedSessionState } from '@termlnk/shared-terminal';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, of, Subject } from 'rxjs';
 import { DriverArbitrationService } from './driver-arbitration.service';
 import { SessionKeyService } from './session-key.service';
 import { SessionScrollback } from './session-scrollback';
 
 /** Lines of scrollback to include in a snapshot. */
 const DEFAULT_SNAPSHOT_SCROLLBACK_LINES = 1000;
+
+/**
+ * Default input policy applied when a caller registers a PTY without
+ * explicitly choosing one. Allow-input preserves the pre-policy behaviour so
+ * legacy call sites (and untouched tests) keep working unchanged.
+ */
+const DEFAULT_INPUT_POLICY: ISharedSessionInputPolicy = 'allow-input';
 
 /**
  * Per-session runtime state held by the mux.
@@ -38,6 +45,7 @@ interface ISessionRuntime {
   readonly scrollback: SessionScrollback;
   readonly clients: Map<string, IClientEntry>;
   readonly participantsSubject: BehaviorSubject<readonly IParticipant[]>;
+  readonly inputPolicySubject: BehaviorSubject<ISharedSessionInputPolicy>;
   readonly outputSub: Subscription;
   readonly resizeSub: Subscription;
   readonly arbitrationSubs: Subscription[];
@@ -110,13 +118,32 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     return runtime.participantsSubject.asObservable();
   }
 
-  register(source: IPtySource): IRegisteredPty {
+  inputPolicy$(sessionId: string): Observable<ISharedSessionInputPolicy> {
+    const runtime = this._sessions.get(sessionId);
+    if (!runtime) {
+      // Unknown session — emit the daemon-side default once and complete, so
+      // repeated callers do not accumulate uncompleted BehaviorSubjects.
+      // Mirrors how participants$ degrades for unknown sids, but without the
+      // resource cost of allocating a fresh Subject per call.
+      return of(DEFAULT_INPUT_POLICY);
+    }
+    return runtime.inputPolicySubject.asObservable();
+  }
+
+  getInputPolicy(sessionId: string): ISharedSessionInputPolicy | null {
+    return this._sessions.get(sessionId)?.inputPolicySubject.getValue() ?? null;
+  }
+
+  register(source: IPtySource, options?: IRegisterOptions): IRegisteredPty {
     if (this._sessions.has(source.id)) {
       throw new Error(`[PtyMultiplexerService] session already registered: ${source.id}`);
     }
 
     const scrollback = new SessionScrollback(source.cols, source.rows);
     const participantsSubject = new BehaviorSubject<readonly IParticipant[]>([]);
+    const inputPolicySubject = new BehaviorSubject<ISharedSessionInputPolicy>(
+      options?.inputPolicy ?? DEFAULT_INPUT_POLICY
+    );
     this._driver.registerSession(source.id);
     this._keyService.registerSession(source.id);
 
@@ -140,6 +167,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       scrollback,
       clients: new Map(),
       participantsSubject,
+      inputPolicySubject,
       outputSub,
       resizeSub,
       arbitrationSubs: [],
@@ -201,6 +229,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       observedSeq: runtime.seqCounters[FrameChannel.PtyData],
       state: runtime.state,
       driverId: this._currentDriverId(sessionId),
+      inputPolicy: runtime.inputPolicySubject.getValue(),
     };
   }
 
@@ -342,7 +371,19 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     this._refreshRuntimeState(runtime);
 
     const sessionId = runtime.source.id;
-    // Unicast snapshot to the new client.
+    // Outbound ordering matters here. The joiner UI gates its keyboard-request
+    // affordance on `inputPolicy$`; if `input_policy` lands later than the
+    // first paint the joiner can momentarily see (and click) a button that
+    // shouldn't exist in view-only shares. We push it BEFORE scheduling the
+    // async snapshot so it is the first frame on the wire for this client.
+    this._sendSessionEventToClient(sessionId, clientId, {
+      type: 'input_policy',
+      sessionId,
+      policy: runtime.inputPolicySubject.getValue(),
+    });
+    // Snapshot serializes the headless terminal — that's async, so its frame
+    // intentionally lands AFTER input_policy. The joiner replays bytes onto
+    // xterm and does not depend on snapshot being first.
     this._sendSnapshot(sessionId, clientId).catch((err) => {
       this._logService.error(`[PtyMultiplexerService] snapshot to ${clientId} failed:`, err);
     });
@@ -487,6 +528,13 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     }
     switch (parsed.type) {
       case 'driver_request':
+        // Session-wide policy gate: in view-only shares the keyboard never
+        // leaves the owner. Silently drop instead of `null`-returning further
+        // down so the daemon log stays clean (this is the expected path on a
+        // misbehaving client, not a fault).
+        if (runtime.inputPolicySubject.getValue() === 'view-only') {
+          break;
+        }
         this._driver.requestDriver(runtime.source.id, clientId);
         break;
       case 'driver_release':
@@ -540,6 +588,26 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     this._broadcast(sessionId, FrameChannel.SessionEvent, FrameFlag.None, payload);
   }
 
+  /**
+   * Unicast variant of `_broadcastSessionEvent`. Used when only one client
+   * needs the event (e.g. input_policy push on attach) so attached peers
+   * are not re-notified of state they already have.
+   */
+  private _sendSessionEventToClient(sessionId: string, clientId: string, event: object): void {
+    const runtime = this._sessions.get(sessionId);
+    if (!runtime) {
+      return;
+    }
+    const seq = runtime.seqCounters[FrameChannel.SessionEvent];
+    runtime.seqCounters[FrameChannel.SessionEvent] = (seq + 1) >>> 0;
+    const payload = new TextEncoder().encode(JSON.stringify(event));
+    this._outboundSubject.next({
+      sessionId,
+      target: clientId,
+      frame: { channel: FrameChannel.SessionEvent, flags: FrameFlag.None, seq, payload },
+    });
+  }
+
   private _sendControlToClient(sessionId: string, clientId: string, message: object): void {
     const runtime = this._sessions.get(sessionId);
     if (!runtime) {
@@ -583,6 +651,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
         createdAt: runtime.participantsSubject.getValue()[0]?.joinedAt ?? Date.now(),
         participantIds: [...runtime.clients.keys()],
         driverId: this._currentDriverId(runtime.source.id),
+        inputPolicy: runtime.inputPolicySubject.getValue(),
       });
     }
     this._sessionsSubject.next(out);
@@ -618,6 +687,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     runtime.state = SharedSessionState.Closed;
     runtime.scrollback.dispose();
     runtime.participantsSubject.complete();
+    runtime.inputPolicySubject.complete();
     this._driver.unregisterSession(sessionId);
     this._keyService.unregisterSession(sessionId);
     this._sessions.delete(sessionId);

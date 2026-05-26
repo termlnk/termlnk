@@ -17,7 +17,7 @@ import type { Observable } from 'rxjs';
 import type { IDriverState } from '../models/driver';
 import type { IFrame } from '../models/frame';
 import type { SharedTerminalRole } from '../models/role';
-import type { IParticipant, ISessionSnapshot, ISharedSession } from '../models/session';
+import type { IParticipant, ISessionSnapshot, ISharedSession, ISharedSessionInputPolicy } from '../models/session';
 import { createIdentifier } from '@termlnk/core';
 
 /** Real PTY source bridged into the multiplexer without a reverse dependency on @termlnk/rpc-server. */
@@ -59,7 +59,16 @@ export interface IPtyMultiplexerService {
   driverState$(sessionId: string): Observable<IDriverState>;
   participants$(sessionId: string): Observable<readonly IParticipant[]>;
 
-  register(source: IPtySource): IRegisteredPty;
+  /**
+   * Per-session input policy. Owner picks the value at share-start time; once
+   * registered it is immutable for the life of the share. View-only sessions
+   * cause the mux to silently drop `driver_request` control frames from
+   * joiners, so the keyboard never leaves the owner.
+   */
+  inputPolicy$(sessionId: string): Observable<ISharedSessionInputPolicy>;
+  getInputPolicy(sessionId: string): ISharedSessionInputPolicy | null;
+
+  register(source: IPtySource, options?: IRegisterOptions): IRegisteredPty;
   snapshot(sessionId: string): Promise<ISessionSnapshot>;
 
   setDriver(sessionId: string, clientId: string | null): void;
@@ -130,6 +139,15 @@ export interface IRekeyResult {
 export interface IRegisteredPty {
   readonly sessionId: string;
   unregister(): void;
+}
+
+/**
+ * Optional knobs passed to `register`. Stays an interface (not positional
+ * args) so future fields can land without rippling through every caller.
+ */
+export interface IRegisterOptions {
+  /** Defaults to `allow-input` when omitted. */
+  readonly inputPolicy?: ISharedSessionInputPolicy;
 }
 
 export const IPtyMultiplexerService = createIdentifier<IPtyMultiplexerService>(

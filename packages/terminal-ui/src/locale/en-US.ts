@@ -223,6 +223,14 @@ const locale = {
       'release-keyboard': 'Release keyboard',
       copied: 'Copied',
       'copy-failed': 'Failed to copy link. Check your network or sign-in.',
+      policy: {
+        label: 'Share mode',
+        'allow-input': 'Allow input',
+        'allow-input-hint': 'Joiners can request the keyboard. Only one person types at a time.',
+        'view-only': 'View only',
+        'view-only-hint': 'Joiners can watch but cannot type. Recommended for demos.',
+        'locked-hint': 'Mode is locked while sharing. Stop sharing to switch modes.',
+      },
     },
   },
 };

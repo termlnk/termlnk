@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ICapability, ICollabInviteTransportService, IFrameCodecService, IRemoteSession, IRemoteSessionClosedEventNotify, IRemoteSessionCreatedEvent, IRemoteSessionCreateOptions, IRemoteSessionCreateResult, IRemoteSessionService, ISharedTerminalCryptoService, ISharedTerminalPluginConfig, RemoteSessionEvent, RemoteSessionStatus } from '@termlnk/shared-terminal';
+import type { ICapability, ICollabInviteTransportService, IFrameCodecService, IRemoteSession, IRemoteSessionClosedEventNotify, IRemoteSessionCreatedEvent, IRemoteSessionCreateOptions, IRemoteSessionCreateResult, IRemoteSessionService, ISharedSessionInputPolicy, ISharedTerminalCryptoService, ISharedTerminalPluginConfig, RemoteSessionEvent, RemoteSessionStatus } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { ITokenManager } from '@termlnk/auth';
 import { Disposable, IConfigService, ILogService, Optional } from '@termlnk/core';
@@ -103,6 +103,10 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
 
   driverId$(sessionId: string): Observable<string | null> {
     return this._sessions.get(sessionId)?.driverId$ ?? EMPTY;
+  }
+
+  inputPolicy$(sessionId: string): Observable<ISharedSessionInputPolicy> {
+    return this._sessions.get(sessionId)?.inputPolicy$ ?? EMPTY;
   }
 
   async createSession(options: IRemoteSessionCreateOptions): Promise<IRemoteSessionCreateResult> {

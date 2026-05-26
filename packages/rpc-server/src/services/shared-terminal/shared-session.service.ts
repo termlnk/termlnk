@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState, IPairingService, IParticipant, IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService, ISharedSession, ISharedSessionService } from '@termlnk/shared-terminal';
+import type { IDriverState, IPairingService, IParticipant, IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService, IShareSessionOptions, ISharedSession, ISharedSessionInputPolicy, ISharedSessionService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { IAuthService } from '@termlnk/auth';
 import { Disposable, ILogService, Optional } from '@termlnk/core';
@@ -29,6 +29,7 @@ interface ISharedRegistration {
   readonly source: SSHPtySource | LocalPtySource;
   readonly registered: IRegisteredPty;
   readonly startedAt: number;
+  readonly inputPolicy: ISharedSessionInputPolicy;
 }
 
 interface ISessionMeta {
@@ -145,7 +146,7 @@ export class SharedSessionService extends Disposable implements ISharedSessionSe
     return this._shareable$.getValue();
   }
 
-  async shareSshSession(sessionId: string): Promise<void> {
+  async shareSshSession(sessionId: string, options?: IShareSessionOptions): Promise<void> {
     if (this._registrations.has(sessionId)) {
       return;
     }
@@ -156,21 +157,23 @@ export class SharedSessionService extends Disposable implements ISharedSessionSe
     if (!session) {
       throw new Error(`[SharedSessionService] SSH session ${sessionId} not found`);
     }
+    const inputPolicy = options?.inputPolicy ?? 'allow-input';
     const source = new SSHPtySource(session);
-    const registered = this._mux.register(source);
+    const registered = this._mux.register(source, { inputPolicy });
     this._registrations.set(sessionId, {
       sessionId,
       kind: 'ssh',
       source,
       registered,
       startedAt: Date.now(),
+      inputPolicy,
     });
-    this._logService.log(`[SharedSessionService] sharing SSH session ${sessionId} as "${source.title}"`);
+    this._logService.log(`[SharedSessionService] sharing SSH session ${sessionId} as "${source.title}" (${inputPolicy})`);
     this._pushInitialMetadata(sessionId);
     this._publish();
   }
 
-  async sharePtySession(sessionId: string): Promise<void> {
+  async sharePtySession(sessionId: string, options?: IShareSessionOptions): Promise<void> {
     if (this._registrations.has(sessionId)) {
       return;
     }
@@ -181,16 +184,18 @@ export class SharedSessionService extends Disposable implements ISharedSessionSe
     if (!session) {
       throw new Error(`[SharedSessionService] PTY session ${sessionId} not found`);
     }
+    const inputPolicy = options?.inputPolicy ?? 'allow-input';
     const source = new LocalPtySource(session);
-    const registered = this._mux.register(source);
+    const registered = this._mux.register(source, { inputPolicy });
     this._registrations.set(sessionId, {
       sessionId,
       kind: 'local',
       source,
       registered,
       startedAt: Date.now(),
+      inputPolicy,
     });
-    this._logService.log(`[SharedSessionService] sharing local PTY session ${sessionId}`);
+    this._logService.log(`[SharedSessionService] sharing local PTY session ${sessionId} (${inputPolicy})`);
     this._pushInitialMetadata(sessionId);
     this._publish();
   }
@@ -327,12 +332,14 @@ export class SharedSessionService extends Disposable implements ISharedSessionSe
   private _publish(): void {
     const out: IShareableSession[] = [];
     for (const meta of this._sessions.values()) {
+      const reg = this._registrations.get(meta.sessionId);
       out.push({
         sessionId: meta.sessionId,
         kind: meta.kind,
         title: meta.title,
         hostId: meta.hostId,
-        shared: this._registrations.has(meta.sessionId),
+        shared: reg !== undefined,
+        inputPolicy: reg?.inputPolicy ?? null,
       });
     }
     out.sort((a, b) => a.title.localeCompare(b.title));

@@ -14,10 +14,11 @@
  */
 
 import type { ITabAdornmentProps } from '@termlnk/terminal-ui';
+import type { ISharedSessionInputPolicy } from '@termlnk/shared-terminal';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, useDependency, useObservable } from '@termlnk/design';
 import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-terminal';
-import { CrownIcon, EyeIcon, KeyboardIcon } from 'lucide-react';
+import { CrownIcon, EyeIcon, KeyboardIcon, LockIcon } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { EMPTY } from 'rxjs';
 
@@ -62,6 +63,12 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
   );
   const lastError = useObservable<string | null>(lastErrorObservable, null);
 
+  const inputPolicyObservable = useMemo(
+    () => remote?.inputPolicy$(sessionId) ?? EMPTY,
+    [remote, sessionId]
+  );
+  const inputPolicy = useObservable<ISharedSessionInputPolicy>(inputPolicyObservable, 'allow-input');
+
   const isDriver = useMemo(
     // First clause guards the idle case where BOTH driverId and myClientId
     // are null. Without it `null === null` would erroneously promote a
@@ -70,6 +77,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
     [driverId, myClientId]
   );
   const isConnected = connectionState === RemoteSessionStatus.CONNECTED;
+  const isViewOnly = inputPolicy === 'view-only';
 
   const handleRequestKeyboard = useCallback(async () => {
     if (!remote) {
@@ -151,24 +159,45 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
 
           <div className={cn('tm:h-px tm:w-full tm:bg-line')} />
 
-          <Button
-            variant={isDriver ? 'outline' : 'default'}
-            size="sm"
-            disabled={!isConnected}
-            onClick={() => { void (isDriver ? handleReleaseKeyboard() : handleRequestKeyboard()); }}
-            className={cn('tm:w-full tm:gap-1.5')}
-          >
-            <KeyboardIcon className={cn('tm:size-3.5')} />
-            {isDriver
-              ? localeService.t('shared-terminal-ui.remote.release-keyboard')
-              : localeService.t('shared-terminal-ui.remote.request-keyboard')}
-          </Button>
+          {isViewOnly
+            ? (
+              <div className={cn('tm:flex tm:flex-col tm:gap-1.5')}>
+                <div
+                  className={cn(`
+                    tm:flex tm:items-center tm:gap-1.5 tm:rounded-md tm:bg-one-bg tm:px-2 tm:py-2
+                    tm:text-xs tm:text-grey-fg
+                  `)}
+                >
+                  <LockIcon className={cn('tm:size-3.5')} />
+                  <span>{localeService.t('shared-terminal-ui.remote.view-only-badge')}</span>
+                </div>
+                <p className={cn('tm:text-[11px]/4 tm:text-grey-fg')}>
+                  {localeService.t('shared-terminal-ui.remote.view-only-hint')}
+                </p>
+              </div>
+            )
+            : (
+              <>
+                <Button
+                  variant={isDriver ? 'outline' : 'default'}
+                  size="sm"
+                  disabled={!isConnected}
+                  onClick={() => { void (isDriver ? handleReleaseKeyboard() : handleRequestKeyboard()); }}
+                  className={cn('tm:w-full tm:gap-1.5')}
+                >
+                  <KeyboardIcon className={cn('tm:size-3.5')} />
+                  {isDriver
+                    ? localeService.t('shared-terminal-ui.remote.release-keyboard')
+                    : localeService.t('shared-terminal-ui.remote.request-keyboard')}
+                </Button>
 
-          <p className={cn('tm:text-[11px]/4 tm:text-grey-fg')}>
-            {isDriver
-              ? localeService.t('shared-terminal-ui.remote.driver-hint')
-              : localeService.t('shared-terminal-ui.remote.read-only-hint')}
-          </p>
+                <p className={cn('tm:text-[11px]/4 tm:text-grey-fg')}>
+                  {isDriver
+                    ? localeService.t('shared-terminal-ui.remote.driver-hint')
+                    : localeService.t('shared-terminal-ui.remote.read-only-hint')}
+                </p>
+              </>
+            )}
 
           {lastError && (
             <div className={cn('tm:rounded-md tm:border tm:border-red/40 tm:bg-red/10 tm:p-2')}>

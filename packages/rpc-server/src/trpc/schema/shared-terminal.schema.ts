@@ -23,6 +23,18 @@ export const clientIdSchema = z.string().min(1);
 export const inviteIdSchema = z.string().min(1);
 export const deviceIdSchema = z.string().min(1);
 
+/**
+ * Owner-side input policy for a shared terminal session. Optional in the
+ * share-session mutations so callers (older renderers, tests) keep working —
+ * the daemon falls back to `allow-input` when omitted.
+ */
+export const inputPolicySchema = z.union([z.literal('view-only'), z.literal('allow-input')]);
+
+export const shareSessionInputSchema = z.object({
+  sessionId: sessionIdSchema,
+  inputPolicy: inputPolicySchema.optional(),
+});
+
 export const createInviteInputSchema = z.object({
   sessionId: sessionIdSchema.optional(),
   role: sharedTerminalRoleSchema,

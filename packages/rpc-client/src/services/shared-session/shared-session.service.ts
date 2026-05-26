@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState, IParticipant, IShareableSession, ISharedSession, ISharedSessionService } from '@termlnk/shared-terminal';
+import type { IDriverState, IParticipant, IShareableSession, IShareSessionOptions, ISharedSession, ISharedSessionService } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
@@ -83,12 +83,12 @@ export class SharedSessionService extends Disposable implements ISharedSessionSe
     return this._client.listShareable.query() as Promise<readonly IShareableSession[]>;
   }
 
-  async shareSshSession(sessionId: string): Promise<void> {
-    await this._client.shareSshSession.mutate(sessionId);
+  async shareSshSession(sessionId: string, options?: IShareSessionOptions): Promise<void> {
+    await this._client.shareSshSession.mutate({ sessionId, inputPolicy: options?.inputPolicy });
   }
 
-  async sharePtySession(sessionId: string): Promise<void> {
-    await this._client.sharePtySession.mutate(sessionId);
+  async sharePtySession(sessionId: string, options?: IShareSessionOptions): Promise<void> {
+    await this._client.sharePtySession.mutate({ sessionId, inputPolicy: options?.inputPolicy });
   }
 
   async stopSharing(sessionId: string): Promise<void> {

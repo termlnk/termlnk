@@ -43,6 +43,8 @@ const locale: typeof enUS = {
       'driver-hint': '你正在控制键盘。键入的命令会在主机终端上执行，点击"让出键盘"可交回控制权。',
       'request-keyboard': '申请键盘',
       'release-keyboard': '让出键盘',
+      'view-only-badge': '只读分享',
+      'view-only-hint': '主机以只读模式分享此会话。如需输入，请联系主机切换为"允许输入"模式。',
       popover: {
         'aria-label': '共享会话控制',
       },

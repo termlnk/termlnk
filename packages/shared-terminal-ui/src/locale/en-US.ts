@@ -41,6 +41,8 @@ const locale = {
       'driver-hint': 'You are in control of the keyboard. Your keystrokes execute on the host\'s terminal; press "Release keyboard" to hand it back.',
       'request-keyboard': 'Request keyboard',
       'release-keyboard': 'Release keyboard',
+      'view-only-badge': 'View-only share',
+      'view-only-hint': 'The host shared this session in view-only mode. Ask them to switch to "Allow input" if you need to type.',
       popover: {
         'aria-label': 'Shared session controls',
       },

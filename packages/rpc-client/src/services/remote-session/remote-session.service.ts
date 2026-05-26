@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IRemoteSession, IRemoteSessionClosedEventNotify, IRemoteSessionCreateOptions, IRemoteSessionCreatedEvent, IRemoteSessionCreateResult, IRemoteSessionService, RemoteSessionEvent, RemoteSessionStatus } from '@termlnk/shared-terminal';
+import type { IRemoteSession, IRemoteSessionClosedEventNotify, IRemoteSessionCreateOptions, IRemoteSessionCreatedEvent, IRemoteSessionCreateResult, IRemoteSessionService, ISharedSessionInputPolicy, RemoteSessionEvent, RemoteSessionStatus } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { decodeBase64Utf8Stream, trpcSubscriptionToObservable } from '@termlnk/rpc';
@@ -38,6 +38,7 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
   private readonly _errorCache = new Map<string, Observable<string | null>>();
   private readonly _connectionIdCache = new Map<string, Observable<string | null>>();
   private readonly _driverIdCache = new Map<string, Observable<string | null>>();
+  private readonly _inputPolicyCache = new Map<string, Observable<ISharedSessionInputPolicy>>();
 
   /**
    * Local snapshot of the latest `sessions$` emission so `getSessions()` can
@@ -65,6 +66,7 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
         this._pruneCache(this._errorCache, alive);
         this._pruneCache(this._connectionIdCache, alive);
         this._pruneCache(this._driverIdCache, alive);
+        this._pruneCache(this._inputPolicyCache, alive);
       })
     );
   }
@@ -172,6 +174,17 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
         (opts) => this._client.driverId$.subscribe(sessionId, opts)
       ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
       this._driverIdCache.set(sessionId, cached);
+    }
+    return cached;
+  }
+
+  inputPolicy$(sessionId: string): Observable<ISharedSessionInputPolicy> {
+    let cached = this._inputPolicyCache.get(sessionId);
+    if (!cached) {
+      cached = trpcSubscriptionToObservable<ISharedSessionInputPolicy>(
+        (opts) => this._client.inputPolicy$.subscribe(sessionId, opts)
+      ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+      this._inputPolicyCache.set(sessionId, cached);
     }
     return cached;
   }

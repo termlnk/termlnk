@@ -134,4 +134,10 @@ export const remoteSessionRouter = router({
     .subscription(async function* ({ ctx, input }) {
       yield* observableToAsyncGenerator(ctx.injector.get(IRemoteSessionService).driverId$(input));
     }),
+
+  inputPolicy$: publicProcedure
+    .input(sessionIdSchema)
+    .subscription(async function* ({ ctx, input }) {
+      yield* observableToAsyncGenerator(ctx.injector.get(IRemoteSessionService).inputPolicy$(input));
+    }),
 });

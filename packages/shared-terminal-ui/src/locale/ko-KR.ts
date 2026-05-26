@@ -43,6 +43,8 @@ const locale: typeof enUS = {
       'driver-hint': '키보드를 제어하고 있습니다. 입력은 호스트의 터미널에서 실행됩니다. "키보드 해제"로 제어권을 돌려줄 수 있습니다.',
       'request-keyboard': '키보드 요청',
       'release-keyboard': '키보드 해제',
+      'view-only-badge': '읽기 전용 공유',
+      'view-only-hint': '호스트가 읽기 전용 모드로 이 세션을 공유했습니다. 입력이 필요하면 호스트에게 "입력 허용" 모드로 전환을 요청하세요.',
       popover: {
         'aria-label': '공유 세션 제어',
       },

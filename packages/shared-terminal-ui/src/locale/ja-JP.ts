@@ -43,6 +43,8 @@ const locale: typeof enUS = {
       'driver-hint': 'キーボードを操作しています。入力はホストの端末で実行されます。「キーボード解放」で操作権を返せます。',
       'request-keyboard': 'キーボード取得',
       'release-keyboard': 'キーボード解放',
+      'view-only-badge': '閲覧のみの共有',
+      'view-only-hint': 'ホストは閲覧専用モードでこのセッションを共有しています。入力が必要な場合はホストに「入力を許可」への切り替えを依頼してください。',
       popover: {
         'aria-label': '共有セッションの操作',
       },

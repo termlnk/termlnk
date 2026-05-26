@@ -15,7 +15,7 @@
 
 import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { ISharedSessionService } from '@termlnk/shared-terminal';
-import { kickInputSchema, lockDriverInputSchema, sessionIdSchema, setDriverInputSchema, setSharedSessionTitleSchema } from '../schema/shared-terminal.schema';
+import { kickInputSchema, lockDriverInputSchema, sessionIdSchema, setDriverInputSchema, setSharedSessionTitleSchema, shareSessionInputSchema } from '../schema/shared-terminal.schema';
 import { publicProcedure, router } from '../trpc';
 
 export type SharedSessionRouter = typeof sharedSessionRouter;
@@ -81,15 +81,19 @@ export const sharedSessionRouter = router({
     .query(async ({ ctx }) => ctx.injector.get(ISharedSessionService).listShareable()),
 
   shareSshSession: publicProcedure
-    .input(sessionIdSchema)
+    .input(shareSessionInputSchema)
     .mutation(async ({ ctx, input }) => {
-      await ctx.injector.get(ISharedSessionService).shareSshSession(input);
+      await ctx.injector.get(ISharedSessionService).shareSshSession(input.sessionId, {
+        inputPolicy: input.inputPolicy,
+      });
     }),
 
   sharePtySession: publicProcedure
-    .input(sessionIdSchema)
+    .input(shareSessionInputSchema)
     .mutation(async ({ ctx, input }) => {
-      await ctx.injector.get(ISharedSessionService).sharePtySession(input);
+      await ctx.injector.get(ISharedSessionService).sharePtySession(input.sessionId, {
+        inputPolicy: input.inputPolicy,
+      });
     }),
 
   stopSharing: publicProcedure
