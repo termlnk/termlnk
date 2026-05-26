@@ -199,6 +199,12 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
   const effectivePolicy: ISharedSessionInputPolicy = isShared
     ? (activeEntry.inputPolicy ?? 'allow-input')
     : pendingPolicy;
+  // Driver-status dot colour on the multiplayer trigger:
+  //   blue → owner is driving (sole participant or driverId === null)
+  //   yellow → some joiner has taken the keyboard
+  // The dot is suppressed entirely when the session is not shared.
+  const showDriverDot = isShared;
+  const driverDotIsJoiner = isShared && currentDriverId !== null;
 
   return (
     <Popover>
@@ -207,9 +213,23 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
           <Button
             variant="ghost"
             size="icon-sm"
-            className={cn({ 'tm:text-green': isShared })}
+            className={cn('tm:relative', { 'tm:text-green': isShared })}
           >
             <UsersIcon size={14} strokeWidth={1.5} />
+            {showDriverDot && (
+              <span
+                className={cn(
+                  `
+                    tm:absolute tm:right-0.5 tm:bottom-0.5 tm:size-1.5 tm:rounded-full tm:ring-1
+                    tm:ring-black
+                  `,
+                  {
+                    'tm:bg-yellow': driverDotIsJoiner,
+                    'tm:bg-blue': !driverDotIsJoiner,
+                  }
+                )}
+              />
+            )}
           </Button>
         </PopoverTrigger>
       </TooltipWrapper>

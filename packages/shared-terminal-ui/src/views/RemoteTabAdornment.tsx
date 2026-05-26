@@ -78,6 +78,15 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
   );
   const isConnected = connectionState === RemoteSessionStatus.CONNECTED;
   const isViewOnly = inputPolicy === 'view-only';
+  // Status-dot colour on the keyboard icon, mirroring the owner-side trigger:
+  //   blue → I am the driver
+  //   yellow → another joiner / owner is driving
+  //   grey → nobody drives yet (initial state on first attach)
+  const driverDotTone: 'self' | 'other' | 'idle' = isDriver
+    ? 'self'
+    : driverId !== null
+      ? 'other'
+      : 'idle';
 
   const handleRequestKeyboard = useCallback(async () => {
     if (!remote) {
@@ -113,7 +122,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
           size="icon-xs"
           className={cn(
             `
-              tm:flex tm:size-4.5 tm:shrink-0 tm:bg-transparent
+              tm:relative tm:flex tm:size-4.5 tm:shrink-0 tm:bg-transparent
               tm:hover:bg-one-bg2
             `,
             {
@@ -130,6 +139,22 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
           onClick={(e) => e.stopPropagation()}
         >
           <KeyboardIcon size={12} strokeWidth={1.5} />
+          {/* Persistent driver-status dot, suppressed before the relay handshake. */}
+          {isConnected && (
+            <span
+              className={cn(
+                `
+                  tm:absolute tm:right-0 tm:bottom-0 tm:size-1.5 tm:rounded-full tm:ring-1
+                  tm:ring-black
+                `,
+                {
+                  'tm:bg-blue': driverDotTone === 'self',
+                  'tm:bg-yellow': driverDotTone === 'other',
+                  'tm:bg-grey': driverDotTone === 'idle',
+                }
+              )}
+            />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
