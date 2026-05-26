@@ -200,6 +200,7 @@ function buildPairing(transport: ICollabInviteTransportService | undefined = und
 
 function createPtySource(id: string): { source: IPtySource; output$: Subject<Uint8Array> } {
   const output$ = new Subject<Uint8Array>();
+  const resize$ = new Subject<{ cols: number; rows: number }>();
   return {
     source: {
       id,
@@ -207,6 +208,7 @@ function createPtySource(id: string): { source: IPtySource; output$: Subject<Uin
       rows: 24,
       title: id,
       output$,
+      resize$,
       write: vi.fn(),
       resize: vi.fn(),
     },

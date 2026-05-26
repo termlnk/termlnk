@@ -32,6 +32,7 @@ export class SSHPtySource extends Disposable implements IPtySource {
   readonly id: string;
   readonly title: string;
   readonly output$: Observable<Uint8Array>;
+  readonly resize$: Observable<{ cols: number; rows: number }>;
 
   private readonly _stop$ = new Subject<void>();
 
@@ -40,6 +41,7 @@ export class SSHPtySource extends Disposable implements IPtySource {
     this.id = _session.sessionId;
     this.title = _session.host.label || `ssh:${_session.sessionId.slice(0, 8)}`;
     this.output$ = _session.data$.pipe(takeUntil(this._stop$));
+    this.resize$ = _session.resize$.pipe(takeUntil(this._stop$));
   }
 
   get cols(): number {
@@ -77,6 +79,7 @@ export class LocalPtySource extends Disposable implements IPtySource {
   readonly id: string;
   readonly title: string;
   readonly output$: Observable<Uint8Array>;
+  readonly resize$: Observable<{ cols: number; rows: number }>;
 
   private readonly _stop$ = new Subject<void>();
   private readonly _decoder = new TextDecoder();
@@ -91,6 +94,7 @@ export class LocalPtySource extends Disposable implements IPtySource {
       map((buf) => new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)),
       takeUntil(this._stop$)
     );
+    this.resize$ = _session.resize$.pipe(takeUntil(this._stop$));
   }
 
   get cols(): number {

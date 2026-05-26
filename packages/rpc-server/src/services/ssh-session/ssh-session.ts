@@ -52,6 +52,9 @@ export class SSHSession extends Disposable implements IDisposable {
   private readonly _error$ = new Subject<string>();
   readonly error$ = this._error$.asObservable();
 
+  private readonly _resize$ = new Subject<{ cols: number; rows: number }>();
+  readonly resize$ = this._resize$.asObservable();
+
   get host(): IHost {
     return this._host;
   }
@@ -187,6 +190,7 @@ export class SSHSession extends Disposable implements IDisposable {
   async resize(rows: number, cols: number): Promise<void> {
     this._cols = cols;
     this._rows = rows;
+    this._resize$.next({ cols, rows });
 
     if (!this._channel) {
       return;
@@ -468,6 +472,7 @@ export class SSHSession extends Disposable implements IDisposable {
     this._connected$.complete();
     this._data$.complete();
     this._error$.complete();
+    this._resize$.complete();
     this._event$.complete();
   }
 }

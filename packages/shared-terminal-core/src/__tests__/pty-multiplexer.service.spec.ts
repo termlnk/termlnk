@@ -42,6 +42,7 @@ interface ITestSource {
 
 function createSource(id: string, opts: { cols?: number; rows?: number } = {}): ITestSource {
   const output$ = new Subject<Uint8Array>();
+  const resize$ = new Subject<{ cols: number; rows: number }>();
   const writes: Uint8Array[] = [];
   const resizes: { cols: number; rows: number }[] = [];
   const source: IPtySource = {
@@ -50,8 +51,15 @@ function createSource(id: string, opts: { cols?: number; rows?: number } = {}): 
     rows: opts.rows ?? 24,
     title: `test-${id}`,
     output$: output$.asObservable(),
+    resize$: resize$.asObservable(),
     write: (data) => { writes.push(data); },
-    resize: (cols, rows) => { resizes.push({ cols, rows }); },
+    // Mirror the real adapter contract: a successful resize on the underlying
+    // session emits on resize$ so the mux can update runtime + scrollback +
+    // broadcast through the single entry point in `register`.
+    resize: (cols, rows) => {
+      resizes.push({ cols, rows });
+      resize$.next({ cols, rows });
+    },
   };
   return { output$, writes, resizes, source };
 }

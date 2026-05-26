@@ -27,6 +27,14 @@ export interface IPtySource {
   readonly rows: number;
   readonly title: string;
   readonly output$: Observable<Uint8Array>;
+  /**
+   * Hot stream of PTY size changes. Fires AFTER `_cols/_rows` have been
+   * updated. The mux subscribes to this so the headless scrollback terminal
+   * stays in lockstep with the real PTY's geometry — otherwise xterm-headless
+   * parses subsequent output with stale cols/rows and joiners replay a buffer
+   * whose cursor/wrap math has drifted from the owner's real shell.
+   */
+  readonly resize$: Observable<{ cols: number; rows: number }>;
   write(data: Uint8Array): void;
   resize(cols: number, rows: number): void;
 }

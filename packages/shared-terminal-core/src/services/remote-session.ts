@@ -275,6 +275,20 @@ export class RemoteSession extends Disposable implements IRemoteSession {
         });
         break;
       }
+      case 'resize': {
+        const r = parsed as { cols?: number; rows?: number };
+        if (!Number.isInteger(r.cols) || !Number.isInteger(r.rows)) {
+          break;
+        }
+        this._cols = r.cols!;
+        this._rows = r.rows!;
+        this._event$.next({
+          type: 'resize',
+          cols: this._cols,
+          rows: this._rows,
+        });
+        break;
+      }
       case 'session_metadata': {
         // Daemon sends partial deltas: `null` = "explicitly cleared", missing
         // key = "no change". Merge into our cache and emit the merged snapshot

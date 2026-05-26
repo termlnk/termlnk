@@ -50,6 +50,7 @@ class FakeDaemonKeypair implements IDaemonKeypairService {
 
 function createSource(id: string): { source: IPtySource; output$: Subject<Uint8Array>; write: ReturnType<typeof vi.fn> } {
   const output$ = new Subject<Uint8Array>();
+  const resize$ = new Subject<{ cols: number; rows: number }>();
   const write = vi.fn();
   return {
     source: {
@@ -58,6 +59,7 @@ function createSource(id: string): { source: IPtySource; output$: Subject<Uint8A
       rows: 24,
       title: id,
       output$,
+      resize$,
       write,
       resize: vi.fn(),
     },

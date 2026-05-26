@@ -87,6 +87,14 @@ export function useSubscriptionManager(): ISubscriptionManager {
 
 export interface IUseXtermOptions {
   enabled?: boolean;
+  /**
+   * Whether xterm should auto-fit to its DOM container via FitAddon and a
+   * ResizeObserver. Defaults to true. Set false on joiner-side views whose
+   * geometry is authoritative from the owner PTY — those views call
+   * `term.resize` directly from inbound resize SessionEvents and must NOT
+   * let the local container size override that.
+   */
+  autoFit?: boolean;
   onData: (data: string) => void;
   onResize: (rows: number, cols: number) => void;
   onTitleChange?: (title: string) => void;
@@ -196,7 +204,10 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
       setSearchResult(result);
     });
 
-    term.loadAddon(fitAddon);
+    const autoFit = options.autoFit !== false;
+    if (autoFit) {
+      term.loadAddon(fitAddon);
+    }
     term.loadAddon(searchAddon);
     term.loadAddon(new ImageAddon(IMAGE_OPTIONS));
     term.loadAddon(progressAddon);
@@ -225,7 +236,9 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
       term.loadAddon(new LigaturesAddon());
     }
 
-    fitAddon.fit();
+    if (autoFit) {
+      fitAddon.fit();
+    }
 
     setupEventListeners(term, onDataRef, onResizeRef, onTitleChangeRef);
 
@@ -234,11 +247,15 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
       : createLegacyTerminalInputBinding(term, onDataRef);
 
     xtermRef.current = term;
-    fitAddonRef.current = fitAddon;
+    if (autoFit) {
+      fitAddonRef.current = fitAddon;
+    }
     searchAddonRef.current = searchAddon;
     serializeAddonRef.current = serializeAddon;
 
-    const disposeResizeObserver = setupResizeObserver(terminalRef.current, fitAddon);
+    const disposeResizeObserver = autoFit
+      ? setupResizeObserver(terminalRef.current, fitAddon)
+      : () => {};
 
     return () => {
       inputBindingDisposable.dispose();

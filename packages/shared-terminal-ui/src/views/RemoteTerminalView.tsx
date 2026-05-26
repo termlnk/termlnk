@@ -58,8 +58,6 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
   const {
     terminalRef,
     xtermRef,
-    write,
-    fit,
     focus,
     findNext,
     findPrevious,
@@ -68,6 +66,12 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
     progressState,
   } = useXterm({
     enabled: globalAppearance.isReady,
+    // Joiner xterm cols/rows must match the owner's PTY exactly — only then
+    // can clear-line / cursor-positioning escapes in the live PtyData stream
+    // (e.g. zsh's PROMPT_EOL_MARK clear sequence) target the same cell the
+    // owner intended. Auto-fit to the local DOM container would silently
+    // recompute cols and break that invariant.
+    autoFit: false,
     onData: useCallback((data: string) => {
       if (!remoteService || !connectedRef.current) {
         return;
@@ -77,9 +81,10 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
       });
     }, [remoteService, sessionId, logService]),
     onResize: useCallback((_rows: number, _cols: number) => {
-      // Joiners must not resize the owner's PTY; the snapshot is authoritative.
-      // We deliberately drop the local resize signal so the wire stays read-only
-      // for terminal dimensions.
+      // Joiners must not resize the owner's PTY; owner-side resize$ is the
+      // sole authority for joiner geometry. With autoFit disabled this never
+      // fires from the local container anyway, but keep the no-op so the
+      // hook signature stays satisfied.
     }, []),
     shouldFocusOnOpen: activeSessionId === sessionId,
     theme,
@@ -94,27 +99,34 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
     terminalInputService,
   });
 
-  // Hydrate the buffer from the inbound snapshot and resize xterm to match.
+  // Hydrate the buffer from the inbound snapshot and follow owner-side resize.
   useEffect(() => {
     if (!remoteService || !globalAppearance.isReady) {
       return undefined;
     }
     const sub = remoteService.event$(sessionId).subscribe((event: RemoteSessionEvent) => {
-      if (event.type !== 'snapshot') {
-        return;
-      }
       const term = xtermRef.current;
       if (!term) {
         return;
       }
-      try {
-        term.resize(event.cols, event.rows);
-      } catch (err) {
-        logService.warn('[RemoteTerminalView] xterm.resize failed:', err);
+      if (event.type === 'snapshot') {
+        try {
+          term.resize(event.cols, event.rows);
+        } catch (err) {
+          logService.warn('[RemoteTerminalView] xterm.resize failed:', err);
+        }
+        term.reset();
+        if (event.serialized) {
+          term.write(event.serialized);
+        }
+        return;
       }
-      term.reset();
-      if (event.serialized) {
-        term.write(event.serialized);
+      if (event.type === 'resize') {
+        try {
+          term.resize(event.cols, event.rows);
+        } catch (err) {
+          logService.warn('[RemoteTerminalView] xterm.resize failed:', err);
+        }
       }
     });
     return () => sub.unsubscribe();
@@ -134,16 +146,6 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
     });
     return () => sub.unsubscribe();
   }, [remoteService, sessionId, xtermRef, globalAppearance.isReady]);
-
-  // After the initial fit pass, give xterm a chance to settle before the
-  // user starts typing. Mirrors LocalTerminalView's "fitTimeout = setTimeout(fit, 100)".
-  useEffect(() => {
-    if (!globalAppearance.isReady) {
-      return undefined;
-    }
-    const t = setTimeout(fit, 100);
-    return () => clearTimeout(t);
-  }, [globalAppearance.isReady, fit]);
 
   const { isSearchOpen, isSessionActive, handleSearch, closeSearch } = useTerminalSearch({
     sessionId,

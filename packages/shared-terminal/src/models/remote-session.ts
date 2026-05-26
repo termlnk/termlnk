@@ -34,6 +34,7 @@ export enum RemoteSessionStatus {
  */
 export type RemoteSessionEvent =
   | IRemoteSnapshotEvent
+  | IRemoteResizeEvent
   | IRemoteSessionMetadataEvent
   | IRemoteDriverHandoverEvent
   | IRemoteParticipantJoinedEvent
@@ -46,6 +47,17 @@ export interface IRemoteSnapshotEvent {
   readonly rows: number;
   readonly serialized: string;
   readonly observedSeq: number;
+}
+
+/**
+ * Owner-side PTY geometry change. Joiner xterm must resize to match so
+ * cursor/wrap math and clear-line escapes in subsequent PtyData replay
+ * against the same dimensions zsh / bash used to emit them.
+ */
+export interface IRemoteResizeEvent {
+  readonly type: 'resize';
+  readonly cols: number;
+  readonly rows: number;
 }
 
 /**

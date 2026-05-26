@@ -19,7 +19,7 @@ import type { IPTYProcess } from './pty-process';
 import { Disposable, IConfigService, ILogService } from '@termlnk/core';
 import { resolveConfigPath } from '@termlnk/rpc';
 import { PTYSessionStatus } from '@termlnk/terminal';
-import { BehaviorSubject, ReplaySubject } from 'rxjs';
+import { BehaviorSubject, ReplaySubject, Subject } from 'rxjs';
 import { createPTYProcess } from './pty-process';
 
 export interface IPTYSessionOptions {
@@ -51,6 +51,9 @@ export class PTYSession extends Disposable implements IDisposable {
 
   private readonly _data$ = new ReplaySubject<Buffer>(PTY_REPLAY_BUFFER_LIMIT, 5000);
   readonly data$ = this._data$.asObservable();
+
+  private readonly _resize$ = new Subject<{ cols: number; rows: number }>();
+  readonly resize$ = this._resize$.asObservable();
 
   private _process: Nullable<IPTYProcess>;
   private _shellPath: string = '';
@@ -99,6 +102,7 @@ export class PTYSession extends Disposable implements IDisposable {
     }
     this._cols = cols;
     this._rows = rows;
+    this._resize$.next({ cols, rows });
     this._process.resize(cols, rows);
   }
 
@@ -162,6 +166,7 @@ export class PTYSession extends Disposable implements IDisposable {
     this.close().catch(() => {});
     this._status$.complete();
     this._data$.complete();
+    this._resize$.complete();
   }
 
   private _markClosed(): void {

@@ -39,6 +39,7 @@ interface ISessionRuntime {
   readonly clients: Map<string, IClientEntry>;
   readonly participantsSubject: BehaviorSubject<readonly IParticipant[]>;
   readonly outputSub: Subscription;
+  readonly resizeSub: Subscription;
   readonly arbitrationSubs: Subscription[];
   state: SharedSessionState;
   cols: number;
@@ -124,12 +125,23 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       error: (err) => this._logService.error(`[PtyMultiplexerService] PTY ${source.id} errored:`, err),
     });
 
+    // Owner-side PTY geometry is authoritative for both scrollback parsing and
+    // joiner xterm sizing. Without this subscription every owner-side window
+    // resize silently drifts runtime + scrollback out of sync with the live
+    // PTY, so joiners replay buffers parsed at a stale cols and zsh's
+    // PROMPT_EOL_MARK clear-line escapes target the wrong cell.
+    const resizeSub = source.resize$.subscribe({
+      next: ({ cols, rows }) => this._handlePtySourceResize(source.id, cols, rows),
+      error: (err) => this._logService.error(`[PtyMultiplexerService] PTY ${source.id} resize$ errored:`, err),
+    });
+
     const runtime: ISessionRuntime = {
       source,
       scrollback,
       clients: new Map(),
       participantsSubject,
       outputSub,
+      resizeSub,
       arbitrationSubs: [],
       state: SharedSessionState.Idle,
       cols: source.cols,
@@ -424,6 +436,32 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     this._broadcast(sessionId, FrameChannel.PtyData, FrameFlag.None, chunk);
   }
 
+  /**
+   * Single entry point for PTY geometry changes — invoked whenever the
+   * owner-side PtySource emits resize$ (driver control frame or owner-local
+   * window resize alike). Keeps runtime, headless scrollback, and every
+   * joiner xterm in lockstep with the live PTY.
+   */
+  private _handlePtySourceResize(sessionId: string, cols: number, rows: number): void {
+    const runtime = this._sessions.get(sessionId);
+    if (!runtime) {
+      return;
+    }
+    if (runtime.cols === cols && runtime.rows === rows) {
+      return;
+    }
+    runtime.cols = cols;
+    runtime.rows = rows;
+    runtime.scrollback.resize(cols, rows);
+    this._broadcastSessionEvent(sessionId, {
+      type: 'resize',
+      sessionId,
+      cols,
+      rows,
+    });
+    this._publishSessions();
+  }
+
   private _handleInputFrame(runtime: ISessionRuntime, clientId: string, frame: IFrame): void {
     const client = runtime.clients.get(clientId)!;
     if (!isWriterRole(client.role)) {
@@ -464,14 +502,13 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
           && Number.isInteger(r.cols)
           && Number.isInteger(r.rows)
         ) {
-          const cols = r.cols!;
-          const rows = r.rows!;
           try {
-            runtime.source.resize(cols, rows);
-            runtime.scrollback.resize(cols, rows);
-            runtime.cols = cols;
-            runtime.rows = rows;
-            this._publishSessions();
+            // Single entry point: mutate the live PTY only. The owner-side
+            // session emits resize$ which we subscribe to in register(),
+            // so runtime/scrollback/broadcast updates flow from that one path
+            // regardless of whether the trigger was a driver control frame or
+            // an owner-local window resize.
+            runtime.source.resize(r.cols!, r.rows!);
           } catch (err) {
             this._logService.error('[PtyMultiplexerService] PTY resize failed:', err);
           }
@@ -572,6 +609,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       return;
     }
     runtime.outputSub.unsubscribe();
+    runtime.resizeSub.unsubscribe();
     for (const sub of runtime.arbitrationSubs) {
       sub.unsubscribe();
     }

@@ -22,7 +22,7 @@ export { CONTROL_MESSAGE_TYPES, FrameChannel, FrameFlag, SESSION_EVENT_TYPES } f
 export type { CollabInviteStatus, ICapability, ICollabInvite, IInviteClaimPayload, IInviteClaimResult, IInviteCreateOptions, IInviteTokenState } from './models/invite';
 export type { IKeypair, ISharedKey } from './models/keypair';
 export type { IPairedDevice, ISessionAcceptPayload, ISessionClaimPayload, ISessionRejectPayload } from './models/pairing';
-export type { IRemoteDriverHandoverEvent, IRemoteParticipantJoinedEvent, IRemoteParticipantLeftEvent, IRemoteSessionClosedEvent, IRemoteSessionMetadataEvent, IRemoteSnapshotEvent, RemoteSessionEvent } from './models/remote-session';
+export type { IRemoteDriverHandoverEvent, IRemoteParticipantJoinedEvent, IRemoteParticipantLeftEvent, IRemoteResizeEvent, IRemoteSessionClosedEvent, IRemoteSessionMetadataEvent, IRemoteSnapshotEvent, RemoteSessionEvent } from './models/remote-session';
 export { RemoteSessionStatus } from './models/remote-session';
 export { isWriterRole, SharedTerminalRole } from './models/role';
 export type { IParticipant, ISessionSnapshot, ISharedSession } from './models/session';
