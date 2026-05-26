@@ -33,15 +33,35 @@ import { ITerminalUIService } from '../../services/terminal/terminal-ui.service'
  * a popover showing share status, copy-link button, and the participant list.
  */
 export function MultiplayerControl(): React.JSX.Element | null {
+  const terminalUIService = useDependency(ITerminalUIService);
+  const activeSessionId = useObservable<Nullable<string>>(terminalUIService.activeSessionId$);
+
+  // Remount the inner popover on session change. The participants$/driverState$
+  // observables get swapped when activeSessionId changes, but redi's
+  // useObservable keeps the last value of the prior stream until the new one
+  // emits — which would leak the previous tab's participants into the new tab.
+  // Keying also resets local state (inviteUrl/copied/busy) and closes the
+  // Radix Popover, since each tab's share context is independent.
+  return (
+    <MultiplayerControlInner
+      key={activeSessionId ?? 'none'}
+      activeSessionId={activeSessionId ?? null}
+    />
+  );
+}
+
+interface IMultiplayerControlInnerProps {
+  readonly activeSessionId: string | null;
+}
+
+function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerProps): React.JSX.Element | null {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
-  const terminalUIService = useDependency(ITerminalUIService);
   const sharedSession = useDependency(ISharedSessionService, Quantity.OPTIONAL);
   const inviteService = useDependency(IInviteService, Quantity.OPTIONAL);
   const authService = useDependency(IAuthService, Quantity.OPTIONAL);
 
   const currentUser = useObservable<IUserAccount | null>(authService?.currentUser$ ?? null, null);
-  const activeSessionId = useObservable<Nullable<string>>(terminalUIService.activeSessionId$);
   const shareable = useObservable<readonly IShareableSession[]>(sharedSession?.shareable$ ?? null, []);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
