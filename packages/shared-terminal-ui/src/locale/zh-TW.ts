@@ -18,9 +18,9 @@ import type enUS from './en-US';
 const locale: typeof enUS = {
   'shared-terminal-ui': {
     'invite-role': {
-      owner: '主控',
-      'co-pilot': '協作者',
-      observer: '旁觀者',
+      owner: '擁有者',
+      'co-pilot': '編輯者',
+      observer: '觀看者',
     },
     'join-dialog': {
       title: '收到多人協作邀請',
@@ -36,11 +36,11 @@ const locale: typeof enUS = {
     },
     remote: {
       'tab-name': '共享會話',
-      'viewing-only': '唯讀旁觀',
-      driving: '正在駕駛',
+      'viewing-only': '僅旁觀',
+      driving: '控制中',
       'waiting-for-frames': '等待主機的首批輸出…',
-      'read-only-hint': '你以旁觀者身分加入。點擊「申請鍵盤」可申請駕駛權。',
-      'driver-hint': '你正在駕駛。鍵入的命令會在主機終端上執行，點擊「讓出鍵盤」可交回控制權。',
+      'read-only-hint': '你以旁觀者身分加入。點擊「申請鍵盤」可申請控制權。',
+      'driver-hint': '你正在控制鍵盤。鍵入的命令會在主機終端上執行，點擊「讓出鍵盤」可交回控制權。',
       'request-keyboard': '申請鍵盤',
       'release-keyboard': '讓出鍵盤',
       popover: {

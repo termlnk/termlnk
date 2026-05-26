@@ -130,7 +130,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
             {localeService.t('shared-terminal-ui.join-dialog.dismiss')}
           </Button>
           <Button
-            variant="default"
+            variant="primary"
             disabled={!cap || busy}
             onClick={() => { void handleJoin(); }}
             className={cn('tm:gap-1.5')}
@@ -141,15 +141,15 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
         </div>
       )}
     >
-      <div className={cn('tm:flex tm:min-w-0 tm:flex-col tm:gap-3 tm:px-1 tm:py-2 tm:text-sm tm:text-light-grey')}>
-        <p className={cn('tm:text-grey-fg')}>
+      <div className={cn('tm:flex tm:min-w-0 tm:flex-col tm:gap-3 tm:px-1 tm:py-2 tm:text-sm tm:text-white')}>
+        <p className={cn('tm:text-white')}>
           {localeService.t('shared-terminal-ui.join-dialog.description')}
         </p>
         <div
           className={cn('tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-2 tm:font-mono tm:text-xs')}
         >
           <div className={cn('tm:flex tm:min-w-0 tm:items-center tm:justify-between tm:gap-2')}>
-            <span className={cn('tm:min-w-0 tm:flex-1 tm:truncate tm:text-light-grey')}>{pending.rawUrl}</span>
+            <span className={cn('tm:min-w-0 tm:flex-1 tm:truncate tm:text-white')}>{pending.rawUrl}</span>
             <Button
               variant="outline"
               size="sm"
@@ -168,25 +168,25 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
                 tm:grid tm:min-w-0 tm:grid-cols-[auto_minmax(0,1fr)] tm:items-center tm:gap-x-3 tm:gap-y-1 tm:text-xs
               `)}
             >
-              <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.session-label')}</span>
-              <span className={cn('tm:min-w-0 tm:truncate tm:font-mono tm:text-light-grey')}>{cap.sid}</span>
-              <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.role-label')}</span>
+              <span className={cn('tm:text-white')}>{localeService.t('shared-terminal-ui.join-dialog.session-label')}</span>
+              <span className={cn('tm:min-w-0 tm:truncate tm:font-mono tm:text-white')}>{cap.sid}</span>
+              <span className={cn('tm:text-white')}>{localeService.t('shared-terminal-ui.join-dialog.role-label')}</span>
               <span>
-                <Badge variant="secondary" className={cn('tm:bg-grey-fg/20 tm:text-grey-fg')}>
+                <Badge variant="secondary" className={cn('tm:bg-grey-fg/20 tm:text-white')}>
                   {localeService.t(`shared-terminal-ui.invite-role.${cap.role}`)}
                 </Badge>
               </span>
               {expiryDate && (
                 <>
-                  <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.expires-label')}</span>
-                  <span className={cn('tm:min-w-0 tm:truncate tm:text-light-grey')}>{expiryDate.toLocaleString()}</span>
+                  <span className={cn('tm:text-white')}>{localeService.t('shared-terminal-ui.join-dialog.expires-label')}</span>
+                  <span className={cn('tm:min-w-0 tm:truncate tm:text-white')}>{expiryDate.toLocaleString()}</span>
                 </>
               )}
             </div>
           )
           : (
             <div
-              className={cn('tm:rounded-md tm:border tm:border-dashed tm:border-line tm:p-3 tm:text-xs tm:text-grey-fg')}
+              className={cn('tm:rounded-md tm:border tm:border-dashed tm:border-line tm:p-3 tm:text-xs tm:text-white')}
             >
               {localeService.t('shared-terminal-ui.join-dialog.unparsable')}
             </div>

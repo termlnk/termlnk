@@ -17,8 +17,8 @@ const locale = {
   'shared-terminal-ui': {
     'invite-role': {
       owner: 'owner',
-      'co-pilot': 'co-pilot',
-      observer: 'observer',
+      'co-pilot': 'editor',
+      observer: 'viewer',
     },
     'join-dialog': {
       title: 'Multiplayer invite received',
@@ -34,11 +34,11 @@ const locale = {
     },
     remote: {
       'tab-name': 'Shared session',
-      'viewing-only': 'Viewing (read-only)',
-      driving: 'Driving',
+      'viewing-only': 'Viewing only',
+      driving: 'In control',
       'waiting-for-frames': 'Waiting for the host\'s first frame…',
-      'read-only-hint': 'You are joined as an observer. Press the "Request keyboard" button to take driver control.',
-      'driver-hint': 'You hold the keyboard. Your keystrokes execute on the host\'s terminal; press "Release" to hand it back.',
+      'read-only-hint': 'You joined as a viewer. Press "Request keyboard" to ask for control.',
+      'driver-hint': 'You are in control of the keyboard. Your keystrokes execute on the host\'s terminal; press "Release keyboard" to hand it back.',
       'request-keyboard': 'Request keyboard',
       'release-keyboard': 'Release keyboard',
       popover: {

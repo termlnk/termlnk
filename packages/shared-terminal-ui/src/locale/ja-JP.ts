@@ -19,8 +19,8 @@ const locale: typeof enUS = {
   'shared-terminal-ui': {
     'invite-role': {
       owner: 'オーナー',
-      'co-pilot': '共同作業者',
-      observer: '閲覧者',
+      'co-pilot': 'エディター',
+      observer: 'ビューア',
     },
     'join-dialog': {
       title: 'マルチプレイヤーの招待を受信しました',
@@ -39,8 +39,8 @@ const locale: typeof enUS = {
       'viewing-only': '閲覧のみ',
       driving: '操作中',
       'waiting-for-frames': 'ホストからの最初のフレームを待っています…',
-      'read-only-hint': '閲覧者として参加しました。「キーボード取得」ボタンでドライバー権を申請できます。',
-      'driver-hint': 'キーボードを取得しました。入力はホストの端末で実行されます。「解放」で戻せます。',
+      'read-only-hint': 'ビューアとして参加しました。「キーボード取得」で操作権をリクエストできます。',
+      'driver-hint': 'キーボードを操作しています。入力はホストの端末で実行されます。「キーボード解放」で操作権を返せます。',
       'request-keyboard': 'キーボード取得',
       'release-keyboard': 'キーボード解放',
       popover: {
