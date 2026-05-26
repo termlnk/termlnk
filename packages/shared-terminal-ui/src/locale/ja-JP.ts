@@ -56,6 +56,11 @@ const locale: typeof enUS = {
         error: '接続エラー',
         idle: '参加待ち…',
       },
+      toast: {
+        'self-acquired': '操作権を取得しました。入力を開始してください。',
+        released: 'キーボードを解放しました。',
+        'taken-by-other': '他の参加者が操作中です。',
+      },
     },
   },
 };

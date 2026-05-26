@@ -56,6 +56,11 @@ const locale: typeof enUS = {
         error: '連線錯誤',
         idle: '等待加入…',
       },
+      toast: {
+        'self-acquired': '你已取得控制權，開始輸入。',
+        released: '鍵盤已釋放。',
+        'taken-by-other': '其他人正在控制終端。',
+      },
     },
   },
 };

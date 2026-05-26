@@ -56,6 +56,11 @@ const locale: typeof enUS = {
         error: '연결 오류',
         idle: '참여 대기 중…',
       },
+      toast: {
+        'self-acquired': '제어권을 받았습니다. 입력을 시작하세요.',
+        released: '키보드가 해제되었습니다.',
+        'taken-by-other': '다른 참가자가 터미널을 제어 중입니다.',
+      },
     },
   },
 };

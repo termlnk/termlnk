@@ -21,6 +21,7 @@ import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-term
 import { ITerminalInputService, ITerminalUIService, TerminalProgressOverlay, TerminalSearch, useGlobalTerminalAppearance, useTerminalSearch, useXterm, XTERM_PROGRESS_STATE } from '@termlnk/terminal-ui';
 import { useCallback, useEffect, useRef } from 'react';
 import { EMPTY } from 'rxjs';
+import { DriverChangeOverlay } from './DriverChangeOverlay';
 
 /**
  * Joiner-side terminal view — structural twin of `TerminalView` (SSH) and
@@ -179,6 +180,7 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
       {progressState.state !== XTERM_PROGRESS_STATE.NONE && (
         <TerminalProgressOverlay progress={progressState} />
       )}
+      <DriverChangeOverlay sessionId={sessionId} />
     </div>
   );
 }

@@ -54,6 +54,11 @@ const locale = {
         error: 'Connection error',
         idle: 'Waiting to join…',
       },
+      toast: {
+        'self-acquired': 'You\'ve got remote control. Start typing.',
+        released: 'Keyboard released.',
+        'taken-by-other': 'Someone else is driving the terminal now.',
+      },
     },
   },
 };
