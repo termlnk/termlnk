@@ -112,10 +112,7 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
     // Re-clicking the same invite while still connected is benign.
     const existing = this._sessions.get(sessionId);
     if (existing) {
-      return {
-        sessionId,
-        connectionId: existing.getConnectionId() ?? parsed.inviteId,
-      };
+      return { sessionId };
     }
 
     const inflight = this._inflightConnects.get(sessionId);
@@ -220,17 +217,14 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
       throw err;
     }
 
-    const effectiveConnectionId = claimedConnectionId ?? parsed.inviteId;
-    session.setConnectionId(effectiveConnectionId);
-
     this._sessions.set(sessionId, session);
     this._sessions$.next([...this._sessions$.getValue(), sessionId]);
-    this._sessionCreated$.next({ sessionId, connectionId: effectiveConnectionId });
+    this._sessionCreated$.next({ sessionId });
 
     session.startHeartbeat();
     session.sendClientJoin(parsed.inviteId, userKp.publicKey);
 
-    return { sessionId, connectionId: effectiveConnectionId };
+    return { sessionId };
   }
 
   private _tearDown(sessionId: string): void {

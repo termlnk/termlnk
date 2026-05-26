@@ -23,7 +23,6 @@ export interface IRemoteSessionCreateOptions {
 
 export interface IRemoteSessionCreatedEvent {
   readonly sessionId: string;
-  readonly connectionId: string;
 }
 
 export interface IRemoteSessionClosedEventNotify {
@@ -32,7 +31,6 @@ export interface IRemoteSessionClosedEventNotify {
 
 export interface IRemoteSessionCreateResult {
   readonly sessionId: string;
-  readonly connectionId: string;
 }
 
 /**
@@ -54,7 +52,12 @@ export interface IRemoteSession {
    * transient failure.
    */
   readonly error$: Observable<string | null>;
-  /** Server-assigned attachment id, null while the relay handshake is in flight. */
+  /**
+   * Relay-assigned attachment id, mirrored from the underlying transport.
+   * Null while the relay handshake is in flight or after disconnect. Compare
+   * this against `driverId$` values the daemon emits — both live in the relay
+   * connection-id namespace.
+   */
   readonly connectionId$: Observable<string | null>;
   /** Current driver clientId observed via SessionEvent; null when no one drives. */
   readonly driverId$: Observable<string | null>;

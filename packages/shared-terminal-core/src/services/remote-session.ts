@@ -108,11 +108,6 @@ export class RemoteSession extends Disposable implements IRemoteSession {
     return this._rows;
   }
 
-  /** Used by the service to fill in the server-assigned connection id. */
-  setConnectionId(connectionId: string | null): void {
-    this._connectionId$.next(connectionId);
-  }
-
   /** Used by the service right before connect to mark the lifecycle entry point. */
   markConnecting(): void {
     this._status$.next(RemoteSessionStatus.CONNECTING);
@@ -248,6 +243,15 @@ export class RemoteSession extends Disposable implements IRemoteSession {
           this._consumeControlFrame(frame);
           break;
       }
+    }));
+
+    // The relay-assigned connection id is the only ID the daemon side sees for
+    // this joiner (it shows up as `envelope.source` on every inbound frame),
+    // so it must be the same id the UI uses to identify "me" — comparing
+    // against driverId, participant ids, etc. The transport learns it from the
+    // `ready` envelope after the WebSocket upgrade; we mirror it 1:1.
+    this._subscriptions.push(this._transport.connectionId$.subscribe((id) => {
+      this._connectionId$.next(id);
     }));
   }
 
@@ -429,15 +433,6 @@ export class RemoteSession extends Disposable implements IRemoteSession {
       clearInterval(this._heartbeatTimer);
       this._heartbeatTimer = null;
     }
-  }
-
-  /**
-   * Sync snapshot of the server-assigned connection id. Used by the service to
-   * answer "what's the current connectionId" without doing a fragile
-   * subscribe/unsubscribe dance on the BehaviorSubject.
-   */
-  getConnectionId(): string | null {
-    return this._connectionId$.getValue();
   }
 }
 

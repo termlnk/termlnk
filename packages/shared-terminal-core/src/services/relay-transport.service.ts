@@ -15,6 +15,7 @@
 
 import type { Nullable } from '@termlnk/core';
 import type { IFrame, IInboundFrame, ISharedKey, ISharedTerminalTransportService, ITransportConnectOptions, ITransportSendOptions } from '@termlnk/shared-terminal';
+import type { Observable } from 'rxjs';
 import { Disposable, ILogService } from '@termlnk/core';
 import { IFrameCodecService, SHARED_TERMINAL_HEARTBEAT_MS, SHARED_TERMINAL_RECONNECT_INITIAL_MS, SHARED_TERMINAL_RECONNECT_MAX_MS, TransportState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
@@ -62,6 +63,19 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   private readonly _frames$ = new Subject<IInboundFrame>();
   readonly frames$ = this._frames$.asObservable();
 
+  /**
+   * Relay-assigned connection id, the same value the daemon side sees as
+   * `envelope.source` on every inbound frame. Authoritative ID of "who am I
+   * to the relay" — joiner-side code should compare this against IDs the
+   * daemon emits (driver, participant lists) rather than the invite id, which
+   * lives in a different namespace.
+   *
+   * Null when the relay has not yet ack'd the upgrade with a `ready` envelope
+   * or the transport has been disconnected.
+   */
+  private readonly _connectionId$ = new BehaviorSubject<string | null>(null);
+  readonly connectionId$: Observable<string | null> = this._connectionId$.asObservable();
+
   private readonly _webSocketCtor: RelayWebSocketCtor;
   private _ws: Nullable<IRelayWebSocket> = null;
   private _options: Nullable<ITransportConnectOptions> = null;
@@ -71,7 +85,6 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private _sessionKey: Nullable<ISharedKey> = null;
-  private _connectionId: Nullable<string> = null;
   private _keyResolver: KeyResolver | null = null;
 
   constructor(
@@ -90,6 +103,7 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     this._clearReconnectTimer();
     this._clearHeartbeat();
     this._state$.complete();
+    this._connectionId$.complete();
     this._frames$.complete();
   }
 
@@ -97,7 +111,7 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     this._options = options;
     this._sharedKey = sharedKey;
     this._sessionKey = null;
-    this._connectionId = options.connectionId ?? null;
+    this._connectionId$.next(options.connectionId ?? null);
     this._stopped = false;
     this._reconnectBackoff = SHARED_TERMINAL_RECONNECT_INITIAL_MS;
     await this._openSocket();
@@ -109,6 +123,7 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     this._clearHeartbeat();
     this._closeSocket();
     this._state$.next(TransportState.Disconnected);
+    this._connectionId$.next(null);
   }
 
   send(frame: IFrame, options: ITransportSendOptions): void {
@@ -228,7 +243,7 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     }
 
     if (envelope.type === 'ready' && envelope.connectionId) {
-      this._connectionId = envelope.connectionId;
+      this._connectionId$.next(envelope.connectionId);
       return;
     }
     if (envelope.type === 'pong') {
@@ -277,8 +292,9 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     url.searchParams.set('v', '1');
     url.searchParams.set('mode', options.mode);
     url.searchParams.set('sessionId', options.sessionId);
-    if (options.connectionId ?? this._connectionId) {
-      url.searchParams.set('connectionId', options.connectionId ?? this._connectionId!);
+    const cachedConnectionId = this._connectionId$.getValue();
+    if (options.connectionId ?? cachedConnectionId) {
+      url.searchParams.set('connectionId', options.connectionId ?? cachedConnectionId!);
     }
     return url.toString();
   }
