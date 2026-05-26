@@ -206,12 +206,6 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
 
   const isShared = activeEntry.shared;
   const currentDriverId = driverState?.driverId ?? null;
-  // While shared, the daemon is authoritative — pin the toggle to the actual
-  // policy reported on the shareable list so the UI cannot drift from what the
-  // joiners are seeing.
-  const effectivePolicy: ISharedSessionInputPolicy = isShared
-    ? (activeEntry.inputPolicy ?? 'allow-input')
-    : pendingPolicy;
   // Share-mode toggle is owner-only and lives only before sharing begins. Hide
   // it (with the surrounding divider) while sharing is active or while the
   // initial copy is in flight — the owner must Stop sharing and start again
@@ -314,8 +308,7 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
             <>
               <div className={cn('tm:h-px tm:bg-line')} />
               <InputPolicyToggle
-                policy={effectivePolicy}
-                locked={isShared}
+                policy={pendingPolicy}
                 onChange={setPendingPolicy}
                 localeService={localeService}
               />
@@ -396,18 +389,18 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
 
 interface IInputPolicyToggleProps {
   readonly policy: ISharedSessionInputPolicy;
-  readonly locked: boolean;
   readonly onChange: (next: ISharedSessionInputPolicy) => void;
   readonly localeService: LocaleService;
 }
 
 /**
  * Owner-side share-mode picker. Two square buttons (Allow Input vs View only)
- * decide what every joiner can do for the lifetime of the share. The toggle
- * goes read-only once sharing is live — Termius behaviour — and surfaces a
- * hint to nudge the owner into Stop + Share to change modes.
+ * decide what every joiner can do for the lifetime of the share. The picker
+ * is only mounted before sharing starts — once a share is live the parent
+ * unmounts this whole section, forcing the owner to Stop + Share to switch
+ * modes (Termius semantics).
  */
-function InputPolicyToggle({ policy, locked, onChange, localeService }: IInputPolicyToggleProps): React.JSX.Element {
+function InputPolicyToggle({ policy, onChange, localeService }: IInputPolicyToggleProps): React.JSX.Element {
   const isAllow = policy === 'allow-input';
   const isView = policy === 'view-only';
   return (
@@ -421,7 +414,6 @@ function InputPolicyToggle({ policy, locked, onChange, localeService }: IInputPo
           label={localeService.t('terminal-ui.multiplayer.policy.allow-input')}
           description={localeService.t('terminal-ui.multiplayer.policy.allow-input-hint')}
           selected={isAllow}
-          disabled={locked}
           onSelect={() => onChange('allow-input')}
         />
         <PolicyChoiceButton
@@ -429,15 +421,9 @@ function InputPolicyToggle({ policy, locked, onChange, localeService }: IInputPo
           label={localeService.t('terminal-ui.multiplayer.policy.view-only')}
           description={localeService.t('terminal-ui.multiplayer.policy.view-only-hint')}
           selected={isView}
-          disabled={locked}
           onSelect={() => onChange('view-only')}
         />
       </div>
-      {locked && (
-        <span className={cn('tm:text-[11px] tm:text-grey-fg')}>
-          {localeService.t('terminal-ui.multiplayer.policy.locked-hint')}
-        </span>
-      )}
     </div>
   );
 }
@@ -447,26 +433,20 @@ interface IPolicyChoiceButtonProps {
   readonly label: string;
   readonly description: string;
   readonly selected: boolean;
-  readonly disabled: boolean;
   readonly onSelect: () => void;
 }
 
 function PolicyChoiceButton(props: IPolicyChoiceButtonProps): React.JSX.Element {
-  const { icon, label, description, selected, disabled, onSelect } = props;
+  const { icon, label, description, selected, onSelect } = props;
   return (
     <button
       type="button"
-      disabled={disabled}
       onClick={onSelect}
       className={cn(
-        `
-          tm:flex tm:flex-col tm:items-start tm:gap-1 tm:rounded-md tm:border tm:p-2 tm:text-left tm:transition-colors
-          tm:disabled:cursor-not-allowed tm:disabled:opacity-60
-        `,
+        'tm:flex tm:flex-col tm:items-start tm:gap-1 tm:rounded-md tm:border tm:p-2 tm:text-left tm:transition-colors',
         {
           'tm:border-blue tm:bg-blue/10': selected,
-          'tm:border-line tm:bg-black tm:hover:bg-one-bg2': !selected && !disabled,
-          'tm:border-line tm:bg-black': !selected && disabled,
+          'tm:border-line tm:bg-black tm:hover:bg-one-bg2': !selected,
         }
       )}
     >

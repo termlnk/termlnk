@@ -232,7 +232,6 @@ const locale: typeof enUS = {
         'allow-input-hint': '加入者可申请控制键盘，同时只允许一人输入。',
         'view-only': '只读',
         'view-only-hint': '加入者只能观看，无法输入。适合演示场景。',
-        'locked-hint': '分享期间模式锁定。停止分享后才能切换模式。',
       },
     },
   },
