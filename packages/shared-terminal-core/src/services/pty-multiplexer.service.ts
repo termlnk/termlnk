@@ -528,24 +528,17 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
     }
     switch (parsed.type) {
       case 'driver_request':
-        this._logService.log(`[DRIVER-DEBUG] mux driver_request sid=${runtime.source.id} clientId=${clientId} policy=${runtime.inputPolicySubject.getValue()} attached=${runtime.clients.has(clientId)} role=${runtime.clients.get(clientId)?.role ?? 'missing'}`);
         // Session-wide policy gate: in view-only shares the keyboard never
         // leaves the owner. Silently drop instead of `null`-returning further
         // down so the daemon log stays clean (this is the expected path on a
         // misbehaving client, not a fault).
         if (runtime.inputPolicySubject.getValue() === 'view-only') {
-          this._logService.log(`[DRIVER-DEBUG] mux driver_request DROPPED view-only sid=${runtime.source.id} clientId=${clientId}`);
           break;
         }
-        if (!this._driver.requestDriver(runtime.source.id, clientId)) {
-          this._logService.log(`[DRIVER-DEBUG] mux driver_request DENIED sid=${runtime.source.id} clientId=${clientId}`);
-        }
+        this._driver.requestDriver(runtime.source.id, clientId);
         break;
       case 'driver_release':
-        this._logService.log(`[DRIVER-DEBUG] mux driver_release sid=${runtime.source.id} clientId=${clientId} attached=${runtime.clients.has(clientId)} role=${runtime.clients.get(clientId)?.role ?? 'missing'}`);
-        if (!this._driver.releaseDriver(runtime.source.id, clientId)) {
-          this._logService.log(`[DRIVER-DEBUG] mux driver_release DENIED sid=${runtime.source.id} clientId=${clientId}`);
-        }
+        this._driver.releaseDriver(runtime.source.id, clientId);
         break;
       case 'heartbeat':
         // Timestamp already updated in handleInbound.

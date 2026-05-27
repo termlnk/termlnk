@@ -174,12 +174,6 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
       if (sid !== sessionId) {
         return;
       }
-      if (frame.channel === FrameChannel.SessionEvent) {
-        const parsed = this._tryParseDebugPayload(frame.payload);
-        if (parsed?.type === 'driver_handover') {
-          this._logService.log(`[DRIVER-DEBUG] daemon outbound driver_handover sid=${sessionId} target=${target} from=${parsed.fromClientId} to=${parsed.toClientId}`);
-        }
-      }
       try {
         transport.send(frame, { target });
       } catch (err) {
@@ -229,9 +223,6 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
       // an unknown clientId is a no-op, so without this branch the joiner can
       // never register itself.
       const parsed = tryDecodeControl(frame.payload);
-      if (parsed?.type && parsed.type !== 'heartbeat') {
-        this._logService.log(`[DRIVER-DEBUG] daemon inbound control sid=${sessionId} source=${source} type=${parsed.type}`);
-      }
       if (parsed?.type === 'client_join') {
         const role = parsed.role as SharedTerminalRole;
         const pubB64 = parsed.userPublicKey;
@@ -261,14 +252,6 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
       this._mux.handleInbound(sessionId, source, frame);
     } catch (err) {
       this._logService.warn('[ShareDaemonService] mux.handleInbound threw:', err);
-    }
-  }
-
-  private _tryParseDebugPayload(payload: Uint8Array): { type?: string; fromClientId?: string | null; toClientId?: string | null } | null {
-    try {
-      return JSON.parse(new TextDecoder().decode(payload)) as { type?: string; fromClientId?: string | null; toClientId?: string | null };
-    } catch {
-      return null;
     }
   }
 

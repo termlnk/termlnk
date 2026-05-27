@@ -249,16 +249,13 @@ export class DriverArbitrationService extends Disposable {
   requestDriver(sessionId: string, clientId: string): IDriverHandoverNotice | null {
     const state = this._sessions.get(sessionId);
     if (!state) {
-      this._logService.log(`[DRIVER-DEBUG] requestDriver DENIED unknown-session sid=${sessionId} clientId=${clientId}`);
       return null;
     }
     const liveness = state.clients.get(clientId);
     if (!liveness || !isWriterRole(liveness.role)) {
-      this._logService.log(`[DRIVER-DEBUG] requestDriver DENIED role sid=${sessionId} clientId=${clientId} role=${liveness?.role ?? 'missing'}`);
       return null;
     }
     if (state.driverLocked && state.driverId !== clientId) {
-      this._logService.log(`[DRIVER-DEBUG] requestDriver DENIED locked sid=${sessionId} clientId=${clientId} currentDriver=${state.driverId}`);
       return null;
     }
     const previous = state.driverId;
@@ -266,7 +263,6 @@ export class DriverArbitrationService extends Disposable {
     state.driverHeartbeatAt = Date.now();
     this._publish(sessionId, state);
     const handover: IDriverHandoverNotice = { sessionId, fromClientId: previous, toClientId: clientId };
-    this._logService.log(`[DRIVER-DEBUG] requestDriver GRANTED sid=${sessionId} from=${previous} to=${clientId}`);
     this._handovers$.next(handover);
     return handover;
   }
@@ -274,18 +270,15 @@ export class DriverArbitrationService extends Disposable {
   releaseDriver(sessionId: string, clientId: string): boolean {
     const state = this._sessions.get(sessionId);
     if (!state) {
-      this._logService.log(`[DRIVER-DEBUG] releaseDriver DENIED unknown-session sid=${sessionId} clientId=${clientId}`);
       return false;
     }
     if (state.driverId !== clientId) {
-      this._logService.log(`[DRIVER-DEBUG] releaseDriver DENIED not-driver sid=${sessionId} clientId=${clientId} currentDriver=${state.driverId}`);
       return false;
     }
     const previous = state.driverId;
     state.driverId = null;
     state.driverHeartbeatAt = 0;
     this._publish(sessionId, state);
-    this._logService.log(`[DRIVER-DEBUG] releaseDriver GRANTED sid=${sessionId} from=${previous}`);
     this._handovers$.next({ sessionId, fromClientId: previous, toClientId: null });
     return true;
   }
