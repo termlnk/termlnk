@@ -13,13 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITabAdornmentProps } from '@termlnk/terminal-ui';
 import type { ISharedSessionInputPolicy } from '@termlnk/shared-terminal';
+import type { ITabAdornmentProps } from '@termlnk/terminal-ui';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, useDependency, useObservable } from '@termlnk/design';
+import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, Spinner, useDependency, useObservable } from '@termlnk/design';
 import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-terminal';
 import { CrownIcon, EyeIcon, KeyboardIcon, LockIcon } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY } from 'rxjs';
 
 /**
@@ -38,6 +38,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
   const logService = useDependency(ILogService);
   const remote = useDependency(IRemoteSessionService, Quantity.OPTIONAL);
   const [open, setOpen] = useState(false);
+  const [keyboardActionPending, setKeyboardActionPending] = useState<'request' | 'release' | null>(null);
   const pointerActivationRef = useRef(false);
 
   const stateObservable = useMemo(
@@ -79,6 +80,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
   );
   const isConnected = connectionState === RemoteSessionStatus.CONNECTED;
   const isViewOnly = inputPolicy === 'view-only';
+  const isKeyboardActionPending = keyboardActionPending !== null;
   // Status-dot colour on the keyboard icon, mirroring the owner-side trigger:
   //   blue → I am the driver
   //   yellow → another joiner / owner is driving
@@ -90,36 +92,66 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
       : 'idle';
 
   const handleRequestKeyboard = useCallback(async () => {
-    // [DRIVER-DEBUG] temporary diagnostic (renderer console / DevTools).
-    logService.log(`[DRIVER-DEBUG-UI] handleRequestKeyboard fired remote=${!!remote} sessionId=${sessionId}`);
     if (!remote) {
       return;
     }
+    setKeyboardActionPending('request');
     try {
       await remote.sendControl(sessionId, { type: 'driver_request' });
-      logService.log(`[DRIVER-DEBUG-UI] sendControl resolved sessionId=${sessionId}`);
     } catch (err) {
+      setKeyboardActionPending(null);
       logService.warn('[RemoteTabAdornment] driver_request failed:', err);
     }
-  }, [remote, logService, sessionId]);
+  }, [remote, sessionId, logService]);
 
   const handleReleaseKeyboard = useCallback(async () => {
-    logService.log(`[DRIVER-DEBUG-UI] handleReleaseKeyboard fired remote=${!!remote} sessionId=${sessionId}`);
     if (!remote) {
       return;
     }
+    setKeyboardActionPending('release');
     try {
       await remote.sendControl(sessionId, { type: 'driver_release' });
-      logService.log(`[DRIVER-DEBUG-UI] sendControl release resolved sessionId=${sessionId}`);
     } catch (err) {
+      setKeyboardActionPending(null);
       logService.warn('[RemoteTabAdornment] driver_release failed:', err);
     }
-  }, [remote, logService, sessionId]);
+  }, [remote, sessionId, logService]);
 
   const handleKeyboardAction = useCallback(() => {
-    logService.log(`[DRIVER-DEBUG-UI] keyboard action isDriver=${isDriver} isConnected=${isConnected} willCall=${isDriver ? 'release' : 'request'}`);
+    if (!isConnected || isKeyboardActionPending) {
+      return;
+    }
     void (isDriver ? handleReleaseKeyboard() : handleRequestKeyboard());
-  }, [handleReleaseKeyboard, handleRequestKeyboard, isConnected, isDriver, logService]);
+  }, [handleReleaseKeyboard, handleRequestKeyboard, isConnected, isDriver, isKeyboardActionPending]);
+
+  useEffect(() => {
+    if (!keyboardActionPending) {
+      pointerActivationRef.current = false;
+      return;
+    }
+    if (!isConnected) {
+      setKeyboardActionPending(null);
+      return;
+    }
+    if (
+      (keyboardActionPending === 'request' && isDriver)
+      || (keyboardActionPending === 'release' && !isDriver)
+    ) {
+      setKeyboardActionPending(null);
+    }
+  }, [isConnected, isDriver, keyboardActionPending]);
+
+  useEffect(() => {
+    if (!keyboardActionPending) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setKeyboardActionPending(null);
+    }, 5000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [keyboardActionPending]);
 
   if (!remote) {
     return null;
@@ -154,10 +186,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
           {isConnected && (
             <span
               className={cn(
-                `
-                  tm:absolute tm:right-0 tm:bottom-0 tm:size-1.5 tm:rounded-full tm:ring-1
-                  tm:ring-black
-                `,
+                'tm:absolute tm:right-0 tm:bottom-0 tm:size-1.5 tm:rounded-full tm:ring-1 tm:ring-black',
                 {
                   'tm:bg-blue': driverDotTone === 'self',
                   'tm:bg-yellow': driverDotTone === 'other',
@@ -172,12 +201,6 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
         align="end"
         sideOffset={6}
         className={cn('electron-no-drag tm:w-64 tm:p-3')}
-        onPointerDownCapture={() => {
-          logService.log(`[DRIVER-DEBUG-UI] popover pointerdown capture isConnected=${isConnected} inputPolicy=${inputPolicy}`);
-        }}
-        onClickCapture={() => {
-          logService.log('[DRIVER-DEBUG-UI] popover click capture');
-        }}
       >
         <div className={cn('electron-no-drag tm:flex tm:flex-col tm:gap-3')}>
           <div className={cn('tm:flex tm:flex-col tm:gap-1.5')}>
@@ -206,8 +229,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
               <div className={cn('tm:flex tm:flex-col tm:gap-1.5')}>
                 <div
                   className={cn(`
-                    tm:flex tm:items-center tm:gap-1.5 tm:rounded-md tm:bg-one-bg tm:px-2 tm:py-2
-                    tm:text-xs tm:text-grey-fg
+                    tm:flex tm:items-center tm:gap-1.5 tm:rounded-md tm:bg-one-bg tm:p-2 tm:text-xs tm:text-grey-fg
                   `)}
                 >
                   <LockIcon className={cn('tm:size-3.5')} />
@@ -223,51 +245,45 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
                 <Button
                   variant={isDriver ? 'outline' : 'default'}
                   size="sm"
-                  disabled={!isConnected}
+                  disabled={!isConnected || isKeyboardActionPending}
+                  aria-busy={isKeyboardActionPending}
                   onPointerDownCapture={(e) => {
-                    logService.log(`[DRIVER-DEBUG-UI] request button pointerdown capture disabled=${!isConnected}`);
-                    if (!isConnected || e.button !== 0) {
+                    if (!isConnected || isKeyboardActionPending || e.button !== 0) {
                       return;
                     }
                     e.preventDefault();
                     e.stopPropagation();
                     pointerActivationRef.current = true;
-                    logService.log('[DRIVER-DEBUG-UI] request button pointerdown action');
                     handleKeyboardAction();
                   }}
                   onPointerUp={(e) => {
-                    if (!isConnected) {
+                    if (!isConnected || isKeyboardActionPending) {
                       return;
                     }
                     if (pointerActivationRef.current) {
                       e.preventDefault();
                       e.stopPropagation();
-                      logService.log('[DRIVER-DEBUG-UI] request button pointerup skipped after pointerdown activation');
                       return;
                     }
                     e.preventDefault();
                     e.stopPropagation();
                     pointerActivationRef.current = true;
-                    logService.log('[DRIVER-DEBUG-UI] request button pointerup action');
                     handleKeyboardAction();
-                  }}
-                  onClickCapture={() => {
-                    logService.log('[DRIVER-DEBUG-UI] request button click capture');
                   }}
                   onClick={(e) => {
                     if (pointerActivationRef.current) {
                       pointerActivationRef.current = false;
                       e.preventDefault();
                       e.stopPropagation();
-                      logService.log('[DRIVER-DEBUG-UI] button onClick skipped after pointer activation');
                       return;
                     }
-                    logService.log('[DRIVER-DEBUG-UI] button onClick fallback action');
                     handleKeyboardAction();
                   }}
                   className={cn('electron-no-drag tm:w-full tm:gap-1.5')}
                 >
-                  <KeyboardIcon className={cn('tm:size-3.5')} />
+                  {isKeyboardActionPending
+                    ? <Spinner className={cn('tm:size-3.5')} />
+                    : <KeyboardIcon className={cn('tm:size-3.5')} />}
                   {isDriver
                     ? localeService.t('shared-terminal-ui.remote.release-keyboard')
                     : localeService.t('shared-terminal-ui.remote.request-keyboard')}
