@@ -15,18 +15,23 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: '欢迎使用 Termlnk',
+      subtitle: '登录或注册，同步你的主机与配置。',
+    },
+    tabs: {
+      login: '登录',
+      register: '注册',
+    },
     login: {
       email: '邮箱',
       'email-placeholder': 'you@example.com',
       password: '密码',
       'password-placeholder': '请输入你的密码',
-      'password-helper': '端到端加密，密码遗忘将无法找回。',
       'trust-banner': '密码仅在本机派生，不会发送到服务器。',
       'remember-me': '在本设备保持登录',
       submit: '登录',
       submitting: '登录中…',
-      'no-account': '还没有账号？',
-      'go-register': '立即注册',
     },
     register: {
       email: '邮箱',
@@ -42,8 +47,6 @@ export default {
       confirm: '确认密码',
       submit: '注册',
       submitting: '注册中…',
-      'have-account': '已有账号？',
-      'go-login': '直接登录',
     },
     account: {
       'email-verified': '邮箱已验证',

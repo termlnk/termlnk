@@ -36,17 +36,21 @@ export function AccountPanel(props: IAccountPanelProps) {
   const joinedAt = formatJoinedAt(user.createdAt);
 
   return (
-    <div className={cn('tm:flex tm:flex-col tm:gap-4 tm:p-1')}>
-      <div className={cn('tm:flex tm:items-center tm:gap-4 tm:border-b tm:border-line tm:pb-4')}>
-        <Avatar className={cn('tm:size-12')}>
+    <div
+      className={cn('tm:flex tm:flex-col tm:gap-5 tm:rounded-lg tm:border tm:border-line tm:bg-one-bg/50 tm:p-5')}
+    >
+      <div className={cn('tm:flex tm:items-center tm:gap-4')}>
+        <Avatar className={cn('tm:size-14 tm:ring-2 tm:ring-line/80')}>
           {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={displayName} />}
-          <AvatarFallback>{avatarFallback}</AvatarFallback>
+          <AvatarFallback className={cn('tm:bg-one-bg2 tm:text-lg tm:font-semibold tm:text-light-grey')}>
+            {avatarFallback}
+          </AvatarFallback>
         </Avatar>
-        <div className={cn('tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:gap-1')}>
-          <div className={cn('tm:truncate tm:text-base tm:font-semibold tm:text-light-grey')}>
+        <div className={cn('tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:gap-1.5')}>
+          <div className={cn('tm:truncate tm:text-base tm:font-semibold tm:text-white')}>
             {displayName}
           </div>
-          <div className={cn('tm:flex tm:flex-wrap tm:items-center tm:gap-2')}>
+          <div className={cn('tm:flex tm:min-w-0 tm:flex-wrap tm:items-center tm:gap-2')}>
             <span className={cn('tm:truncate tm:text-sm tm:text-grey-fg')}>
               {user.email}
             </span>
@@ -67,17 +71,12 @@ export function AccountPanel(props: IAccountPanelProps) {
         </div>
       </div>
 
-      {joinedAt && (
-        <div
-          className={cn(`
-            tm:flex tm:items-center tm:justify-between tm:border-b tm:border-line tm:pb-4 tm:text-xs tm:text-grey-fg
-          `)}
-        >
-          <span>{localeService.t('auth-ui.account.joined-at', joinedAt)}</span>
-        </div>
-      )}
-
-      <div className={cn('tm:flex tm:items-center tm:justify-end')}>
+      <div
+        className={cn('tm:flex tm:items-center tm:justify-between tm:gap-3 tm:border-t tm:border-line tm:pt-4')}
+      >
+        <span className={cn('tm:text-xs tm:text-grey-fg')}>
+          {joinedAt ? localeService.t('auth-ui.account.joined-at', joinedAt) : ''}
+        </span>
         <Button
           variant="ghost"
           size="sm"

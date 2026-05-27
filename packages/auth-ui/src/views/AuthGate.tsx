@@ -16,9 +16,11 @@
 import type { IAuthError, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
 import { AuthState, IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { cn, useDependency, useObservable } from '@termlnk/design';
+import { cn, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
+import { ShieldCheckIcon } from 'lucide-react';
 import { useState } from 'react';
 import { AccountPanel } from './AccountPanel';
+import { BrandHeader } from './BrandHeader';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
 
@@ -101,37 +103,59 @@ export function AuthGate() {
     setLocalError(message);
   };
 
-  if (viewMode === 'register') {
-    return (
-      <RegisterForm
-        busy={busy}
-        errorMessage={errorMessage}
-        onSwitchToLogin={() => switchTo('login')}
-        onSubmit={async (input: IRegisterInput) => {
-          beforeSubmit();
-          try {
-            await authClient.register(input);
-          } catch (err) {
-            handleSubmitError('register', err);
-          }
-        }}
-      />
-    );
-  }
-
   return (
-    <LoginForm
-      busy={busy}
-      errorMessage={errorMessage}
-      onSwitchToRegister={() => switchTo('register')}
-      onSubmit={async (input: ILoginInput) => {
-        beforeSubmit();
-        try {
-          await authClient.login(input);
-        } catch (err) {
-          handleSubmitError('login', err);
-        }
-      }}
-    />
+    <div className={cn('tm:flex tm:flex-col tm:gap-6')}>
+      <BrandHeader
+        title={localeService.t('auth-ui.welcome.title')}
+        subtitle={localeService.t('auth-ui.welcome.subtitle')}
+      />
+
+      <Tabs value={viewMode} onValueChange={(value) => switchTo(value as ViewMode)}>
+        <TabsList className={cn('tm:grid tm:w-full tm:grid-cols-2')}>
+          <TabsTrigger value="login">{localeService.t('auth-ui.tabs.login')}</TabsTrigger>
+          <TabsTrigger value="register">{localeService.t('auth-ui.tabs.register')}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="login" className={cn('tm:mt-1')}>
+          <LoginForm
+            busy={busy}
+            errorMessage={errorMessage}
+            onSubmit={async (input: ILoginInput) => {
+              beforeSubmit();
+              try {
+                await authClient.login(input);
+              } catch (err) {
+                handleSubmitError('login', err);
+              }
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="register" className={cn('tm:mt-1')}>
+          <RegisterForm
+            busy={busy}
+            errorMessage={errorMessage}
+            onSubmit={async (input: IRegisterInput) => {
+              beforeSubmit();
+              try {
+                await authClient.register(input);
+              } catch (err) {
+                handleSubmitError('register', err);
+              }
+            }}
+          />
+        </TabsContent>
+      </Tabs>
+
+      <div
+        className={cn(`
+          tm:flex tm:items-start tm:gap-2 tm:rounded-md tm:border tm:border-blue/20 tm:bg-blue/8 tm:px-3 tm:py-2
+          tm:text-xs tm:text-grey-fg
+        `)}
+      >
+        <ShieldCheckIcon className={cn('tm:mt-0.5 tm:size-3.5 tm:shrink-0 tm:text-blue')} />
+        <span>{localeService.t('auth-ui.login.trust-banner')}</span>
+      </div>
+    </div>
   );
 }

@@ -15,25 +15,12 @@
 
 import type { ILoginInput } from '@termlnk/auth';
 import { LocaleService } from '@termlnk/core';
-import {
-  Button,
-  Checkbox,
-  cn,
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  Input,
-  Label,
-  useDependency,
-} from '@termlnk/design';
-import { ShieldCheckIcon, TriangleAlertIcon } from 'lucide-react';
+import { Button, Checkbox, cn, Field, FieldContent, FieldGroup, FieldLabel, Input, Label, useDependency } from '@termlnk/design';
+import { TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
 
 export interface ILoginFormProps {
   readonly onSubmit: (input: ILoginInput) => Promise<void> | void;
-  readonly onSwitchToRegister?: () => void;
   readonly errorMessage?: string;
   readonly busy?: boolean;
 }
@@ -62,9 +49,9 @@ export function LoginForm(props: ILoginFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className={cn('tm:flex tm:flex-col tm:gap-4 tm:p-1')}
+      className={cn('tm:flex tm:flex-col tm:gap-5')}
     >
-      <FieldGroup>
+      <FieldGroup className={cn('tm:gap-4')}>
         <Field>
           <FieldLabel htmlFor="auth-ui-login-email">
             {localeService.t('auth-ui.login.email')}
@@ -99,23 +86,9 @@ export function LoginForm(props: ILoginFormProps) {
               placeholder={localeService.t('auth-ui.login.password-placeholder')}
               disabled={props.busy}
             />
-            <FieldDescription>
-              {localeService.t('auth-ui.login.password-helper')}
-            </FieldDescription>
           </FieldContent>
         </Field>
       </FieldGroup>
-
-      {/* Trust banner: the master key never crosses IPC nor reaches the server (see packages/auth). */}
-      <div
-        className={cn(`
-          tm:flex tm:items-start tm:gap-2 tm:rounded-md tm:border tm:border-blue/20 tm:bg-blue/8 tm:px-3 tm:py-2
-          tm:text-xs tm:text-grey-fg
-        `)}
-      >
-        <ShieldCheckIcon className={cn('tm:mt-0.5 tm:size-3.5 tm:shrink-0 tm:text-blue')} />
-        <span>{localeService.t('auth-ui.login.trust-banner')}</span>
-      </div>
 
       <div className={cn('tm:flex tm:items-center tm:gap-2')}>
         <Checkbox
@@ -141,27 +114,16 @@ export function LoginForm(props: ILoginFormProps) {
         </div>
       )}
 
-      <Button type="submit" disabled={!canSubmit} className={cn('tm:w-full tm:font-semibold')}>
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={!canSubmit}
+        className={cn('tm:h-10 tm:w-full tm:font-semibold')}
+      >
         {props.busy
           ? localeService.t('auth-ui.login.submitting')
           : localeService.t('auth-ui.login.submit')}
       </Button>
-
-      {props.onSwitchToRegister && (
-        <div className={cn('tm:flex tm:items-center tm:justify-center tm:gap-1 tm:text-sm tm:text-grey-fg')}>
-          <span>{localeService.t('auth-ui.login.no-account')}</span>
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={props.onSwitchToRegister}
-            disabled={props.busy}
-            className={cn('tm:h-auto tm:px-0 tm:font-medium')}
-          >
-            {localeService.t('auth-ui.login.go-register')}
-          </Button>
-        </div>
-      )}
     </form>
   );
 }

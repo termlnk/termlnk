@@ -15,18 +15,23 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: 'Welcome to Termlnk',
+      subtitle: 'Sign in or create an account to sync your hosts and settings.',
+    },
+    tabs: {
+      login: 'Sign in',
+      register: 'Sign up',
+    },
     login: {
       email: 'Email',
       'email-placeholder': 'you@example.com',
       password: 'Password',
       'password-placeholder': 'Enter your password',
-      'password-helper': 'End-to-end encrypted. A forgotten password cannot be recovered.',
       'trust-banner': 'Your password is derived locally and never sent to the server.',
       'remember-me': 'Stay signed in on this device',
       submit: 'Sign in',
       submitting: 'Signing in…',
-      'no-account': "Don't have an account?",
-      'go-register': 'Create one',
     },
     register: {
       email: 'Email',
@@ -42,8 +47,6 @@ export default {
       confirm: 'Confirm password',
       submit: 'Create account',
       submitting: 'Creating…',
-      'have-account': 'Already have an account?',
-      'go-login': 'Sign in',
     },
     account: {
       'email-verified': 'Email verified',

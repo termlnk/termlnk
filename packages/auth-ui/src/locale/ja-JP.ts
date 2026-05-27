@@ -15,18 +15,23 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: 'Termlnk へようこそ',
+      subtitle: 'サインインまたは新規登録して、ホストと設定を同期しましょう。',
+    },
+    tabs: {
+      login: 'サインイン',
+      register: '新規登録',
+    },
     login: {
       email: 'メールアドレス',
       'email-placeholder': 'you@example.com',
       password: 'パスワード',
       'password-placeholder': 'パスワードを入力',
-      'password-helper': 'エンドツーエンドで暗号化されます。パスワードを忘れると復元できません。',
       'trust-banner': 'パスワードはローカルで派生され、サーバーに送信されることはありません。',
       'remember-me': 'このデバイスでサインインしたままにする',
       submit: 'サインイン',
       submitting: 'サインイン中…',
-      'no-account': 'アカウントをお持ちでないですか？',
-      'go-register': '新規登録',
     },
     register: {
       email: 'メールアドレス',
@@ -42,8 +47,6 @@ export default {
       confirm: 'パスワード（確認）',
       submit: 'アカウント作成',
       submitting: '作成中…',
-      'have-account': 'すでにアカウントをお持ちですか？',
-      'go-login': 'サインインへ',
     },
     account: {
       'email-verified': 'メール認証済み',

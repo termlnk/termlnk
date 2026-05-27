@@ -15,18 +15,23 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: '歡迎使用 Termlnk',
+      subtitle: '登入或註冊，同步你的主機與設定。',
+    },
+    tabs: {
+      login: '登入',
+      register: '註冊',
+    },
     login: {
       email: '信箱',
       'email-placeholder': 'you@example.com',
       password: '密碼',
       'password-placeholder': '請輸入你的密碼',
-      'password-helper': '端對端加密，密碼遺忘將無法找回。',
       'trust-banner': '密碼僅在本機派生，不會傳送至伺服器。',
       'remember-me': '在本裝置保持登入',
       submit: '登入',
       submitting: '登入中…',
-      'no-account': '還沒有帳號？',
-      'go-register': '立即註冊',
     },
     register: {
       email: '信箱',
@@ -42,8 +47,6 @@ export default {
       confirm: '確認密碼',
       submit: '註冊',
       submitting: '註冊中…',
-      'have-account': '已有帳號？',
-      'go-login': '直接登入',
     },
     account: {
       'email-verified': '信箱已驗證',

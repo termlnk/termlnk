@@ -15,18 +15,23 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: 'Termlnk에 오신 것을 환영합니다',
+      subtitle: '로그인하거나 계정을 만들어 호스트와 설정을 동기화하세요.',
+    },
+    tabs: {
+      login: '로그인',
+      register: '회원가입',
+    },
     login: {
       email: '이메일',
       'email-placeholder': 'you@example.com',
       password: '비밀번호',
       'password-placeholder': '비밀번호를 입력하세요',
-      'password-helper': '엔드 투 엔드로 암호화되며, 비밀번호를 잊으면 복구할 수 없습니다.',
       'trust-banner': '비밀번호는 로컬에서 파생되며 서버로 전송되지 않습니다.',
       'remember-me': '이 기기에서 로그인 상태 유지',
       submit: '로그인',
       submitting: '로그인 중…',
-      'no-account': '계정이 없으신가요?',
-      'go-register': '회원가입',
     },
     register: {
       email: '이메일',
@@ -42,8 +47,6 @@ export default {
       confirm: '비밀번호 확인',
       submit: '계정 생성',
       submitting: '생성 중…',
-      'have-account': '이미 계정이 있으신가요?',
-      'go-login': '로그인',
     },
     account: {
       'email-verified': '이메일 인증됨',
