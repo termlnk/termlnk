@@ -14,10 +14,12 @@
  */
 
 import type { IHookLauncherService } from '@termlnk/agent';
+import type { IAgentCorePluginConfig } from '../../controllers/config.schema';
 import { accessSync, chmodSync, copyFileSync, existsSync, constants as fsConstants, mkdirSync, statSync } from 'node:fs';
 import { platform } from 'node:os';
 import { join } from 'node:path';
-import { Disposable, ILogService } from '@termlnk/core';
+import { Disposable, IConfigService, ILogService } from '@termlnk/core';
+import { AGENT_CORE_PLUGIN_CONFIG_KEY } from '../../controllers/config.schema';
 
 const BIN_DIR_NAME = 'bin';
 const HELPER_FILE = 'hook-helper.js';
@@ -42,8 +44,7 @@ export class HookLauncherService extends Disposable implements IHookLauncherServ
   private readonly _isWindows = platform() === 'win32';
 
   constructor(
-    private readonly _configPath: string | undefined,
-    private readonly _sourceDir: string | undefined,
+    @IConfigService private readonly _configService: IConfigService,
     @ILogService private readonly _logService: ILogService
   ) {
     super();
@@ -59,26 +60,24 @@ export class HookLauncherService extends Disposable implements IHookLauncherServ
   }
 
   async install(): Promise<boolean> {
-    if (!this._configPath) {
-      this._logService.warn(
-        '[HookLauncherService]',
-        'No configPath configured; external-terminal hook support disabled'
-      );
+    const config = this._configService.getConfig<IAgentCorePluginConfig>(AGENT_CORE_PLUGIN_CONFIG_KEY);
+    const configPath = config?.configPath;
+    const hookCliSrcDir = config?.hookCliSrcDir;
+
+    if (!configPath) {
+      this._logService.warn('[HookLauncherService]', 'No configPath configured; external-terminal hook support disabled');
       this._available = false;
       return false;
     }
-    if (!this._sourceDir) {
-      this._logService.warn(
-        '[HookLauncherService]',
-        'No hookCliSrcDir configured; external-terminal hook support disabled'
-      );
+    if (!hookCliSrcDir) {
+      this._logService.warn('[HookLauncherService]', 'No hookCliSrcDir configured; external-terminal hook support disabled');
       this._available = false;
       return false;
     }
-    if (!existsSync(this._sourceDir)) {
+    if (!existsSync(hookCliSrcDir)) {
       this._logService.warn(
         '[HookLauncherService]',
-        `Source dir ${this._sourceDir} does not exist; external-terminal hook support disabled`
+        `Source dir ${hookCliSrcDir} does not exist; external-terminal hook support disabled`
       );
       this._available = false;
       return false;
@@ -105,11 +104,14 @@ export class HookLauncherService extends Disposable implements IHookLauncherServ
   }
 
   private _resolveBinDir(): string {
-    return join(this._configPath!, BIN_DIR_NAME);
+    const config = this._configService.getConfig<IAgentCorePluginConfig>(AGENT_CORE_PLUGIN_CONFIG_KEY);
+    return join(config!.configPath!, BIN_DIR_NAME);
   }
 
   private _installFile(destName: string, srcName: string, binDir: string, executable: boolean): void {
-    const src = join(this._sourceDir!, srcName);
+    const config = this._configService.getConfig<IAgentCorePluginConfig>(AGENT_CORE_PLUGIN_CONFIG_KEY);
+
+    const src = join(config!.hookCliSrcDir!, srcName);
     const dest = join(binDir, destName);
     if (this._shouldOverwrite(src, dest)) {
       copyFileSync(src, dest);

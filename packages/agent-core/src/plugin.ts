@@ -57,7 +57,8 @@ export class AgentCorePlugin extends Plugin {
   constructor(
     private readonly _config: IAgentCorePluginConfig = defaultPluginConfig,
     @Inject(Injector) protected override _injector: Injector,
-    @IConfigService private readonly _configService: IConfigService
+    @IConfigService private readonly _configService: IConfigService,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
 
@@ -99,15 +100,7 @@ export class AgentCorePlugin extends Plugin {
       [IAgentMonitorService, { useClass: AgentMonitorService }],
       [IAgentHookServerService, { useClass: AgentHookServerService }],
       [IAgentHookRegistryService, { useClass: AgentHookRegistryService }],
-      [IHookLauncherService, {
-        // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
-        useFactory: (logService: ILogService) => new HookLauncherService(
-          this._config.configPath,
-          this._config.hookCliSrcDir,
-          logService
-        ),
-        deps: [ILogService],
-      }],
+      [IHookLauncherService, { useClass: HookLauncherService }],
 
       // MCP services
       [IAgentToolRegistryService, { useClass: AgentToolRegistryService }],
@@ -136,6 +129,8 @@ export class AgentCorePlugin extends Plugin {
 
   override onReady(): void {
     touchDependencies(this._injector, [
+      [IHookLauncherService],
+
       [AgentHookController],
       [AIKeySyncController],
       [MyMcpController],
@@ -147,9 +142,8 @@ export class AgentCorePlugin extends Plugin {
     ]);
 
     const aiAgentService = this._injector.get(IAIAgentService);
-    const logService = this._injector.get(ILogService);
     aiAgentService.restoreLastSession().catch((err) => {
-      logService.error('[AgentCorePlugin] restoreLastSession failed:', err);
+      this._logService.error('[AgentCorePlugin] restoreLastSession failed:', err);
     });
   }
 }
