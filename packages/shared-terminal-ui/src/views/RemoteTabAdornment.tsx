@@ -19,7 +19,7 @@ import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, useDependency, useObservable } from '@termlnk/design';
 import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-terminal';
 import { CrownIcon, EyeIcon, KeyboardIcon, LockIcon } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { EMPTY } from 'rxjs';
 
 /**
@@ -38,6 +38,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
   const logService = useDependency(ILogService);
   const remote = useDependency(IRemoteSessionService, Quantity.OPTIONAL);
   const [open, setOpen] = useState(false);
+  const pointerActivationRef = useRef(false);
 
   const stateObservable = useMemo(
     () => remote?.status$(sessionId) ?? EMPTY,
@@ -110,6 +111,10 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
     }
   }, [remote, logService, sessionId]);
 
+  const handleKeyboardAction = useCallback(() => {
+    void (isDriver ? handleReleaseKeyboard() : handleRequestKeyboard());
+  }, [handleReleaseKeyboard, handleRequestKeyboard, isDriver]);
+
   if (!remote) {
     return null;
   }
@@ -160,9 +165,9 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
       <PopoverContent
         align="end"
         sideOffset={6}
-        className={cn('tm:w-64 tm:p-3')}
+        className={cn('electron-no-drag tm:w-64 tm:p-3')}
       >
-        <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
+        <div className={cn('electron-no-drag tm:flex tm:flex-col tm:gap-3')}>
           <div className={cn('tm:flex tm:flex-col tm:gap-1.5')}>
             {isDriver
               ? (
@@ -207,8 +212,39 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
                   variant={isDriver ? 'outline' : 'default'}
                   size="sm"
                   disabled={!isConnected}
-                  onClick={() => { void (isDriver ? handleReleaseKeyboard() : handleRequestKeyboard()); }}
-                  className={cn('tm:w-full tm:gap-1.5')}
+                  onPointerDownCapture={(e) => {
+                    if (!isConnected || e.button !== 0) {
+                      return;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pointerActivationRef.current = true;
+                    handleKeyboardAction();
+                  }}
+                  onPointerUp={(e) => {
+                    if (!isConnected) {
+                      return;
+                    }
+                    if (pointerActivationRef.current) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pointerActivationRef.current = true;
+                    handleKeyboardAction();
+                  }}
+                  onClick={(e) => {
+                    if (pointerActivationRef.current) {
+                      pointerActivationRef.current = false;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    handleKeyboardAction();
+                  }}
+                  className={cn('electron-no-drag tm:w-full tm:gap-1.5')}
                 >
                   <KeyboardIcon className={cn('tm:size-3.5')} />
                   {isDriver

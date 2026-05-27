@@ -2,9 +2,11 @@
 @import '@termlnk/shared/tailwind/theme.css';
 
 .electron-dragable {
+  -webkit-app-region: drag;
   app-region: drag;
 }
 
 .electron-no-drag {
+  -webkit-app-region: no-drag;
   app-region: no-drag;
 }
