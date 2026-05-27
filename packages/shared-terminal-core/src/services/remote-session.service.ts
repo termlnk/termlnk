@@ -160,6 +160,10 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
   private async _performConnect(parsed: IParsedInvite): Promise<IRemoteSessionCreateResult> {
     const sessionId = parsed.capability.sid;
 
+    // [DRIVER-DEBUG] temporary diagnostic — remove after root-causing the
+    // "request keyboard" no-op. Shows the role the invite capability grants us.
+    this._logService.log(`[DRIVER-DEBUG] performConnect sid=${sessionId} capability.role=${parsed.capability.role} inviteId=${parsed.inviteId}`);
+
     const config = this._configService.getConfig<ISharedTerminalPluginConfig>(SHARED_TERMINAL_PLUGIN_CONFIG_KEY);
     const relayBaseUrl = config?.relayBaseUrl?.replace(/\/+$/, '');
     if (!relayBaseUrl) {
@@ -185,11 +189,15 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
         const claim = await this._inviteTransport.claim(parsed.inviteId, { capabilityHash });
         claimedConnectionId = claim.connectionId;
         relayClaimToken = claim.relayClaimToken;
+        // [DRIVER-DEBUG] temporary diagnostic — invite-claim path (cross/same account).
+        this._logService.log(`[DRIVER-DEBUG] invite claim OK connectionId=${claimedConnectionId}`);
       } catch (err) {
         if (isInactiveInviteClaimError(err)) {
           this._logService.warn('[RemoteSessionService] invite claim rejected because the invite is inactive:', err);
           throw new Error(SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE);
         }
+        // [DRIVER-DEBUG] temporary diagnostic — same-account fallback path.
+        this._logService.log(`[DRIVER-DEBUG] invite claim FAILED -> same-account fallback (connectionId stays undefined): ${err instanceof Error ? err.message : String(err)}`);
         this._logService.warn('[RemoteSessionService] invite claim failed; falling back to same-account attach:', err);
       }
     }

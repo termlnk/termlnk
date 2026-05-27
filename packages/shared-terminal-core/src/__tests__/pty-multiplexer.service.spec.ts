@@ -226,6 +226,28 @@ describe('PtyMultiplexerService', () => {
     expect(event.toClientId).toBe('b');
   });
 
+  it('driver_release control frame clears and broadcasts driver role', () => {
+    const ts = createSource('s1');
+    mux.register(ts.source);
+    mux.attachClient('s1', 'a', SharedTerminalRole.CoPilot);
+    mux.setDriver('s1', 'a');
+    outbound = [];
+
+    mux.handleInbound('s1', 'a', controlFrame({ type: 'driver_release' }));
+
+    let drv: { driverId: string | null } = { driverId: 'sentinel' };
+    mux.driverState$('s1').subscribe((s) => {
+      drv = s;
+    });
+    expect(drv.driverId).toBeNull();
+
+    const handover = outbound.find((f) => f.frame.channel === FrameChannel.SessionEvent);
+    const event = JSON.parse(new TextDecoder().decode(handover!.frame.payload));
+    expect(event.type).toBe('driver_handover');
+    expect(event.fromClientId).toBe('a');
+    expect(event.toClientId).toBeNull();
+  });
+
   it('driver lock prevents takeover', () => {
     const ts = createSource('s1');
     mux.register(ts.source);

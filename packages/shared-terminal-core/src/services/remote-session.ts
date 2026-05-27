@@ -141,6 +141,8 @@ export class RemoteSession extends Disposable implements IRemoteSession {
       role: this._capability.role,
       userPublicKey: bytesToBase64Url(userPublicKey),
     };
+    // [DRIVER-DEBUG] temporary diagnostic — the role we declare to the owner.
+    this._logService.log(`[DRIVER-DEBUG] sendClientJoin sid=${this._sessionId} role=${this._capability.role}`);
     this._sendControlInternal(message);
   }
 
@@ -167,8 +169,15 @@ export class RemoteSession extends Disposable implements IRemoteSession {
   }
 
   async sendControl(message: object): Promise<void> {
+    const type = (message as { type?: string }).type;
     if (this._status$.getValue() !== RemoteSessionStatus.CONNECTED) {
+      // [DRIVER-DEBUG] temporary diagnostic — control dropped because not CONNECTED.
+      this._logService.log(`[DRIVER-DEBUG] sendControl DROPPED (status=${this._status$.getValue()}) type=${type}`);
       return;
+    }
+    // [DRIVER-DEBUG] temporary diagnostic — control about to hit the wire (skip noisy heartbeats).
+    if (type !== 'heartbeat') {
+      this._logService.log(`[DRIVER-DEBUG] sendControl OK type=${type} myConnectionId=${this._connectionId$.getValue()}`);
     }
     this._sendControlInternal(message);
   }
@@ -261,6 +270,8 @@ export class RemoteSession extends Disposable implements IRemoteSession {
     // against driverId, participant ids, etc. The transport learns it from the
     // `ready` envelope after the WebSocket upgrade; we mirror it 1:1.
     this._subscriptions.push(this._transport.connectionId$.subscribe((id) => {
+      // [DRIVER-DEBUG] temporary diagnostic — the relay-assigned id that is "me".
+      this._logService.log(`[DRIVER-DEBUG] connectionId assigned sid=${this._sessionId} myConnectionId=${id}`);
       this._connectionId$.next(id);
     }));
 
@@ -351,6 +362,10 @@ export class RemoteSession extends Disposable implements IRemoteSession {
       }
       case 'driver_handover': {
         const handover = parsed as { fromClientId?: string | null; toClientId?: string | null };
+        // [DRIVER-DEBUG] temporary diagnostic — the owner's arbitration result.
+        // isMe=true means the button SHOULD flip to "release"; if it stays as
+        // "request", the toClientId vs myConnectionId mismatch is the bug.
+        this._logService.log(`[DRIVER-DEBUG] driver_handover RECEIVED from=${handover.fromClientId} to=${handover.toClientId} myConnectionId=${this._connectionId$.getValue()} isMe=${handover.toClientId === this._connectionId$.getValue()}`);
         this._driverId$.next(handover.toClientId ?? null);
         this._event$.next({
           type: 'driver_handover',
@@ -397,6 +412,8 @@ export class RemoteSession extends Disposable implements IRemoteSession {
         // the type guard so an unknown wire string can never widen the
         // BehaviorSubject's typed state.
         const ev = parsed as { policy?: string };
+        // [DRIVER-DEBUG] temporary diagnostic — owner-announced input policy.
+        this._logService.log(`[DRIVER-DEBUG] input_policy RECEIVED policy=${ev.policy}`);
         if (!isValidInputPolicy(ev.policy)) {
           this._logService.warn(`[RemoteSession] input_policy unknown value: ${ev.policy}`);
           break;
