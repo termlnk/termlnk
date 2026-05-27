@@ -28,9 +28,11 @@ const locale = {
       'expires-label': 'Expires',
       'copy-url': 'Copy URL',
       join: 'Join session',
+      joining: 'Joining...',
       dismiss: 'Dismiss',
       unparsable: 'This invite URL could not be parsed. Ask the host to resend.',
       'join-failed': 'Could not join the session:',
+      'error-invite-not-active': 'This invite has already been used or is no longer active. Ask the host to send a new invite link.',
     },
     remote: {
       'tab-name': 'Shared session',

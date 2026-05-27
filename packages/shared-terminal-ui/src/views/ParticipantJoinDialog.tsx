@@ -15,8 +15,8 @@
 
 import type { ICapability } from '@termlnk/shared-terminal';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { Badge, Button, cn, Dialog, useDependency } from '@termlnk/design';
-import { IInviteService, IRemoteSessionService } from '@termlnk/shared-terminal';
+import { Badge, Button, cn, Dialog, Spinner, useDependency } from '@termlnk/design';
+import { IInviteService, IRemoteSessionService, SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE } from '@termlnk/shared-terminal';
 import { CheckIcon, ClipboardCopyIcon, LinkIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { RemoteSessionBridgeController } from '../controllers/remote-session-bridge.controller';
@@ -92,8 +92,13 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
       await remoteService.createSession({ inviteUrl: pending.rawUrl });
       setPending(null);
     } catch (err) {
-      logService.error('[ParticipantJoinDialog] join failed:', err);
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      const joinError = formatJoinError(err, localeService);
+      if (joinError.expected) {
+        logService.warn(`[ParticipantJoinDialog] join rejected: ${joinError.message}`);
+      } else {
+        logService.error('[ParticipantJoinDialog] join failed:', err);
+      }
+      setErrorMessage(joinError.message);
     } finally {
       setBusy(false);
     }
@@ -110,10 +115,10 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
     <Dialog
       open
       width={580}
-      style={{ height: 320 }}
+      style={{ height: 340 }}
       className={cn('tm:w-[580px] tm:max-w-[580px]')}
       onOpenChange={(open) => {
-        if (!open) {
+        if (!open && !busy) {
           handleDismiss();
         }
       }}
@@ -125,7 +130,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
       )}
       footer={(
         <div className={cn('tm:flex tm:items-center tm:justify-end tm:gap-2')}>
-          <Button variant="outline" onClick={handleDismiss} className={cn('tm:gap-1.5')}>
+          <Button variant="outline" disabled={busy} onClick={handleDismiss} className={cn('tm:gap-1.5')}>
             <XIcon className={cn('tm:size-3.5')} />
             {localeService.t('shared-terminal-ui.join-dialog.dismiss')}
           </Button>
@@ -135,8 +140,12 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
             onClick={() => { void handleJoin(); }}
             className={cn('tm:gap-1.5')}
           >
-            <CheckIcon className={cn('tm:size-3.5')} />
-            {localeService.t('shared-terminal-ui.join-dialog.join')}
+            {busy
+              ? <Spinner className={cn('tm:size-3.5')} />
+              : <CheckIcon className={cn('tm:size-3.5')} />}
+            {busy
+              ? localeService.t('shared-terminal-ui.join-dialog.joining')
+              : localeService.t('shared-terminal-ui.join-dialog.join')}
           </Button>
         </div>
       )}
@@ -153,6 +162,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
             <Button
               variant="outline"
               size="sm"
+              disabled={busy}
               onClick={() => { void handleCopy(); }}
               className={cn('tm:shrink-0 tm:gap-1.5')}
             >
@@ -197,7 +207,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
               tm:min-w-0 tm:rounded-md tm:border tm:border-red/40 tm:bg-red/10 tm:p-2 tm:text-xs tm:text-red
             `)}
           >
-            <div>{localeService.t('shared-terminal-ui.join-dialog.join-failed')}</div>
+            <div className={cn('tm:font-medium')}>{localeService.t('shared-terminal-ui.join-dialog.join-failed')}</div>
             <div className={cn('tm:mt-1 tm:font-mono tm:break-all tm:text-red/80')}>{errorMessage}</div>
           </div>
         )}
@@ -233,4 +243,20 @@ function parseInviteUrl(url: string, logService: ILogService): IInvitePayload {
     logService.error('[ParticipantJoinDialog] parse invite url failed:', err);
   }
   return payload;
+}
+
+interface IFormattedJoinError {
+  readonly message: string;
+  readonly expected: boolean;
+}
+
+function formatJoinError(err: unknown, localeService: LocaleService): IFormattedJoinError {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes(SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE)) {
+    return {
+      message: localeService.t('shared-terminal-ui.join-dialog.error-invite-not-active'),
+      expected: true,
+    };
+  }
+  return { message, expected: false };
 }

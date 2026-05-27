@@ -30,9 +30,11 @@ const locale: typeof enUS = {
       'expires-label': '到期時間',
       'copy-url': '複製 URL',
       join: '加入會話',
+      joining: '正在加入...',
       dismiss: '關閉',
       unparsable: '無法解析此邀請連結。請發起方重新發送。',
       'join-failed': '加入會話失敗：',
+      'error-invite-not-active': '這個邀請連結已經被使用或已失效。請讓主機重新發送新的邀請連結。',
     },
     remote: {
       'tab-name': '共享會話',

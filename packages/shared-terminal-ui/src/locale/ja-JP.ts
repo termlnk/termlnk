@@ -30,9 +30,11 @@ const locale: typeof enUS = {
       'expires-label': '期限',
       'copy-url': 'URL をコピー',
       join: 'セッションに参加',
+      joining: '参加中...',
       dismiss: '閉じる',
       unparsable: 'この招待 URL を解析できませんでした。発信者に再送を依頼してください。',
       'join-failed': 'セッションへの参加に失敗しました:',
+      'error-invite-not-active': 'この招待リンクはすでに使用済み、または無効です。ホストに新しい招待リンクの送信を依頼してください。',
     },
     remote: {
       'tab-name': '共有セッション',

@@ -15,9 +15,9 @@
 
 import type { ICapability, ICollabInviteTransportService, IFrameCodecService, IRemoteSession, IRemoteSessionClosedEventNotify, IRemoteSessionCreatedEvent, IRemoteSessionCreateOptions, IRemoteSessionCreateResult, IRemoteSessionService, ISharedSessionInputPolicy, ISharedTerminalCryptoService, ISharedTerminalPluginConfig, RemoteSessionEvent, RemoteSessionStatus } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
-import { ITokenManager } from '@termlnk/auth';
+import { HttpRequestError, ITokenManager } from '@termlnk/auth';
 import { Disposable, IConfigService, ILogService, Optional } from '@termlnk/core';
-import { ICollabInviteTransportService as ICollabInviteTransportServiceId, IFrameCodecService as IFrameCodecServiceId, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
+import { ICollabInviteTransportService as ICollabInviteTransportServiceId, IFrameCodecService as IFrameCodecServiceId, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
 import { BehaviorSubject, EMPTY, Subject } from 'rxjs';
 import { computeCapabilityHash } from '../utils/capability-hash';
 import { RelayTransportService } from './relay-transport.service';
@@ -186,6 +186,10 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
         claimedConnectionId = claim.connectionId;
         relayClaimToken = claim.relayClaimToken;
       } catch (err) {
+        if (isInactiveInviteClaimError(err)) {
+          this._logService.warn('[RemoteSessionService] invite claim rejected because the invite is inactive:', err);
+          throw new Error(SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE);
+        }
         this._logService.warn('[RemoteSessionService] invite claim failed; falling back to same-account attach:', err);
       }
     }
@@ -283,6 +287,10 @@ function base64UrlToBytes(input: string): Uint8Array {
     out[i] = binary.charCodeAt(i);
   }
   return out;
+}
+
+function isInactiveInviteClaimError(err: unknown): boolean {
+  return err instanceof HttpRequestError && (err.status === 410 || err.serverCode === 'invite_not_active');
 }
 
 // Keep symbol exported for tests and DI plugin registration; the same identifier
