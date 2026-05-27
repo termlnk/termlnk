@@ -168,8 +168,18 @@ export function TerminalTabs(props: ITerminalTabsProps) {
 
   const handlePointerDown = useCallback(
     (id: string) => (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!onReorderTab) return;
-      if (event.button !== 0) return;
+      if (!onReorderTab) {
+        return;
+      }
+      if (event.button !== 0) {
+        return;
+      }
+      // Portaled overlays (popover/menu/tooltip) bubble through React's
+      // synthetic event tree but are not DOM descendants of the tab. Arm drag
+      // only when the pointer actually landed inside the tab element.
+      if (!event.currentTarget.contains(event.target as Node)) {
+        return;
+      }
       const target = event.currentTarget;
       target.setPointerCapture(event.pointerId);
       pointerDownRef.current = {

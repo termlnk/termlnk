@@ -198,7 +198,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        align="end"
+        align="start"
         sideOffset={6}
         className={cn('electron-no-drag tm:w-64 tm:p-3')}
       >
