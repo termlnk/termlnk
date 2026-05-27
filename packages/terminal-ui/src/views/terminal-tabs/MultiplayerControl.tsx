@@ -40,7 +40,7 @@ export function MultiplayerControl(): React.JSX.Element | null {
   // observables get swapped when activeSessionId changes, but redi's
   // useObservable keeps the last value of the prior stream until the new one
   // emits — which would leak the previous tab's participants into the new tab.
-  // Keying also resets local state (inviteUrl/copied/busy) and closes the
+  // Keying also resets local state (copied/busy) and closes the
   // Radix Popover, since each tab's share context is independent.
   return (
     <MultiplayerControlInner
@@ -71,8 +71,6 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
   // accepted the share request — so the user does not briefly see two
   // disabled buttons mid-transition.
   const [copying, setCopying] = useState(false);
-  // Cache the invite URL across re-renders so the user can copy again without re-creating.
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   /**
    * Pending input policy chosen by the owner before sharing begins. Once the
    * share is live the value is locked — to switch modes the owner must Stop
@@ -138,17 +136,13 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
           await sharedSession.sharePtySession(activeEntry.sessionId, options);
         }
       }
-      let url = inviteUrl;
-      if (!url) {
-        const result = await inviteService.createInvite({
-          sessionId: activeEntry.sessionId,
-          role: SharedTerminalRole.CoPilot,
-          ttlMs: 15 * 60 * 1000,
-          singleUse: false,
-        });
-        url = result.url;
-        setInviteUrl(url);
-      }
+      const result = await inviteService.createInvite({
+        sessionId: activeEntry.sessionId,
+        role: SharedTerminalRole.CoPilot,
+        ttlMs: 15 * 60 * 1000,
+        singleUse: true,
+      });
+      const url = result.url;
       await navigator.clipboard.writeText(url);
       setCopied(true);
       clearCopyTimer();
@@ -167,7 +161,7 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
         setCopying(false);
       }
     }
-  }, [sharedSession, inviteService, activeEntry, inviteUrl, pendingPolicy, localeService, logService, clearCopyTimer]);
+  }, [sharedSession, inviteService, activeEntry, pendingPolicy, localeService, logService, clearCopyTimer]);
 
   const handleStop = useCallback(async (): Promise<void> => {
     if (!sharedSession || !activeEntry) {
@@ -176,7 +170,6 @@ function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerPr
     setBusy(true);
     try {
       await sharedSession.stopSharing(activeEntry.sessionId);
-      setInviteUrl(null);
       setCopied(false);
       // Reset the policy toggle so re-opening the popover does not silently
       // pre-select whatever the previous share was — Termius equivalent.
