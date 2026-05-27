@@ -52,8 +52,6 @@ const locale: typeof enUS = {
       about: '應用程式資訊與版本更新',
     },
     account: {
-      'section-account': '帳號',
-      'section-account-description': '登入或註冊帳號以在多台裝置間使用雲端同步',
       'section-sync': '雲端同步',
       'section-sync-description': '同步引擎的運行狀態及各資源的同步進度',
       'section-backup': '加密備份',

@@ -55,6 +55,13 @@ export default {
       logout: '退出登录',
       'logging-out': '退出中…',
     },
+    'account-dialog': {
+      title: '账号',
+      'tooltip-login': '登录 / 注册',
+      'tooltip-account': '账号',
+      'sync-title': '云同步',
+      'sync-description': '同步引擎的运行状态及各资源的同步进度',
+    },
     gate: {
       'unavailable-title': '云同步未配置',
       'unavailable-detail': '当前版本未连接云端服务；服务可用后将在此处出现登录入口。',

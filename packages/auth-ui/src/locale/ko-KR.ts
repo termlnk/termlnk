@@ -55,6 +55,13 @@ export default {
       logout: '로그아웃',
       'logging-out': '로그아웃 중…',
     },
+    'account-dialog': {
+      title: '계정',
+      'tooltip-login': '로그인 / 회원가입',
+      'tooltip-account': '계정',
+      'sync-title': '클라우드 동기화',
+      'sync-description': '동기화 엔진 상태 및 리소스별 동기화 진행 상황.',
+    },
     gate: {
       'unavailable-title': '클라우드 동기화가 구성되지 않았습니다',
       'unavailable-detail': '현재 빌드에는 클라우드 서버가 구성되어 있지 않습니다. 구성된 후 로그인 항목이 표시됩니다.',

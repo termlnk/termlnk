@@ -52,8 +52,6 @@ const locale: typeof enUS = {
       about: '앱 정보 및 버전 업데이트',
     },
     account: {
-      'section-account': '계정',
-      'section-account-description': '클라우드 동기화를 사용하려면 로그인하거나 회원가입하세요',
       'section-sync': '클라우드 동기화',
       'section-sync-description': '동기화 엔진 상태 및 리소스별 동기화 진행 상황',
       'section-backup': '암호화 백업',

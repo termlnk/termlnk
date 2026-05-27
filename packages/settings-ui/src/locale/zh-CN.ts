@@ -52,8 +52,6 @@ const locale: typeof enUS = {
       about: '应用信息与版本更新',
     },
     account: {
-      'section-account': '账号',
-      'section-account-description': '登录或注册以在多台设备间使用云同步',
       'section-sync': '云同步',
       'section-sync-description': '同步引擎的运行状态及各资源的同步进度',
       'section-backup': '加密备份',

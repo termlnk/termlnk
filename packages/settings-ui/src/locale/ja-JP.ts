@@ -52,8 +52,6 @@ const locale: typeof enUS = {
       about: 'アプリ情報とバージョン更新',
     },
     account: {
-      'section-account': 'アカウント',
-      'section-account-description': 'クラウド同期を利用するにはサインインまたは新規登録してください',
       'section-sync': 'クラウド同期',
       'section-sync-description': '同期エンジンのステータスと各リソースの同期状況',
       'section-backup': '暗号化バックアップ',

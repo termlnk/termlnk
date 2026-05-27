@@ -50,8 +50,6 @@ const locale = {
       about: 'App information and version updates',
     },
     account: {
-      'section-account': 'Account',
-      'section-account-description': 'Sign in or create an account to use cloud sync across your devices',
       'section-sync': 'Cloud sync',
       'section-sync-description': 'Status of the synchroniser engine and per-resource sync state',
       'section-backup': 'Encrypted backup',

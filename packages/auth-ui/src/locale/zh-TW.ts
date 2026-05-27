@@ -55,6 +55,13 @@ export default {
       logout: '登出',
       'logging-out': '登出中…',
     },
+    'account-dialog': {
+      title: '帳號',
+      'tooltip-login': '登入 / 註冊',
+      'tooltip-account': '帳號',
+      'sync-title': '雲端同步',
+      'sync-description': '同步引擎的執行狀態及各資源的同步進度',
+    },
     gate: {
       'unavailable-title': '雲端同步未設定',
       'unavailable-detail': '目前版本尚未連接雲端服務；服務可用後將在此處顯示登入入口。',

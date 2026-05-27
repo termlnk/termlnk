@@ -55,6 +55,13 @@ export default {
       logout: 'Sign out',
       'logging-out': 'Signing out…',
     },
+    'account-dialog': {
+      title: 'Account',
+      'tooltip-login': 'Sign in / Sign up',
+      'tooltip-account': 'Account',
+      'sync-title': 'Cloud Sync',
+      'sync-description': 'Sync engine status and per-resource progress.',
+    },
     gate: {
       'unavailable-title': 'Cloud sync is not configured',
       'unavailable-detail': 'Sign-in becomes available once a cloud server is configured for this build.',

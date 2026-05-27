@@ -55,6 +55,13 @@ export default {
       logout: 'サインアウト',
       'logging-out': 'サインアウト中…',
     },
+    'account-dialog': {
+      title: 'アカウント',
+      'tooltip-login': 'ログイン / 登録',
+      'tooltip-account': 'アカウント',
+      'sync-title': 'クラウド同期',
+      'sync-description': '同期エンジンの状態と各リソースの同期進捗。',
+    },
     gate: {
       'unavailable-title': 'クラウド同期は未設定です',
       'unavailable-detail': 'このビルドではクラウドサーバーが構成されていません。設定後にサインイン項目が表示されます。',
