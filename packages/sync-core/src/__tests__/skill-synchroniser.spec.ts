@@ -365,6 +365,116 @@ describe('SkillSynchroniser', () => {
 
     expect(bed.outbox.enqueued).toHaveLength(0);
   });
+
+  describe('built-in skills are excluded from sync', () => {
+    it('buildInitialSnapshot skips rows where source === "builtin"', async () => {
+      bed.skillRepo.rows.set('b1', makeSkill('b1', { source: 'builtin' as never, name: 'git' }));
+      bed.skillRepo.rows.set('u1', makeSkill('u1', { name: 'user-skill' }));
+
+      const snapshot = await bed.syncer.buildInitialSnapshot();
+
+      expect(snapshot).toHaveLength(1);
+      expect(snapshot[0].entityId).toBe('u1');
+      expect(bed.outbox.enqueued).toHaveLength(1);
+      expect(bed.outbox.enqueued[0].entityId).toBe('u1');
+    });
+
+    it('local add of a built-in row does NOT enqueue any mutation', async () => {
+      bed.syncer.start();
+      bed.skillRepo.rows.set('b1', makeSkill('b1', { source: 'builtin' as never }));
+      bed.skillRepo.changed$.next({ type: 'add', id: 'b1' });
+
+      await flushAsync();
+      expect(bed.outbox.enqueued).toHaveLength(0);
+    });
+
+    it('local update of a built-in row does NOT enqueue any mutation', async () => {
+      bed.syncer.start();
+      bed.skillRepo.rows.set('b1', makeSkill('b1', { source: 'builtin' as never }));
+      bed.skillRepo.changed$.next({ type: 'update', id: 'b1' });
+
+      await flushAsync();
+      expect(bed.outbox.enqueued).toHaveLength(0);
+    });
+
+    it('local delete of a previously-seen built-in row does NOT enqueue a delete mutation', async () => {
+      // Seed the cache by reporting the row first as an add, then delete it.
+      bed.syncer.start();
+      bed.skillRepo.rows.set('b1', makeSkill('b1', { source: 'builtin' as never }));
+      bed.skillRepo.changed$.next({ type: 'add', id: 'b1' });
+      await flushAsync();
+
+      bed.skillRepo.rows.delete('b1');
+      bed.skillRepo.changed$.next({ type: 'delete', id: 'b1' });
+      await flushAsync();
+
+      expect(bed.outbox.enqueued).toHaveLength(0);
+    });
+
+    it('built-in ids are cached at start() so a delete before any add is still suppressed', async () => {
+      // The cache is populated eagerly when start() runs, by reading the repo once.
+      bed.skillRepo.rows.set('b1', makeSkill('b1', { source: 'builtin' as never }));
+      bed.syncer.start();
+      await flushAsync(); // let the eager cache load resolve
+
+      bed.skillRepo.rows.delete('b1');
+      bed.skillRepo.changed$.next({ type: 'delete', id: 'b1' });
+      await flushAsync();
+
+      expect(bed.outbox.enqueued).toHaveLength(0);
+    });
+
+    it('applyPatch op=put refuses to upsert a row whose payload says source="builtin"', async () => {
+      bed.syncer.start();
+      const remoteBuiltin = makeSkill('b1', { source: 'builtin' as never, name: 'stale-server' });
+      const payload = bed.crypto.encrypt(new TextEncoder().encode(JSON.stringify(remoteBuiltin)));
+
+      await bed.syncer.applyPatch([{
+        op: 'put',
+        resource: 'skill',
+        entityId: 'b1',
+        payload,
+        version: 9,
+      }]);
+
+      expect(bed.skillRepo.rows.has('b1')).toBe(false);
+      expect(await bed.rowMeta.get('skill', 'b1')).toBeNull();
+    });
+
+    it('applyPatch op=del refuses to delete a row that is locally built-in', async () => {
+      bed.syncer.start();
+      bed.skillRepo.rows.set('b1', makeSkill('b1', { source: 'builtin' as never }));
+
+      await bed.syncer.applyPatch([{
+        op: 'del',
+        resource: 'skill',
+        entityId: 'b1',
+        payload: null,
+        version: 5,
+      }]);
+
+      expect(bed.skillRepo.rows.has('b1')).toBe(true);
+    });
+
+    it('applyPatch op=clear keeps locally-built-in rows while wiping everything else', async () => {
+      bed.syncer.start();
+      bed.skillRepo.rows.set('b1', makeSkill('b1', { source: 'builtin' as never }));
+      bed.skillRepo.rows.set('u1', makeSkill('u1'));
+      await bed.rowMeta.upsert({ resource: 'skill', entityId: 'u1', version: 1, updatedAt: Date.now() });
+
+      await bed.syncer.applyPatch([{
+        op: 'clear',
+        resource: 'skill',
+        entityId: null,
+        payload: null,
+        version: 0,
+      }]);
+
+      expect(bed.skillRepo.rows.has('b1')).toBe(true);
+      expect(bed.skillRepo.rows.has('u1')).toBe(false);
+      expect(await bed.rowMeta.get('skill', 'u1')).toBeNull();
+    });
+  });
 });
 
 async function firstValue<T>(observable: { subscribe: (handler: (v: T) => void) => { unsubscribe: () => void } }): Promise<T> {
