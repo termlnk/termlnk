@@ -19,7 +19,7 @@ import { AuthPlugin } from '@termlnk/auth';
 import { DependentOn, IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
 import { UIPlugin } from '@termlnk/ui';
-import { UserRoundIcon } from 'lucide-react';
+import { LaptopMinimalIcon } from 'lucide-react';
 import { AccountDialogController } from './controllers/account-dialog.controller';
 import { AuthUIController } from './controllers/auth-ui.controller';
 import { AUTH_UI_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
@@ -73,7 +73,7 @@ export class AuthUIPlugin extends Plugin {
         id: 'account',
         labelKey: 'settings-ui.tab.account',
         descriptionKey: 'settings-ui.tab-description.account',
-        icon: UserRoundIcon,
+        icon: LaptopMinimalIcon,
         component: AccountTab,
         order: 110,
       })
