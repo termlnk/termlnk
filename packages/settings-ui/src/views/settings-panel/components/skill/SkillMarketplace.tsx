@@ -17,7 +17,6 @@ import type { ISkill, ISkillRepository, ISkillRepositoryMarketplaceItem } from '
 import { ISkillService } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Badge, Button, cn, useDependency } from '@termlnk/design';
-import { Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface ISkillMarketplaceProps {
@@ -92,19 +91,9 @@ export function SkillMarketplace(props: ISkillMarketplaceProps) {
   if (filteredMarketplaceItems.length === 0) {
     return (
       <section
-        className={cn(`
-          tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/65 tm:p-5 tm:transition-all
-          tm:hover:border-blue/30 tm:hover:bg-one-bg/80
-        `)}
+        className={cn('tm:p-5 tm:transition-all')}
       >
         <div className="tm:flex tm:flex-col tm:items-center tm:gap-3 tm:py-4 tm:text-center">
-          <div
-            className="
-              tm:flex tm:size-12 tm:items-center tm:justify-center tm:rounded-2xl tm:bg-one-bg2/90 tm:text-blue
-            "
-          >
-            <Wand2 className="tm:size-5" />
-          </div>
           <div className="tm:flex tm:flex-col tm:gap-1">
             <p className="tm:text-sm tm:font-medium tm:text-white">
               {localeService.t('settings-ui.skill.marketplace-empty')}

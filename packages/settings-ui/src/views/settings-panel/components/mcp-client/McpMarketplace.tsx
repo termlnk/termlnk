@@ -63,7 +63,7 @@ export function McpMarketplace({ registryItems, installedServers, searchQuery, a
       {filteredItems.length === 0 && (
         <section
           className={cn(`
-            tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/65 tm:p-4 tm:transition-all
+            tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/50 tm:p-4 tm:transition-all
             tm:hover:border-blue/30 tm:hover:bg-one-bg/80
           `)}
         >
@@ -80,7 +80,7 @@ export function McpMarketplace({ registryItems, installedServers, searchQuery, a
           <section
             key={item.id}
             className={cn(`
-              tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/65 tm:p-4 tm:transition-all
+              tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/50 tm:p-4 tm:transition-all
               tm:hover:border-blue/30 tm:hover:bg-one-bg/80
             `)}
           >

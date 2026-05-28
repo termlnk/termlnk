@@ -176,16 +176,10 @@ export function AboutTab() {
     <div className="tm:flex tm:flex-col tm:gap-4 tm:pb-1">
       <section
         className={`
-          tm:relative tm:overflow-hidden tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/80 tm:px-5 tm:py-6
+          tm:relative tm:overflow-hidden tm:rounded-2xl tm:px-5 tm:py-4
           tm:sm:px-6
         `}
       >
-        <div
-          className={`
-            tm:pointer-events-none tm:absolute tm:-top-24 tm:left-1/2 tm:size-56 tm:-translate-x-1/2 tm:rounded-full
-            tm:bg-orange/15 tm:blur-3xl
-          `}
-        />
 
         <div className="tm:relative tm:flex tm:flex-col tm:items-center tm:gap-3 tm:text-center">
           <div className="tm:flex tm:items-center tm:justify-center tm:gap-3">
@@ -236,8 +230,7 @@ export function AboutTab() {
 
       <section
         className={`
-          tm:flex tm:items-start tm:justify-between tm:gap-4 tm:rounded-xl tm:border tm:border-line tm:bg-one-bg/60
-          tm:px-4 tm:py-3
+          tm:flex tm:items-start tm:justify-between tm:gap-4 tm:rounded-xl tm:border tm:border-line tm:px-4 tm:py-3
         `}
       >
         <div className="tm:flex tm:min-w-0 tm:items-start tm:gap-3">
@@ -296,17 +289,17 @@ export function AboutTab() {
         </Button>
       </section>
 
-      <section className="tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/40 tm:p-2">
+      <section className="tm:rounded-2xl tm:border tm:border-line tm:p-2">
         <ActionButton
           icon={<ScrollText className="tm:size-4" />}
-          iconClassName="tm:bg-orange/15 tm:text-orange"
+          iconClassName="tm:bg-orange/10 tm:text-orange"
           title={localeService.t('settings-ui.about.action-release-notes')}
           description={localeService.t('settings-ui.about.action-release-notes-desc')}
           onClick={() => openExternal(RELEASES_URL)}
         />
         <ActionButton
           icon={<Star className="tm:size-4" />}
-          iconClassName="tm:bg-one-bg2 tm:text-light-grey"
+          iconClassName="tm:bg-blue/10 tm:text-blue"
           title={localeService.t('settings-ui.about.action-github')}
           description={localeService.t('settings-ui.about.action-github-desc')}
           onClick={() => openExternal(GITHUB_URL)}
@@ -334,7 +327,7 @@ function ActionButton({ icon, iconClassName, title, description, onClick, disabl
       disabled={disabled}
       className={`
         tm:h-auto tm:w-full tm:justify-between tm:rounded-xl tm:px-3 tm:py-2.5 tm:text-left tm:transition-colors
-        tm:hover:bg-one-bg2/60
+        tm:hover:bg-one-bg
         tm:disabled:cursor-not-allowed tm:disabled:opacity-70
       `}
     >
@@ -343,8 +336,8 @@ function ActionButton({ icon, iconClassName, title, description, onClick, disabl
           {icon}
         </span>
         <span>
-          <span className="tm:block tm:text-sm tm:font-medium tm:text-white">{title}</span>
-          <span className="tm:block tm:text-xs tm:text-grey-fg">{description}</span>
+          <span className="tm:block tm:text-sm tm:text-white">{title}</span>
+          <span className="tm:block tm:text-xs tm:text-light-grey">{description}</span>
         </span>
       </span>
       <ArrowUpRight

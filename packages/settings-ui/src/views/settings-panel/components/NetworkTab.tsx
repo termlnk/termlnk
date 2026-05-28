@@ -236,7 +236,7 @@ export function NetworkTab() {
 
   return (
     <FieldGroup className="tm:gap-5">
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader
           className={cn('tm:bg-black/10 tm:py-3', {
             'tm:border-b tm:border-line tm:pb-3': proxy.enabled,

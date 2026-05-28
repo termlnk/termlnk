@@ -100,7 +100,7 @@ export function McpClientTab() {
 
   return (
     <FieldGroup className="tm:gap-4">
-      <Card className="tm:h-[min(520px,calc(100vh-332px))] tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:h-[min(520px,calc(100vh-332px))] tm:gap-0 tm:py-0">
         <CardHeader
           className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3 tm:pb-3"
         >

@@ -16,14 +16,9 @@
 import type { ISkillRepository } from '@termlnk/agent';
 import { ISkillService } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
-import { Badge, Button, useDependency } from '@termlnk/design';
+import { Badge, Button, cn, useDependency } from '@termlnk/design';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useCallback } from 'react';
-
-const cardCls = `
-  tm:rounded-2xl tm:border tm:border-line tm:bg-one-bg/65 tm:p-4 tm:transition-all
-  tm:hover:border-blue/30 tm:hover:bg-one-bg/80
-`;
 
 interface ISkillRepositoriesProps {
   repositories: ISkillRepository[];
@@ -51,7 +46,7 @@ export function SkillRepositories(props: ISkillRepositoriesProps) {
 
   if (repositories.length === 0) {
     return (
-      <section className={cardCls}>
+      <section className={cn('tm:rounded-2xl tm:p-4 tm:transition-all')}>
         <div className="tm:flex tm:items-center tm:justify-between tm:gap-3">
           <div className="tm:min-w-0">
             <p className="tm:text-sm tm:font-medium tm:text-white">
@@ -83,7 +78,7 @@ export function SkillRepositories(props: ISkillRepositoriesProps) {
           return (
             <section
               key={repository.id}
-              className={cardCls}
+              className={cn('tm:rounded-2xl tm:p-4 tm:transition-all')}
             >
               <div className="tm:flex tm:items-start tm:justify-between tm:gap-2">
                 <div
