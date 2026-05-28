@@ -82,8 +82,8 @@ function DialogContent({
         className={cn(
           `
             tm:pointer-events-auto tm:fixed tm:top-[50%] tm:left-[50%] tm:z-50 tm:grid tm:max-h-[calc(100vh-2rem)]
-            tm:w-full tm:max-w-[calc(100%-2rem)] tm:translate-[-50%] tm:gap-4 tm:overflow-y-auto tm:rounded-lg tm:border
-            tm:bg-one-bg tm:p-4 tm:text-white tm:shadow-lg tm:outline-hidden tm:duration-200 tm:fill-mode-both
+            tm:w-full tm:max-w-[calc(100%-2rem)] tm:translate-[-50%] tm:gap-4 tm:overflow-y-auto tm:rounded-lg tm:border tm:border-line
+            tm:bg-black tm:p-4 tm:text-white tm:shadow-lg tm:outline-hidden tm:duration-200 tm:fill-mode-both
             tm:data-[state=closed]:animate-out tm:data-[state=closed]:fade-out-0 tm:data-[state=closed]:zoom-out-95
             tm:data-[state=open]:animate-in tm:data-[state=open]:fade-in-0 tm:data-[state=open]:zoom-in-95
             tm:sm:max-w-lg
@@ -101,7 +101,7 @@ function DialogContent({
               tm:hover:text-blue
               tm:focus-visible:ring-2 tm:focus-visible:ring-blue/50 tm:focus-visible:outline-none
               tm:disabled:pointer-events-none
-              tm:data-[state=open]:bg-one-bg2 tm:data-[state=open]:text-white
+              tm:data-[state=open]:bg-one-bg tm:data-[state=open]:text-white
             `}
             onClick={onClickClose}
           >

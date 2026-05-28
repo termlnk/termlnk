@@ -14,7 +14,7 @@
  */
 
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
-import { Children, Fragment, isValidElement, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Children, createContext, Fragment, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '../../common/cn';
 import { Button } from '../button';
 import { ConfigContext } from '../config-provider';
@@ -23,6 +23,62 @@ import { DialogContent, DialogDescription, DialogFooter, DialogHeader, Dialog as
 const DIALOG_VIEWPORT_GUTTER = 16;
 const DIALOG_VIEWPORT_MAX_WIDTH = `calc(100vw - ${DIALOG_VIEWPORT_GUTTER * 2}px)`;
 const DIALOG_VIEWPORT_MAX_HEIGHT = `calc(100vh - ${DIALOG_VIEWPORT_GUTTER * 2}px)`;
+
+interface IDialogDragContextValue {
+  draggable: boolean;
+  onMouseDown: ((e: ReactMouseEvent<HTMLElement>) => void) | undefined;
+}
+
+const DialogDragContext = createContext<IDialogDragContextValue>({
+  draggable: false,
+  onMouseDown: undefined,
+});
+
+export interface IDialogDragHandleProps {
+  /**
+   * The height of the transparent drag region.
+   * @default 30
+   */
+  height?: number | string;
+  className?: string;
+  style?: CSSProperties;
+}
+
+/**
+ * Transparent drag region that hands mousedown back to the parent Dialog's
+ * draggable hook. Render inside a Dialog's `children` when the Dialog has no
+ * visible title bar but should still be draggable from its top edge.
+ *
+ * Renders nothing when the surrounding Dialog is not draggable.
+ */
+export function DialogDragHandle({ height = 30, className, style }: IDialogDragHandleProps) {
+  const { draggable, onMouseDown } = useContext(DialogDragContext);
+  if (!draggable || !onMouseDown) {
+    return null;
+  }
+
+  const resolvedHeight = typeof height === 'number' ? `${height}px` : height;
+
+  return (
+    <div
+      data-slot="dialog-drag-handle"
+      className={cn(
+        `
+          tm:pointer-events-auto tm:absolute tm:inset-x-0 tm:top-0 tm:z-0
+          tm:select-none
+        `,
+        className
+      )}
+      style={{
+        height: resolvedHeight,
+        cursor: 'grab',
+        touchAction: 'none',
+        ...style,
+      }}
+      onMouseDown={onMouseDown}
+    />
+  );
+}
 
 function getViewportSize() {
   const { clientWidth, clientHeight } = document.documentElement;
@@ -394,6 +450,11 @@ export function Dialog(props: IDialogProps) {
 
   const { position, isDragging, setElementRef, handleMouseDown } = useDraggable({ defaultPosition, enabled: draggable });
 
+  const dragContextValue = useMemo<IDialogDragContextValue>(
+    () => ({ draggable, onMouseDown: draggable ? handleMouseDown : undefined }),
+    [draggable, handleMouseDown]
+  );
+
   const footer = propFooter ?? (showOk || showCancel
     ? (
       <div className="tm:flex tm:justify-end tm:gap-2">
@@ -441,7 +502,9 @@ export function Dialog(props: IDialogProps) {
         onOpenChange={handleOpenChange}
         modal={mask}
       >
-        {children}
+        <DialogDragContext.Provider value={dragContextValue}>
+          {children}
+        </DialogDragContext.Provider>
       </DialogProvider>
     );
   }
@@ -495,29 +558,31 @@ export function Dialog(props: IDialogProps) {
           }
         }}
       >
-        <DialogHeader
-          className={cn({
-            'tm:hidden': !title,
-          })}
-          data-drag-handle={draggable ? 'true' : undefined}
-          style={{
-            cursor: draggable ? 'grab' : undefined,
-            userSelect: draggable ? 'none' : undefined,
-            touchAction: draggable ? 'none' : undefined,
-          }}
-          onMouseDown={draggable ? handleMouseDown : undefined}
-        >
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="tm:hidden" />
-        </DialogHeader>
+        <DialogDragContext.Provider value={dragContextValue}>
+          <DialogHeader
+            className={cn({
+              'tm:hidden': !title,
+            })}
+            data-drag-handle={draggable ? 'true' : undefined}
+            style={{
+              cursor: draggable ? 'grab' : undefined,
+              userSelect: draggable ? 'none' : undefined,
+              touchAction: draggable ? 'none' : undefined,
+            }}
+            onMouseDown={draggable ? handleMouseDown : undefined}
+          >
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription className="tm:hidden" />
+          </DialogHeader>
 
-        {children}
+          {children}
 
-        {footer && (
-          <DialogFooter>
-            {footer}
-          </DialogFooter>
-        )}
+          {footer && (
+            <DialogFooter>
+              {footer}
+            </DialogFooter>
+          )}
+        </DialogDragContext.Provider>
       </DialogContent>
     </DialogProvider>
   );
