@@ -14,7 +14,7 @@
  */
 
 import type { ISettingsTabDescriptor } from '../../services/settings-tab-registry/settings-tab-registry.service';
-import { Disposable, ICommandService, Inject, LocaleService } from '@termlnk/core';
+import { Disposable, ICommandService, Inject } from '@termlnk/core';
 import { BuiltInUIPart, ComponentManagerService, IDialogService, IShortcutService, IUIPartsService } from '@termlnk/ui';
 import { Info, Keyboard, LayoutDashboard, Monitor, Palette, Terminal, Unplug, Wand2, Wifi } from 'lucide-react';
 import { ToggleSettingsCommand } from '../../commands/toggle-settings.command';
@@ -122,7 +122,6 @@ export class SettingsController extends Disposable {
     @IDialogService private readonly _dialogService: IDialogService,
     @IShortcutService private readonly _shortcutService: IShortcutService,
     @IUIPartsService private readonly _uiPartsService: IUIPartsService,
-    @Inject(LocaleService) private readonly _localeService: LocaleService,
     @Inject(SettingsService) private readonly _settingsService: SettingsService,
     @ISettingsTabRegistryService private readonly _settingsTabRegistry: ISettingsTabRegistryService
   ) {
@@ -161,14 +160,14 @@ export class SettingsController extends Disposable {
     this._dialogService.open({
       id: SETTINGS_DIALOG_ID,
       draggable: true,
-      width: 960,
-      className: 'tm:overflow-hidden',
-      mask: false,
+      width: 840,
+      className: 'tm:overflow-hidden tm:gap-0 tm:p-0',
+      mask: true,
+      closable: false,
       disableAutoFocus: true,
       style: {
-        maxHeight: 'calc(100vh - 40px)',
+        maxHeight: 'calc(100vh - 150px)',
       },
-      title: { title: this._localeService.t('settings-ui.title') },
       children: { componentId: SETTINGS_PANEL_COMPONENT_NAME },
       onClose: () => this._settingsService.terminate(),
     });
