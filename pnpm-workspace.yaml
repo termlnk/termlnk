@@ -33,7 +33,9 @@ overrides:
   '@types/react-dom': ^19.2.3
   react: ^19.2.6
   react-dom: ^19.2.6
-  electron: 41.5.0
+  # electron pinned to 41.x: better-sqlite3 ships no Electron 42 prebuild and
+  # fails to build against V8 14.x (v8::External::New signature changed)
+  electron: 41.7.1
   tar: ^7.5.13
   undici: ^8.3.0
   file-type: ^22.0.0
