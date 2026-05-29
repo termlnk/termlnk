@@ -107,7 +107,7 @@ export function DesktopWorkbenchContent(props: ITermlnkWorkbenchProps) {
       <TooltipProvider delay={400}>
         <div
           data-u-comp="workbench-layout"
-          className={cn('tm:flex tm:h-full tm:min-h-0 tm:flex-col tm:bg-black', {
+          className={cn('tm:flex tm:h-full tm:min-h-0 tm:flex-col', {
             'tm:dark': isDarkMode,
           })}
           // tabIndex={-1}
@@ -117,7 +117,7 @@ export function DesktopWorkbenchContent(props: ITermlnkWorkbenchProps) {
           {/* header */}
           {header && (
             <div
-              className="tm:relative tm:flex tm:min-h-0 tm:flex-col tm:bg-black tm:text-white"
+              className="tm:relative tm:flex tm:min-h-0 tm:flex-col tm:text-white"
             >
               <ComponentContainer key="header" components={headerComponents} />
             </div>

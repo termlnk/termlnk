@@ -96,7 +96,7 @@ export function ResizablePanel() {
       >
         <Panel
           id="left"
-          className="tm:h-full tm:overflow-auto tm:border-0 tm:border-line tm:bg-black tm:text-white"
+          className="tm:h-full tm:overflow-auto tm:border-0 tm:border-line tm:text-white"
           collapsible
           minSize="8%"
         >
