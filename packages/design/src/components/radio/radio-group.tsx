@@ -41,7 +41,7 @@ function RadioGroupItem({
       className={cn(
         `
           tm:group/radio-group-item tm:peer
-          tm:relative tm:flex tm:aspect-square tm:size-4 tm:shrink-0 tm:rounded-full tm:border tm:border-one-bg3
+          tm:relative tm:flex tm:aspect-square tm:size-4 tm:shrink-0 tm:rounded-full tm:border tm:border-line
           tm:bg-black tm:outline-hidden
           tm:after:absolute tm:after:-inset-x-3 tm:after:-inset-y-2
           tm:focus-visible:border-blue tm:focus-visible:ring-[3px] tm:focus-visible:ring-blue/50

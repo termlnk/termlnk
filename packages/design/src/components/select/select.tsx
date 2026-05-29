@@ -50,7 +50,7 @@ function SelectTrigger({
       data-size={size}
       className={cn(
         `
-          tm:flex tm:w-fit tm:items-center tm:justify-between tm:gap-2 tm:rounded-md tm:border tm:border-one-bg3
+          tm:flex tm:w-fit tm:items-center tm:justify-between tm:gap-2 tm:rounded-md tm:border tm:border-line
           tm:bg-black tm:p-3 tm:text-sm tm:whitespace-nowrap tm:text-white tm:shadow-xs tm:outline-hidden
           tm:transition-[color,box-shadow]
           tm:hover:border-blue tm:hover:bg-black
@@ -94,7 +94,7 @@ function SelectContent({
           `
             tm:relative tm:z-50 tm:max-h-(--radix-select-content-available-height) tm:min-w-32
             tm:origin-(--radix-select-content-transform-origin) tm:overflow-x-hidden tm:overflow-y-auto tm:rounded-md
-            tm:border tm:bg-black tm:text-white tm:shadow-md
+            tm:border tm:border-line tm:bg-black tm:text-white tm:shadow-md
             tm:data-[side=bottom]:slide-in-from-top-2
             tm:data-[side=left]:slide-in-from-right-2
             tm:data-[side=right]:slide-in-from-left-2
