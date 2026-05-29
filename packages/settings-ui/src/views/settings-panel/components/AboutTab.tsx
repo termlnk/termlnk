@@ -15,7 +15,7 @@
 
 import type { ReactNode } from 'react';
 import { LocaleService } from '@termlnk/core';
-import { Badge, Button, cn, useDependency } from '@termlnk/design';
+import { Badge, Button, cn, LogoIcon, useDependency } from '@termlnk/design';
 import { IRPCClientService } from '@termlnk/rpc-client';
 import { ArrowUpRight, Download, RefreshCw, ScrollText, Star } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -58,7 +58,6 @@ const AUTHOR_URL = 'https://x.com/telanflow';
 const LICENSE_NAME = 'PolyForm Noncommercial 1.0.0';
 const GITHUB_URL = 'https://github.com/termlnk/termlnk';
 const RELEASES_URL = `${GITHUB_URL}/releases`;
-const APP_LOGO_URL = new URL('../../../../../../apps/desktop/resources/logo.svg', import.meta.url).href;
 
 export function AboutTab() {
   const localeService = useDependency(LocaleService);
@@ -183,11 +182,7 @@ export function AboutTab() {
 
         <div className="tm:relative tm:flex tm:flex-col tm:items-center tm:gap-3 tm:text-center">
           <div className="tm:flex tm:items-center tm:justify-center tm:gap-3">
-            <img
-              src={APP_LOGO_URL}
-              alt="Termlnk logo"
-              className="tm:size-14 tm:rounded-2xl tm:shadow-lg"
-            />
+            <LogoIcon className="tm:size-14 tm:rounded-2xl tm:shadow-lg" />
             <div className="tm:text-2xl tm:font-bold tm:tracking-tight tm:text-white">Termlnk</div>
           </div>
           <p className="tm:max-w-xl tm:text-sm tm:text-light-grey">
