@@ -18,7 +18,7 @@ import { Children, createContext, Fragment, isValidElement, useCallback, useCont
 import { cn } from '../../common/cn';
 import { Button } from '../button';
 import { ConfigContext } from '../config-provider';
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, Dialog as DialogProvider, DialogTitle } from './dialog-primitive';
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogPortal, Dialog as DialogProvider, DialogTitle } from './dialog-primitive';
 
 const DIALOG_VIEWPORT_GUTTER = 16;
 const DIALOG_VIEWPORT_MAX_WIDTH = `calc(100vw - ${DIALOG_VIEWPORT_GUTTER * 2}px)`;
@@ -144,6 +144,19 @@ export interface IDialogProps {
    *  Whether the dialog should show a mask.
    */
   mask?: boolean;
+
+  /**
+   * Whether to enable Radix Dialog's modal mode (focus trap + RemoveScroll +
+   * hideOthers + `disableOutsidePointerEvents`).
+   *
+   * Defaults to `mask` so existing callers keep their old behavior: a masked
+   * dialog locks the rest of the page. Set this to `false` when the dialog
+   * embeds Portal-based popups (Popover, Combobox, Select, ...) — Radix
+   * modal's `disableOutsidePointerEvents` sets `body { pointer-events: none }`,
+   * which breaks non-Radix popups (e.g. base-ui Combobox) that don't register
+   * into Radix's DismissableLayer.
+   */
+  modal?: boolean;
 
   /**
    * additional className for dialog
@@ -432,6 +445,7 @@ export function Dialog(props: IDialogProps) {
     defaultPosition,
     footer: propFooter,
     mask = true,
+    modal: modalProp,
     keyboard = true,
     closable = true,
     maskClosable = true,
@@ -447,6 +461,11 @@ export function Dialog(props: IDialogProps) {
   const { locale } = useContext(ConfigContext);
   const shouldRenderRootOnly = hasCustomDialogContent(children);
   const resolvedWidth = width ? (typeof width === 'number' ? `${width}px` : width) : undefined;
+  // Decouple visual mask from Radix's modal lock. Default keeps the historical
+  // "mask implies modal" behavior; callers can opt out when they embed Portal
+  // popups that get killed by `disableOutsidePointerEvents`.
+  const modal = modalProp ?? mask;
+  const renderStandaloneBackdrop = mask && !modal;
 
   const { position, isDragging, setElementRef, handleMouseDown } = useDraggable({ defaultPosition, enabled: draggable });
 
@@ -500,8 +519,17 @@ export function Dialog(props: IDialogProps) {
       <DialogProvider
         open={open}
         onOpenChange={handleOpenChange}
-        modal={mask}
+        modal={modal}
       >
+        {renderStandaloneBackdrop && (
+          <DialogPortal>
+            <div
+              data-slot="dialog-backdrop"
+              className="tm:fixed tm:inset-0 tm:z-50 tm:bg-darker-black/50"
+              onClick={maskClosable ? handleClickClose : undefined}
+            />
+          </DialogPortal>
+        )}
         <DialogDragContext.Provider value={dragContextValue}>
           {children}
         </DialogDragContext.Provider>
@@ -513,8 +541,17 @@ export function Dialog(props: IDialogProps) {
     <DialogProvider
       open={open}
       onOpenChange={handleOpenChange}
-      modal={mask}
+      modal={modal}
     >
+      {renderStandaloneBackdrop && (
+        <DialogPortal>
+          <div
+            data-slot="dialog-backdrop"
+            className="tm:fixed tm:inset-0 tm:z-50 tm:bg-darker-black/50"
+            onClick={maskClosable ? handleClickClose : undefined}
+          />
+        </DialogPortal>
+      )}
       <DialogContent
         ref={handleContentRef}
         className={cn(className, {
