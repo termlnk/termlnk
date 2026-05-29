@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+export { default as LogoIcon } from './assets/logo.svg';
 export { Bot as BotIcon } from 'lucide-react';
 export { Files as FilesIcon } from 'lucide-react';
 export { PanelRightClose as PanelRightCloseIcon } from 'lucide-react';
@@ -22,8 +23,10 @@ export { PinOff as PinOffIcon } from 'lucide-react';
 
 const BotIconKey = 'bot-icon';
 const FilesIconKey = 'files-icon';
+const LogoIconKey = 'logo-icon';
 
 export {
   BotIconKey,
   FilesIconKey,
+  LogoIconKey,
 };
