@@ -16,7 +16,7 @@
 import type { ISettingsState } from '../../models/settings.state';
 import type { ISettingsTabDescriptor } from '../../services/settings-tab-registry/settings-tab-registry.service';
 import { LocaleService } from '@termlnk/core';
-import { Button, cn, DialogDragHandle, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
+import { Button, cn, DialogDragHandle, LogoIcon, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
 import { XIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { ISettingsTabRegistryService } from '../../services/settings-tab-registry/settings-tab-registry.service';
@@ -92,7 +92,7 @@ export function SettingsPanel() {
           <div
             className="tm:flex tm:h-12 tm:shrink-0 tm:items-center tm:gap-2 tm:px-3 tm:select-none"
           >
-            <TermlnkLogo />
+            <LogoIcon className="tm:size-6 tm:shrink-0" />
             <span className="tm:text-sm tm:font-semibold tm:text-white">
               Termlnk
             </span>
@@ -183,43 +183,5 @@ export function SettingsPanel() {
         </div>
       </Tabs>
     </div>
-  );
-}
-
-function TermlnkLogo() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="tm:size-6 tm:shrink-0"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="termlnk-settings-logo-border" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#FF6B9D" />
-          <stop offset="35%" stopColor="#C084FC" />
-          <stop offset="65%" stopColor="#60A5FA" />
-          <stop offset="100%" stopColor="#38BDF8" />
-        </linearGradient>
-      </defs>
-      <rect x="1" y="1" width="22" height="22" rx="5" fill="url(#termlnk-settings-logo-border)" />
-      <rect x="2.5" y="2.5" width="19" height="19" rx="4" fill="#1E1E1E" />
-      <polyline
-        points="7,9 10.5,12 7,15"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <line
-        x1="12.5"
-        y1="15"
-        x2="17"
-        y2="15"
-        stroke="#FFFFFF"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

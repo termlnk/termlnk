@@ -163,6 +163,7 @@ export class SettingsController extends Disposable {
       width: 840,
       className: 'tm:overflow-hidden tm:gap-0 tm:p-0',
       mask: true,
+      modal: false,
       closable: false,
       disableAutoFocus: true,
       style: {
