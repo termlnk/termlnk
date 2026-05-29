@@ -15,8 +15,19 @@
 
 import type { IUserAccount } from '@termlnk/auth';
 import { LocaleService } from '@termlnk/core';
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button, cn, useDependency } from '@termlnk/design';
-import { LogOutIcon, MailCheckIcon, MailWarningIcon } from 'lucide-react';
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Badge,
+  Button,
+  cn,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  useDependency,
+} from '@termlnk/design';
+import { Loader2Icon, LogOutIcon, MailCheckIcon, MailWarningIcon } from 'lucide-react';
 
 export interface IAccountPanelProps {
   readonly user: IUserAccount;
@@ -36,24 +47,23 @@ export function AccountPanel(props: IAccountPanelProps) {
   const joinedAt = formatJoinedAt(user.createdAt);
 
   return (
-    <div
-      className={cn('tm:flex tm:flex-col tm:gap-5 tm:rounded-lg tm:border tm:border-line tm:bg-one-bg/50 tm:p-5')}
-    >
-      <div className={cn('tm:flex tm:items-center tm:gap-4')}>
-        <Avatar className={cn('tm:size-14 tm:ring-2 tm:ring-line/80')}>
+    <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
+      <div className={cn('tm:flex tm:items-start tm:gap-4')}>
+        <Avatar className={cn('tm:size-12 tm:shrink-0 tm:ring-1 tm:ring-line/70')}>
           {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={displayName} />}
-          <AvatarFallback className={cn('tm:bg-one-bg2 tm:text-lg tm:font-semibold tm:text-light-grey')}>
+          <AvatarFallback className={cn('tm:bg-one-bg2 tm:text-base tm:font-semibold tm:text-light-grey')}>
             {avatarFallback}
           </AvatarFallback>
         </Avatar>
-        <div className={cn('tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:gap-1.5')}>
-          <div className={cn('tm:truncate tm:text-base tm:font-semibold tm:text-white')}>
+
+        <div className={cn('tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:gap-1')}>
+          <span className={cn('tm:truncate tm:text-base tm:font-semibold tm:text-white')}>
             {displayName}
-          </div>
-          <div className={cn('tm:flex tm:min-w-0 tm:flex-wrap tm:items-center tm:gap-2')}>
-            <span className={cn('tm:truncate tm:text-sm tm:text-grey-fg')}>
-              {user.email}
-            </span>
+          </span>
+          <span className={cn('tm:truncate tm:text-sm tm:text-grey-fg')}>
+            {user.email}
+          </span>
+          <div className={cn('tm:mt-1')}>
             {user.emailVerified
               ? (
                 <Badge variant="secondary" className={cn('tm:gap-1.5 tm:bg-green/10 tm:text-green')}>
@@ -69,32 +79,40 @@ export function AccountPanel(props: IAccountPanelProps) {
               )}
           </div>
         </div>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                void onLogout();
+              }}
+              disabled={busy}
+              aria-label={localeService.t('auth-ui.account.logout')}
+              className={cn(`
+                tm:-mt-1 tm:-mr-1 tm:shrink-0 tm:text-grey-fg
+                tm:hover:bg-red/10 tm:hover:text-red
+              `)}
+            >
+              {busy
+                ? <Loader2Icon className={cn('tm:size-4 tm:animate-spin')} />
+                : <LogOutIcon className={cn('tm:size-4')} />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {busy
+              ? localeService.t('auth-ui.account.logging-out')
+              : localeService.t('auth-ui.account.logout')}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
-      <div
-        className={cn('tm:flex tm:items-center tm:justify-between tm:gap-3 tm:border-t tm:border-line tm:pt-4')}
-      >
-        <span className={cn('tm:text-xs tm:text-grey-fg')}>
-          {joinedAt ? localeService.t('auth-ui.account.joined-at', joinedAt) : ''}
+      {joinedAt && (
+        <span className={cn('tm:pl-16 tm:text-xs tm:text-grey-fg')}>
+          {localeService.t('auth-ui.account.joined-at', joinedAt)}
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            void onLogout();
-          }}
-          disabled={busy}
-          className={cn(`
-            tm:gap-2 tm:text-red
-            tm:hover:bg-red/10 tm:hover:text-red
-          `)}
-        >
-          <LogOutIcon className={cn('tm:size-4')} />
-          {busy
-            ? localeService.t('auth-ui.account.logging-out')
-            : localeService.t('auth-ui.account.logout')}
-        </Button>
-      </div>
+      )}
     </div>
   );
 }

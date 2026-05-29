@@ -19,9 +19,11 @@ export default {
       title: 'Welcome to Termlnk',
       subtitle: 'Sign in or create an account to sync your hosts and settings.',
     },
-    tabs: {
-      login: 'Sign in',
-      register: 'Sign up',
+    switch: {
+      'to-register-prompt': 'Don\'t have an account?',
+      'to-register-action': 'Sign up',
+      'to-login-prompt': 'Already have an account?',
+      'to-login-action': 'Sign in',
     },
     login: {
       email: 'Email',

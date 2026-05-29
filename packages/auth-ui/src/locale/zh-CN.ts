@@ -19,9 +19,11 @@ export default {
       title: '欢迎使用 Termlnk',
       subtitle: '登录或注册，同步你的主机与配置。',
     },
-    tabs: {
-      login: '登录',
-      register: '注册',
+    switch: {
+      'to-register-prompt': '还没有账号？',
+      'to-register-action': '注册',
+      'to-login-prompt': '已有账号？',
+      'to-login-action': '登录',
     },
     login: {
       email: '邮箱',

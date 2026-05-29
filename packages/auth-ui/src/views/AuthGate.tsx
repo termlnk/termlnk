@@ -16,7 +16,7 @@
 import type { IAuthError, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
 import { AuthState, IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { cn, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
+import { Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { ShieldCheckIcon } from 'lucide-react';
 import { useState } from 'react';
 import { AccountPanel } from './AccountPanel';
@@ -110,42 +110,53 @@ export function AuthGate() {
         subtitle={localeService.t('auth-ui.welcome.subtitle')}
       />
 
-      <Tabs value={viewMode} onValueChange={(value) => switchTo(value as ViewMode)}>
-        <TabsList className={cn('tm:grid tm:w-full tm:grid-cols-2')}>
-          <TabsTrigger value="login">{localeService.t('auth-ui.tabs.login')}</TabsTrigger>
-          <TabsTrigger value="register">{localeService.t('auth-ui.tabs.register')}</TabsTrigger>
-        </TabsList>
+      {viewMode === 'login'
+        ? (
+            <LoginForm
+              busy={busy}
+              errorMessage={errorMessage}
+              onSubmit={async (input: ILoginInput) => {
+                beforeSubmit();
+                try {
+                  await authClient.login(input);
+                } catch (err) {
+                  handleSubmitError('login', err);
+                }
+              }}
+            />
+          )
+        : (
+            <RegisterForm
+              busy={busy}
+              errorMessage={errorMessage}
+              onSubmit={async (input: IRegisterInput) => {
+                beforeSubmit();
+                try {
+                  await authClient.register(input);
+                } catch (err) {
+                  handleSubmitError('register', err);
+                }
+              }}
+            />
+          )}
 
-        <TabsContent value="login" className={cn('tm:mt-1')}>
-          <LoginForm
-            busy={busy}
-            errorMessage={errorMessage}
-            onSubmit={async (input: ILoginInput) => {
-              beforeSubmit();
-              try {
-                await authClient.login(input);
-              } catch (err) {
-                handleSubmitError('login', err);
-              }
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value="register" className={cn('tm:mt-1')}>
-          <RegisterForm
-            busy={busy}
-            errorMessage={errorMessage}
-            onSubmit={async (input: IRegisterInput) => {
-              beforeSubmit();
-              try {
-                await authClient.register(input);
-              } catch (err) {
-                handleSubmitError('register', err);
-              }
-            }}
-          />
-        </TabsContent>
-      </Tabs>
+      <p className={cn('tm:text-center tm:text-sm tm:text-grey-fg')}>
+        {viewMode === 'login'
+          ? localeService.t('auth-ui.switch.to-register-prompt')
+          : localeService.t('auth-ui.switch.to-login-prompt')}
+        {' '}
+        <Button
+          type="button"
+          variant="link"
+          disabled={busy}
+          onClick={() => switchTo(viewMode === 'login' ? 'register' : 'login')}
+          className={cn('tm:h-auto tm:p-0 tm:font-medium')}
+        >
+          {viewMode === 'login'
+            ? localeService.t('auth-ui.switch.to-register-action')
+            : localeService.t('auth-ui.switch.to-login-action')}
+        </Button>
+      </p>
 
       <div
         className={cn(`

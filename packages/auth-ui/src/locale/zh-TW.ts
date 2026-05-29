@@ -19,9 +19,11 @@ export default {
       title: '歡迎使用 Termlnk',
       subtitle: '登入或註冊，同步你的主機與設定。',
     },
-    tabs: {
-      login: '登入',
-      register: '註冊',
+    switch: {
+      'to-register-prompt': '還沒有帳號？',
+      'to-register-action': '註冊',
+      'to-login-prompt': '已有帳號？',
+      'to-login-action': '登入',
     },
     login: {
       email: '信箱',

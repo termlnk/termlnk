@@ -19,9 +19,11 @@ export default {
       title: 'Termlnk에 오신 것을 환영합니다',
       subtitle: '로그인하거나 계정을 만들어 호스트와 설정을 동기화하세요.',
     },
-    tabs: {
-      login: '로그인',
-      register: '회원가입',
+    switch: {
+      'to-register-prompt': '계정이 없으신가요?',
+      'to-register-action': '회원가입',
+      'to-login-prompt': '이미 계정이 있으신가요?',
+      'to-login-action': '로그인',
     },
     login: {
       email: '이메일',

@@ -19,9 +19,11 @@ export default {
       title: 'Termlnk へようこそ',
       subtitle: 'サインインまたは新規登録して、ホストと設定を同期しましょう。',
     },
-    tabs: {
-      login: 'サインイン',
-      register: '新規登録',
+    switch: {
+      'to-register-prompt': 'アカウントをお持ちでないですか？',
+      'to-register-action': '新規登録',
+      'to-login-prompt': 'すでにアカウントをお持ちですか？',
+      'to-login-action': 'サインイン',
     },
     login: {
       email: 'メールアドレス',
