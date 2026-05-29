@@ -61,7 +61,7 @@
     "lucide-react": "^1.16.0",
     "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
     "react-dom": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
-    "react-resizable-panels": "^4.11.1",
+    "react-resizable-panels": "^4.11.2",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
@@ -69,7 +69,7 @@
     "@termlnk/design": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "react-markdown": "^10.1.0",
-    "react-resizable-panels": "^4.11.1",
+    "react-resizable-panels": "^4.11.2",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
