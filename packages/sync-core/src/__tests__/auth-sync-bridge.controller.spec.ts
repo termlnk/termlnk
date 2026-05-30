@@ -16,7 +16,7 @@
 import type { IAuthError, IAuthService, IMasterKey, IMasterKeyService, IUserAccount } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { Observable } from 'rxjs';
-import { AuthState, MasterKeyState } from '@termlnk/auth';
+import { AuthState, MasterKeyState, VaultState } from '@termlnk/auth';
 import { ConfigService } from '@termlnk/core';
 import { SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
@@ -39,6 +39,7 @@ class FakeAuthService implements IAuthService {
   readonly authState$ = this._state$.asObservable();
   readonly currentUser$ = this._user$.asObservable();
   readonly lastError$ = this._err$.asObservable();
+  readonly vaultState$ = new BehaviorSubject<VaultState>(VaultState.Unlocked).asObservable();
 
   setState(state: AuthState): void {
     this._state$.next(state);
@@ -52,6 +53,11 @@ class FakeAuthService implements IAuthService {
   async restore(): Promise<void> {}
   async listDevices() { return []; }
   async revokeDevice(): Promise<void> {}
+  async getGoogleAuthorizeUrl(): Promise<string> { return ''; }
+  async loginWithGoogle(): Promise<void> { throw new Error('not used'); }
+  async setupEncryptionPassword(): Promise<void> { throw new Error('not used'); }
+  async unlockVault(): Promise<void> { throw new Error('not used'); }
+  async getServerCapabilities() { return { googleOAuth: false }; }
 }
 
 // Defaults to Unlocked so existing happy-path tests don't need to manually unlock.

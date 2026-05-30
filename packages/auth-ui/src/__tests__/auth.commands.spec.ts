@@ -13,8 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthService, IAuthError, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
-import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
+import type { IAuthError, IAuthService, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
+import { AuthState, IAuthService as IAuthServiceId, VaultState } from '@termlnk/auth';
 import { ILogService, Injector } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { describe, expect, it } from 'vitest';
@@ -33,6 +33,7 @@ class FakeAuthService implements IAuthService {
   readonly currentUser$ = new BehaviorSubject<IUserAccount | null>(null).asObservable();
   readonly authState$ = new BehaviorSubject<AuthState>(AuthState.Unauthenticated).asObservable();
   readonly lastError$ = new BehaviorSubject<IAuthError | null>(null).asObservable();
+  readonly vaultState$ = new BehaviorSubject<VaultState>(VaultState.Unlocked).asObservable();
   logoutCalls = 0;
 
   async register(_input: IRegisterInput): Promise<void> {}
@@ -46,6 +47,11 @@ class FakeAuthService implements IAuthService {
   async getAccessToken(): Promise<string | null> { return null; }
   getCurrentUser(): IUserAccount | null { return null; }
   async restore(): Promise<void> {}
+  async getGoogleAuthorizeUrl(): Promise<string> { return ''; }
+  async loginWithGoogle(): Promise<void> {}
+  async setupEncryptionPassword(): Promise<void> {}
+  async unlockVault(): Promise<void> {}
+  async getServerCapabilities() { return { googleOAuth: false }; }
 }
 
 function createBed(opts: { withAuth: boolean }): { injector: Injector; auth: FakeAuthService | null } {

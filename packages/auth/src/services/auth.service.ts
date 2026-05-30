@@ -15,7 +15,7 @@
 
 import type { Observable } from 'rxjs';
 import type { IDevice } from '../models/device';
-import type { AuthState, IAuthError } from '../models/session';
+import type { AuthState, IAuthCapabilities, IAuthError, VaultState } from '../models/session';
 import type { ILoginInput, IRegisterInput, IUserAccount } from '../models/user';
 import { createIdentifier } from '@termlnk/core';
 
@@ -36,6 +36,11 @@ export interface IAuthService {
   readonly authState$: Observable<AuthState>;
   // Last error; meaningful only while authState === Error.
   readonly lastError$: Observable<IAuthError | null>;
+
+  // Encryption-key lifecycle, orthogonal to authState$. SRP sign-in reaches Unlocked
+  // directly; OAuth sign-in lands on NeedsSetup (first time) or Locked (re-auth / new
+  // device) until setupEncryptionPassword/unlockVault runs.
+  readonly vaultState$: Observable<VaultState>;
 
   // Client derives the SRP6a verifier and uploads it; the server stores only the verifier
   // hash and never sees the password. Successful registration auto-logs in. Returns void
@@ -70,6 +75,29 @@ export interface IAuthService {
   // - Revoking another device forces it to re-login on its next refresh.
   // - The server returns 204 unconditionally, so a non-existent id leaks nothing.
   revokeDevice(deviceId: string): Promise<void>;
+
+  // Cloud authorize URL the renderer opens in the system browser. Async so the
+  // renderer facade can fetch it over tRPC; the main process resolves it synchronously.
+  getGoogleAuthorizeUrl(): Promise<string>;
+
+  // Which optional sign-in methods the server advertises (e.g. Google). Lets the UI
+  // gate the "Continue with Google" button. Fail-soft: returns all-false when the
+  // server is unreachable or cloud is unconfigured.
+  getServerCapabilities(): Promise<IAuthCapabilities>;
+
+  // Completes a Google sign-in from the one-time relay code delivered via the
+  // `termlnk://auth/callback` deep link. Main-process only — invoked by the
+  // deep-link handler, not the renderer.
+  loginWithGoogle(relayCode: string): Promise<void>;
+
+  // First-time set of the encryption password (OAuth accounts have no login password
+  // to derive from). Derives the master key, uploads salt + key-check value, unlocks.
+  setupEncryptionPassword(password: string): Promise<void>;
+
+  // Unlock the vault where an encryption password was already set: derive from the
+  // entered password, verify against the server's key-check value, install the key.
+  // Throws AuthError('wrong_encryption_password') on mismatch.
+  unlockVault(password: string): Promise<void>;
 }
 
 export const IAuthService = createIdentifier<IAuthService>('auth.auth-service');

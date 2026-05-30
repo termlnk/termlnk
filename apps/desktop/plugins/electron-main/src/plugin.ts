@@ -25,6 +25,7 @@ import { DeepLinkController } from './controllers/deep-link.controller';
 import { DynamicIslandController } from './controllers/dynamic-island.controller';
 import { MainController } from './controllers/main.controller';
 import { MenuController } from './controllers/menu.controller';
+import { OAuthController } from './controllers/oauth.controller';
 import { RPCController } from './controllers/rpc.controller';
 import { SingleInstanceController } from './controllers/single-instance.controller';
 import { WindowFocusSyncController } from './controllers/window-focus-sync.controller';
@@ -68,6 +69,7 @@ export class ElectronMainPlugin extends Plugin {
       [AppSettingsController],
       [WindowFocusSyncController],
       [DeepLinkController],
+      [OAuthController],
     ]);
   }
 
@@ -107,6 +109,7 @@ export class ElectronMainPlugin extends Plugin {
       [WindowFocusSyncController],
       [AgentKeepAwakeController],
       [DeepLinkController],
+      [OAuthController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }
