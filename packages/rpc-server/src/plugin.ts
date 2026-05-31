@@ -24,13 +24,13 @@ import { IPTYSessionService } from '@termlnk/terminal';
 import { defaultPluginConfig, RPC_SERVER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { McpToolsController } from './controllers/mcp-tools.controller';
 import { TerminalSessionPromptController } from './controllers/terminal-session-prompt.controller';
+import { DeepLinkRouterService, IDeepLinkRouterService } from './services/deep-link/deep-link-router.service';
 import { IFileDialogService, NoopFileDialogService } from './services/file-transfer/file-dialog.service';
 import { FileTransferService } from './services/file-transfer/file-transfer.service';
 import { NotifyService } from './services/notify/notify.service';
 import { IProxySocketService, ProxySocketService } from './services/proxy/proxy-socket.service';
 import { PTYSessionService } from './services/pty/pty-session.service';
 import { ISFTPSessionService, SFTPSessionService } from './services/sftp/sftp-session.service';
-import { DeepLinkBus, IDeepLinkBus } from './services/shared-terminal/deep-link.bus';
 import { InviteService } from './services/shared-terminal/invite.service';
 import { SharedSessionService } from './services/shared-terminal/shared-session.service';
 import { CommandBlockService, ICommandBlockService } from './services/shell-integration/command-block.service';
@@ -84,7 +84,7 @@ export class RPCServerPlugin extends Plugin {
       [IPTYSessionService, { useClass: PTYSessionService }],
       [ITerminalSuggestService, { useClass: TerminalSuggestService }],
       [ISharedSessionService, { useClass: SharedSessionService }],
-      [IDeepLinkBus, { useClass: DeepLinkBus }],
+      [IDeepLinkRouterService, { useClass: DeepLinkRouterService }],
       [IInviteService, { useClass: InviteService }],
       [McpToolsController],
       [TerminalSessionPromptController],

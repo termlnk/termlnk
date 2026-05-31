@@ -73,7 +73,7 @@ const config: Configuration = {
     releaseNotesFile: 'build/release-notes.md',
   },
   // Multiplayer invite deep links (`termlnk://...`) are forwarded by electron-main
-  // through IDeepLinkBus into ParticipantJoinDialog. Registering the scheme here
+  // through IDeepLinkRouterService into ParticipantJoinDialog. Registering the scheme here
   // wires up Launch Services on macOS, the Windows registry installer hooks, and
   // .desktop MimeType for Linux installs so users can click an invite link.
   protocols: [

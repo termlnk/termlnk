@@ -23,8 +23,10 @@ export type InviteRouter = typeof inviteRouter;
 /**
  * Invite lifecycle + deep-link inflow.
  *
- * `inviteUrl$` is the OS-deep-link bus pull — the renderer subscribes and
- * pops the JoinDialog when a `termlnk://invite#...` URL arrives.
+ * `inviteUrl$` is the OS-deep-link router's `invite` host route — the renderer
+ * subscribes and pops the JoinDialog when a `termlnk://invite/<id>#...` URL
+ * arrives. OAuth callbacks (`termlnk://auth/...`) are dispatched elsewhere and
+ * never reach this stream.
  */
 export const inviteRouter = router({
   // Owner-side invite lifecycle

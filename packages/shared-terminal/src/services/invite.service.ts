@@ -24,7 +24,7 @@ import { createIdentifier } from '@termlnk/core';
  * stream (`inviteUrl$`).
  *
  * Same contract on both sides — main process implements against PairingService
- * + DeepLinkBus; renderer routes through the tRPC invite router.
+ * + DeepLinkRouterService; renderer routes through the tRPC invite router.
  */
 export interface IInviteService {
   // Owner-side invite lifecycle

@@ -17,24 +17,23 @@ import type { ICollabInvite, IInviteClaimResult, IInviteCreateOptions, IInviteSe
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { IPairingService as IPairingServiceId } from '@termlnk/shared-terminal';
-import { EMPTY } from 'rxjs';
-import { IDeepLinkBus } from './deep-link.bus';
+import { IDeepLinkRouterService } from '../deep-link/deep-link-router.service';
 
 /**
  * Owner-side invite lifecycle + deep-link inflow. Implements `IInviteService`
  * by composing `IPairingService` (invite CRUD + paired devices) with the
- * process-local `IDeepLinkBus` (OS-level termlnk:// URLs forwarded from
- * electron-main).
+ * process-local `IDeepLinkRouterService` (OS-level termlnk:// URLs forwarded
+ * from electron-main).
  *
  * Separation rationale: `IPairingService` lives in shared-terminal-core (no
- * Electron dependency); `IDeepLinkBus` lives in rpc-server because the
+ * Electron dependency); `IDeepLinkRouterService` lives in rpc-server because the
  * electron-main DeepLinkController emits into it. Composing them here keeps
  * the contract surface clean for the renderer.
  */
 export class InviteService extends Disposable implements IInviteService {
   constructor(
     @IPairingServiceId private readonly _pairing: IPairingService,
-    @IDeepLinkBus private readonly _deepLinks: IDeepLinkBus
+    @IDeepLinkRouterService private readonly _deepLinks: IDeepLinkRouterService
   ) {
     super();
   }
@@ -56,7 +55,7 @@ export class InviteService extends Disposable implements IInviteService {
   }
 
   get inviteUrl$(): Observable<string> {
-    return this._deepLinks?.url$ ?? EMPTY;
+    return this._deepLinks.route('invite');
   }
 
   async createInvite(options: IInviteCreateOptions): Promise<{ invite: ICollabInvite; url: string }> {

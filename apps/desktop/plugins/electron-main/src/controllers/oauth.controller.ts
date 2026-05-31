@@ -15,15 +15,13 @@
 
 import { IAuthService } from '@termlnk/auth';
 import { Disposable, ILogService, Inject, Injector, Quantity } from '@termlnk/core';
-import { IDeepLinkBus } from '@termlnk/rpc-server';
-
-const URL_PREFIX = 'termlnk://';
+import { IDeepLinkRouterService } from '@termlnk/rpc-server';
 
 /**
  * Bridges OAuth deep links to the main-process auth service. The Google browser
  * flow ends with a 302 to `termlnk://auth/callback?relayCode=…` (or `?error=…`),
- * captured by DeepLinkController and re-emitted on IDeepLinkBus. We filter those
- * URLs and drive `IAuthService.loginWithGoogle` with the one-time relay code.
+ * captured by DeepLinkController and dispatched by IDeepLinkRouterService to the
+ * `auth` host route. We drive `IAuthService.loginWithGoogle` with the one-time relay code.
  *
  * IAuthService is resolved lazily (Quantity.OPTIONAL) per callback rather than
  * injected once: it is unbound without `cloudBaseUrl`, and resolving late avoids
@@ -31,28 +29,26 @@ const URL_PREFIX = 'termlnk://';
  */
 export class OAuthController extends Disposable {
   constructor(
-    @IDeepLinkBus private readonly _bus: IDeepLinkBus,
+    @IDeepLinkRouterService private readonly _router: IDeepLinkRouterService,
     @ILogService private readonly _logService: ILogService,
     @Inject(Injector) private readonly _injector: Injector
   ) {
     super();
     this.disposeWithMe(
-      this._bus.url$.subscribe((url) => this._handle(url))
+      this._router.route('auth').subscribe((url) => this._handle(url))
     );
   }
 
   private _handle(url: string): void {
-    if (!url.startsWith(URL_PREFIX)) {
-      return;
-    }
     let parsed: URL;
     try {
       parsed = new URL(url);
     } catch {
       return;
     }
-    // termlnk://auth/callback?relayCode=… — host is 'auth', pathname '/callback'.
-    if (parsed.hostname !== 'auth' || parsed.pathname !== '/callback') {
+    // The router guarantees host === 'auth'; still gate on the path so a future
+    // termlnk://auth/<other> route is not mistaken for the OAuth callback.
+    if (parsed.pathname !== '/callback') {
       return;
     }
     const error = parsed.searchParams.get('error');
