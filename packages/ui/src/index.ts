@@ -17,7 +17,7 @@ import './global.css';
 
 export { ToggleRightSidebarCommand } from './commands/toggle-right-sidebar.command';
 export { generateCSSVariables } from './common/css-var';
-export { fromEvent, fromGlobalEvent } from './common/event';
+export { fromEvent, fromFontFaceSetEvent, fromGlobalEvent } from './common/event';
 export { injectUIFontToDOM, removeUIFontFromDOM } from './common/inject-ui-font';
 export { DEFAULT_UI_FONT_FAMILY, DEFAULT_UI_FONT_SIZE, UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IUIConfig } from './controllers/config.schema';

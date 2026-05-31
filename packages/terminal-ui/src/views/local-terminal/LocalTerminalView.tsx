@@ -197,7 +197,6 @@ export function LocalTerminalView(props: ITerminalViewProps) {
     let dataSub: { unsubscribe(): void } | null = null;
     let statusSub: { unsubscribe(): void } | null = null;
     let closeTabTimeout: ReturnType<typeof setTimeout> | null = null;
-    let fitTimeout: ReturnType<typeof setTimeout> | null = null;
     let disposed = false;
 
     // Restore persisted buffer if available
@@ -256,8 +255,6 @@ export function LocalTerminalView(props: ITerminalViewProps) {
             }, 200);
           }
         });
-
-        fitTimeout = setTimeout(fit, 100);
       } catch (err) {
         if (disposed) {
           return;
@@ -277,9 +274,6 @@ export function LocalTerminalView(props: ITerminalViewProps) {
       connectedRef.current = false;
       if (closeTabTimeout) {
         clearTimeout(closeTabTimeout);
-      }
-      if (fitTimeout) {
-        clearTimeout(fitTimeout);
       }
       dataSub?.unsubscribe();
       statusSub?.unsubscribe();

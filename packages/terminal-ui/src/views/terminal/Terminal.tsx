@@ -68,7 +68,7 @@ export function TerminalView(props: ITerminalViewProps) {
   // the hook needs xtermRef from useXterm) can reach the latest version.
   const notifyUserInputRef = useRef<() => void>(() => {});
 
-  const { terminalRef, xtermRef, write, fit, focus, getSize, serialize, findNext, findPrevious, clearSearchDecorations, searchResult, progressState } = useXterm({
+  const { terminalRef, xtermRef, write, focus, getSize, serialize, findNext, findPrevious, clearSearchDecorations, searchResult, progressState } = useXterm({
     enabled: globalAppearance.isReady,
     onData: useCallback((data: string) => {
       if (connectedRef.current) {
@@ -149,7 +149,6 @@ export function TerminalView(props: ITerminalViewProps) {
     subscriptions,
     connectedRef,
     onData: write,
-    fit,
     getSize,
   });
 

@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IDisposable } from '@termlnk/core';
 import type { CursorStyle, ITerminalAppearanceConfig, IWindowTransparencyConfig, TerminalRendererEngine } from '@termlnk/terminal';
 import type { ISearchOptions, ISearchResultChangeEvent } from '@xterm/addon-search';
 import type { ITerminalOptions, IWindowsPty } from '@xterm/xterm';
@@ -23,6 +24,7 @@ import { isMacintosh } from '@termlnk/core';
 import { useDependency } from '@termlnk/design';
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LETTER_SPACING, DEFAULT_TERMINAL_RENDERER_ENGINE, DEFAULT_TERMINAL_WORD_SEPARATOR, DEFAULT_WINDOW_TRANSPARENCY_OPACITY, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
+import { fromFontFaceSetEvent } from '@termlnk/ui';
 import { FitAddon } from '@xterm/addon-fit';
 import { ImageAddon } from '@xterm/addon-image';
 import { LigaturesAddon } from '@xterm/addon-ligatures';
@@ -257,11 +259,27 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
       ? setupResizeObserver(terminalRef.current, fitAddon)
       : () => {};
 
+    // The initial fit() above measures cell height with whatever font is
+    // available right now. The terminal font (JetBrains Mono) is a web font
+    // loaded asynchronously, so a cold-start fit can run against a fallback
+    // font whose smaller line height over-counts rows — once the real font
+    // swaps in, the grid ends up taller than the container and its bottom
+    // rows get clipped. Re-fit when fonts finish loading to recompute rows.
+    let disposeFontsListener: IDisposable | null = null;
+    if (autoFit) {
+      disposeFontsListener = fromFontFaceSetEvent('loadingdone', () => {
+        try {
+          fitAddon.fit();
+        } catch { }
+      });
+    }
+
     return () => {
       inputBindingDisposable.dispose();
       searchResultDisposable.dispose();
       progressDisposable.dispose();
       disposeResizeObserver();
+      disposeFontsListener?.dispose();
       term.dispose();
       xtermRef.current = null;
       fitAddonRef.current = null;
