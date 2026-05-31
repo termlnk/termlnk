@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IGoogleSignInLauncher } from '@termlnk/auth';
+import type { GoogleWebSignInStatus, IGoogleSignInLauncher } from '@termlnk/auth';
 import { IAuthService } from '@termlnk/auth';
 import { Disposable, ILogService } from '@termlnk/core';
 
@@ -66,14 +66,15 @@ export class WebGoogleSignInLauncher extends Disposable implements IGoogleSignIn
       if (this._cancelled) {
         return;
       }
-      let status: 'pending' | 'complete' | 'expired';
+      let status: GoogleWebSignInStatus;
       try {
         status = await this._authService.pollGoogleWebSignIn();
       } catch (err) {
         this._logService.warn('[WebGoogleSignInLauncher] poll failed, retrying:', err);
         continue;
       }
-      if (status === 'complete' || status === 'expired') {
+      if (status === 'complete' || status === 'expired' || status === 'error') {
+        // 'error' already surfaced the reason via authState$/lastError$; just stop.
         popup.close();
         return;
       }

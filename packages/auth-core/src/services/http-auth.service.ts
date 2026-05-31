@@ -198,7 +198,12 @@ interface IGoogleWebBeginResponseBody {
 }
 
 interface IGoogleWebPollResponseBody {
+  // Terminal state reported by the server: 'success' carries `relayCode`, 'error'
+  // carries `error`. A missing status with no relayCode is treated as 'pending'.
+  status?: 'pending' | 'success' | 'error';
   relayCode?: string;
+  // Server-side failure code (e.g. 'access_denied', 'server_error') when status is 'error'.
+  error?: string;
 }
 
 // Trust boundary: plaintext password is consumed inside register/login only; master key
@@ -574,6 +579,15 @@ export class HttpAuthService extends Disposable implements IAuthService {
       // Transient network blip — let the caller poll again rather than aborting the flow.
       this._logService.warn('[HttpAuthService] web sign-in poll failed:', err);
       return 'pending';
+    }
+    if (resp.status === 'error') {
+      // OAuth/token-exchange failed server-side (consent denied, provider error, …).
+      // Stop polling and surface the reason through authState/lastError, exactly like
+      // a failed claim — the web launcher then drops out of its poll loop at once.
+      this._pendingWebDeviceCode = null;
+      const code = mapServerErrorCode(resp.error) ?? 'unknown';
+      this._toAuthError(new AuthError(code, friendlyMessageFor(code)), 'pollGoogleWebSignIn');
+      return 'error';
     }
     if (!resp.relayCode) {
       return 'pending';

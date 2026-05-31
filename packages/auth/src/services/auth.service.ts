@@ -27,9 +27,10 @@ export interface IGoogleWebSignInBegin {
 }
 
 // Outcome of a pollGoogleWebSignIn tick. 'complete' means the session was
-// claimed in place; 'pending' means keep polling; 'expired' means no sign-in
-// is in flight (nothing to poll).
-export type GoogleWebSignInStatus = 'pending' | 'complete' | 'expired';
+// claimed in place; 'pending' means keep polling; 'error' means the sign-in
+// failed server-side (the reason is surfaced via authState$/lastError$, like a
+// failed claim); 'expired' means no sign-in is in flight (nothing to poll).
+export type GoogleWebSignInStatus = 'pending' | 'complete' | 'error' | 'expired';
 
 // Auth contract — implemented on both the main process (HttpAuthService in
 // @termlnk/auth-core, performs the SRP6a handshake + token storage + restore)
@@ -110,8 +111,9 @@ export interface IAuthService {
 
   // Poll the in-flight web sign-in started by beginGoogleWebSignIn. On the first
   // poll that finds the relay code, the session is claimed in place (currentUser$
-  // / authState$ update) and 'complete' is returned; otherwise 'pending', or
-  // 'expired' when no sign-in is in flight.
+  // / authState$ update) and 'complete' is returned. 'error' means the sign-in
+  // failed server-side (surfaced via authState$/lastError$); 'pending' means keep
+  // polling; 'expired' means no sign-in is in flight.
   pollGoogleWebSignIn(): Promise<GoogleWebSignInStatus>;
 
   // First-time set of the encryption password (OAuth accounts have no login password
