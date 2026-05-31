@@ -147,7 +147,7 @@ export function TerminalTabItem(props: ITerminalTabItemProps) {
                       className={cn({
                         'tm:text-green': isReady,
                         'tm:text-red': isError,
-                        'tm:text-grey': isClosed,
+                        'tm:text-yellow': isClosed,
                       })}
                     />
                   )

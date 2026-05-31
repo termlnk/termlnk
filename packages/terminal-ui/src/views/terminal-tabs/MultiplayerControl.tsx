@@ -13,13 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IUserAccount } from '@termlnk/auth';
 import type { Nullable } from '@termlnk/core';
-import type { IDriverState, IParticipant, IShareableSession } from '@termlnk/shared-terminal';
+import type { IDriverState, IParticipant, IShareableSession, ISharedSessionInputPolicy } from '@termlnk/shared-terminal';
+import { IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, toast, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
-import { ISharedTerminalService, SharedTerminalRole } from '@termlnk/shared-terminal';
+import { IInviteService, ISharedSessionService, SharedTerminalRole } from '@termlnk/shared-terminal';
 import { TooltipWrapper } from '@termlnk/ui';
-import { CheckIcon, KeyboardIcon, LinkIcon, SquareIcon, UserIcon, UsersIcon } from 'lucide-react';
+import { CheckIcon, EyeIcon, KeyboardIcon, LinkIcon, Loader2, SquareIcon, UserIcon, UsersIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY } from 'rxjs';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
@@ -31,17 +33,51 @@ import { ITerminalUIService } from '../../services/terminal/terminal-ui.service'
  * a popover showing share status, copy-link button, and the participant list.
  */
 export function MultiplayerControl(): React.JSX.Element | null {
+  const terminalUIService = useDependency(ITerminalUIService);
+  const activeSessionId = useObservable<Nullable<string>>(terminalUIService.activeSessionId$);
+
+  // Remount the inner popover on session change. The participants$/driverState$
+  // observables get swapped when activeSessionId changes, but redi's
+  // useObservable keeps the last value of the prior stream until the new one
+  // emits — which would leak the previous tab's participants into the new tab.
+  // Keying also resets local state (copied/busy) and closes the
+  // Radix Popover, since each tab's share context is independent.
+  return (
+    <MultiplayerControlInner
+      key={activeSessionId ?? 'none'}
+      activeSessionId={activeSessionId ?? null}
+    />
+  );
+}
+
+interface IMultiplayerControlInnerProps {
+  readonly activeSessionId: string | null;
+}
+
+function MultiplayerControlInner({ activeSessionId }: IMultiplayerControlInnerProps): React.JSX.Element | null {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
-  const terminalUIService = useDependency(ITerminalUIService);
-  const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
+  const sharedSession = useDependency(ISharedSessionService, Quantity.OPTIONAL);
+  const inviteService = useDependency(IInviteService, Quantity.OPTIONAL);
+  const authService = useDependency(IAuthService, Quantity.OPTIONAL);
 
-  const activeSessionId = useObservable<Nullable<string>>(terminalUIService.activeSessionId$);
-  const shareable = useObservable<readonly IShareableSession[]>(client?.shareable$ ?? null, []);
+  const currentUser = useObservable<IUserAccount | null>(authService?.currentUser$ ?? null, null);
+  const shareable = useObservable<readonly IShareableSession[]>(sharedSession?.shareable$ ?? null, []);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  // Cache the invite URL across re-renders so the user can copy again without re-creating.
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  // Tracks the initial "click Copy link while not yet shared" flow. While true
+  // the trigger button stays in a loading state and the Stop button is hidden,
+  // even though `isShared` may already have flipped true after the daemon
+  // accepted the share request — so the user does not briefly see two
+  // disabled buttons mid-transition.
+  const [copying, setCopying] = useState(false);
+  /**
+   * Pending input policy chosen by the owner before sharing begins. Once the
+   * share is live the value is locked — to switch modes the owner must Stop
+   * sharing and start again. Mirrors the Termius behaviour where mode is bound
+   * to the share, not to individual invites.
+   */
+  const [pendingPolicy, setPendingPolicy] = useState<ISharedSessionInputPolicy>('allow-input');
   // Track the active "Copied" timer so consecutive clicks restart the countdown
   // rather than letting the visual feedback drop mid-flight.
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,45 +103,46 @@ export function MultiplayerControl(): React.JSX.Element | null {
   // Always subscribe (hooks must be unconditional) but pass EMPTY when no
   // session/sharing — useObservable then yields the seed value.
   const participantsObservable = useMemo(() => {
-    if (!client || !activeEntry?.shared) {
+    if (!sharedSession || !activeEntry?.shared) {
       return EMPTY;
     }
-    return client.participants$(activeEntry.sessionId);
-  }, [client, activeEntry?.sessionId, activeEntry?.shared]);
+    return sharedSession.participants$(activeEntry.sessionId);
+  }, [sharedSession, activeEntry?.sessionId, activeEntry?.shared]);
   const participants = useObservable<readonly IParticipant[]>(participantsObservable, []);
 
   const driverStateObservable = useMemo(() => {
-    if (!client || !activeEntry?.shared) {
+    if (!sharedSession || !activeEntry?.shared) {
       return EMPTY;
     }
-    return client.driverState$(activeEntry.sessionId);
-  }, [client, activeEntry?.sessionId, activeEntry?.shared]);
+    return sharedSession.driverState$(activeEntry.sessionId);
+  }, [sharedSession, activeEntry?.sessionId, activeEntry?.shared]);
   const driverState = useObservable<IDriverState | null>(driverStateObservable, null);
 
   const handleCopyLink = useCallback(async (): Promise<void> => {
-    if (!client || !activeEntry) {
+    if (!sharedSession || !inviteService || !activeEntry) {
       return;
     }
+    const isInitialCopy = !activeEntry.shared;
     setBusy(true);
+    if (isInitialCopy) {
+      setCopying(true);
+    }
     try {
       if (!activeEntry.shared) {
+        const options = { inputPolicy: pendingPolicy };
         if (activeEntry.kind === 'ssh') {
-          await client.shareSshSession(activeEntry.sessionId);
+          await sharedSession.shareSshSession(activeEntry.sessionId, options);
         } else {
-          await client.sharePtySession(activeEntry.sessionId);
+          await sharedSession.sharePtySession(activeEntry.sessionId, options);
         }
       }
-      let url = inviteUrl;
-      if (!url) {
-        const result = await client.createInvite({
-          sessionId: activeEntry.sessionId,
-          role: SharedTerminalRole.CoPilot,
-          ttlMs: 15 * 60 * 1000,
-          singleUse: false,
-        });
-        url = result.url;
-        setInviteUrl(url);
-      }
+      const result = await inviteService.createInvite({
+        sessionId: activeEntry.sessionId,
+        role: SharedTerminalRole.CoPilot,
+        ttlMs: 15 * 60 * 1000,
+        singleUse: true,
+      });
+      const url = result.url;
       await navigator.clipboard.writeText(url);
       setCopied(true);
       clearCopyTimer();
@@ -115,46 +152,68 @@ export function MultiplayerControl(): React.JSX.Element | null {
       }, 2000);
     } catch (err) {
       logService.error('[MultiplayerControl] copy-link failed:', err);
-      toast.error(localeService.t('terminal-ui.multiplayer.copy-failed'));
+      toast.error(localeService.t('terminal-ui.multiplayer.copy-failed'), {
+        description: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       setBusy(false);
+      if (isInitialCopy) {
+        setCopying(false);
+      }
     }
-  }, [client, activeEntry, inviteUrl, localeService, logService, clearCopyTimer]);
+  }, [sharedSession, inviteService, activeEntry, pendingPolicy, localeService, logService, clearCopyTimer]);
 
   const handleStop = useCallback(async (): Promise<void> => {
-    if (!client || !activeEntry) {
+    if (!sharedSession || !activeEntry) {
       return;
     }
     setBusy(true);
     try {
-      await client.stopSharing(activeEntry.sessionId);
-      setInviteUrl(null);
+      await sharedSession.stopSharing(activeEntry.sessionId);
       setCopied(false);
+      // Reset the policy toggle so re-opening the popover does not silently
+      // pre-select whatever the previous share was — Termius equivalent.
+      setPendingPolicy('allow-input');
       clearCopyTimer();
     } catch (err) {
       logService.error('[MultiplayerControl] stop failed:', err);
     } finally {
       setBusy(false);
     }
-  }, [client, activeEntry, logService, clearCopyTimer]);
+  }, [sharedSession, activeEntry, logService, clearCopyTimer]);
 
-  const handleTakeKeyboard = useCallback(async (participantId: string): Promise<void> => {
-    if (!client || !activeEntry) {
+  const handleToggleKeyboard = useCallback(async (participantId: string, currentlyDriving: boolean): Promise<void> => {
+    if (!sharedSession || !activeEntry) {
       return;
     }
     try {
-      await client.setDriver(activeEntry.sessionId, participantId);
+      await sharedSession.setDriver(activeEntry.sessionId, currentlyDriving ? null : participantId);
     } catch (err) {
-      logService.error('[MultiplayerControl] take-keyboard failed:', err);
+      logService.error('[MultiplayerControl] toggle-keyboard failed:', err);
     }
-  }, [client, activeEntry, logService]);
+  }, [sharedSession, activeEntry, logService]);
 
-  if (!client || !activeEntry) {
+  if (!sharedSession || !inviteService || !activeEntry || !currentUser) {
     return null;
   }
 
   const isShared = activeEntry.shared;
   const currentDriverId = driverState?.driverId ?? null;
+  // Share-mode toggle is owner-only and lives only before sharing begins. Hide
+  // it (with the surrounding divider) while sharing is active or while the
+  // initial copy is in flight — the owner must Stop sharing and start again
+  // to switch modes, matching Termius semantics.
+  const showShareModePicker = !isShared && !copying;
+  // "Stop multiplayer" must stay hidden during the initial copy flow even
+  // after the daemon flips `isShared = true`, so the user does not see two
+  // disabled buttons mid-handshake.
+  const showStopButton = isShared && !copying;
+  // Driver-status dot colour on the multiplayer trigger:
+  //   blue → owner is driving (sole participant or driverId === null)
+  //   yellow → some joiner has taken the keyboard
+  // The dot is suppressed entirely when the session is not shared.
+  const showDriverDot = isShared;
+  const driverDotIsJoiner = isShared && currentDriverId !== null;
 
   return (
     <Popover>
@@ -163,9 +222,20 @@ export function MultiplayerControl(): React.JSX.Element | null {
           <Button
             variant="ghost"
             size="icon-sm"
-            className={cn({ 'tm:text-green': isShared })}
+            className={cn('tm:relative', { 'tm:text-green': isShared })}
           >
             <UsersIcon size={14} strokeWidth={1.5} />
+            {showDriverDot && (
+              <span
+                className={cn(
+                  'tm:absolute tm:right-0.5 tm:bottom-0.5 tm:size-1.5 tm:rounded-full tm:ring-1 tm:ring-black',
+                  {
+                    'tm:bg-yellow': driverDotIsJoiner,
+                    'tm:bg-blue': !driverDotIsJoiner,
+                  }
+                )}
+              />
+            )}
           </Button>
         </PopoverTrigger>
       </TooltipWrapper>
@@ -176,7 +246,7 @@ export function MultiplayerControl(): React.JSX.Element | null {
       >
         <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
           <div className={cn('tm:flex tm:items-center tm:justify-between tm:gap-2')}>
-            <div className={cn('tm:flex tm:items-center tm:gap-2 tm:text-sm tm:text-light-grey')}>
+            <div className={cn('tm:flex tm:items-center tm:gap-2 tm:text-sm tm:text-white')}>
               <UsersIcon className={cn('tm:size-4')} />
               <span>{localeService.t('terminal-ui.multiplayer.title')}</span>
             </div>
@@ -186,23 +256,33 @@ export function MultiplayerControl(): React.JSX.Element | null {
                 size="sm"
                 disabled={busy}
                 onClick={() => { void handleCopyLink(); }}
-                className={cn('tm:gap-1.5', { 'tm:text-green': copied })}
+                className={cn('tm:gap-1.5', {
+                  'tm:text-green': copied && !copying,
+                  'tm:text-grey-fg': copying,
+                })}
               >
-                {copied
+                {copying
                   ? (
                     <>
-                      <CheckIcon className={cn('tm:size-3.5')} />
-                      {localeService.t('terminal-ui.multiplayer.copied')}
+                      <Loader2 className={cn('tm:size-3.5 tm:animate-spin')} />
+                      {localeService.t('terminal-ui.multiplayer.copying')}
                     </>
                   )
-                  : (
-                    <>
-                      <LinkIcon className={cn('tm:size-3.5')} />
-                      {localeService.t('terminal-ui.multiplayer.copy-link')}
-                    </>
-                  )}
+                  : copied
+                    ? (
+                      <>
+                        <CheckIcon className={cn('tm:size-3.5')} />
+                        {localeService.t('terminal-ui.multiplayer.copied')}
+                      </>
+                    )
+                    : (
+                      <>
+                        <LinkIcon className={cn('tm:size-3.5')} />
+                        {localeService.t('terminal-ui.multiplayer.copy-link')}
+                      </>
+                    )}
               </Button>
-              {isShared && (
+              {showStopButton && (
                 <Button
                   variant="destructive"
                   size="sm"
@@ -217,6 +297,17 @@ export function MultiplayerControl(): React.JSX.Element | null {
             </div>
           </div>
 
+          {showShareModePicker && (
+            <>
+              <div className={cn('tm:h-px tm:bg-line')} />
+              <InputPolicyToggle
+                policy={pendingPolicy}
+                onChange={setPendingPolicy}
+                localeService={localeService}
+              />
+            </>
+          )}
+
           <div className={cn('tm:h-px tm:bg-line')} />
 
           {participants.length === 0
@@ -227,7 +318,7 @@ export function MultiplayerControl(): React.JSX.Element | null {
             )
             : (
               <div className={cn('tm:flex tm:flex-col tm:gap-2')}>
-                <span className={cn('tm:text-xs tm:text-grey-fg')}>
+                <span className={cn('tm:text-xs tm:text-white')}>
                   {localeService.t('terminal-ui.multiplayer.participants')}
                 </span>
                 {participants.map((p) => {
@@ -262,10 +353,10 @@ export function MultiplayerControl(): React.JSX.Element | null {
                           <Button
                             variant="ghost"
                             size="icon"
-                            disabled={isDriver || busy}
-                            onClick={() => { void handleTakeKeyboard(p.connectionId); }}
+                            disabled={busy}
+                            onClick={() => { void handleToggleKeyboard(p.connectionId, isDriver); }}
                             className={cn('tm:size-7', {
-                              'tm:text-blue': isDriver,
+                              'tm:bg-blue/15 tm:text-blue tm:hover:bg-blue/25': isDriver,
                               'tm:text-grey-fg tm:hover:text-light-grey': !isDriver,
                             })}
                           >
@@ -273,7 +364,9 @@ export function MultiplayerControl(): React.JSX.Element | null {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {localeService.t('terminal-ui.multiplayer.take-keyboard')}
+                          {localeService.t(isDriver
+                            ? 'terminal-ui.multiplayer.release-keyboard'
+                            : 'terminal-ui.multiplayer.take-keyboard')}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -284,5 +377,84 @@ export function MultiplayerControl(): React.JSX.Element | null {
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+interface IInputPolicyToggleProps {
+  readonly policy: ISharedSessionInputPolicy;
+  readonly onChange: (next: ISharedSessionInputPolicy) => void;
+  readonly localeService: LocaleService;
+}
+
+/**
+ * Owner-side share-mode picker. Two square buttons (Allow Input vs View only)
+ * decide what every joiner can do for the lifetime of the share. The picker
+ * is only mounted before sharing starts — once a share is live the parent
+ * unmounts this whole section, forcing the owner to Stop + Share to switch
+ * modes (Termius semantics).
+ */
+function InputPolicyToggle({ policy, onChange, localeService }: IInputPolicyToggleProps): React.JSX.Element {
+  const isAllow = policy === 'allow-input';
+  const isView = policy === 'view-only';
+  return (
+    <div className={cn('tm:flex tm:flex-col tm:gap-1.5')}>
+      <span className={cn('tm:text-xs tm:text-white')}>
+        {localeService.t('terminal-ui.multiplayer.policy.label')}
+      </span>
+      <div className={cn('tm:grid tm:grid-cols-2 tm:gap-2')}>
+        <PolicyChoiceButton
+          icon={<KeyboardIcon className={cn('tm:size-3.5')} />}
+          label={localeService.t('terminal-ui.multiplayer.policy.allow-input')}
+          description={localeService.t('terminal-ui.multiplayer.policy.allow-input-hint')}
+          selected={isAllow}
+          onSelect={() => onChange('allow-input')}
+        />
+        <PolicyChoiceButton
+          icon={<EyeIcon className={cn('tm:size-3.5')} />}
+          label={localeService.t('terminal-ui.multiplayer.policy.view-only')}
+          description={localeService.t('terminal-ui.multiplayer.policy.view-only-hint')}
+          selected={isView}
+          onSelect={() => onChange('view-only')}
+        />
+      </div>
+    </div>
+  );
+}
+
+interface IPolicyChoiceButtonProps {
+  readonly icon: React.ReactNode;
+  readonly label: string;
+  readonly description: string;
+  readonly selected: boolean;
+  readonly onSelect: () => void;
+}
+
+function PolicyChoiceButton(props: IPolicyChoiceButtonProps): React.JSX.Element {
+  const { icon, label, description, selected, onSelect } = props;
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'tm:flex tm:flex-col tm:items-start tm:gap-1 tm:rounded-md tm:border tm:p-2 tm:text-left tm:transition-colors',
+        {
+          'tm:border-blue tm:bg-blue/10': selected,
+          'tm:border-line tm:bg-black tm:hover:bg-one-bg2': !selected,
+        }
+      )}
+    >
+      <span
+        className={cn('tm:flex tm:items-center tm:gap-1.5 tm:text-xs', {
+          'tm:text-blue': selected,
+          'tm:text-light-grey': !selected,
+        })}
+      >
+        {icon}
+        <span>{label}</span>
+      </span>
+      <span className={cn('tm:text-[11px] tm:leading-tight tm:text-grey-fg')}>
+        {description}
+      </span>
+    </button>
   );
 }

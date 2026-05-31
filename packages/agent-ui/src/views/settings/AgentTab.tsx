@@ -89,7 +89,7 @@ export function AgentTab() {
 
   return (
     <div className="tm:flex tm:flex-col tm:gap-5">
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <div className="tm:flex tm:items-center tm:gap-2">
             <Sparkles className="tm:size-4 tm:text-blue" />

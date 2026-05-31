@@ -19,8 +19,8 @@ const locale: typeof enUS = {
   'shared-terminal-ui': {
     'invite-role': {
       owner: '소유자',
-      'co-pilot': '협업자',
-      observer: '관찰자',
+      'co-pilot': '편집자',
+      observer: '뷰어',
     },
     'join-dialog': {
       title: '멀티플레이어 초대를 받았습니다',
@@ -30,19 +30,23 @@ const locale: typeof enUS = {
       'expires-label': '만료 시간',
       'copy-url': 'URL 복사',
       join: '세션 참여',
+      joining: '참여 중...',
       dismiss: '닫기',
       unparsable: '이 초대 URL을 분석할 수 없습니다. 발신자에게 재전송을 요청하세요.',
       'join-failed': '세션 참여에 실패했습니다:',
+      'error-invite-not-active': '이 초대 링크는 이미 사용되었거나 더 이상 활성 상태가 아닙니다. 호스트에게 새 초대 링크를 요청하세요.',
     },
     remote: {
       'tab-name': '공유 세션',
       'viewing-only': '읽기 전용',
       driving: '제어 중',
       'waiting-for-frames': '호스트의 첫 출력 대기 중…',
-      'read-only-hint': '관찰자로 참여했습니다. "키보드 요청" 버튼으로 드라이버 권한을 요청할 수 있습니다.',
-      'driver-hint': '키보드를 가져왔습니다. 입력은 호스트의 터미널에서 실행됩니다. "해제"로 권한을 돌려주세요.',
+      'read-only-hint': '뷰어로 참여했습니다. "키보드 요청"으로 제어권을 요청할 수 있습니다.',
+      'driver-hint': '키보드를 제어하고 있습니다. 입력은 호스트의 터미널에서 실행됩니다. "키보드 해제"로 제어권을 돌려줄 수 있습니다.',
       'request-keyboard': '키보드 요청',
       'release-keyboard': '키보드 해제',
+      'view-only-badge': '읽기 전용 공유',
+      'view-only-hint': '호스트가 읽기 전용 모드로 이 세션을 공유했습니다. 입력이 필요하면 호스트에게 "입력 허용" 모드로 전환을 요청하세요.',
       popover: {
         'aria-label': '공유 세션 제어',
       },
@@ -53,6 +57,11 @@ const locale: typeof enUS = {
         disconnected: '연결 해제됨',
         error: '연결 오류',
         idle: '참여 대기 중…',
+      },
+      toast: {
+        'self-acquired': '제어권을 받았습니다. 입력을 시작하세요.',
+        released: '키보드가 해제되었습니다.',
+        'taken-by-other': '다른 참가자가 터미널을 제어 중입니다.',
       },
     },
   },

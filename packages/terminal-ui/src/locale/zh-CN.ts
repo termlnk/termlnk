@@ -222,8 +222,17 @@ const locale: typeof enUS = {
       participants: '参与者：',
       you: '我',
       'take-keyboard': '接管键盘',
+      'release-keyboard': '收回键盘',
       copied: '已复制',
+      copying: '复制中...',
       'copy-failed': '复制链接失败，请检查网络或登录状态。',
+      policy: {
+        label: '分享模式',
+        'allow-input': '允许输入',
+        'allow-input-hint': '加入者可申请控制键盘，同时只允许一人输入。',
+        'view-only': '只读',
+        'view-only-hint': '加入者只能观看，无法输入。适合演示场景。',
+      },
     },
   },
 };

@@ -61,8 +61,10 @@
     "@termlnk/settings-ui": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/sync-ui": "workspace:*",
+    "@termlnk/ui": "workspace:*",
     "lucide-react": "^1.16.0",
-    "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc"
+    "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
+    "rxjs": ">=7.0.0"
   },
   "dependencies": {
     "@termlnk/auth": "workspace:*",
@@ -71,6 +73,7 @@
     "@termlnk/settings-ui": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/sync-ui": "workspace:*",
+    "@termlnk/ui": "workspace:*",
     "lucide-react": "^1.16.0"
   },
   "devDependencies": {

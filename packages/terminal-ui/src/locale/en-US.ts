@@ -220,8 +220,17 @@ const locale = {
       participants: 'Participants:',
       you: 'You',
       'take-keyboard': 'Take keyboard',
+      'release-keyboard': 'Release keyboard',
       copied: 'Copied',
+      copying: 'Copying...',
       'copy-failed': 'Failed to copy link. Check your network or sign-in.',
+      policy: {
+        label: 'Share mode',
+        'allow-input': 'Allow input',
+        'allow-input-hint': 'Joiners can request the keyboard. Only one person types at a time.',
+        'view-only': 'View only',
+        'view-only-hint': 'Joiners can watch but cannot type. Recommended for demos.',
+      },
     },
   },
 };

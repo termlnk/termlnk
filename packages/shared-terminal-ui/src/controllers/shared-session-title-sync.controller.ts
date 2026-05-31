@@ -16,7 +16,7 @@
 import type { IShareableSession } from '@termlnk/shared-terminal';
 import type { ITerminalSession } from '@termlnk/terminal-ui';
 import { ILogService, Optional, RxDisposable } from '@termlnk/core';
-import { ISharedTerminalService } from '@termlnk/shared-terminal';
+import { ISharedSessionService } from '@termlnk/shared-terminal';
 import { ITerminalUIService } from '@termlnk/terminal-ui';
 import { combineLatest, takeUntil } from 'rxjs';
 
@@ -28,12 +28,11 @@ const TITLE_DEBOUNCE_MS = 200;
  * The owner's local PTY emits OSC 0/1/2 on every prompt, so its visible tab
  * title shifts on every command. This controller watches ITerminalUIService's
  * tab list, picks out sessions that are currently being shared, and forwards
- * each new title to the main process via ISharedTerminalService.setSharedSessionTitle.
+ * each new title to the main process via ISharedSessionService.setSessionTitle.
  * The daemon broadcasts the new title to every joiner via a session_metadata
  * SessionEvent so their tab UI stays in sync.
  *
- * Per-session debouncing (200ms) prevents OSC spam — without it every shell
- * prompt would fire a tRPC mutation.
+ * Per-session debouncing (200ms) prevents OSC spam.
  */
 export class SharedSessionTitleSyncController extends RxDisposable {
   /** Last value we successfully pushed, per sessionId. Avoids redundant RPCs. */
@@ -44,7 +43,7 @@ export class SharedSessionTitleSyncController extends RxDisposable {
   constructor(
     @ILogService private readonly _logService: ILogService,
     @ITerminalUIService private readonly _terminalUIService: ITerminalUIService,
-    @Optional(ISharedTerminalService) private readonly _shared?: ISharedTerminalService
+    @Optional(ISharedSessionService) private readonly _shared?: ISharedSessionService
   ) {
     super();
 
@@ -63,7 +62,7 @@ export class SharedSessionTitleSyncController extends RxDisposable {
     this._lastSent.clear();
   }
 
-  private _wire(shared: ISharedTerminalService): void {
+  private _wire(shared: ISharedSessionService): void {
     combineLatest([this._terminalUIService.sessions$, shared.shareable$])
       .pipe(takeUntil(this.dispose$))
       .subscribe(([sessions, shareable]) => {
@@ -100,19 +99,19 @@ export class SharedSessionTitleSyncController extends RxDisposable {
       });
   }
 
-  private _scheduleTitlePush(shared: ISharedTerminalService, sessionId: string, title: string): void {
+  private _scheduleTitlePush(shared: ISharedSessionService, sessionId: string, title: string): void {
     const existing = this._pendingTimers.get(sessionId);
     if (existing) {
       clearTimeout(existing);
     }
     const timer = setTimeout(() => {
       this._pendingTimers.delete(sessionId);
-      shared.setSharedSessionTitle(sessionId, title)
+      shared.setSessionTitle(sessionId, title)
         .then(() => {
           this._lastSent.set(sessionId, title);
         })
         .catch((err) => {
-          this._logService.warn(`[SharedSessionTitleSyncController] setSharedSessionTitle ${sessionId} failed:`, err);
+          this._logService.warn(`[SharedSessionTitleSyncController] setSessionTitle ${sessionId} failed:`, err);
         });
     }, TITLE_DEBOUNCE_MS);
     if (typeof timer === 'object' && timer !== null && 'unref' in timer) {
@@ -133,7 +132,7 @@ function sharedSessionIds(shareable: readonly IShareableSession[]): Set<string> 
 }
 
 function sessionTitleOf(session: ITerminalSession): string | undefined {
-  // Prefer the OSC-driven user-facing title; fall back to the host name from
+  // Prefer the OSC-driven user-facing title; fall back to host name from
   // the registry, which matches what TerminalTabBar shows in the absence of
   // an OSC title (so joiners see the same string as the owner's tab).
   if (session.title && session.title.length > 0) {

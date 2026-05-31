@@ -13,17 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
-import { Tabs, TabsList, TabsTrigger } from '@termlnk/design';
+import type { IAccessor, ICommand } from '@termlnk/core';
+import { AccountDialogService } from '../services/account-dialog/account-dialog.service';
 
-export function TabsLayout() {
-  return (
-    <div className="tm:flex tm:size-full">
-      <Tabs defaultValue="">
-        <TabsList>
-          <TabsTrigger value="a">a</TabsTrigger>
-
-        </TabsList>
-      </Tabs>
-    </div>
-  );
-}
+export const ToggleAccountDialogCommand: ICommand = {
+  id: 'auth-ui.command.toggle-account-dialog',
+  handler: (accessor: IAccessor): boolean => {
+    const accountDialogService = accessor.get(AccountDialogService);
+    accountDialogService.toggle();
+    return true;
+  },
+};

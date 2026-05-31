@@ -162,8 +162,9 @@ export class PairingService extends Disposable implements IPairingService {
     // Owner-side relay attach. The sharedKey derived here is the same one the
     // joiner will compute (ECDH(daemonPriv, ephPub) === ECDH(ephPriv, daemonPub)),
     // so the daemon-mode WebSocket can decrypt the joiner's first client_join
-    // control frame. Failure here is non-fatal for invite creation — the user
-    // will still get the URL, but join attempts will fail until attach succeeds.
+    // control frame. Without an attached daemon the URL is dead on arrival
+    // (no one will accept the joiner's relay frames), so attach failure must
+    // surface to the caller and roll back the just-inserted invite row.
     if (this._shareDaemon) {
       const sharedKey: ISharedKey = this._cryptoService.deriveSharedKey(
         eph.publicKey,
@@ -183,6 +184,9 @@ export class PairingService extends Disposable implements IPairingService {
           this._shareDaemon.registerCandidateKey(sessionId, inviteId, sharedKey);
         } catch (err) {
           this._logService.warn(`[PairingService] ShareDaemonService.attachSession failed for ${sessionId}:`, err);
+          await this._repo.deleteByIds([inviteId]);
+          await this._refresh();
+          throw err;
         }
       }
     }

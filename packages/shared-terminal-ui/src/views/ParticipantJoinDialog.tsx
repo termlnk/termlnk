@@ -15,8 +15,8 @@
 
 import type { ICapability } from '@termlnk/shared-terminal';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { Badge, Button, cn, Dialog, useDependency } from '@termlnk/design';
-import { ISharedTerminalService } from '@termlnk/shared-terminal';
+import { Badge, Button, cn, Dialog, Spinner, useDependency } from '@termlnk/design';
+import { IInviteService, IRemoteSessionService, SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE } from '@termlnk/shared-terminal';
 import { CheckIcon, ClipboardCopyIcon, LinkIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { RemoteSessionBridgeController } from '../controllers/remote-session-bridge.controller';
@@ -31,27 +31,28 @@ interface IInvitePayload {
 /**
  * Participant-side "you've been invited" dialog.
  *
- * Subscribes to ISharedTerminalService.inviteUrl$ (sourced from the OS
- * deep-link bus through electron-main → tRPC) and parses incoming termlnk:// /
- * https:// invite URLs. Displays the human-readable capability metadata so the
- * recipient can verify the session before opting in. Confirming routes through
- * ISharedTerminalService.connectAsParticipant; failures surface inline so the
- * user is not left wondering why nothing happened.
+ * Subscribes to IInviteService.inviteUrl$ (the OS deep-link router's `invite`
+ * host route, through electron-main → tRPC) and parses incoming termlnk:// / https://
+ * invite URLs. Displays the human-readable capability metadata so the
+ * recipient can verify the session before opting in. Confirming routes
+ * through IRemoteSessionService.createSession; failures surface inline so
+ * the user is not left wondering why nothing happened.
  */
 export function ParticipantJoinDialog(): React.JSX.Element | null {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
-  const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
+  const inviteService = useDependency(IInviteService, Quantity.OPTIONAL);
+  const remoteService = useDependency(IRemoteSessionService, Quantity.OPTIONAL);
   const bridge = useDependency(RemoteSessionBridgeController, Quantity.OPTIONAL);
   const [pending, setPending] = useState<IInvitePayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!client) {
+    if (!inviteService) {
       return undefined;
     }
-    const sub = client.inviteUrl$.subscribe({
+    const sub = inviteService.inviteUrl$.subscribe({
       next: (url) => {
         setErrorMessage(null);
         setPending(parseInviteUrl(url, logService));
@@ -59,7 +60,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
       error: (err) => logService.error('[ParticipantJoinDialog] inviteUrl$ stream errored:', err),
     });
     return () => sub.unsubscribe();
-  }, [client, logService]);
+  }, [inviteService, logService]);
 
   const handleCopy = async (): Promise<void> => {
     if (!pending) {
@@ -78,23 +79,26 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
   };
 
   const handleJoin = async (): Promise<void> => {
-    if (!client || !pending?.capability) {
+    if (!remoteService || !pending?.capability) {
       return;
     }
     setBusy(true);
     setErrorMessage(null);
     try {
       // Tell the bridge controller this attach is user-driven so the new tab
-      // becomes active. Without this signal, server-pushed reattaches would
-      // also steal focus from whichever tab the user is currently typing in.
-      // We mark BEFORE awaiting connect because participantSessions$ emits
-      // can land before the mutation resolves.
+      // becomes active. We mark BEFORE awaiting createSession because
+      // sessionCreated$ can land before the mutation resolves.
       bridge?.markUserInitiated(pending.capability.sid);
-      await client.connectAsParticipant(pending.rawUrl);
+      await remoteService.createSession({ inviteUrl: pending.rawUrl });
       setPending(null);
     } catch (err) {
-      logService.error('[ParticipantJoinDialog] join failed:', err);
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      const joinError = formatJoinError(err, localeService);
+      if (joinError.expected) {
+        logService.warn(`[ParticipantJoinDialog] join rejected: ${joinError.message}`);
+      } else {
+        logService.error('[ParticipantJoinDialog] join failed:', err);
+      }
+      setErrorMessage(joinError.message);
     } finally {
       setBusy(false);
     }
@@ -111,10 +115,10 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
     <Dialog
       open
       width={580}
-      style={{ height: 320 }}
+      style={{ height: 340 }}
       className={cn('tm:w-[580px] tm:max-w-[580px]')}
       onOpenChange={(open) => {
-        if (!open) {
+        if (!open && !busy) {
           handleDismiss();
         }
       }}
@@ -126,34 +130,39 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
       )}
       footer={(
         <div className={cn('tm:flex tm:items-center tm:justify-end tm:gap-2')}>
-          <Button variant="outline" onClick={handleDismiss} className={cn('tm:gap-1.5')}>
+          <Button variant="outline" disabled={busy} onClick={handleDismiss} className={cn('tm:gap-1.5')}>
             <XIcon className={cn('tm:size-3.5')} />
             {localeService.t('shared-terminal-ui.join-dialog.dismiss')}
           </Button>
           <Button
-            variant="default"
+            variant="primary"
             disabled={!cap || busy}
             onClick={() => { void handleJoin(); }}
             className={cn('tm:gap-1.5')}
           >
-            <CheckIcon className={cn('tm:size-3.5')} />
-            {localeService.t('shared-terminal-ui.join-dialog.join')}
+            {busy
+              ? <Spinner className={cn('tm:size-3.5')} />
+              : <CheckIcon className={cn('tm:size-3.5')} />}
+            {busy
+              ? localeService.t('shared-terminal-ui.join-dialog.joining')
+              : localeService.t('shared-terminal-ui.join-dialog.join')}
           </Button>
         </div>
       )}
     >
-      <div className={cn('tm:flex tm:min-w-0 tm:flex-col tm:gap-3 tm:px-1 tm:py-2 tm:text-sm tm:text-light-grey')}>
-        <p className={cn('tm:text-grey-fg')}>
+      <div className={cn('tm:flex tm:min-w-0 tm:flex-col tm:gap-3 tm:px-1 tm:py-2 tm:text-sm tm:text-white')}>
+        <p className={cn('tm:text-white')}>
           {localeService.t('shared-terminal-ui.join-dialog.description')}
         </p>
         <div
           className={cn('tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-2 tm:font-mono tm:text-xs')}
         >
           <div className={cn('tm:flex tm:min-w-0 tm:items-center tm:justify-between tm:gap-2')}>
-            <span className={cn('tm:min-w-0 tm:flex-1 tm:truncate tm:text-light-grey')}>{pending.rawUrl}</span>
+            <span className={cn('tm:min-w-0 tm:flex-1 tm:truncate tm:text-white')}>{pending.rawUrl}</span>
             <Button
               variant="outline"
               size="sm"
+              disabled={busy}
               onClick={() => { void handleCopy(); }}
               className={cn('tm:shrink-0 tm:gap-1.5')}
             >
@@ -169,25 +178,25 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
                 tm:grid tm:min-w-0 tm:grid-cols-[auto_minmax(0,1fr)] tm:items-center tm:gap-x-3 tm:gap-y-1 tm:text-xs
               `)}
             >
-              <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.session-label')}</span>
-              <span className={cn('tm:min-w-0 tm:truncate tm:font-mono tm:text-light-grey')}>{cap.sid}</span>
-              <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.role-label')}</span>
+              <span className={cn('tm:text-white')}>{localeService.t('shared-terminal-ui.join-dialog.session-label')}</span>
+              <span className={cn('tm:min-w-0 tm:truncate tm:font-mono tm:text-white')}>{cap.sid}</span>
+              <span className={cn('tm:text-white')}>{localeService.t('shared-terminal-ui.join-dialog.role-label')}</span>
               <span>
-                <Badge variant="secondary" className={cn('tm:bg-grey-fg/20 tm:text-grey-fg')}>
+                <Badge variant="secondary" className={cn('tm:bg-grey-fg/20 tm:text-white')}>
                   {localeService.t(`shared-terminal-ui.invite-role.${cap.role}`)}
                 </Badge>
               </span>
               {expiryDate && (
                 <>
-                  <span className={cn('tm:text-grey-fg')}>{localeService.t('shared-terminal-ui.join-dialog.expires-label')}</span>
-                  <span className={cn('tm:min-w-0 tm:truncate tm:text-light-grey')}>{expiryDate.toLocaleString()}</span>
+                  <span className={cn('tm:text-white')}>{localeService.t('shared-terminal-ui.join-dialog.expires-label')}</span>
+                  <span className={cn('tm:min-w-0 tm:truncate tm:text-white')}>{expiryDate.toLocaleString()}</span>
                 </>
               )}
             </div>
           )
           : (
             <div
-              className={cn('tm:rounded-md tm:border tm:border-dashed tm:border-line tm:p-3 tm:text-xs tm:text-grey-fg')}
+              className={cn('tm:rounded-md tm:border tm:border-dashed tm:border-line tm:p-3 tm:text-xs tm:text-white')}
             >
               {localeService.t('shared-terminal-ui.join-dialog.unparsable')}
             </div>
@@ -198,7 +207,7 @@ export function ParticipantJoinDialog(): React.JSX.Element | null {
               tm:min-w-0 tm:rounded-md tm:border tm:border-red/40 tm:bg-red/10 tm:p-2 tm:text-xs tm:text-red
             `)}
           >
-            <div>{localeService.t('shared-terminal-ui.join-dialog.join-failed')}</div>
+            <div className={cn('tm:font-medium')}>{localeService.t('shared-terminal-ui.join-dialog.join-failed')}</div>
             <div className={cn('tm:mt-1 tm:font-mono tm:break-all tm:text-red/80')}>{errorMessage}</div>
           </div>
         )}
@@ -234,4 +243,20 @@ function parseInviteUrl(url: string, logService: ILogService): IInvitePayload {
     logService.error('[ParticipantJoinDialog] parse invite url failed:', err);
   }
   return payload;
+}
+
+interface IFormattedJoinError {
+  readonly message: string;
+  readonly expected: boolean;
+}
+
+function formatJoinError(err: unknown, localeService: LocaleService): IFormattedJoinError {
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes(SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE)) {
+    return {
+      message: localeService.t('shared-terminal-ui.join-dialog.error-invite-not-active'),
+      expected: true,
+    };
+  }
+  return { message, expected: false };
 }

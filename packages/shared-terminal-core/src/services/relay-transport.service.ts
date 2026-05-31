@@ -15,6 +15,7 @@
 
 import type { Nullable } from '@termlnk/core';
 import type { IFrame, IInboundFrame, ISharedKey, ISharedTerminalTransportService, ITransportConnectOptions, ITransportSendOptions } from '@termlnk/shared-terminal';
+import type { Observable } from 'rxjs';
 import { Disposable, ILogService } from '@termlnk/core';
 import { IFrameCodecService, SHARED_TERMINAL_HEARTBEAT_MS, SHARED_TERMINAL_RECONNECT_INITIAL_MS, SHARED_TERMINAL_RECONNECT_MAX_MS, TransportState } from '@termlnk/shared-terminal';
 import { BehaviorSubject, Subject } from 'rxjs';
@@ -55,12 +56,43 @@ export type KeyResolver = (
   ciphertext: Uint8Array
 ) => Iterable<ISharedKey>;
 
+/**
+ * Close-code emitted by the relay when the owner ends the share. The relay
+ * sends this on every client socket so joiners stop reconnecting and surface
+ * an error in the UI. 4xxx is the application-domain range per RFC 6455.
+ */
+export const RELAY_CLOSE_OWNER_LEFT = 4002;
+
 export class RelayTransportService extends Disposable implements ISharedTerminalTransportService {
   private readonly _state$ = new BehaviorSubject<TransportState>(TransportState.Idle);
   readonly state$ = this._state$.asObservable();
 
   private readonly _frames$ = new Subject<IInboundFrame>();
   readonly frames$ = this._frames$.asObservable();
+
+  /**
+   * Relay-assigned connection id, the same value the daemon side sees as
+   * `envelope.source` on every inbound frame. Authoritative ID of "who am I
+   * to the relay" — joiner-side code should compare this against IDs the
+   * daemon emits (driver, participant lists) rather than the invite id, which
+   * lives in a different namespace.
+   *
+   * Null when the relay has not yet ack'd the upgrade with a `ready` envelope
+   * or the transport has been disconnected.
+   */
+  private readonly _connectionId$ = new BehaviorSubject<string | null>(null);
+  readonly connectionId$: Observable<string | null> = this._connectionId$.asObservable();
+
+  /**
+   * Fires when the relay tears the joiner connection down for a reason we
+   * treat as terminal (currently: close code 4002 'owner_left', or a
+   * `{type:'error', reason}` envelope received before the close lands). The
+   * surrounding RemoteSession listens to this to flip status -> ERROR and
+   * stop the heartbeat — without it the transport's reconnect loop would
+   * spin forever against a relay bucket that no longer has a daemon.
+   */
+  private readonly _terminalError$ = new Subject<{ code: number; reason: string }>();
+  readonly terminalError$: Observable<{ code: number; reason: string }> = this._terminalError$.asObservable();
 
   private readonly _webSocketCtor: RelayWebSocketCtor;
   private _ws: Nullable<IRelayWebSocket> = null;
@@ -71,7 +103,6 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private _sessionKey: Nullable<ISharedKey> = null;
-  private _connectionId: Nullable<string> = null;
   private _keyResolver: KeyResolver | null = null;
 
   constructor(
@@ -90,25 +121,40 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     this._clearReconnectTimer();
     this._clearHeartbeat();
     this._state$.complete();
+    this._connectionId$.complete();
     this._frames$.complete();
+    this._terminalError$.complete();
   }
 
   async connect(options: ITransportConnectOptions, sharedKey: ISharedKey): Promise<void> {
     this._options = options;
     this._sharedKey = sharedKey;
     this._sessionKey = null;
-    this._connectionId = options.connectionId ?? null;
+    this._connectionId$.next(options.connectionId ?? null);
     this._stopped = false;
     this._reconnectBackoff = SHARED_TERMINAL_RECONNECT_INITIAL_MS;
     await this._openSocket();
   }
 
   async disconnect(): Promise<void> {
+    // Owner-initiated tear-down: tell the relay we're leaving on purpose so it
+    // can evict the joiners immediately. A bare socket close looks identical
+    // to a network blip from the server's vantage point, so without this
+    // explicit signal the relay would keep clients attached waiting for a
+    // daemon reconnect that will never come.
+    if (this._options?.mode === 'daemon' && this._ws) {
+      try {
+        this._ws.send(JSON.stringify({ type: 'shutdown' }));
+      } catch (err) {
+        this._logService.warn('[RelayTransportService] shutdown signal send failed:', err);
+      }
+    }
     this._stopped = true;
     this._clearReconnectTimer();
     this._clearHeartbeat();
     this._closeSocket();
     this._state$.next(TransportState.Disconnected);
+    this._connectionId$.next(null);
   }
 
   send(frame: IFrame, options: ITransportSendOptions): void {
@@ -194,13 +240,38 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
         }
       });
       ws.addEventListener('message', (event) => this._handleSocketMessage(event.data));
-      ws.addEventListener('close', () => {
+      ws.addEventListener('close', (event) => {
         this._clearHeartbeat();
         this._ws = null;
-        this._state$.next(TransportState.Disconnected);
+        const code = typeof event?.code === 'number' ? event.code : 1006;
+        const reason = typeof event?.reason === 'string' ? event.reason : '';
+        // 4xxx is the application-domain close range. The relay uses 4002 to
+        // signal owner-initiated tear-down; treat it as terminal so the
+        // joiner doesn't keep retrying against a session that no longer has
+        // a daemon. Other 4xxx codes are reserved for future use but follow
+        // the same "don't reconnect" policy. Classify BEFORE the !settled
+        // branch so a 4xxx close that arrives during the initial upgrade
+        // (e.g. joiner attaches a cached URL after the owner left) still
+        // surfaces a structured terminalError$ event — without this the
+        // pre-open path would reject with a generic message and the actual
+        // code/reason would be lost.
+        const isTerminal = code >= 4000 && code < 5000;
+        if (isTerminal) {
+          this._stopped = true;
+          this._state$.next(TransportState.Error);
+          this._terminalError$.next({ code, reason: reason || 'relay closed connection' });
+        } else {
+          this._state$.next(TransportState.Disconnected);
+        }
         if (!settled) {
           settled = true;
-          reject(new Error('[RelayTransportService] WebSocket closed before open (server rejected upgrade)'));
+          const detail = isTerminal
+            ? `code=${code}${reason ? `, reason=${reason}` : ''}`
+            : 'server rejected upgrade';
+          reject(new Error(`[RelayTransportService] WebSocket closed before open (${detail})`));
+          return;
+        }
+        if (isTerminal) {
           return;
         }
         if (!this._stopped) {
@@ -228,10 +299,20 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     }
 
     if (envelope.type === 'ready' && envelope.connectionId) {
-      this._connectionId = envelope.connectionId;
+      this._connectionId$.next(envelope.connectionId);
       return;
     }
     if (envelope.type === 'pong') {
+      return;
+    }
+    if (envelope.type === 'error') {
+      // Plain-text relay error (not an encrypted control frame). Currently
+      // emitted as `{type:'error', reason:'daemon_unavailable'}` when a
+      // joiner sends a frame after the daemon has left. The 4002 close
+      // usually arrives right after, but the relay may opt to keep the
+      // socket open for diagnostics in some edge cases — surface the error
+      // either way so the UI doesn't silently sit on a half-broken tab.
+      this._terminalError$.next({ code: 0, reason: envelope.reason ?? 'relay error' });
       return;
     }
     if (envelope.type !== 'frame' || !envelope.payload) {
@@ -277,8 +358,9 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     url.searchParams.set('v', '1');
     url.searchParams.set('mode', options.mode);
     url.searchParams.set('sessionId', options.sessionId);
-    if (options.connectionId ?? this._connectionId) {
-      url.searchParams.set('connectionId', options.connectionId ?? this._connectionId!);
+    const cachedConnectionId = this._connectionId$.getValue();
+    if (options.connectionId ?? cachedConnectionId) {
+      url.searchParams.set('connectionId', options.connectionId ?? cachedConnectionId!);
     }
     return url.toString();
   }

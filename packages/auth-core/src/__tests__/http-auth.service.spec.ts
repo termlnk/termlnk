@@ -17,7 +17,8 @@ import type { IAuthKeyValueStorage, IDerivationMaterial, IMasterKey, IMasterKeyS
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { HttpFetchFn } from '../services/http-auth.service';
 import { Buffer } from 'node:buffer';
-import { AuthState } from '@termlnk/auth';
+import { AuthState, MasterKeyState } from '@termlnk/auth';
+import { BehaviorSubject } from 'rxjs';
 import * as srpServer from 'secure-remote-password/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HttpAuthService } from '../services/http-auth.service';
@@ -34,7 +35,7 @@ class NoopLogService implements ILogService {
 }
 
 class FakeMasterKeyService implements IMasterKeyService {
-  state$ = { subscribe: () => ({ unsubscribe: () => {} }) } as never;
+  readonly state$ = new BehaviorSubject<MasterKeyState>(MasterKeyState.Locked).asObservable();
   current: IMasterKey | null = null;
   derivedFor: { password: string; material: IDerivationMaterial } | null = null;
   lockCalls = 0;

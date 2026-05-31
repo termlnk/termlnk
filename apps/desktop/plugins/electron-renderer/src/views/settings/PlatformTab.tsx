@@ -56,7 +56,6 @@ export function PlatformTab() {
         }
       })
       .catch((err) => {
-        // eslint-disable-next-line no-console
         console.error('[PlatformTab] Failed to load app settings:', err);
         if (active) {
           setAppSettings(normalizeAppSettings(null));
@@ -70,7 +69,7 @@ export function PlatformTab() {
   return (
     <FieldGroup className="tm:gap-5">
       {/* System Tray */}
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader
           className={cn('tm:bg-black/10 tm:py-3', {
             'tm:border-b tm:border-line tm:pb-3': appSettings.trayEnabled,
@@ -119,7 +118,7 @@ export function PlatformTab() {
       </Card>
 
       {/* OS Auto-Launch */}
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <h3 className="tm:text-sm tm:font-semibold tm:text-white">
             {localeService.t('electron-renderer.platform-tab.startup-title')}
@@ -149,7 +148,7 @@ export function PlatformTab() {
       </Card>
 
       {/* Keep Screen Awake (powerSaveBlocker) */}
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:bg-black/10 tm:py-3">
           <div className="tm:flex tm:min-w-0 tm:flex-col tm:gap-1.5">
             <div className="tm:flex tm:items-start tm:justify-between tm:gap-4">

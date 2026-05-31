@@ -19,18 +19,21 @@ import { authRouter } from './routers/auth';
 import { backupRouter } from './routers/backup';
 import { chatRouter } from './routers/chat';
 import { configRouter } from './routers/config';
+import { devicePairingRouter } from './routers/device-pairing';
 import { extensionRouter } from './routers/extension';
 import { fileTransferRouter } from './routers/file-transfer';
 import { hostRouter } from './routers/host';
+import { inviteRouter } from './routers/invite';
 import { localFsRouter } from './routers/local-fs';
 import { mcpRouter } from './routers/mcp';
 import { mcpRegistryRouter } from './routers/mcp-registry';
-import { multiplayerRouter } from './routers/multiplayer';
 import { notifyRouter } from './routers/notify';
 import { permissionRouter } from './routers/permission';
 import { proxyRouter } from './routers/proxy';
 import { ptyRouter } from './routers/pty';
+import { remoteSessionRouter } from './routers/remote-session';
 import { sftpRouter } from './routers/sftp';
+import { sharedSessionRouter } from './routers/shared-session';
 import { skillRouter } from './routers/skill';
 import { sshRouter } from './routers/ssh';
 import { syncRouter } from './routers/sync';
@@ -44,13 +47,16 @@ export const appRouter = router({
   backup: backupRouter,
   chat: chatRouter,
   config: configRouter,
+  devicePairing: devicePairingRouter,
   host: hostRouter,
+  invite: inviteRouter,
   mcp: mcpRouter,
   mcpRegistry: mcpRegistryRouter,
-  multiplayer: multiplayerRouter,
   notify: notifyRouter,
   permission: permissionRouter,
   proxy: proxyRouter,
+  remoteSession: remoteSessionRouter,
+  sharedSession: sharedSessionRouter,
   skill: skillRouter,
   ssh: sshRouter,
   sync: syncRouter,

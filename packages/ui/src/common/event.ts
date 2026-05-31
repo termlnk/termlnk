@@ -34,3 +34,17 @@ export function fromEvent<K extends keyof HTMLElementEventMap>(
   target.addEventListener(type, listener, options);
   return toDisposable(() => target.removeEventListener(type, listener, options));
 }
+
+export function fromFontFaceSetEvent<K extends keyof FontFaceSetEventMap>(
+  type: K,
+  listener: (this: FontFaceSet, ev: FontFaceSetEventMap[K]) => any,
+  options?: boolean | AddEventListenerOptions
+): IDisposable {
+  // document.fonts is typed non-nullable but absent in headless DOM (happy-dom).
+  const fonts = document.fonts as FontFaceSet | undefined;
+  if (!fonts) {
+    return toDisposable(() => {});
+  }
+  fonts.addEventListener(type, listener, options);
+  return toDisposable(() => fonts.removeEventListener(type, listener, options));
+}

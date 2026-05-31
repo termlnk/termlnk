@@ -121,6 +121,65 @@ export const authRouter = router({
       const authService = requireAuthService(ctx.injector);
       await authService.revokeDevice(input.deviceId);
     }),
+
+  /** Cloud authorize URL the renderer opens in the system browser (Google sign-in). */
+  getGoogleAuthorizeUrl: publicProcedure
+    .query(({ ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      return authService.getGoogleAuthorizeUrl();
+    }),
+
+  /**
+   * Begin a browser-shell Google sign-in. The web shell has no `termlnk://` deep
+   * link and its domain can't be registered with Google, so the relay code is
+   * held server-side against a device code and pulled via pollGoogleWebSignIn —
+   * loginWithGoogle is never exposed to the renderer (desktop drives it from the
+   * main-process deep-link handler).
+   */
+  beginGoogleWebSignIn: publicProcedure
+    .mutation(({ ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      return authService.beginGoogleWebSignIn();
+    }),
+
+  /** Poll the in-flight web sign-in; claims the session in place once ready. */
+  pollGoogleWebSignIn: publicProcedure
+    .mutation(({ ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      return authService.pollGoogleWebSignIn();
+    }),
+
+  /** Optional sign-in methods the cloud server advertises (gates the Google button). */
+  getServerCapabilities: publicProcedure
+    .query(({ ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      return authService.getServerCapabilities();
+    }),
+
+  /**
+   * Set the encryption password for the first time (OAuth accounts). `password`
+   * travels transiently over IPC — same trust boundary as login: the main
+   * process derives the key and drops the plaintext immediately.
+   */
+  setupEncryptionPassword: publicProcedure
+    .input(z.object({ password: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      await authService.setupEncryptionPassword(input.password);
+    }),
+
+  /** Unlock the vault on a device that already has an encryption password set. */
+  unlockVault: publicProcedure
+    .input(z.object({ password: z.string().min(1) }))
+    .mutation(async ({ input, ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      await authService.unlockVault(input.password);
+    }),
+
+  vaultState$: publicProcedure.subscription(async function* ({ ctx }) {
+    const authService = requireAuthService(ctx.injector);
+    yield* observableToAsyncGenerator(authService.vaultState$);
+  }),
 });
 
 export type AuthRouter = typeof authRouter;

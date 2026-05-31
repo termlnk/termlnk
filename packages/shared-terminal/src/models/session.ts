@@ -16,6 +16,22 @@
 import type { SharedTerminalRole } from './role';
 
 /**
+ * Session-wide input policy decided by the owner at share-start time.
+ *
+ * - `view-only`   — joiners may observe but never write. The "request keyboard"
+ *                   affordance is hidden in the joiner UI and the daemon silently
+ *                   rejects driver_request frames.
+ * - `allow-input` — joiners may take the keyboard via the single-driver soft
+ *                   lock. Default for backward compatibility with old invite
+ *                   URLs that predate this field.
+ *
+ * Bound to a session, not an invite. Changing the policy requires stopping the
+ * share and starting a new one — keeps the model aligned with Termius and
+ * sidesteps mid-flight permission churn.
+ */
+export type ISharedSessionInputPolicy = 'view-only' | 'allow-input';
+
+/**
  * Daemon-level state machine:
  * not started → starting → waiting for relay → registering PTY → online.
  */
@@ -67,6 +83,8 @@ export interface ISharedSession {
   readonly participantIds: readonly string[];
   /** Current driver client ID; null means no one holds the keyboard. */
   readonly driverId: string | null;
+  /** Owner-chosen input policy for this share. */
+  readonly inputPolicy: ISharedSessionInputPolicy;
 }
 
 /**
@@ -87,6 +105,7 @@ export interface ISessionSnapshot {
   readonly observedSeq: number;
   readonly state: SharedSessionState;
   readonly driverId: string | null;
+  readonly inputPolicy: ISharedSessionInputPolicy;
 }
 
 /**

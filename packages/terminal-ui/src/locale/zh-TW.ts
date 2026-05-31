@@ -222,8 +222,17 @@ const locale: typeof enUS = {
       participants: '參與者：',
       you: '我',
       'take-keyboard': '接管鍵盤',
+      'release-keyboard': '收回鍵盤',
       copied: '已複製',
+      copying: '複製中...',
       'copy-failed': '複製連結失敗，請檢查網路或登入狀態。',
+      policy: {
+        label: '分享模式',
+        'allow-input': '允許輸入',
+        'allow-input-hint': '加入者可申請控制鍵盤，同時只允許一人輸入。',
+        'view-only': '唯讀',
+        'view-only-hint': '加入者只能觀看，無法輸入。適合示範場景。',
+      },
     },
   },
 };

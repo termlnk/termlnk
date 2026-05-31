@@ -18,9 +18,9 @@ import type enUS from './en-US';
 const locale: typeof enUS = {
   'shared-terminal-ui': {
     'invite-role': {
-      owner: '主控',
-      'co-pilot': '协作者',
-      observer: '旁观者',
+      owner: '拥有者',
+      'co-pilot': '编辑者',
+      observer: '观看者',
     },
     'join-dialog': {
       title: '收到多人协作邀请',
@@ -30,19 +30,23 @@ const locale: typeof enUS = {
       'expires-label': '到期时间',
       'copy-url': '复制 URL',
       join: '加入会话',
+      joining: '正在加入...',
       dismiss: '关闭',
       unparsable: '无法解析此邀请链接。请发起方重新发送。',
       'join-failed': '加入会话失败：',
+      'error-invite-not-active': '这个邀请链接已经被使用或已失效。请让主机重新发送新的邀请链接。',
     },
     remote: {
       'tab-name': '共享会话',
-      'viewing-only': '只读旁观',
-      driving: '正在驾驶',
+      'viewing-only': '仅旁观',
+      driving: '控制中',
       'waiting-for-frames': '等待主机的首批输出…',
-      'read-only-hint': '你以旁观者身份加入。点击"申请键盘"可申请驾驶权。',
-      'driver-hint': '你正在驾驶。键入的命令会在主机终端上执行，点击"让出键盘"可交回控制权。',
+      'read-only-hint': '你以旁观者身份加入。点击"申请键盘"可申请控制权。',
+      'driver-hint': '你正在控制键盘。键入的命令会在主机终端上执行，点击"让出键盘"可交回控制权。',
       'request-keyboard': '申请键盘',
       'release-keyboard': '让出键盘',
+      'view-only-badge': '只读分享',
+      'view-only-hint': '主机以只读模式分享此会话。如需输入，请联系主机切换为"允许输入"模式。',
       popover: {
         'aria-label': '共享会话控制',
       },
@@ -53,6 +57,11 @@ const locale: typeof enUS = {
         disconnected: '已断开',
         error: '连接错误',
         idle: '等待加入…',
+      },
+      toast: {
+        'self-acquired': '你已取得控制权，开始输入。',
+        released: '键盘已释放。',
+        'taken-by-other': '其他人正在控制终端。',
       },
     },
   },

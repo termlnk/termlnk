@@ -40,7 +40,6 @@ export interface IUseSSHConnectionOptions {
   subscriptions: ReturnType<typeof useSubscriptionManager>;
   connectedRef: RefObject<boolean>;
   onData: (data: string) => void;
-  fit: () => void;
   getSize: () => { cols: number; rows: number };
 }
 
@@ -52,7 +51,6 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
     subscriptions,
     connectedRef,
     onData,
-    fit,
     getSize,
   } = options;
 
@@ -167,12 +165,12 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
     connectedRef.current = true;
     subscribeToSession(backendId);
 
-    // Initial fit() fires before onResize listener is registered — sync dimensions explicitly
+    // The initial fit() (in useXterm) runs before the onResize listener is
+    // wired, so its geometry never reaches the backend — push it explicitly.
+    // Later font-load / container resizes re-fit and sync through onResize.
     const { cols, rows } = getSize();
     sshService.resize(backendId, rows, cols).catch(console.error);
-
-    setTimeout(fit, 100);
-  }, [fit, getSize, sshService, subscribeToSession, connectedRef]);
+  }, [getSize, sshService, subscribeToSession, connectedRef]);
 
   return {
     status,

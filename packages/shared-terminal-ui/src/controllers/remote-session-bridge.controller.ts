@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IParticipantSessionMetadata } from '@termlnk/shared-terminal';
+import type { RemoteSessionEvent } from '@termlnk/shared-terminal';
 import type { ITerminalSession } from '@termlnk/terminal-ui';
 import type { Subscription } from 'rxjs';
 import { ILogService, Inject, LocaleService, Optional, RxDisposable } from '@termlnk/core';
-import { ClientConnectionState, ISharedTerminalService } from '@termlnk/shared-terminal';
+import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-terminal';
 import { ITerminalUIService, ITerminalViewRegistry } from '@termlnk/terminal-ui';
 import { takeUntil } from 'rxjs';
 import { RemoteTabAdornment } from '../views/RemoteTabAdornment';
@@ -25,41 +25,30 @@ import { RemoteTerminalView } from '../views/RemoteTerminalView';
 
 export const REMOTE_SESSION_TYPE = 'remote';
 
-const DISCONNECT_INITIAL_BACKOFF_MS = 250;
-const DISCONNECT_MAX_ATTEMPTS = 4;
 /**
- * How long after `markUserInitiated(sid)` we still treat the participantSessions$
- * arrival as user-initiated. Bigger than any realistic connectAsParticipant
- * round trip so a slow relay handshake still gets the active-tab focus, but
- * small enough that a stale mark doesn't hijack focus minutes later when the
- * same sid happens to surface for a different reason.
+ * How long after `markUserInitiated(sid)` we still treat the sessionCreated$
+ * arrival as user-initiated. Bigger than any realistic createSession round
+ * trip so a slow relay handshake still gets the active-tab focus, but small
+ * enough that a stale mark doesn't hijack focus minutes later when the same
+ * sid happens to surface for a different reason.
  */
 const USER_INITIATED_TTL_MS = 30_000;
 
 /**
- * Bridges the joiner-side ParticipantClientService (per-session state) with
- * ITerminalUIService (tab list) so each successful join shows up as a 'remote'
- * tab and each disconnect/close cleans up symmetrically.
+ * Bridges the joiner-side `IRemoteSessionService` with `ITerminalUIService` so
+ * each successful join shows up as a `'remote'` tab and each disconnect/close
+ * cleans up symmetrically.
  *
- * Reconciliation rule:
- *   - participantSessions$ is the source of truth for "which remote sessions
- *     should have a tab". We add/remove tabs to match.
- *   - terminalUIService.sessions$ is the source of truth for "what's on screen".
- *     If a tab we created is gone but the participant is still attached, the
- *     user closed it — we drive disconnectParticipant() with bounded retry so
- *     a transient IPC glitch doesn't leave the daemon holding a stale client.
- *
- * Per-session subs (state, metadata) are stored in a Map keyed by sessionId
- * so the controller can clean them up when the session goes away without
- * leaking observables.
+ * Wiring uses the symmetric `sessionCreated$` / `sessionClosed$` event streams
+ * — sibling of the SSHService pattern in `agent-session-sync.controller`.
+ * Failing tabs that the user closes call `closeSession`; the main process
+ * tears down its session and re-emits `sessionClosed$`, which we react to.
  */
 export class RemoteSessionBridgeController extends RxDisposable {
-  /** Sessions we have created a tab for. Used to detect user-close. */
+  /** Sessions we have created a tab for. */
   private readonly _ownedTabs = new Set<string>();
-  /** Per-session subscription groups (state$, metadata$). */
+  /** Per-session subscription groups (status$, event$). */
   private readonly _perSessionSubs = new Map<string, Subscription[]>();
-  /** Pending retry timers for disconnectParticipant on IPC failure. */
-  private readonly _pendingDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /**
    * SessionIds the user explicitly chose to join via ParticipantJoinDialog.
    * Consulted by _addRemoteTab to decide whether to setActiveSession — that
@@ -73,31 +62,25 @@ export class RemoteSessionBridgeController extends RxDisposable {
     @ITerminalViewRegistry private readonly _viewRegistry: ITerminalViewRegistry,
     @ITerminalUIService private readonly _terminalUIService: ITerminalUIService,
     @Inject(LocaleService) private readonly _localeService: LocaleService,
-    @Optional(ISharedTerminalService) private readonly _shared?: ISharedTerminalService
+    @Optional(IRemoteSessionService) private readonly _remote?: IRemoteSessionService
   ) {
     super();
 
     this._registerView();
-    if (this._shared) {
-      this._wireParticipantSessions(this._shared);
-      this._wireUserClose(this._shared);
+    if (this._remote) {
+      this._wireSessionLifecycle(this._remote);
+      this._wireUserClose(this._remote);
     }
   }
 
   override dispose(): void {
-    for (const timer of this._pendingDisconnectTimers.values()) {
-      clearTimeout(timer);
-    }
-    this._pendingDisconnectTimers.clear();
     for (const timer of this._pendingUserInitiated.values()) {
       clearTimeout(timer);
     }
     this._pendingUserInitiated.clear();
-    // Tear down the tabs BEFORE super.dispose() runs disposeWithMe(): super
-    // unregisters the 'remote' view from ITerminalViewRegistry, so any tab
-    // still in terminalUIService.sessions$ after that point would be a zombie
-    // (TerminalContainer renders null for an unknown view type, leaving an
-    // un-closable tab in the strip).
+    // Tear down owned tabs BEFORE super.dispose() runs disposeWithMe: super
+    // unregisters the 'remote' view, so any tab still in the UI after that
+    // would render `null` and become un-closeable.
     for (const sessionId of [...this._ownedTabs]) {
       this._tearDownPerSession(sessionId);
       try {
@@ -116,105 +99,16 @@ export class RemoteSessionBridgeController extends RxDisposable {
     this._perSessionSubs.clear();
   }
 
-  private _registerView(): void {
-    this.disposeWithMe(this._viewRegistry.registerView(REMOTE_SESSION_TYPE, RemoteTerminalView));
-    this.disposeWithMe(this._viewRegistry.registerTabAdornment(REMOTE_SESSION_TYPE, RemoteTabAdornment));
-  }
-
   /**
-   * Watch `participantSessions$` and reconcile the tab list:
-   *   - sid newly present → addSession + setActive + wire per-session subs
-   *   - sid newly absent → tear down per-session subs + remove tab
-   */
-  private _wireParticipantSessions(shared: ISharedTerminalService): void {
-    shared.participantSessions$
-      .pipe(takeUntil(this.dispose$))
-      .subscribe((sessions) => {
-        const incoming = new Set(sessions);
-        // Add new sessions.
-        for (const sid of incoming) {
-          if (this._ownedTabs.has(sid)) {
-            continue;
-          }
-          this._addRemoteTab(sid, shared);
-        }
-        // Remove sessions the daemon dropped (network drop, owner stopped sharing).
-        for (const sid of this._ownedTabs) {
-          if (incoming.has(sid)) {
-            continue;
-          }
-          this._removeRemoteTab(sid);
-        }
-      });
-  }
-
-  /**
-   * Watch the tab list. When a remote tab we own disappears while the
-   * participant is still attached, the user closed the tab — disconnect the
-   * backend so the daemon sees us leave promptly. If the IPC mutate fails,
-   * we requeue the sid in `_pendingDisconnects` and retry with exponential
-   * backoff so a transient renderer↔main glitch doesn't leave the daemon
-   * holding a stale client entry forever.
-   */
-  private _wireUserClose(shared: ISharedTerminalService): void {
-    this._terminalUIService.sessions$
-      .pipe(takeUntil(this.dispose$))
-      .subscribe((sessions: readonly ITerminalSession[]) => {
-        const visible = new Set(sessions.filter((s: ITerminalSession) => s.type === REMOTE_SESSION_TYPE).map((s: ITerminalSession) => s.id));
-        for (const sid of [...this._ownedTabs]) {
-          if (visible.has(sid)) {
-            continue;
-          }
-          // Drop our bookkeeping first so the participantSessions$ removal
-          // that follows doesn't try to remove the tab again (already gone).
-          this._tearDownPerSession(sid);
-          this._ownedTabs.delete(sid);
-          this._scheduleDisconnect(shared, sid, 0);
-        }
-      });
-  }
-
-  private _scheduleDisconnect(shared: ISharedTerminalService, sessionId: string, attempt: number): void {
-    if (this._disposed) {
-      return;
-    }
-    const existing = this._pendingDisconnectTimers.get(sessionId);
-    if (existing) {
-      clearTimeout(existing);
-      this._pendingDisconnectTimers.delete(sessionId);
-    }
-    shared.disconnectParticipant(sessionId)
-      .then(() => {
-        this._pendingDisconnectTimers.delete(sessionId);
-      })
-      .catch((err) => {
-        const next = attempt + 1;
-        if (next >= DISCONNECT_MAX_ATTEMPTS) {
-          this._logService.error(`[RemoteSessionBridgeController] disconnectParticipant ${sessionId} failed after ${DISCONNECT_MAX_ATTEMPTS} attempts, giving up:`, err);
-          this._pendingDisconnectTimers.delete(sessionId);
-          return;
-        }
-        const delayMs = DISCONNECT_INITIAL_BACKOFF_MS * (2 ** attempt);
-        this._logService.warn(`[RemoteSessionBridgeController] disconnectParticipant ${sessionId} attempt ${next} retrying in ${delayMs}ms:`, err);
-        const timer = setTimeout(() => {
-          this._pendingDisconnectTimers.delete(sessionId);
-          this._scheduleDisconnect(shared, sessionId, next);
-        }, delayMs);
-        this._pendingDisconnectTimers.set(sessionId, timer);
-      });
-  }
-
-  /**
-   * Called by ParticipantJoinDialog right before it dispatches
-   * `connectAsParticipant(url)`. Marks `sessionId` so that when it later
-   * appears on `participantSessions$`, `_addRemoteTab` does call
-   * `setActiveSession`. Without this signal, focus stays on whatever tab the
-   * user was on — necessary because participantSessions$ also fires for
-   * non-user-driven attaches (server-pushed reattach, second-device flows).
+   * Called by ParticipantJoinDialog right before it dispatches `createSession`.
+   * Marks `sessionId` so that when it later arrives on `sessionCreated$`,
+   * `_addRemoteTab` calls `setActiveSession`. Without this signal, focus
+   * stays on whatever tab the user was on — necessary because the stream
+   * also fires for non-user-driven attaches (server-pushed reattach, second
+   * device flows).
    *
-   * The mark auto-expires after USER_INITIATED_TTL_MS so a never-arrived sid
-   * (relay timeout, claim rejected, etc.) doesn't hijack focus minutes later
-   * if the same id surfaces for an unrelated reason.
+   * Auto-expires after USER_INITIATED_TTL_MS so a never-arrived sid (relay
+   * timeout, claim rejected) doesn't hijack focus minutes later.
    */
   markUserInitiated(sessionId: string): void {
     if (this._disposed) {
@@ -230,6 +124,66 @@ export class RemoteSessionBridgeController extends RxDisposable {
     this._pendingUserInitiated.set(sessionId, timer);
   }
 
+  private _registerView(): void {
+    this.disposeWithMe(this._viewRegistry.registerView(REMOTE_SESSION_TYPE, RemoteTerminalView));
+    this.disposeWithMe(this._viewRegistry.registerTabAdornment(REMOTE_SESSION_TYPE, RemoteTabAdornment));
+  }
+
+  /**
+   * Reconcile the tab list against `sessions$`:
+   *   - sid newly present → addRemoteTab
+   *   - sid newly absent  → removeRemoteTab
+   *
+   * Using `sessions$` (shareReplay'd, current-state observable) rather than
+   * the pair of `sessionCreated$ / sessionClosed$` events keeps the bridge
+   * correct on late mount: HMR or plugin re-instantiation gives the fresh
+   * subscriber the current snapshot, so already-attached sessions still show
+   * up as tabs without needing to have observed the original create event.
+   */
+  private _wireSessionLifecycle(remote: IRemoteSessionService): void {
+    remote.sessions$
+      .pipe(takeUntil(this.dispose$))
+      .subscribe((sessions) => {
+        const incoming = new Set(sessions);
+        for (const sid of incoming) {
+          if (!this._ownedTabs.has(sid)) {
+            this._addRemoteTab(sid, remote);
+          }
+        }
+        for (const sid of [...this._ownedTabs]) {
+          if (!incoming.has(sid)) {
+            this._removeRemoteTab(sid);
+          }
+        }
+      });
+  }
+
+  /**
+   * Watch the tab list. When a remote tab we own disappears, drive
+   * `closeSession` on the backend so the daemon sees us leave promptly.
+   * Idempotent at the main-process end — no exponential backoff needed,
+   * matches SSH `closeSession` semantics.
+   */
+  private _wireUserClose(remote: IRemoteSessionService): void {
+    this._terminalUIService.sessions$
+      .pipe(takeUntil(this.dispose$))
+      .subscribe((sessions: readonly ITerminalSession[]) => {
+        const visible = new Set(sessions.filter((s) => s.type === REMOTE_SESSION_TYPE).map((s) => s.id));
+        for (const sid of [...this._ownedTabs]) {
+          if (visible.has(sid)) {
+            continue;
+          }
+          // Drop bookkeeping first so the sessionClosed$ that follows doesn't
+          // try to remove the tab again (already gone).
+          this._tearDownPerSession(sid);
+          this._ownedTabs.delete(sid);
+          remote.closeSession(sid).catch((err) => {
+            this._logService.error(`[RemoteSessionBridgeController] closeSession ${sid} failed:`, err);
+          });
+        }
+      });
+  }
+
   private _consumeUserInitiated(sessionId: string): boolean {
     const timer = this._pendingUserInitiated.get(sessionId);
     if (!timer) {
@@ -240,7 +194,7 @@ export class RemoteSessionBridgeController extends RxDisposable {
     return true;
   }
 
-  private _addRemoteTab(sessionId: string, shared: ISharedTerminalService): void {
+  private _addRemoteTab(sessionId: string, remote: IRemoteSessionService): void {
     const fallbackName = this._localeService.t('shared-terminal-ui.remote.tab-name');
     this._terminalUIService.addSession({
       id: sessionId,
@@ -256,18 +210,25 @@ export class RemoteSessionBridgeController extends RxDisposable {
     this._ownedTabs.add(sessionId);
 
     const subs: Subscription[] = [];
-
-    subs.push(shared.participantState$(sessionId)
+    subs.push(remote.status$(sessionId)
       .pipe(takeUntil(this.dispose$))
       .subscribe((state) => {
-        this._terminalUIService.updateSessionStatus(sessionId, mapStateToStatus(state));
+        this._terminalUIService.updateSessionStatus(sessionId, mapStatusToTabStatus(state));
       })
     );
 
-    subs.push(shared.participantMetadata$(sessionId)
+    // Title sync: react to session_metadata events.
+    subs.push(remote.event$(sessionId)
       .pipe(takeUntil(this.dispose$))
-      .subscribe((metadata) => {
-        const title = buildTabTitle(metadata, fallbackName, sessionId);
+      .subscribe((event: RemoteSessionEvent) => {
+        if (event.type !== 'session_metadata') {
+          return;
+        }
+        const title = buildTabTitle(
+          { ownerLabel: event.ownerLabel ?? undefined, title: event.title ?? undefined },
+          fallbackName,
+          sessionId
+        );
         this._terminalUIService.updateSessionTitle(sessionId, title);
       })
     );
@@ -293,33 +254,36 @@ export class RemoteSessionBridgeController extends RxDisposable {
   }
 }
 
-function mapStateToStatus(state: ClientConnectionState): 'connecting' | 'ready' | 'closed' | 'error' {
+function mapStatusToTabStatus(state: RemoteSessionStatus): 'connecting' | 'ready' | 'closed' | 'error' {
   switch (state) {
-    case ClientConnectionState.Connected:
+    case RemoteSessionStatus.CONNECTED:
       return 'ready';
-    case ClientConnectionState.Pairing:
-    case ClientConnectionState.Connecting:
+    case RemoteSessionStatus.CONNECTING:
       return 'connecting';
-    case ClientConnectionState.Disconnected:
+    case RemoteSessionStatus.CLOSED:
       return 'closed';
-    case ClientConnectionState.Error:
+    case RemoteSessionStatus.ERROR:
       return 'error';
-    case ClientConnectionState.Idle:
+    case RemoteSessionStatus.IDLE:
     default:
       return 'connecting';
   }
 }
 
-function buildTabTitle(metadata: IParticipantSessionMetadata | null, fallbackName: string, sessionId: string): string {
-  // Priority matches the owner's UX expectation:
+interface IBuildTabTitleMetadata {
+  readonly ownerLabel?: string;
+  readonly title?: string;
+}
+
+function buildTabTitle(metadata: IBuildTabTitleMetadata, fallbackName: string, sessionId: string): string {
+  // Priority matches the owner UX expectation:
   //   1. owner-visible title (local PTY OSC + manual rename land here)
-  //   2. ownerLabel (display name from daemon) — falls back when there's no
-  //      title yet (e.g. SSH session with empty source.title)
+  //   2. ownerLabel (display name from daemon) — falls back when title is empty
   //   3. generic "Shared Session #abc12345" as a last resort
-  if (metadata?.title && metadata.title.length > 0) {
+  if (metadata.title && metadata.title.length > 0) {
     return metadata.title;
   }
-  if (metadata?.ownerLabel && metadata.ownerLabel.length > 0) {
+  if (metadata.ownerLabel && metadata.ownerLabel.length > 0) {
     return `${fallbackName}: ${metadata.ownerLabel}`;
   }
   return `${fallbackName} #${sessionId.slice(0, 8)}`;

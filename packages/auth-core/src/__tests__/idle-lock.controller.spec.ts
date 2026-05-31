@@ -16,7 +16,7 @@
 import type { IAuthError, IAuthService, IIdleProbe, IMasterKey, IMasterKeyService, IUserAccount } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { Observable } from 'rxjs';
-import { AUTH_PLUGIN_CONFIG_KEY, AuthState, MasterKeyState } from '@termlnk/auth';
+import { AUTH_PLUGIN_CONFIG_KEY, AuthState, MasterKeyState, VaultState } from '@termlnk/auth';
 import { ConfigService } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -83,6 +83,7 @@ class FakeAuthService implements IAuthService {
   readonly currentUser$ = new BehaviorSubject<IUserAccount | null>(null).asObservable();
   readonly authState$ = new BehaviorSubject<AuthState>(AuthState.Authenticated).asObservable();
   readonly lastError$ = new BehaviorSubject<IAuthError | null>(null).asObservable();
+  readonly vaultState$ = new BehaviorSubject<VaultState>(VaultState.Unlocked).asObservable();
   logoutCalls = 0;
   logoutShouldThrow = false;
   constructor(private readonly _master: FakeMasterKeyService) {}
@@ -103,6 +104,13 @@ class FakeAuthService implements IAuthService {
   async restore(): Promise<void> {}
   async listDevices() { return []; }
   async revokeDevice(): Promise<void> {}
+  async getGoogleAuthorizeUrl(): Promise<string> { return ''; }
+  async loginWithGoogle(): Promise<void> { throw new Error('not used'); }
+  async beginGoogleWebSignIn(): Promise<{ authorizeUrl: string }> { throw new Error('not used'); }
+  async pollGoogleWebSignIn(): Promise<'pending' | 'complete' | 'expired'> { throw new Error('not used'); }
+  async setupEncryptionPassword(): Promise<void> { throw new Error('not used'); }
+  async unlockVault(): Promise<void> { throw new Error('not used'); }
+  async getServerCapabilities() { return { googleOAuth: false }; }
 }
 
 interface ITestBed {

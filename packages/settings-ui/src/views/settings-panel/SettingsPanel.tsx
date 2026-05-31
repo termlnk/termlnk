@@ -16,7 +16,8 @@
 import type { ISettingsState } from '../../models/settings.state';
 import type { ISettingsTabDescriptor } from '../../services/settings-tab-registry/settings-tab-registry.service';
 import { LocaleService } from '@termlnk/core';
-import { cn, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
+import { Button, cn, DialogDragHandle, LogoIcon, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
+import { XIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { ISettingsTabRegistryService } from '../../services/settings-tab-registry/settings-tab-registry.service';
 import { SettingsService } from '../../services/settings/settings.service';
@@ -58,6 +59,10 @@ export function SettingsPanel() {
     [settingsService]
   );
 
+  const handleClose = useCallback(() => {
+    settingsService.terminate();
+  }, [settingsService]);
+
   if (!activeTab) {
     return null;
   }
@@ -66,11 +71,12 @@ export function SettingsPanel() {
 
   return (
     <div
-      className={`
-        tm:flex tm:h-[min(680px,calc(100vh-210px))] tm:w-full tm:overflow-hidden tm:rounded-xl tm:border tm:border-line
-        tm:bg-black2
-      `}
+      className="tm:relative tm:flex tm:h-[min(680px,calc(100vh-150px))] tm:w-full tm:overflow-hidden"
     >
+      {/* Transparent drag region across the top edge — Dialog has no visible
+        title bar, so this is how the user grabs and moves the window. */}
+      <DialogDragHandle height={30} />
+
       <Tabs
         orientation="vertical"
         value={activeTab.id}
@@ -79,10 +85,18 @@ export function SettingsPanel() {
       >
         <div
           className="
-            tm:flex tm:min-h-0 tm:w-[136px] tm:shrink-0 tm:basis-[136px] tm:flex-col tm:border-r tm:border-line
-            tm:bg-black2
+            tm:flex tm:min-h-0 tm:w-40 tm:shrink-0 tm:basis-40 tm:flex-col tm:border-r tm:border-line
+            tm:bg-statusline-bg
           "
         >
+          <div
+            className="tm:flex tm:h-12 tm:shrink-0 tm:items-center tm:gap-2 tm:px-3 tm:select-none"
+          >
+            <LogoIcon className="tm:size-6 tm:shrink-0" />
+            <span className="tm:text-sm tm:font-semibold tm:text-white">
+              Termlnk
+            </span>
+          </div>
           <TabsList
             orientation="vertical"
             className="
@@ -100,7 +114,7 @@ export function SettingsPanel() {
                     `
                       tm:group
                       tm:relative tm:h-10 tm:w-full tm:justify-start tm:gap-2 tm:rounded-none tm:border-0
-                      tm:bg-transparent tm:px-2.5 tm:text-[13px] tm:font-semibold tm:text-white tm:transition-colors
+                      tm:bg-transparent tm:px-3.5 tm:text-[13px] tm:font-semibold tm:text-white tm:transition-colors
                       tm:duration-200 tm:select-none
                       tm:hover:bg-blue/10 tm:hover:text-white
                       tm:focus-visible:ring tm:focus-visible:ring-blue/35 tm:focus-visible:outline-none
@@ -109,7 +123,7 @@ export function SettingsPanel() {
                       tm:data-[state=active]:shadow-none
                       tm:data-[state=active]:after:absolute tm:data-[state=active]:after:top-0
                       tm:data-[state=active]:after:right-0 tm:data-[state=active]:after:z-10
-                      tm:data-[state=active]:after:h-full tm:data-[state=active]:after:w-[2px]
+                      tm:data-[state=active]:after:h-full tm:data-[state=active]:after:w-0.5
                       tm:data-[state=active]:after:rounded-none tm:data-[state=active]:after:bg-blue
                       tm:data-[state=active]:after:content-[""]
                       tm:data-[state=active]:hover:bg-blue/20 tm:data-[state=active]:hover:text-blue
@@ -124,19 +138,32 @@ export function SettingsPanel() {
           </TabsList>
         </div>
 
-        <div className="tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:overflow-hidden tm:bg-black/25">
-          <div className="tm:border-b tm:border-line tm:px-6 tm:py-3">
-            <div className="tm:flex tm:items-center tm:gap-2">
-              <ActiveIcon className="tm:size-3.5 tm:text-blue" />
-              <h2 className="tm:text-sm tm:font-semibold tm:text-white">
-                {localeService.t(activeTab.labelKey)}
-              </h2>
+        <div className="tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:overflow-hidden">
+          <div
+            className="tm:flex tm:items-start tm:justify-between tm:gap-3 tm:border-b tm:border-line tm:px-6 tm:py-3"
+          >
+            <div className="tm:min-w-0 tm:flex-1">
+              <div className="tm:flex tm:items-center tm:gap-2">
+                <ActiveIcon className="tm:size-3.5 tm:text-blue" />
+                <h2 className="tm:text-sm tm:font-semibold tm:text-white">
+                  {localeService.t(activeTab.labelKey)}
+                </h2>
+              </div>
+              {activeTab.descriptionKey && (
+                <p className="tm:mt-0.5 tm:text-[11px] tm:text-grey-fg">
+                  {localeService.t(activeTab.descriptionKey)}
+                </p>
+              )}
             </div>
-            {activeTab.descriptionKey && (
-              <p className="tm:mt-0.5 tm:text-[11px] tm:text-grey-fg">
-                {localeService.t(activeTab.descriptionKey)}
-              </p>
-            )}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleClose}
+              className={cn('tm:z-10')}
+              aria-label="Close"
+            >
+              <XIcon className="tm:size-4" />
+            </Button>
           </div>
 
           <div className="tm:flex tm:min-h-0 tm:flex-1 tm:flex-col tm:overflow-hidden">

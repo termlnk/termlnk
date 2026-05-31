@@ -16,6 +16,7 @@
 import type { IAccessor, ICommand } from '@termlnk/core';
 import { IAuthService } from '@termlnk/auth';
 import { Quantity } from '@termlnk/core';
+import { ToggleAccountDialogCommand } from './toggle-account-dialog.command';
 
 // Programmatic logout. Login is intentionally omitted: zero-knowledge auth requires the
 // password as input, so there is no parameter-less login command we could expose.
@@ -34,4 +35,5 @@ export const LogoutCommand: ICommand = {
 
 export const AUTH_COMMANDS: readonly ICommand[] = [
   LogoutCommand,
+  ToggleAccountDialogCommand,
 ] as const;

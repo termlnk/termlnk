@@ -15,18 +15,44 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: '歡迎使用 Termlnk',
+      subtitle: '登入或註冊，同步你的主機與設定。',
+    },
+    switch: {
+      'to-register-prompt': '還沒有帳號？',
+      'to-register-action': '註冊',
+      'to-login-prompt': '已有帳號？',
+      'to-login-action': '登入',
+    },
     login: {
       email: '信箱',
       'email-placeholder': 'you@example.com',
       password: '密碼',
       'password-placeholder': '請輸入你的密碼',
-      'password-helper': '端對端加密，密碼遺忘將無法找回。',
       'trust-banner': '密碼僅在本機派生，不會傳送至伺服器。',
       'remember-me': '在本裝置保持登入',
       submit: '登入',
       submitting: '登入中…',
-      'no-account': '還沒有帳號？',
-      'go-register': '立即註冊',
+      google: '使用 Google 繼續',
+      'or-divider': '或',
+    },
+    vault: {
+      'setup-title': '設定加密密碼',
+      'setup-subtitle': '此密碼用於端對端加密你的同步資料。它獨立於你的 Google 帳號，一旦遺失將無法復原。',
+      'unlock-title': '解鎖你的資料',
+      'unlock-subtitle': '輸入加密密碼以在本裝置上解密你的同步資料。',
+      password: '加密密碼',
+      'password-placeholder': '至少 {0} 個字元',
+      confirm: '確認密碼',
+      'confirm-placeholder': '再次輸入密碼',
+      'too-short': '請至少使用 {0} 個字元。',
+      mismatch: '兩次輸入的密碼不一致。',
+      warning: '如果忘記此密碼，你的同步資料將無法復原。',
+      'setup-submit': '設定密碼並繼續',
+      'unlock-submit': '解鎖',
+      submitting: '處理中…',
+      'sign-out': '改為登出',
     },
     register: {
       email: '信箱',
@@ -42,8 +68,6 @@ export default {
       confirm: '確認密碼',
       submit: '註冊',
       submitting: '註冊中…',
-      'have-account': '已有帳號？',
-      'go-login': '直接登入',
     },
     account: {
       'email-verified': '信箱已驗證',
@@ -51,6 +75,13 @@ export default {
       'joined-at': '加入於 {0}',
       logout: '登出',
       'logging-out': '登出中…',
+    },
+    'account-dialog': {
+      title: '帳號',
+      'tooltip-login': '登入 / 註冊',
+      'tooltip-account': '帳號',
+      'sync-title': '雲端同步',
+      'sync-description': '同步引擎的執行狀態及各資源的同步進度',
     },
     gate: {
       'unavailable-title': '雲端同步未設定',

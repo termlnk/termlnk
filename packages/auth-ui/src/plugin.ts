@@ -18,14 +18,17 @@ import type { IAuthUIPluginConfig } from './controllers/config.schema';
 import { AuthPlugin } from '@termlnk/auth';
 import { DependentOn, IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
-import { UserRoundIcon } from 'lucide-react';
+import { UIPlugin } from '@termlnk/ui';
+import { LaptopMinimalIcon } from 'lucide-react';
+import { AccountDialogController } from './controllers/account-dialog.controller';
 import { AuthUIController } from './controllers/auth-ui.controller';
 import { AUTH_UI_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
+import { AccountDialogService } from './services/account-dialog/account-dialog.service';
 import { AccountTab } from './views/settings/AccountTab';
 
 export const AUTH_UI_PLUGIN_NAME = 'AUTH_UI_PLUGIN';
 
-@DependentOn(AuthPlugin)
+@DependentOn(AuthPlugin, UIPlugin)
 export class AuthUIPlugin extends Plugin {
   static override pluginName = AUTH_UI_PLUGIN_NAME;
 
@@ -43,15 +46,18 @@ export class AuthUIPlugin extends Plugin {
   override onStarting(): void {
     const dependencies: Dependency[] = [
       [AuthUIController],
+      [AccountDialogService],
+      [AccountDialogController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
+
+    touchDependencies(this._injector, [
+      [AccountDialogController],
+      [AuthUIController],
+    ]);
   }
 
   override onReady(): void {
-    touchDependencies(this._injector, [
-      [AuthUIController],
-    ]);
-
     this._registerSettingsTab();
   }
 
@@ -61,12 +67,13 @@ export class AuthUIPlugin extends Plugin {
     if (!registry) {
       return;
     }
+
     this.disposeWithMe(
       registry.register({
         id: 'account',
         labelKey: 'settings-ui.tab.account',
         descriptionKey: 'settings-ui.tab-description.account',
-        icon: UserRoundIcon,
+        icon: LaptopMinimalIcon,
         component: AccountTab,
         order: 110,
       })

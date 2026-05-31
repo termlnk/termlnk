@@ -15,18 +15,44 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: 'Termlnk에 오신 것을 환영합니다',
+      subtitle: '로그인하거나 계정을 만들어 호스트와 설정을 동기화하세요.',
+    },
+    switch: {
+      'to-register-prompt': '계정이 없으신가요?',
+      'to-register-action': '회원가입',
+      'to-login-prompt': '이미 계정이 있으신가요?',
+      'to-login-action': '로그인',
+    },
     login: {
       email: '이메일',
       'email-placeholder': 'you@example.com',
       password: '비밀번호',
       'password-placeholder': '비밀번호를 입력하세요',
-      'password-helper': '엔드 투 엔드로 암호화되며, 비밀번호를 잊으면 복구할 수 없습니다.',
       'trust-banner': '비밀번호는 로컬에서 파생되며 서버로 전송되지 않습니다.',
       'remember-me': '이 기기에서 로그인 상태 유지',
       submit: '로그인',
       submitting: '로그인 중…',
-      'no-account': '계정이 없으신가요?',
-      'go-register': '회원가입',
+      google: 'Google로 계속하기',
+      'or-divider': '또는',
+    },
+    vault: {
+      'setup-title': '암호화 비밀번호 설정',
+      'setup-subtitle': '이 비밀번호는 동기화 데이터를 종단 간 암호화합니다. Google 계정과는 별개이며 분실 시 복구할 수 없습니다.',
+      'unlock-title': '데이터 잠금 해제',
+      'unlock-subtitle': '이 기기에서 동기화 데이터를 복호화하려면 암호화 비밀번호를 입력하세요.',
+      password: '암호화 비밀번호',
+      'password-placeholder': '최소 {0}자',
+      confirm: '비밀번호 확인',
+      'confirm-placeholder': '비밀번호 다시 입력',
+      'too-short': '최소 {0}자 이상 사용하세요.',
+      mismatch: '비밀번호가 일치하지 않습니다.',
+      warning: '이 비밀번호를 잊어버리면 동기화 데이터를 복구할 수 없습니다.',
+      'setup-submit': '비밀번호 설정 후 계속',
+      'unlock-submit': '잠금 해제',
+      submitting: '처리 중…',
+      'sign-out': '대신 로그아웃',
     },
     register: {
       email: '이메일',
@@ -42,8 +68,6 @@ export default {
       confirm: '비밀번호 확인',
       submit: '계정 생성',
       submitting: '생성 중…',
-      'have-account': '이미 계정이 있으신가요?',
-      'go-login': '로그인',
     },
     account: {
       'email-verified': '이메일 인증됨',
@@ -51,6 +75,13 @@ export default {
       'joined-at': '가입일 {0}',
       logout: '로그아웃',
       'logging-out': '로그아웃 중…',
+    },
+    'account-dialog': {
+      title: '계정',
+      'tooltip-login': '로그인 / 회원가입',
+      'tooltip-account': '계정',
+      'sync-title': '클라우드 동기화',
+      'sync-description': '동기화 엔진 상태 및 리소스별 동기화 진행 상황.',
     },
     gate: {
       'unavailable-title': '클라우드 동기화가 구성되지 않았습니다',

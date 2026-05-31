@@ -20,6 +20,23 @@ export enum AuthState {
   Error = 'error',
 }
 
+// Encryption-key (vault) lifecycle, orthogonal to AuthState. Identity (who you are)
+// and the vault (the master key encrypting synced data) are decoupled: an OAuth
+// account is Authenticated immediately but its vault stays Locked/NeedsSetup until
+// the user supplies the encryption password. SRP accounts derive the key from the
+// login password, so they reach Unlocked at sign-in.
+export enum VaultState {
+  // No vault context — logged out, or cloud not configured.
+  Empty = 'empty',
+  // Authenticated, an encryption password was set before, but the key is not in
+  // memory here (new device or post-restart) — the user must enter it to unlock.
+  Locked = 'locked',
+  // Authenticated but no encryption password has ever been set (first OAuth sign-in).
+  NeedsSetup = 'needs_setup',
+  // encKey/indexKey are in memory; sync encryption is available.
+  Unlocked = 'unlocked',
+}
+
 // Held by the main process only; never crosses IPC.
 export interface ITokenPair {
   // Short-lived bearer for cloud RPCs (typically 15 minutes).
@@ -42,6 +59,7 @@ export type AuthErrorCode =
   | 'network'
   | 'server_error'
   | 'token_expired' // access token expired but refresh may still succeed
+  | 'wrong_encryption_password' // vault unlock: entered password does not match the stored key-check value
   | 'unknown';
 
 export interface IAuthError {
@@ -60,4 +78,10 @@ export class AuthError extends Error implements IAuthError {
     this.name = 'AuthError';
     this.code = code;
   }
+}
+
+// Which optional sign-in methods the configured cloud server actually mounted.
+// Lets the UI hide a "Continue with Google" button on a server without Google OAuth.
+export interface IAuthCapabilities {
+  googleOAuth: boolean;
 }

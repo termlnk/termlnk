@@ -15,18 +15,44 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: '欢迎使用 Termlnk',
+      subtitle: '登录或注册，同步你的主机与配置。',
+    },
+    switch: {
+      'to-register-prompt': '还没有账号？',
+      'to-register-action': '注册',
+      'to-login-prompt': '已有账号？',
+      'to-login-action': '登录',
+    },
     login: {
       email: '邮箱',
       'email-placeholder': 'you@example.com',
       password: '密码',
       'password-placeholder': '请输入你的密码',
-      'password-helper': '端到端加密，密码遗忘将无法找回。',
       'trust-banner': '密码仅在本机派生，不会发送到服务器。',
       'remember-me': '在本设备保持登录',
       submit: '登录',
       submitting: '登录中…',
-      'no-account': '还没有账号？',
-      'go-register': '立即注册',
+      google: '使用 Google 继续',
+      'or-divider': '或',
+    },
+    vault: {
+      'setup-title': '设置加密密码',
+      'setup-subtitle': '此密码用于端到端加密你的同步数据。它独立于你的 Google 账号，一旦遗失将无法恢复。',
+      'unlock-title': '解锁你的数据',
+      'unlock-subtitle': '输入加密密码以在本设备上解密你的同步数据。',
+      password: '加密密码',
+      'password-placeholder': '至少 {0} 个字符',
+      confirm: '确认密码',
+      'confirm-placeholder': '再次输入密码',
+      'too-short': '请至少使用 {0} 个字符。',
+      mismatch: '两次输入的密码不一致。',
+      warning: '如果忘记此密码，你的同步数据将无法恢复。',
+      'setup-submit': '设置密码并继续',
+      'unlock-submit': '解锁',
+      submitting: '处理中…',
+      'sign-out': '改为退出登录',
     },
     register: {
       email: '邮箱',
@@ -42,8 +68,6 @@ export default {
       confirm: '确认密码',
       submit: '注册',
       submitting: '注册中…',
-      'have-account': '已有账号？',
-      'go-login': '直接登录',
     },
     account: {
       'email-verified': '邮箱已验证',
@@ -51,6 +75,13 @@ export default {
       'joined-at': '加入于 {0}',
       logout: '退出登录',
       'logging-out': '退出中…',
+    },
+    'account-dialog': {
+      title: '账号',
+      'tooltip-login': '登录 / 注册',
+      'tooltip-account': '账号',
+      'sync-title': '云同步',
+      'sync-description': '同步引擎的运行状态及各资源的同步进度',
     },
     gate: {
       'unavailable-title': '云同步未配置',

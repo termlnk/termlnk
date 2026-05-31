@@ -23,7 +23,6 @@ const MIN_PASSWORD_LENGTH = 8;
 
 export interface IRegisterFormProps {
   readonly onSubmit: (input: IRegisterInput) => Promise<void> | void;
-  readonly onSwitchToLogin?: () => void;
   readonly errorMessage?: string;
   readonly busy?: boolean;
 }
@@ -76,9 +75,9 @@ export function RegisterForm(props: IRegisterFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className={cn('tm:flex tm:flex-col tm:gap-4 tm:p-1')}
+      className={cn('tm:flex tm:flex-col tm:gap-5')}
     >
-      <FieldGroup>
+      <FieldGroup className={cn('tm:gap-4')}>
         <Field>
           <FieldLabel htmlFor="auth-ui-register-email">
             {localeService.t('auth-ui.register.email')}
@@ -112,10 +111,10 @@ export function RegisterForm(props: IRegisterFormProps) {
               placeholder={localeService.t('auth-ui.register.display-name-placeholder')}
               disabled={props.busy}
             />
+            <FieldDescription>
+              {localeService.t('auth-ui.register.display-name-hint')}
+            </FieldDescription>
           </FieldContent>
-          <FieldDescription>
-            {localeService.t('auth-ui.register.display-name-hint')}
-          </FieldDescription>
         </Field>
 
         <Field>
@@ -133,10 +132,10 @@ export function RegisterForm(props: IRegisterFormProps) {
               placeholder={localeService.t('auth-ui.register.password-placeholder', String(MIN_PASSWORD_LENGTH))}
               disabled={props.busy}
             />
+            <FieldDescription>
+              {localeService.t('auth-ui.register.password-hint')}
+            </FieldDescription>
           </FieldContent>
-          <FieldDescription>
-            {localeService.t('auth-ui.register.password-hint')}
-          </FieldDescription>
         </Field>
 
         <Field>
@@ -175,27 +174,16 @@ export function RegisterForm(props: IRegisterFormProps) {
         </div>
       )}
 
-      <Button type="submit" disabled={!canSubmit} className={cn('tm:w-full')}>
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={!canSubmit}
+        className={cn('tm:h-10 tm:w-full tm:font-semibold')}
+      >
         {props.busy
           ? localeService.t('auth-ui.register.submitting')
           : localeService.t('auth-ui.register.submit')}
       </Button>
-
-      {props.onSwitchToLogin && (
-        <div className={cn('tm:flex tm:items-center tm:justify-center tm:gap-1 tm:text-sm tm:text-grey-fg')}>
-          <span>{localeService.t('auth-ui.register.have-account')}</span>
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={props.onSwitchToLogin}
-            disabled={props.busy}
-            className={cn('tm:h-auto tm:px-0 tm:font-medium')}
-          >
-            {localeService.t('auth-ui.register.go-login')}
-          </Button>
-        </div>
-      )}
     </form>
   );
 }

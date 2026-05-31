@@ -102,7 +102,7 @@ export default {
   dayjs: {
     global: 'dayjs',
     name: 'dayjs',
-    version: '^1.11.20',
+    version: '^1.11.21',
   },
   nanoid: {
     global: 'nanoid',
@@ -112,6 +112,6 @@ export default {
   'react-resizable-panels': {
     global: 'react-resizable-panels',
     name: 'react-resizable-panels',
-    version: '^4.11.1',
+    version: '^4.11.2',
   },
 };

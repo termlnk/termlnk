@@ -15,6 +15,7 @@
 
 import type { Dependency, Injector } from '@termlnk/core';
 import type { IWebRendererConfig } from './controllers/config.schema';
+import { IGoogleSignInLauncher } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, InjectSelf, IUpdaterService, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IWindowManagerService } from '@termlnk/electron';
 import { IRPCClientService, RPCClientPlugin } from '@termlnk/rpc-client';
@@ -22,6 +23,8 @@ import { IBrowserFileTransferService } from '@termlnk/sftp-ui';
 import { IHostEnvironmentService, UIPlugin, WebHostEnvironmentService } from '@termlnk/ui';
 import { defaultPluginConfig, WEB_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { WebHeaderController } from './controllers/header.controller';
+import { WebDeepLinkController } from './controllers/web-deep-link.controller';
+import { WebGoogleSignInLauncher } from './services/auth/google-sign-in-launcher.service';
 import { WebRPCClientService } from './services/rpc/web-rpc-client.service';
 import { BrowserFileTransferService } from './services/sftp/browser-file-transfer.service';
 import { WebUpdaterService } from './services/updater/web-updater.service';
@@ -55,7 +58,9 @@ export class WebRendererPlugin extends Plugin {
       [IUpdaterService, { useClass: WebUpdaterService }],
       [IBrowserFileTransferService, { useClass: BrowserFileTransferService }],
       [IHostEnvironmentService, { useClass: WebHostEnvironmentService }],
+      [IGoogleSignInLauncher, { useClass: WebGoogleSignInLauncher }],
       [WebHeaderController],
+      [WebDeepLinkController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }
@@ -63,6 +68,8 @@ export class WebRendererPlugin extends Plugin {
   override onReady(): void {
     touchDependencies(this._injector, [
       [WebHeaderController],
+      // Reads window.location once the app is up — OAuth callback / invite intake.
+      [WebDeepLinkController],
     ]);
   }
 }

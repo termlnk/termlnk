@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AuthErrorCode, IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, ITokenPair, IUserAccount } from '@termlnk/auth';
+import type { AuthErrorCode, GoogleWebSignInStatus, IAuthCapabilities, IAuthError, IAuthService, IDevice, IGoogleWebSignInBegin, ILoginInput, IRegisterInput, ITokenPair, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage, IDeviceNameProvider, IMasterKeyService, ISrpClientService, ITokenManager, IUserStorageService, randomBytes } from '@termlnk/auth';
+import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage, IDeviceNameProvider, IMasterKeyService, ISrpClientService, ITokenManager, IUserStorageService, MasterKeyState, randomBytes, VaultState } from '@termlnk/auth';
 import { Disposable, generateRandomId, ILogService, Optional } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 
@@ -24,6 +24,10 @@ import { BehaviorSubject } from 'rxjs';
 const ARGON2_RANDOM_SALT_LENGTH = 32;
 
 const FALLBACK_DEVICE_NAME = 'Unknown device';
+
+// A Google sign-in relay code is only honored within this window after the user initiated the
+// flow on this device (getGoogleAuthorizeUrl) — bounds the login-CSRF replay surface.
+const GOOGLE_SIGN_IN_INTENT_TTL_MS = 10 * 60 * 1000;
 
 // Subset of fetch() that we depend on; production passes globalThis.fetch, tests inject a fake.
 export type HttpFetchFn = (url: string, init: {
@@ -106,6 +110,7 @@ const FRIENDLY_MESSAGES: Readonly<Record<AuthErrorCode, string>> = {
   network: 'Network error. Check your connection and try again.',
   server_error: 'Server error. Please try again later.',
   token_expired: 'Your session has expired. Please sign in again.',
+  wrong_encryption_password: 'Incorrect encryption password.',
   unknown: 'Something went wrong. Please try again.',
 };
 
@@ -161,6 +166,7 @@ interface IDeviceListResponseBody {
 
 interface IMeResponseBody {
   user: IUserAccount;
+  e2e: IE2EStatusBody;
 }
 
 interface ISrpVerifyResponseBody {
@@ -170,6 +176,29 @@ interface ISrpVerifyResponseBody {
   refreshToken: string;
   accessTokenExpiresAt: number;
   refreshTokenExpiresAt: number;
+}
+
+interface IE2EStatusBody {
+  configured: boolean;
+  argon2SaltB64?: string;
+}
+
+interface IGoogleClaimResponseBody {
+  user: IUserAccount;
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresAt: number;
+  refreshTokenExpiresAt: number;
+  e2e: IE2EStatusBody;
+}
+
+interface IGoogleWebBeginResponseBody {
+  authorizeUrl: string;
+  deviceCode: string;
+}
+
+interface IGoogleWebPollResponseBody {
+  relayCode?: string;
 }
 
 // Trust boundary: plaintext password is consumed inside register/login only; master key
@@ -184,11 +213,24 @@ export class HttpAuthService extends Disposable implements IAuthService {
   private readonly _lastError$ = new BehaviorSubject<IAuthError | null>(null);
   readonly lastError$: Observable<IAuthError | null> = this._lastError$.asObservable();
 
+  private readonly _vaultState$ = new BehaviorSubject<VaultState>(VaultState.Empty);
+  readonly vaultState$: Observable<VaultState> = this._vaultState$.asObservable();
+
   private readonly _fetchFn: HttpFetchFn;
 
   // In-memory cache for the persisted device id. First read goes through IAuthKeyValueStorage;
   // subsequent reads short-circuit so register/login don't hit the keystore each call.
   private _deviceIdCache: string | null = null;
+
+  // Tracks when a Google sign-in was initiated on this device (via getGoogleAuthorizeUrl). A
+  // relay code arriving on the deep-link router without a recent intent is rejected — this defeats
+  // a forged/replayed `termlnk://auth/callback` signing this device into someone else's account.
+  private _googleSignInIntentAt = 0;
+
+  // Device code of the in-flight web sign-in (begin → poll). Single field rather
+  // than per-session because this process is single-user (one master password);
+  // a concurrent web sign-in overwrites it, same assumption as the intent above.
+  private _pendingWebDeviceCode: string | null = null;
 
   constructor(
     private readonly _config: IHttpAuthServiceConfig,
@@ -203,12 +245,17 @@ export class HttpAuthService extends Disposable implements IAuthService {
     super();
 
     this._fetchFn = _config.fetchFn ?? DEFAULT_FETCH_FN;
+
+    // Keep vaultState consistent when the master key is cleared out-of-band (e.g. the
+    // idle-lock controller's fallback path locks the key directly, bypassing logout()).
+    this.disposeWithMe(this._masterKey.state$.subscribe((state) => this._onMasterKeyState(state)));
   }
 
   override dispose(): void {
     this._currentUser$.complete();
     this._authState$.complete();
     this._lastError$.complete();
+    this._vaultState$.complete();
     super.dispose();
   }
 
@@ -250,6 +297,8 @@ export class HttpAuthService extends Disposable implements IAuthService {
 
       const resp = await this._fetchAuthFreeJson<IRegisterResponseBody>('/auth/register', body);
       await this._completeAuthSession(resp);
+      // SRP register derived the master key above; the vault is immediately usable.
+      this._vaultState$.next(VaultState.Unlocked);
     } catch (err) {
       throw this._toAuthError(err, 'register');
     }
@@ -260,48 +309,59 @@ export class HttpAuthService extends Disposable implements IAuthService {
     this._authState$.next(AuthState.Authenticating);
 
     try {
-      const initResp = await this._fetchAuthFreeJson<ISrpInitResponseBody>(
-        '/auth/srp/init',
-        { email: input.email } satisfies ISrpInitRequestBody
-      );
-
-      const masterKey = await this._masterKey.derive(input.password, {
-        email: input.email,
-        saltB64: initResp.argon2SaltB64,
-      });
-      const authKeyHex = bytesToHex(masterKey.authKey);
-
-      const ephemeral = this._srp.generateEphemeral();
-      const session = this._srp.deriveSession(
-        ephemeral.secret,
-        initResp.srpServerEphemeralPublic,
-        initResp.srpSalt,
-        input.email,
-        authKeyHex
-      );
-
-      const verifyResp = await this._fetchAuthFreeJson<ISrpVerifyResponseBody>(
-        '/auth/srp/verify',
-        {
-          email: input.email,
-          clientPublicEphemeral: ephemeral.public,
-          clientSessionProof: session.proof,
-          deviceName: this._safeDeviceName(),
-          deviceId: await this._loadOrCreateDeviceId(),
-        } satisfies ISrpVerifyRequestBody
-      );
-
-      // verifySession throws on M2 mismatch — that's "server doesn't actually have the verifier",
-      // i.e., MITM. We must reject the tokens that came alongside.
-      this._srp.verifySession(ephemeral.public, session, verifyResp.serverSessionProof);
-
+      const verifyResp = await this._performSrpLogin(input.email, input.password);
       await this._completeAuthSession(verifyResp);
+      // SRP login derived the master key above; the vault is immediately usable.
+      this._vaultState$.next(VaultState.Unlocked);
     } catch (err) {
-      // SRP server-proof failure / network error / wrong password → master key may be partially
-      // derived. Lock it to keep the in-memory invariant clean.
+      // SRP server-proof failure / network error / wrong password → master key may be
+      // partially derived. Lock it to keep the in-memory invariant clean.
       this._masterKey.lock();
       throw this._toAuthError(err, 'login');
     }
+  }
+
+  // Runs the SRP6a handshake (init → derive → verify → M2 check) and returns the server
+  // response. Mutates NO public state by design: callers decide whether the outcome is an
+  // identity-login event (login) or a vault-unlock event (unlockVault), so a wrong password
+  // during unlock does not flip the identity authState$ to Error.
+  private async _performSrpLogin(email: string, password: string): Promise<ISrpVerifyResponseBody> {
+    const initResp = await this._fetchAuthFreeJson<ISrpInitResponseBody>(
+      '/auth/srp/init',
+      { email } satisfies ISrpInitRequestBody
+    );
+
+    const masterKey = await this._masterKey.derive(password, {
+      email,
+      saltB64: initResp.argon2SaltB64,
+    });
+    const authKeyHex = bytesToHex(masterKey.authKey);
+
+    const ephemeral = this._srp.generateEphemeral();
+    const session = this._srp.deriveSession(
+      ephemeral.secret,
+      initResp.srpServerEphemeralPublic,
+      initResp.srpSalt,
+      email,
+      authKeyHex
+    );
+
+    const verifyResp = await this._fetchAuthFreeJson<ISrpVerifyResponseBody>(
+      '/auth/srp/verify',
+      {
+        email,
+        clientPublicEphemeral: ephemeral.public,
+        clientSessionProof: session.proof,
+        deviceName: this._safeDeviceName(),
+        deviceId: await this._loadOrCreateDeviceId(),
+      } satisfies ISrpVerifyRequestBody
+    );
+
+    // verifySession throws on M2 mismatch — "server doesn't actually have the verifier",
+    // i.e. MITM. We must reject the tokens that came alongside.
+    this._srp.verifySession(ephemeral.public, session, verifyResp.serverSessionProof);
+
+    return verifyResp;
   }
 
   async listDevices(): Promise<readonly IDevice[]> {
@@ -351,6 +411,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
     this._currentUser$.next(null);
     this._authState$.next(AuthState.Unauthenticated);
     this._lastError$.next(null);
+    this._vaultState$.next(VaultState.Empty);
   }
 
   // Idempotent and fail-soft; never throws to the caller.
@@ -373,19 +434,23 @@ export class HttpAuthService extends Disposable implements IAuthService {
         this._currentUser$.next(null);
         this._authState$.next(AuthState.Unauthenticated);
       }
+      this._vaultState$.next(VaultState.Empty);
       return;
     }
 
     // Token still alive — best-effort self-heal so changes elsewhere (displayName, avatar,
-    // emailVerified) reach this device without forcing a re-login. Errors are classified:
+    // emailVerified) reach this device without forcing a re-login. /auth/me also carries the
+    // authoritative e2e status used to resolve the vault state below. Errors are classified:
     //   401/403          → server revoked the token; clear everything.
     //   404 / network    → endpoint not deployed yet or transient outage; keep cached user.
     //   anything else    → log and keep cached user.
+    let e2e: IE2EStatusBody | null = null;
     try {
-      const fresh = await this._fetchMe(token);
-      await this._userStorage.save(fresh);
-      this._currentUser$.next(fresh);
+      const me = await this._fetchMe(token);
+      await this._userStorage.save(me.user);
+      this._currentUser$.next(me.user);
       this._authState$.next(AuthState.Authenticated);
+      e2e = me.e2e;
     } catch (err) {
       if (err instanceof HttpRequestError && (err.status === 401 || err.status === 403)) {
         this._logService.log('[HttpAuthService] /auth/me rejected token; clearing session');
@@ -395,19 +460,195 @@ export class HttpAuthService extends Disposable implements IAuthService {
         this._masterKey.lock();
         this._currentUser$.next(null);
         this._authState$.next(AuthState.Unauthenticated);
+        this._vaultState$.next(VaultState.Empty);
         return;
       }
       this._logService.warn('[HttpAuthService] /auth/me self-heal failed (keeping cached user):', err);
     }
 
-    // Token + user are valid → reinstall the master key from the OS-keystore-wrapped blob
-    // so the sync layer can encrypt/decrypt immediately, without forcing a re-login.
-    // Failure is silent: the user keeps a working logged-in session but sync stays paused
-    // until they sign in again (which re-derives + re-wraps the key).
-    await this._masterKey.tryRestoreFromStorage();
+    await this._reconcileVaultState(e2e);
   }
 
-  private async _completeAuthSession(resp: IRegisterResponseBody | ISrpVerifyResponseBody): Promise<void> {
+  // Resolve the vault state on restore. The server's e2e status (when /auth/me was
+  // reachable) is authoritative:
+  //   - not configured → NeedsSetup; drop any local wrap so a half-finished
+  //     setupEncryptionPassword can't masquerade as Unlocked here or desync other devices.
+  //   - configured + local wrap present → Unlocked (key reinstalled from the OS keystore).
+  //   - configured + no local wrap (new device / post-restart) → Locked; the user enters
+  //     the encryption password to unlock.
+  // When /auth/me was unreachable (e2e null, offline / legacy server) we degrade to the
+  // local wrap alone.
+  private async _reconcileVaultState(e2e: IE2EStatusBody | null): Promise<void> {
+    if (e2e && !e2e.configured) {
+      await this._masterKey.clearPersistedKey();
+      this._masterKey.lock();
+      this._vaultState$.next(VaultState.NeedsSetup);
+      return;
+    }
+    const restored = await this._masterKey.tryRestoreFromStorage();
+    this._vaultState$.next(restored ? VaultState.Unlocked : VaultState.Locked);
+  }
+
+  // Keep vaultState in sync when the master key is cleared out-of-band (e.g. the idle-lock
+  // controller's fallback path calls IMasterKeyService.lock() directly without going through
+  // logout()). Only downgrade an Unlocked vault for a still-authenticated user; logout() and
+  // restore() own the Empty/NeedsSetup transitions explicitly.
+  private _onMasterKeyState(state: MasterKeyState): void {
+    if (
+      state === MasterKeyState.Locked
+      && this._currentUser$.getValue() !== null
+      && this._vaultState$.getValue() === VaultState.Unlocked
+    ) {
+      this._vaultState$.next(VaultState.Locked);
+    }
+  }
+
+  async getGoogleAuthorizeUrl(): Promise<string> {
+    // Record that THIS device initiated a Google sign-in; the deep-link handler only
+    // honors a relay code while this intent is fresh (see loginWithGoogle).
+    this._googleSignInIntentAt = Date.now();
+    return this._joinUrl('/auth/google/start');
+  }
+
+  async getServerCapabilities(): Promise<IAuthCapabilities> {
+    try {
+      const resp = await this._request('GET /auth/capabilities', 'GET', '/auth/capabilities');
+      const body = await resp.json() as Partial<IAuthCapabilities>;
+      return { googleOAuth: body.googleOAuth === true };
+    } catch (err) {
+      // Fail-soft: an unreachable or older server simply advertises no optional methods.
+      this._logService.warn('[HttpAuthService] capabilities probe failed:', err);
+      return { googleOAuth: false };
+    }
+  }
+
+  async loginWithGoogle(relayCode: string): Promise<void> {
+    if (!this._consumeGoogleSignInIntent()) {
+      // A relay code we never initiated (forged / replayed deep link). Refuse so a malicious
+      // local app can't sign this device into an attacker's account (login CSRF).
+      this._logService.warn('[HttpAuthService] ignoring Google callback with no sign-in in progress');
+      throw new AuthError('invalid_request', 'no Google sign-in is in progress on this device');
+    }
+    this._lastError$.next(null);
+    this._authState$.next(AuthState.Authenticating);
+
+    try {
+      const resp = await this._fetchAuthFreeJson<IGoogleClaimResponseBody>('/auth/google/claim', {
+        relayCode,
+        deviceName: this._safeDeviceName(),
+      });
+      await this._completeAuthSession(resp);
+      // Identity is established; the encryption key is a separate factor. NeedsSetup on
+      // first ever sign-in, otherwise Locked until the user supplies the password.
+      this._vaultState$.next(resp.e2e.configured ? VaultState.Locked : VaultState.NeedsSetup);
+    } catch (err) {
+      throw this._toAuthError(err, 'loginWithGoogle');
+    }
+  }
+
+  // Returns true at most once per getGoogleAuthorizeUrl() call, and only within the TTL.
+  private _consumeGoogleSignInIntent(): boolean {
+    const at = this._googleSignInIntentAt;
+    this._googleSignInIntentAt = 0;
+    return at > 0 && Date.now() - at <= GOOGLE_SIGN_IN_INTENT_TTL_MS;
+  }
+
+  async beginGoogleWebSignIn(): Promise<IGoogleWebSignInBegin> {
+    // Same intent guard as the desktop deep-link flow — the eventual loginWithGoogle
+    // (driven by pollGoogleWebSignIn below) only honors a relay code while this is fresh.
+    this._googleSignInIntentAt = Date.now();
+    const resp = await this._fetchAuthFreeJson<IGoogleWebBeginResponseBody>('/auth/google/web/begin', {});
+    this._pendingWebDeviceCode = resp.deviceCode;
+    return { authorizeUrl: resp.authorizeUrl };
+  }
+
+  async pollGoogleWebSignIn(): Promise<GoogleWebSignInStatus> {
+    const deviceCode = this._pendingWebDeviceCode;
+    if (!deviceCode) {
+      return 'expired';
+    }
+    let resp: IGoogleWebPollResponseBody;
+    try {
+      resp = await this._fetchAuthFreeJson<IGoogleWebPollResponseBody>('/auth/google/web/poll', { deviceCode });
+    } catch (err) {
+      // Transient network blip — let the caller poll again rather than aborting the flow.
+      this._logService.warn('[HttpAuthService] web sign-in poll failed:', err);
+      return 'pending';
+    }
+    if (!resp.relayCode) {
+      return 'pending';
+    }
+    // Relay code retrieved — claim it (consumes the sign-in intent set in begin) and
+    // clear the device code so a late poll can't double-claim.
+    this._pendingWebDeviceCode = null;
+    await this.loginWithGoogle(resp.relayCode);
+    return 'complete';
+  }
+
+  async setupEncryptionPassword(password: string): Promise<void> {
+    const user = this._currentUser$.getValue();
+    if (!user) {
+      throw new AuthError('unknown', 'cannot set an encryption password before signing in');
+    }
+    try {
+      const argon2SaltB64 = bytesToBase64(randomBytes(ARGON2_RANDOM_SALT_LENGTH));
+      const masterKey = await this._masterKey.derive(password, { email: user.email, saltB64: argon2SaltB64 });
+      const authKeyHex = bytesToHex(masterKey.authKey);
+      // Enroll the encryption password as the account's SRP credential so it is also
+      // a login password: email + this password can sign in via /auth/srp/* and
+      // derives the same encKey (identity-only OAuth and password login converge).
+      const enrollment = this._srp.enroll(user.email, authKeyHex);
+      await this._fetchAuthorizedJson('POST /auth/e2e/setup', '/auth/e2e/setup', {
+        argon2SaltB64,
+        srpSalt: enrollment.srpSalt,
+        srpVerifier: enrollment.srpVerifier,
+      });
+      this._vaultState$.next(VaultState.Unlocked);
+    } catch (err) {
+      // derive() already persisted the wrapped key as a side effect. Roll it back so a
+      // failed upload can't leave a local wrap the server has no credential for — which
+      // would restore as a bogus Unlocked on next launch and never unlock on other devices.
+      this._masterKey.lock();
+      await this._masterKey.clearPersistedKey();
+      throw err instanceof AuthError ? err : this._classifyError(err);
+    }
+  }
+
+  async unlockVault(password: string): Promise<void> {
+    const user = this._currentUser$.getValue();
+    if (!user) {
+      throw new AuthError('unknown', 'cannot unlock the vault before signing in');
+    }
+    this._lastError$.next(null);
+    try {
+      // Unlocking proves the encryption password, which is also the SRP login password
+      // (see setupEncryptionPassword). Re-running the handshake derives the master key
+      // (unlocking the vault) and refreshes the session. Identity is already established,
+      // so a wrong password is a VAULT error — we deliberately do NOT route through login(),
+      // which would flip the identity authState$ to Error for an otherwise-valid session.
+      const verifyResp = await this._performSrpLogin(user.email, password);
+      await this._completeAuthSession(verifyResp);
+      this._vaultState$.next(VaultState.Unlocked);
+    } catch (err) {
+      this._masterKey.lock();
+      const authError = err instanceof AuthError ? err : this._classifyError(err);
+      // A wrong encryption password surfaces as invalid_credentials; remap to the
+      // vault-specific code so the UI shows the right message.
+      const surfaced = authError.code === 'invalid_credentials'
+        ? new AuthError('wrong_encryption_password', friendlyMessageFor('wrong_encryption_password'))
+        : authError;
+      this._lastError$.next({ code: surfaced.code, message: surfaced.message });
+      throw surfaced;
+    }
+  }
+
+  private async _completeAuthSession(resp: {
+    user: IUserAccount;
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpiresAt: number;
+    refreshTokenExpiresAt: number;
+  }): Promise<void> {
     const tokens: ITokenPair = {
       accessToken: resp.accessToken,
       refreshToken: resp.refreshToken,
@@ -420,28 +661,11 @@ export class HttpAuthService extends Disposable implements IAuthService {
     this._authState$.next(AuthState.Authenticated);
   }
 
-  // GET /auth/me — Bearer-authorized lookup of the canonical user record. Throws
-  // HttpRequestError on non-2xx so restore() can branch on status.
-  private async _fetchMe(token: string): Promise<IUserAccount> {
-    const url = this._joinUrl('/auth/me');
-    let resp: Awaited<ReturnType<HttpFetchFn>>;
-    try {
-      resp = await this._fetchFn(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-      });
-    } catch (err) {
-      throw new AuthError('network', err instanceof Error ? err.message : String(err));
-    }
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      throw new HttpRequestError('GET /auth/me', resp.status, resp.statusText, text);
-    }
-    const body = await resp.json() as IMeResponseBody;
-    return body.user;
+  // GET /auth/me — Bearer-authorized lookup of the canonical user record + e2e status.
+  // Throws HttpRequestError on non-2xx so restore() can branch on status.
+  private async _fetchMe(token: string): Promise<IMeResponseBody> {
+    const resp = await this._request('GET /auth/me', 'GET', '/auth/me', { token });
+    return resp.json() as Promise<IMeResponseBody>;
   }
 
   // Translate any thrown value into a user-facing AuthError and update the public state streams.
@@ -473,9 +697,45 @@ export class HttpAuthService extends Disposable implements IAuthService {
     return new AuthError('unknown', friendlyMessageFor('unknown'));
   }
 
-  // Bearer-authenticated request; mirrors `_fetchAuthFreeJson` error handling so that
-  // listDevices/revokeDevice/logout surface `HttpRequestError` with `serverCode` populated
-  // and callers map `unauthorized` / `invalid_refresh` consistently.
+  // Single fetch path shared by every JSON endpoint. Adds Accept (plus Bearer /
+  // Content-Type when applicable), maps a transport failure to AuthError('network') and a
+  // non-2xx to HttpRequestError(operation, …) so callers map serverCode consistently.
+  private async _request(
+    operation: string,
+    method: 'GET' | 'POST',
+    path: string,
+    opts?: { token?: string; jsonBody?: unknown }
+  ): Promise<Awaited<ReturnType<HttpFetchFn>>> {
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (opts?.token) {
+      headers.Authorization = `Bearer ${opts.token}`;
+    }
+    const jsonBody = opts?.jsonBody;
+    const hasBody = jsonBody !== undefined;
+    if (hasBody) {
+      headers['Content-Type'] = 'application/json';
+    }
+    let resp: Awaited<ReturnType<HttpFetchFn>>;
+    try {
+      resp = await this._fetchFn(this._joinUrl(path), {
+        method,
+        headers,
+        body: hasBody ? JSON.stringify(jsonBody) : undefined,
+      });
+    } catch {
+      // fetch() rejected before a response (DNS, refused, TLS, offline). Translate to a typed
+      // error so the classifier doesn't have to regex-match platform-specific wording.
+      throw new AuthError('network', friendlyMessageFor('network'));
+    }
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new HttpRequestError(operation, resp.status, resp.statusText, text);
+    }
+    return resp;
+  }
+
+  // Bearer-authenticated request (no body) for listDevices/revokeDevice; surfaces
+  // HttpRequestError with serverCode so callers map unauthorized / invalid_refresh.
   private async _fetchAuthorized(
     operation: string,
     path: string,
@@ -485,47 +745,21 @@ export class HttpAuthService extends Disposable implements IAuthService {
     if (!token) {
       throw new AuthError('session_expired', friendlyMessageFor('session_expired'));
     }
-    const url = this._joinUrl(path);
-    let resp: Awaited<ReturnType<HttpFetchFn>>;
-    try {
-      resp = await this._fetchFn(url, {
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-      });
-    } catch {
-      throw new AuthError('network', friendlyMessageFor('network'));
-    }
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      throw new HttpRequestError(operation, resp.status, resp.statusText, text);
-    }
-    return { json: () => resp.json() };
+    return this._request(operation, method, path, { token });
   }
 
   private async _fetchAuthFreeJson<T>(path: string, body: unknown): Promise<T> {
-    const url = this._joinUrl(path);
-    let resp: Awaited<ReturnType<HttpFetchFn>>;
-    try {
-      resp = await this._fetchFn(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-    } catch {
-      // fetch() rejected before we got a response (DNS, refused, TLS, offline). Translate to a
-      // typed error so the classifier doesn't have to regex-match platform-specific wording.
-      throw new AuthError('network', friendlyMessageFor('network'));
+    const resp = await this._request(`POST ${path}`, 'POST', path, { jsonBody: body });
+    return resp.json() as Promise<T>;
+  }
+
+  // Bearer-authenticated POST with a JSON body (e2e/setup).
+  private async _fetchAuthorizedJson<T = unknown>(operation: string, path: string, body: unknown): Promise<T> {
+    const token = await this._tokenManager.getAccessToken();
+    if (!token) {
+      throw new AuthError('session_expired', friendlyMessageFor('session_expired'));
     }
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => '');
-      throw new HttpRequestError(`POST ${path}`, resp.status, resp.statusText, text);
-    }
+    const resp = await this._request(operation, 'POST', path, { token, jsonBody: body });
     return resp.json() as Promise<T>;
   }
 

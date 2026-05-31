@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
+import type { GoogleWebSignInStatus, IAuthCapabilities, IAuthError, IAuthService, IDevice, IGoogleWebSignInBegin, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { AuthState } from '@termlnk/auth';
+import { AuthState, VaultState } from '@termlnk/auth';
 import { Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { BehaviorSubject } from 'rxjs';
@@ -36,6 +36,9 @@ export class AuthService extends Disposable implements IAuthService {
 
   private readonly _lastError$ = new BehaviorSubject<IAuthError | null>(null);
   readonly lastError$: Observable<IAuthError | null> = this._lastError$.asObservable();
+
+  private readonly _vaultState$ = new BehaviorSubject<VaultState>(VaultState.Empty);
+  readonly vaultState$: Observable<VaultState> = this._vaultState$.asObservable();
 
   constructor(
     @IRPCClientService private readonly _rpcClientService: IRPCClientService,
@@ -74,9 +77,17 @@ export class AuthService extends Disposable implements IAuthService {
       error: (err) => this._logService.warn('[AuthService] lastError$ stream error:', err),
     });
 
+    const vaultSub = trpcSubscriptionToObservable<VaultState>(
+      (opts) => this._client.vaultState$.subscribe(undefined, opts)
+    ).subscribe({
+      next: (state) => this._vaultState$.next(state),
+      error: (err) => this._logService.warn('[AuthService] vaultState$ stream error:', err),
+    });
+
     this.disposeWithMe(toDisposable(userSub));
     this.disposeWithMe(toDisposable(stateSub));
     this.disposeWithMe(toDisposable(errorSub));
+    this.disposeWithMe(toDisposable(vaultSub));
   }
 
   override dispose(): void {
@@ -84,6 +95,7 @@ export class AuthService extends Disposable implements IAuthService {
     this._currentUser$.complete();
     this._authState$.complete();
     this._lastError$.complete();
+    this._vaultState$.complete();
   }
 
   private get _client() {
@@ -108,6 +120,37 @@ export class AuthService extends Disposable implements IAuthService {
 
   async revokeDevice(deviceId: string): Promise<void> {
     await this._client.revokeDevice.mutate({ deviceId });
+  }
+
+  async getGoogleAuthorizeUrl(): Promise<string> {
+    return this._client.getGoogleAuthorizeUrl.query();
+  }
+
+  async getServerCapabilities(): Promise<IAuthCapabilities> {
+    return this._client.getServerCapabilities.query();
+  }
+
+  async setupEncryptionPassword(password: string): Promise<void> {
+    await this._client.setupEncryptionPassword.mutate({ password });
+  }
+
+  async unlockVault(password: string): Promise<void> {
+    await this._client.unlockVault.mutate({ password });
+  }
+
+  // Driven by the main-process deep-link handler; the renderer never invokes it.
+  // The web shell uses begin/pollGoogleWebSignIn instead (relay code is claimed
+  // server-side), so this stays main-process-only.
+  loginWithGoogle(): Promise<void> {
+    throw new Error(MAIN_PROCESS_ONLY_MESSAGE);
+  }
+
+  async beginGoogleWebSignIn(): Promise<IGoogleWebSignInBegin> {
+    return this._client.beginGoogleWebSignIn.mutate();
+  }
+
+  async pollGoogleWebSignIn(): Promise<GoogleWebSignInStatus> {
+    return this._client.pollGoogleWebSignIn.mutate() as Promise<GoogleWebSignInStatus>;
   }
 
   // Renderer-side synchronous getter reads the locally mirrored BehaviorSubject; the

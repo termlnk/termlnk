@@ -16,54 +16,23 @@
 import { IAuthService } from '@termlnk/auth';
 import { LocaleService, Quantity } from '@termlnk/core';
 import { Card, CardContent, CardDescription, CardHeader, useDependency } from '@termlnk/design';
-import { IBackupClientService, ISyncService } from '@termlnk/sync';
-import { BackupCard, SyncStatusPanel } from '@termlnk/sync-ui';
-import { AuthGate } from '../AuthGate';
+import { IBackupClientService } from '@termlnk/sync';
+import { BackupCard } from '@termlnk/sync-ui';
 import { DeviceListCard } from '../DeviceListCard';
 
-// Account & Sync tab: composes auth-ui's AuthGate with sync-ui's SyncStatusPanel /
-// BackupCard / DeviceListCard. Each section appears only when its underlying service is
-// bound, so an unconfigured cloud build collapses to just the AuthGate placeholder.
+// Devices tab: composes sync-ui's DeviceListCard / BackupCard. Cloud sync controls live in
+// the account dialog (AccountDialogContent), reachable from the sidebar user button. Login
+// and registration also live in that dialog. Each section appears only when its underlying
+// service is bound.
 export function AccountTab() {
   const localeService = useDependency(LocaleService);
   const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
-  const syncService = useDependency(ISyncService, Quantity.OPTIONAL);
   const backupClient = useDependency(IBackupClientService, Quantity.OPTIONAL);
 
   return (
     <div className="tm:flex tm:flex-col tm:gap-6">
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
-        <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
-          <h3 className="tm:text-base tm:font-semibold tm:text-white">
-            {localeService.t('settings-ui.account.section-account')}
-          </h3>
-          <CardDescription className="tm:mt-2 tm:text-xs/5">
-            {localeService.t('settings-ui.account.section-account-description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="tm:py-4">
-          <AuthGate />
-        </CardContent>
-      </Card>
-
-      {syncService && authClient && (
-        <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
-          <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
-            <h3 className="tm:text-base tm:font-semibold tm:text-white">
-              {localeService.t('settings-ui.account.section-sync')}
-            </h3>
-            <CardDescription className="tm:mt-2 tm:text-xs/5">
-              {localeService.t('settings-ui.account.section-sync-description')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="tm:py-4">
-            <SyncStatusPanel />
-          </CardContent>
-        </Card>
-      )}
-
       {authClient && (
-        <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+        <Card className="tm:gap-0 tm:py-0">
           <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
             <h3 className="tm:text-base tm:font-semibold tm:text-white">
               {localeService.t('settings-ui.account.section-devices')}
@@ -79,7 +48,7 @@ export function AccountTab() {
       )}
 
       {backupClient && (
-        <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+        <Card className="tm:gap-0 tm:py-0">
           <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
             <h3 className="tm:text-base tm:font-semibold tm:text-white">
               {localeService.t('settings-ui.account.section-backup')}

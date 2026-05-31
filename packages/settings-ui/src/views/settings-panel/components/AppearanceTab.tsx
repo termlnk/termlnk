@@ -37,7 +37,7 @@ export function AppearanceTab() {
   return (
     <FieldGroup className="tm:gap-5">
       {/* Language Settings — host-agnostic, lives in the shared appearance tab. */}
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <h3 className="tm:text-sm tm:font-semibold tm:text-white">
             {localeService.t('settings-ui.appearance.language-settings-title')}

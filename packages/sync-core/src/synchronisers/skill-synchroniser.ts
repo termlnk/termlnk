@@ -29,6 +29,11 @@ const TEXT_DECODER = new TextDecoder();
 // manage those via git / dotfiles; SkillDiscoveryService repairs `path` on next scan
 // and `checksum` lets it decide whether to re-parse. While applyPatch runs we ignore
 // changed$ to avoid the self-reflection loop (server pull → local write → push back).
+//
+// Built-in skills (source === 'builtin') are part of the app binary and re-seeded on
+// every boot by SkillDiscoveryService. They must never enter the sync stream — pushing
+// them wastes outbox slots and pulling them from another device's binary would clobber
+// local rows on the next discovery pass.
 export class SkillSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
 
@@ -37,6 +42,12 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
 
   private _applyingPatch = false;
   private _started = false;
+
+  // Cache of built-in skill ids — populated eagerly at start() and maintained from
+  // add/update events. Needed because delete events don't carry the source field and
+  // the row is already gone by the time we'd try to query it.
+  private readonly _builtinIds = new Set<string>();
+  private _builtinIdsReady: Promise<void> | null = null;
 
   constructor(
     @Inject(SkillRepository) private readonly _skillRepo: SkillRepository,
@@ -58,6 +69,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
       return;
     }
     this._started = true;
+    this._builtinIdsReady = this._loadBuiltinIds();
     this.disposeWithMe(
       this._skillRepo.changed$.subscribe((event) => {
         if (this._applyingPatch) {
@@ -115,6 +127,10 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
     const rows = await this._skillRepo.getAll();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
+      if (row.source === 'builtin') {
+        this._builtinIds.add(row.id);
+        continue;
+      }
       const meta = await this._rowMetaRepo.get(RESOURCE_ID, row.id);
       if (meta) {
         continue;
@@ -126,37 +142,69 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
     return out;
   }
 
+  private async _loadBuiltinIds(): Promise<void> {
+    try {
+      const rows = await this._skillRepo.getAll();
+      for (const row of rows) {
+        if (row.source === 'builtin') {
+          this._builtinIds.add(row.id);
+        }
+      }
+    } catch (err) {
+      this._logService.warn('[SkillSynchroniser] failed to seed built-in id cache:', err);
+    }
+  }
+
   private async _handleLocalChange(id: string, type: 'add' | 'update' | 'delete'): Promise<void> {
     try {
+      if (this._builtinIdsReady) {
+        await this._builtinIdsReady;
+      }
       this._status$.next(SynchroniserStatus.PushingMutations);
-      const meta = await this._rowMetaRepo.get(RESOURCE_ID, id);
-      const baseVersion = meta?.version ?? null;
 
       if (type === 'delete') {
+        if (this._builtinIds.delete(id)) {
+          return;
+        }
+        const meta = await this._rowMetaRepo.get(RESOURCE_ID, id);
         await this._outboxService.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
           entityId: id,
           payload: null,
-          baseVersion,
+          baseVersion: meta?.version ?? null,
         });
         return;
       }
 
       const row = await this._skillRepo.getById(id);
       if (!row) {
-        // Race: the row was deleted before the event reached us — fall back to a delete mutation.
+        // Race: the row was deleted before the event reached us. Fall back to a delete
+        // mutation, unless the cache says this was a built-in row (never on the server).
+        if (this._builtinIds.delete(id)) {
+          return;
+        }
+        const meta = await this._rowMetaRepo.get(RESOURCE_ID, id);
         await this._outboxService.enqueue({
           resource: RESOURCE_ID,
           op: 'delete',
           entityId: id,
           payload: null,
-          baseVersion,
+          baseVersion: meta?.version ?? null,
         });
         return;
       }
 
-      const mutation = await this._buildUpsertMutation(row, baseVersion);
+      if (row.source === 'builtin') {
+        this._builtinIds.add(id);
+        return;
+      }
+      // Defensive: ensure a previously-built-in id can be re-classified if discovery
+      // ever moves a skill between sources (no current path does, but cheap to guard).
+      this._builtinIds.delete(id);
+
+      const meta = await this._rowMetaRepo.get(RESOURCE_ID, id);
+      const mutation = await this._buildUpsertMutation(row, meta?.version ?? null);
       await this._outboxService.enqueue(mutation);
     } catch (err) {
       if (!this._cryptoService.available) {
@@ -188,6 +236,12 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
     if (item.op === 'clear') {
       const rows = await this._skillRepo.getAll();
       for (const r of rows) {
+        if (r.source === 'builtin') {
+          // Built-in skills never lived on the server, so a server-driven clear must not
+          // wipe them locally. Remember the id either way to keep the cache consistent.
+          this._builtinIds.add(r.id);
+          continue;
+        }
         await this._skillRepo.delete(r.id);
         await this._rowMetaRepo.delete(RESOURCE_ID, r.id);
       }
@@ -200,6 +254,15 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
     }
 
     if (item.op === 'del') {
+      // Defensive: a stale server entry could try to delete a row that locally is built-in.
+      if (this._builtinIds.has(item.entityId)) {
+        return;
+      }
+      const local = await this._skillRepo.getById(item.entityId);
+      if (local && local.source === 'builtin') {
+        this._builtinIds.add(item.entityId);
+        return;
+      }
       await this._skillRepo.delete(item.entityId);
       await this._rowMetaRepo.delete(RESOURCE_ID, item.entityId);
       return;
@@ -212,6 +275,12 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
       }
       const decrypted = this._cryptoService.decrypt(item.payload);
       const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISkillEntity;
+      // Refuse to write a built-in row pulled from the server — those belong to the binary,
+      // not to user data. This also catches the case where an older client pushed a
+      // built-in row before this filter existed.
+      if (row.source === 'builtin') {
+        return;
+      }
       // entityId is the source of truth if payload.id ever drifts.
       const normalised: ISkillEntity = { ...row, id: item.entityId };
       await this._skillRepo.upsert(normalised);

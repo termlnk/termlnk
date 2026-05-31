@@ -13,13 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState } from '@termlnk/shared-terminal';
+import type { ISharedSessionInputPolicy } from '@termlnk/shared-terminal';
 import type { ITabAdornmentProps } from '@termlnk/terminal-ui';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, useDependency, useObservable } from '@termlnk/design';
-import { ClientConnectionState, ISharedTerminalService } from '@termlnk/shared-terminal';
-import { CrownIcon, EyeIcon, KeyboardIcon } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { Badge, Button, cn, Popover, PopoverContent, PopoverTrigger, Spinner, useDependency, useObservable } from '@termlnk/design';
+import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-terminal';
+import { CrownIcon, EyeIcon, KeyboardIcon, LockIcon } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EMPTY } from 'rxjs';
 
 /**
@@ -29,73 +29,131 @@ import { EMPTY } from 'rxjs';
  *
  * Mounted by `TerminalTabItem` via `ITerminalViewRegistry.getTabAdornment`
  * — instances are scoped to a single tab/sessionId and subscribe only to the
- * per-session streams on `ISharedTerminalService`, so two remote tabs render
+ * per-session streams on `IRemoteSessionService`, so two remote tabs render
  * independently with no cross-talk.
  */
 export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element | null {
   const { sessionId } = props;
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
-  const client = useDependency(ISharedTerminalService, Quantity.OPTIONAL);
+  const remote = useDependency(IRemoteSessionService, Quantity.OPTIONAL);
   const [open, setOpen] = useState(false);
+  const [keyboardActionPending, setKeyboardActionPending] = useState<'request' | 'release' | null>(null);
+  const pointerActivationRef = useRef(false);
 
   const stateObservable = useMemo(
-    () => client?.participantState$(sessionId) ?? EMPTY,
-    [client, sessionId]
+    () => remote?.status$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
-  const connectionState = useObservable<ClientConnectionState>(stateObservable, ClientConnectionState.Idle);
+  const connectionState = useObservable<RemoteSessionStatus>(stateObservable, RemoteSessionStatus.IDLE);
 
-  const driverStateObservable = useMemo(
-    () => client?.driverState$(sessionId) ?? EMPTY,
-    [client, sessionId]
+  const driverIdObservable = useMemo(
+    () => remote?.driverId$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
-  const driverState = useObservable<IDriverState | null>(driverStateObservable, null);
+  const driverId = useObservable<string | null>(driverIdObservable, null);
 
   const connectionIdObservable = useMemo(
-    () => client?.participantConnectionId$(sessionId) ?? EMPTY,
-    [client, sessionId]
+    () => remote?.connectionId$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
   const myClientId = useObservable<string | null>(connectionIdObservable, null);
 
   const lastErrorObservable = useMemo(
-    () => client?.participantLastError$(sessionId) ?? EMPTY,
-    [client, sessionId]
+    () => remote?.error$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
   const lastError = useObservable<string | null>(lastErrorObservable, null);
 
-  const isDriver = useMemo(
-    // First clause guards the idle case where BOTH `driverState.driverId` and
-    // `myClientId` are null (no driver yet, this client not connected). Without
-    // it the equality `null === null` would erroneously promote a not-yet-
-    // connected observer to "driver".
-    () => driverState?.driverId !== null && driverState?.driverId === myClientId,
-    [driverState, myClientId]
+  const inputPolicyObservable = useMemo(
+    () => remote?.inputPolicy$(sessionId) ?? EMPTY,
+    [remote, sessionId]
   );
-  const isConnected = connectionState === ClientConnectionState.Connected;
+  const inputPolicy = useObservable<ISharedSessionInputPolicy>(inputPolicyObservable, 'allow-input');
+
+  const isDriver = useMemo(
+    // First clause guards the idle case where BOTH driverId and myClientId
+    // are null. Without it `null === null` would erroneously promote a
+    // not-yet-connected observer to "driver".
+    () => driverId !== null && driverId === myClientId,
+    [driverId, myClientId]
+  );
+  const isConnected = connectionState === RemoteSessionStatus.CONNECTED;
+  const isViewOnly = inputPolicy === 'view-only';
+  const isKeyboardActionPending = keyboardActionPending !== null;
+  // Status-dot colour on the keyboard icon, mirroring the owner-side trigger:
+  //   blue → I am the driver
+  //   yellow → another joiner / owner is driving
+  //   grey → nobody drives yet (initial state on first attach)
+  const driverDotTone: 'self' | 'other' | 'idle' = isDriver
+    ? 'self'
+    : driverId !== null
+      ? 'other'
+      : 'idle';
 
   const handleRequestKeyboard = useCallback(async () => {
-    if (!client) {
+    if (!remote) {
       return;
     }
+    setKeyboardActionPending('request');
     try {
-      await client.sendParticipantControl(sessionId, { type: 'driver_request' });
+      await remote.sendControl(sessionId, { type: 'driver_request' });
     } catch (err) {
+      setKeyboardActionPending(null);
       logService.warn('[RemoteTabAdornment] driver_request failed:', err);
     }
-  }, [client, logService, sessionId]);
+  }, [remote, sessionId, logService]);
 
   const handleReleaseKeyboard = useCallback(async () => {
-    if (!client) {
+    if (!remote) {
       return;
     }
+    setKeyboardActionPending('release');
     try {
-      await client.sendParticipantControl(sessionId, { type: 'driver_release' });
+      await remote.sendControl(sessionId, { type: 'driver_release' });
     } catch (err) {
+      setKeyboardActionPending(null);
       logService.warn('[RemoteTabAdornment] driver_release failed:', err);
     }
-  }, [client, logService, sessionId]);
+  }, [remote, sessionId, logService]);
 
-  if (!client) {
+  const handleKeyboardAction = useCallback(() => {
+    if (!isConnected || isKeyboardActionPending) {
+      return;
+    }
+    void (isDriver ? handleReleaseKeyboard() : handleRequestKeyboard());
+  }, [handleReleaseKeyboard, handleRequestKeyboard, isConnected, isDriver, isKeyboardActionPending]);
+
+  useEffect(() => {
+    if (!keyboardActionPending) {
+      pointerActivationRef.current = false;
+      return;
+    }
+    if (!isConnected) {
+      setKeyboardActionPending(null);
+      return;
+    }
+    if (
+      (keyboardActionPending === 'request' && isDriver)
+      || (keyboardActionPending === 'release' && !isDriver)
+    ) {
+      setKeyboardActionPending(null);
+    }
+  }, [isConnected, isDriver, keyboardActionPending]);
+
+  useEffect(() => {
+    if (!keyboardActionPending) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setKeyboardActionPending(null);
+    }, 5000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [keyboardActionPending]);
+
+  if (!remote) {
     return null;
   }
 
@@ -107,7 +165,7 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
           size="icon-xs"
           className={cn(
             `
-              tm:flex tm:size-4.5 tm:shrink-0 tm:bg-transparent
+              tm:relative tm:flex tm:size-4.5 tm:shrink-0 tm:bg-transparent
               tm:hover:bg-one-bg2
             `,
             {
@@ -124,14 +182,27 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
           onClick={(e) => e.stopPropagation()}
         >
           <KeyboardIcon size={12} strokeWidth={1.5} />
+          {/* Persistent driver-status dot, suppressed before the relay handshake. */}
+          {isConnected && (
+            <span
+              className={cn(
+                'tm:absolute tm:right-0 tm:bottom-0 tm:size-1.5 tm:rounded-full tm:ring-1 tm:ring-black',
+                {
+                  'tm:bg-blue': driverDotTone === 'self',
+                  'tm:bg-yellow': driverDotTone === 'other',
+                  'tm:bg-grey': driverDotTone === 'idle',
+                }
+              )}
+            />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        align="end"
+        align="start"
         sideOffset={6}
-        className={cn('tm:w-64 tm:p-3')}
+        className={cn('electron-no-drag tm:w-64 tm:p-3')}
       >
-        <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
+        <div className={cn('electron-no-drag tm:flex tm:flex-col tm:gap-3')}>
           <div className={cn('tm:flex tm:flex-col tm:gap-1.5')}>
             {isDriver
               ? (
@@ -153,24 +224,78 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
 
           <div className={cn('tm:h-px tm:w-full tm:bg-line')} />
 
-          <Button
-            variant={isDriver ? 'outline' : 'default'}
-            size="sm"
-            disabled={!isConnected}
-            onClick={() => { void (isDriver ? handleReleaseKeyboard() : handleRequestKeyboard()); }}
-            className={cn('tm:w-full tm:gap-1.5')}
-          >
-            <KeyboardIcon className={cn('tm:size-3.5')} />
-            {isDriver
-              ? localeService.t('shared-terminal-ui.remote.release-keyboard')
-              : localeService.t('shared-terminal-ui.remote.request-keyboard')}
-          </Button>
+          {isViewOnly
+            ? (
+              <div className={cn('tm:flex tm:flex-col tm:gap-1.5')}>
+                <div
+                  className={cn(`
+                    tm:flex tm:items-center tm:gap-1.5 tm:rounded-md tm:bg-one-bg tm:p-2 tm:text-xs tm:text-grey-fg
+                  `)}
+                >
+                  <LockIcon className={cn('tm:size-3.5')} />
+                  <span>{localeService.t('shared-terminal-ui.remote.view-only-badge')}</span>
+                </div>
+                <p className={cn('tm:text-[11px]/4 tm:text-grey-fg')}>
+                  {localeService.t('shared-terminal-ui.remote.view-only-hint')}
+                </p>
+              </div>
+            )
+            : (
+              <>
+                <Button
+                  variant={isDriver ? 'outline' : 'default'}
+                  size="sm"
+                  disabled={!isConnected || isKeyboardActionPending}
+                  aria-busy={isKeyboardActionPending}
+                  onPointerDownCapture={(e) => {
+                    if (!isConnected || isKeyboardActionPending || e.button !== 0) {
+                      return;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pointerActivationRef.current = true;
+                    handleKeyboardAction();
+                  }}
+                  onPointerUp={(e) => {
+                    if (!isConnected || isKeyboardActionPending) {
+                      return;
+                    }
+                    if (pointerActivationRef.current) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pointerActivationRef.current = true;
+                    handleKeyboardAction();
+                  }}
+                  onClick={(e) => {
+                    if (pointerActivationRef.current) {
+                      pointerActivationRef.current = false;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
+                    handleKeyboardAction();
+                  }}
+                  className={cn('electron-no-drag tm:w-full tm:gap-1.5')}
+                >
+                  {isKeyboardActionPending
+                    ? <Spinner className={cn('tm:size-3.5')} />
+                    : <KeyboardIcon className={cn('tm:size-3.5')} />}
+                  {isDriver
+                    ? localeService.t('shared-terminal-ui.remote.release-keyboard')
+                    : localeService.t('shared-terminal-ui.remote.request-keyboard')}
+                </Button>
 
-          <p className={cn('tm:text-[11px]/4 tm:text-grey-fg')}>
-            {isDriver
-              ? localeService.t('shared-terminal-ui.remote.driver-hint')
-              : localeService.t('shared-terminal-ui.remote.read-only-hint')}
-          </p>
+                <p className={cn('tm:text-[11px]/4 tm:text-grey-fg')}>
+                  {isDriver
+                    ? localeService.t('shared-terminal-ui.remote.driver-hint')
+                    : localeService.t('shared-terminal-ui.remote.read-only-hint')}
+                </p>
+              </>
+            )}
 
           {lastError && (
             <div className={cn('tm:rounded-md tm:border tm:border-red/40 tm:bg-red/10 tm:p-2')}>
@@ -185,19 +310,17 @@ export function RemoteTabAdornment(props: ITabAdornmentProps): React.JSX.Element
   );
 }
 
-function stateLabel(state: ClientConnectionState, locale: { t: (key: string) => string }): string {
+function stateLabel(state: RemoteSessionStatus, locale: { t: (key: string) => string }): string {
   switch (state) {
-    case ClientConnectionState.Pairing:
-      return locale.t('shared-terminal-ui.remote.state.pairing');
-    case ClientConnectionState.Connecting:
+    case RemoteSessionStatus.CONNECTING:
       return locale.t('shared-terminal-ui.remote.state.connecting');
-    case ClientConnectionState.Connected:
+    case RemoteSessionStatus.CONNECTED:
       return locale.t('shared-terminal-ui.remote.state.connected');
-    case ClientConnectionState.Disconnected:
+    case RemoteSessionStatus.CLOSED:
       return locale.t('shared-terminal-ui.remote.state.disconnected');
-    case ClientConnectionState.Error:
+    case RemoteSessionStatus.ERROR:
       return locale.t('shared-terminal-ui.remote.state.error');
-    case ClientConnectionState.Idle:
+    case RemoteSessionStatus.IDLE:
     default:
       return locale.t('shared-terminal-ui.remote.state.idle');
   }

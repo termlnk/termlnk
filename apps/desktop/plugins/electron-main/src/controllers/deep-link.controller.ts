@@ -15,7 +15,7 @@
 
 import process from 'node:process';
 import { Disposable, ILogService } from '@termlnk/core';
-import { IDeepLinkBus } from '@termlnk/rpc-server';
+import { IDeepLinkRouterService } from '@termlnk/rpc-server';
 import { app } from 'electron';
 import { fromEvent } from 'rxjs';
 
@@ -23,8 +23,9 @@ const PROTOCOL = 'termlnk';
 const URL_PREFIX = `${PROTOCOL}://`;
 
 /**
- * Captures OS deep-link events (`termlnk://...`) and routes them into the in-process
- * IDeepLinkBus that the multiplayer tRPC route exposes back to the renderer.
+ * Captures OS deep-link events (`termlnk://...`) and feeds them into the in-process
+ * IDeepLinkRouterService, which dispatches each URL to the single owner registered
+ * for its host (e.g. `auth` → OAuth, `invite` → the multiplayer tRPC route).
  *
  * Platform behaviour:
  *   - macOS: `app.on('open-url')` fires when an external app opens a termlnk:// URL.
@@ -40,7 +41,7 @@ const URL_PREFIX = `${PROTOCOL}://`;
  */
 export class DeepLinkController extends Disposable {
   constructor(
-    @IDeepLinkBus private readonly _bus: IDeepLinkBus,
+    @IDeepLinkRouterService private readonly _router: IDeepLinkRouterService,
     @ILogService private readonly _logService: ILogService
   ) {
     super();
@@ -101,6 +102,6 @@ export class DeepLinkController extends Disposable {
 
   private _consume(url: string): void {
     this._logService.log(`[DeepLinkController] received deep link: ${url}`);
-    this._bus.emit(url);
+    this._router.emit(url);
   }
 }

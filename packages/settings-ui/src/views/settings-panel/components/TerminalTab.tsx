@@ -481,7 +481,7 @@ export function TerminalTab(): ReactElement {
 
   return (
     <FieldGroup className="tm:gap-5">
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <h3 className="tm:text-sm tm:font-semibold tm:text-white">
             {localeService.t('settings-ui.terminal.local-terminal-title')}
@@ -523,7 +523,7 @@ export function TerminalTab(): ReactElement {
         </CardContent>
       </Card>
 
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <h3 className="tm:text-sm tm:font-semibold tm:text-white">
             {localeService.t('settings-ui.terminal.settings-title')}
@@ -744,7 +744,7 @@ export function TerminalTab(): ReactElement {
         </CardContent>
       </Card>
 
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <h3 className="tm:text-sm tm:font-semibold tm:text-white">
             {localeService.t('settings-ui.terminal.shell-integration-title')}
@@ -785,7 +785,7 @@ export function TerminalTab(): ReactElement {
         </CardContent>
       </Card>
 
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <h3 className="tm:text-sm tm:font-semibold tm:text-white">
             {localeService.t('settings-ui.terminal.inline-suggest-title')}
@@ -866,7 +866,7 @@ export function TerminalTab(): ReactElement {
         </CardContent>
       </Card>
 
-      <Card className="tm:gap-0 tm:bg-one-bg/65 tm:py-0">
+      <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
           <h3 className="tm:text-sm tm:font-semibold tm:text-white">
             {localeService.t('settings-ui.terminal.history-title')}

@@ -15,18 +15,44 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: 'Termlnk へようこそ',
+      subtitle: 'サインインまたは新規登録して、ホストと設定を同期しましょう。',
+    },
+    switch: {
+      'to-register-prompt': 'アカウントをお持ちでないですか？',
+      'to-register-action': '新規登録',
+      'to-login-prompt': 'すでにアカウントをお持ちですか？',
+      'to-login-action': 'サインイン',
+    },
     login: {
       email: 'メールアドレス',
       'email-placeholder': 'you@example.com',
       password: 'パスワード',
       'password-placeholder': 'パスワードを入力',
-      'password-helper': 'エンドツーエンドで暗号化されます。パスワードを忘れると復元できません。',
       'trust-banner': 'パスワードはローカルで派生され、サーバーに送信されることはありません。',
       'remember-me': 'このデバイスでサインインしたままにする',
       submit: 'サインイン',
       submitting: 'サインイン中…',
-      'no-account': 'アカウントをお持ちでないですか？',
-      'go-register': '新規登録',
+      google: 'Google で続行',
+      'or-divider': 'または',
+    },
+    vault: {
+      'setup-title': '暗号化パスワードを設定',
+      'setup-subtitle': 'このパスワードは同期データをエンドツーエンドで暗号化します。Google アカウントとは別のもので、紛失すると復元できません。',
+      'unlock-title': 'データのロックを解除',
+      'unlock-subtitle': '暗号化パスワードを入力して、このデバイスで同期データを復号します。',
+      password: '暗号化パスワード',
+      'password-placeholder': '{0} 文字以上',
+      confirm: 'パスワードの確認',
+      'confirm-placeholder': 'パスワードを再入力',
+      'too-short': '{0} 文字以上で入力してください。',
+      mismatch: 'パスワードが一致しません。',
+      warning: 'このパスワードを忘れると、同期データは復元できません。',
+      'setup-submit': 'パスワードを設定して続行',
+      'unlock-submit': 'ロック解除',
+      submitting: '処理中…',
+      'sign-out': '代わりにサインアウト',
     },
     register: {
       email: 'メールアドレス',
@@ -42,8 +68,6 @@ export default {
       confirm: 'パスワード（確認）',
       submit: 'アカウント作成',
       submitting: '作成中…',
-      'have-account': 'すでにアカウントをお持ちですか？',
-      'go-login': 'サインインへ',
     },
     account: {
       'email-verified': 'メール認証済み',
@@ -51,6 +75,13 @@ export default {
       'joined-at': '登録日 {0}',
       logout: 'サインアウト',
       'logging-out': 'サインアウト中…',
+    },
+    'account-dialog': {
+      title: 'アカウント',
+      'tooltip-login': 'ログイン / 登録',
+      'tooltip-account': 'アカウント',
+      'sync-title': 'クラウド同期',
+      'sync-description': '同期エンジンの状態と各リソースの同期進捗。',
     },
     gate: {
       'unavailable-title': 'クラウド同期は未設定です',

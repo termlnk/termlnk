@@ -15,18 +15,44 @@
 
 export default {
   'auth-ui': {
+    welcome: {
+      title: 'Welcome to Termlnk',
+      subtitle: 'Sign in or create an account to sync your hosts and settings.',
+    },
+    switch: {
+      'to-register-prompt': 'Don\'t have an account?',
+      'to-register-action': 'Sign up',
+      'to-login-prompt': 'Already have an account?',
+      'to-login-action': 'Sign in',
+    },
     login: {
       email: 'Email',
       'email-placeholder': 'you@example.com',
       password: 'Password',
       'password-placeholder': 'Enter your password',
-      'password-helper': 'End-to-end encrypted. A forgotten password cannot be recovered.',
       'trust-banner': 'Your password is derived locally and never sent to the server.',
       'remember-me': 'Stay signed in on this device',
       submit: 'Sign in',
       submitting: 'Signing in…',
-      'no-account': "Don't have an account?",
-      'go-register': 'Create one',
+      google: 'Continue with Google',
+      'or-divider': 'or',
+    },
+    vault: {
+      'setup-title': 'Set your encryption password',
+      'setup-subtitle': 'This password encrypts your synced data end-to-end. It is separate from your Google account and cannot be recovered if lost.',
+      'unlock-title': 'Unlock your data',
+      'unlock-subtitle': 'Enter your encryption password to decrypt your synced data on this device.',
+      password: 'Encryption password',
+      'password-placeholder': 'At least {0} characters',
+      confirm: 'Confirm password',
+      'confirm-placeholder': 'Re-enter the password',
+      'too-short': 'Use at least {0} characters.',
+      mismatch: 'Passwords do not match.',
+      warning: 'If you forget this password, your synced data cannot be recovered.',
+      'setup-submit': 'Set password & continue',
+      'unlock-submit': 'Unlock',
+      submitting: 'Working…',
+      'sign-out': 'Sign out instead',
     },
     register: {
       email: 'Email',
@@ -42,8 +68,6 @@ export default {
       confirm: 'Confirm password',
       submit: 'Create account',
       submitting: 'Creating…',
-      'have-account': 'Already have an account?',
-      'go-login': 'Sign in',
     },
     account: {
       'email-verified': 'Email verified',
@@ -51,6 +75,13 @@ export default {
       'joined-at': 'Joined {0}',
       logout: 'Sign out',
       'logging-out': 'Signing out…',
+    },
+    'account-dialog': {
+      title: 'Account',
+      'tooltip-login': 'Sign in / Sign up',
+      'tooltip-account': 'Account',
+      'sync-title': 'Cloud Sync',
+      'sync-description': 'Sync engine status and per-resource progress.',
     },
     gate: {
       'unavailable-title': 'Cloud sync is not configured',

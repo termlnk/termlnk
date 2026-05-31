@@ -23,6 +23,18 @@ export const clientIdSchema = z.string().min(1);
 export const inviteIdSchema = z.string().min(1);
 export const deviceIdSchema = z.string().min(1);
 
+/**
+ * Owner-side input policy for a shared terminal session. Optional in the
+ * share-session mutations so callers (older renderers, tests) keep working —
+ * the daemon falls back to `allow-input` when omitted.
+ */
+export const inputPolicySchema = z.union([z.literal('view-only'), z.literal('allow-input')]);
+
+export const shareSessionInputSchema = z.object({
+  sessionId: sessionIdSchema,
+  inputPolicy: inputPolicySchema.optional(),
+});
+
 export const createInviteInputSchema = z.object({
   sessionId: sessionIdSchema.optional(),
   role: sharedTerminalRoleSchema,
@@ -54,17 +66,23 @@ export const announceDeviceSessionInputSchema = z.object({
   rows: z.number().int().positive(),
 });
 
-export const connectAsParticipantInputSchema = z.object({
+export const createRemoteSessionInputSchema = z.object({
   inviteUrl: z.string().min(1),
 });
 
-export const sendParticipantInputSchema = z.object({
+export const writeRemoteSessionInputSchema = z.object({
   sessionId: sessionIdSchema,
-  /** base64-encoded bytes — keeps the transport agnostic about utf-8 vs binary. */
+  /** Base64-encoded bytes — keeps the wire agnostic about utf-8 vs binary. */
   dataB64: z.string().regex(/^[A-Za-z0-9+/=]*$/, 'dataB64 must be standard base64'),
 });
 
-export const sendParticipantControlSchema = z.object({
+export const resizeRemoteSessionInputSchema = z.object({
+  sessionId: sessionIdSchema,
+  rows: z.number().int().positive(),
+  cols: z.number().int().positive(),
+});
+
+export const sendRemoteSessionControlSchema = z.object({
   sessionId: sessionIdSchema,
   /** JSON-serializable control message; the daemon-side mux interprets `type`. */
   message: z.record(z.string(), z.unknown()),

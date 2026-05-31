@@ -156,8 +156,8 @@ export function SkillTab() {
 
   return (
     <FieldGroup className="tm:gap-4">
-      <Card className="tm:h-[min(540px,calc(100vh-132px))] tm:gap-0 tm:bg-one-bg/65 tm:py-0">
-        <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
+      <Card className="tm:gap-0 tm:py-0">
+        <CardHeader className="tm:border-b tm:border-line tm:py-3">
           <div className="tm:flex tm:min-w-0 tm:flex-col tm:gap-1">
             <CardTitle className="tm:text-sm tm:font-semibold tm:text-white">
               {localeService.t('settings-ui.skill.section-title')}
@@ -176,7 +176,7 @@ export function SkillTab() {
           >
             <div className="tm:rounded-2xl tm:border tm:border-line tm:bg-black/10 tm:p-2.5 tm:text-white">
               <div className="tm:flex tm:flex-wrap tm:items-center tm:justify-between tm:gap-3">
-                <TabsList className="tm:h-auto tm:rounded-xl tm:border tm:border-line/70 tm:bg-one-bg/60 tm:p-1">
+                <TabsList className="tm:h-auto tm:rounded-xl tm:border tm:border-line tm:bg-one-bg/50 tm:p-1">
                   <TabsTrigger
                     value="marketplace"
                     className={cn(

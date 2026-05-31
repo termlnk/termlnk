@@ -15,9 +15,21 @@
 
 import type { Observable } from 'rxjs';
 import type { IDevice } from '../models/device';
-import type { AuthState, IAuthError } from '../models/session';
+import type { AuthState, IAuthCapabilities, IAuthError, VaultState } from '../models/session';
 import type { ILoginInput, IRegisterInput, IUserAccount } from '../models/user';
 import { createIdentifier } from '@termlnk/core';
+
+// Result of beginGoogleWebSignIn: the URL the browser shell opens in a popup.
+// The device code that correlates the eventual relay code is held server-side
+// (never returned here) so it stays out of any browser-visible URL.
+export interface IGoogleWebSignInBegin {
+  authorizeUrl: string;
+}
+
+// Outcome of a pollGoogleWebSignIn tick. 'complete' means the session was
+// claimed in place; 'pending' means keep polling; 'expired' means no sign-in
+// is in flight (nothing to poll).
+export type GoogleWebSignInStatus = 'pending' | 'complete' | 'expired';
 
 // Auth contract — implemented on both the main process (HttpAuthService in
 // @termlnk/auth-core, performs the SRP6a handshake + token storage + restore)
@@ -36,6 +48,11 @@ export interface IAuthService {
   readonly authState$: Observable<AuthState>;
   // Last error; meaningful only while authState === Error.
   readonly lastError$: Observable<IAuthError | null>;
+
+  // Encryption-key lifecycle, orthogonal to authState$. SRP sign-in reaches Unlocked
+  // directly; OAuth sign-in lands on NeedsSetup (first time) or Locked (re-auth / new
+  // device) until setupEncryptionPassword/unlockVault runs.
+  readonly vaultState$: Observable<VaultState>;
 
   // Client derives the SRP6a verifier and uploads it; the server stores only the verifier
   // hash and never sees the password. Successful registration auto-logs in. Returns void
@@ -70,6 +87,41 @@ export interface IAuthService {
   // - Revoking another device forces it to re-login on its next refresh.
   // - The server returns 204 unconditionally, so a non-existent id leaks nothing.
   revokeDevice(deviceId: string): Promise<void>;
+
+  // Cloud authorize URL the renderer opens in the system browser. Async so the
+  // renderer facade can fetch it over tRPC; the main process resolves it synchronously.
+  getGoogleAuthorizeUrl(): Promise<string>;
+
+  // Which optional sign-in methods the server advertises (e.g. Google). Lets the UI
+  // gate the "Continue with Google" button. Fail-soft: returns all-false when the
+  // server is unreachable or cloud is unconfigured.
+  getServerCapabilities(): Promise<IAuthCapabilities>;
+
+  // Completes a Google sign-in from the one-time relay code delivered via the
+  // `termlnk://auth/callback` deep link. Main-process only — invoked by the
+  // deep-link handler, not the renderer.
+  loginWithGoogle(relayCode: string): Promise<void>;
+
+  // Begin a Google sign-in for the browser shell, which can't receive a
+  // `termlnk://` deep link or register its (unknown) domain with Google. Returns
+  // the authorize URL for the client to open in a popup; the relay code is held
+  // server-side against a device code and retrieved via pollGoogleWebSignIn.
+  beginGoogleWebSignIn(): Promise<IGoogleWebSignInBegin>;
+
+  // Poll the in-flight web sign-in started by beginGoogleWebSignIn. On the first
+  // poll that finds the relay code, the session is claimed in place (currentUser$
+  // / authState$ update) and 'complete' is returned; otherwise 'pending', or
+  // 'expired' when no sign-in is in flight.
+  pollGoogleWebSignIn(): Promise<GoogleWebSignInStatus>;
+
+  // First-time set of the encryption password (OAuth accounts have no login password
+  // to derive from). Derives the master key, uploads salt + key-check value, unlocks.
+  setupEncryptionPassword(password: string): Promise<void>;
+
+  // Unlock the vault where an encryption password was already set: derive from the
+  // entered password, verify against the server's key-check value, install the key.
+  // Throws AuthError('wrong_encryption_password') on mismatch.
+  unlockVault(password: string): Promise<void>;
 }
 
 export const IAuthService = createIdentifier<IAuthService>('auth.auth-service');

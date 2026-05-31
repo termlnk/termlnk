@@ -18,9 +18,9 @@ import type enUS from './en-US';
 const locale: typeof enUS = {
   'shared-terminal-ui': {
     'invite-role': {
-      owner: '主控',
-      'co-pilot': '協作者',
-      observer: '旁觀者',
+      owner: '擁有者',
+      'co-pilot': '編輯者',
+      observer: '觀看者',
     },
     'join-dialog': {
       title: '收到多人協作邀請',
@@ -30,19 +30,23 @@ const locale: typeof enUS = {
       'expires-label': '到期時間',
       'copy-url': '複製 URL',
       join: '加入會話',
+      joining: '正在加入...',
       dismiss: '關閉',
       unparsable: '無法解析此邀請連結。請發起方重新發送。',
       'join-failed': '加入會話失敗：',
+      'error-invite-not-active': '這個邀請連結已經被使用或已失效。請讓主機重新發送新的邀請連結。',
     },
     remote: {
       'tab-name': '共享會話',
-      'viewing-only': '唯讀旁觀',
-      driving: '正在駕駛',
+      'viewing-only': '僅旁觀',
+      driving: '控制中',
       'waiting-for-frames': '等待主機的首批輸出…',
-      'read-only-hint': '你以旁觀者身分加入。點擊「申請鍵盤」可申請駕駛權。',
-      'driver-hint': '你正在駕駛。鍵入的命令會在主機終端上執行，點擊「讓出鍵盤」可交回控制權。',
+      'read-only-hint': '你以旁觀者身分加入。點擊「申請鍵盤」可申請控制權。',
+      'driver-hint': '你正在控制鍵盤。鍵入的命令會在主機終端上執行，點擊「讓出鍵盤」可交回控制權。',
       'request-keyboard': '申請鍵盤',
       'release-keyboard': '讓出鍵盤',
+      'view-only-badge': '唯讀分享',
+      'view-only-hint': '主機以唯讀模式分享此會話。如需輸入，請聯絡主機切換為「允許輸入」模式。',
       popover: {
         'aria-label': '共享會話控制',
       },
@@ -53,6 +57,11 @@ const locale: typeof enUS = {
         disconnected: '已斷開',
         error: '連線錯誤',
         idle: '等待加入…',
+      },
+      toast: {
+        'self-acquired': '你已取得控制權，開始輸入。',
+        released: '鍵盤已釋放。',
+        'taken-by-other': '其他人正在控制終端。',
       },
     },
   },

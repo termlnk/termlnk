@@ -24,6 +24,7 @@
     "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/electron": "workspace:*",
@@ -37,6 +38,7 @@
   },
   "dependencies": {
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
+    "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/electron": "workspace:*",
@@ -51,7 +53,7 @@
     "@termlnk/electron-main": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@termlnk/shared": "workspace:*",
-    "electron": "41.5.0",
+    "electron": "41.7.1",
     "rxjs": "^7.8.2",
     "tailwindcss": "^4.3.0",
     "tailwindcss-animate": "^1.0.7",
