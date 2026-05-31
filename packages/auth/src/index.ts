@@ -24,7 +24,9 @@ export type { AuthErrorCode, IAuthCapabilities, IAuthError, ITokenPair } from '.
 export type { ILoginInput, IRegisterInput, IUserAccount } from './models/user';
 export { AUTH_PLUGIN_NAME, AuthPlugin } from './plugin';
 export { IAuthService } from './services/auth.service';
+export type { GoogleWebSignInStatus, IGoogleWebSignInBegin } from './services/auth.service';
 export { IDeviceNameProvider } from './services/device-name-provider.service';
+export { IGoogleSignInLauncher } from './services/google-sign-in-launcher';
 export { IIdleProbe } from './services/idle-probe.service';
 export { IAuthKeyValueStorage } from './services/key-value-storage.service';
 export { IMasterKeyService } from './services/master-key.service';

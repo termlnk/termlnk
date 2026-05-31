@@ -58,6 +58,15 @@ export class InviteService extends Disposable implements IInviteService {
     return this._deepLinks.route('invite');
   }
 
+  ingestInviteUrl(): void {
+    // Renderer-shell affordance only: the web shell has no OS deep link and feeds
+    // the URL it read from `window.location` into its renderer-side InviteService.
+    // The main process always receives invites through the OS deep-link router
+    // (inviteUrl$ above), so reaching here is a wiring mistake — fail loudly rather
+    // than re-parse the URL through emit() and risk mis-routing an https invite host.
+    throw new Error('[InviteService] ingestInviteUrl is renderer-shell only; the main process receives invites via the OS deep-link router');
+  }
+
   async createInvite(options: IInviteCreateOptions): Promise<{ invite: ICollabInvite; url: string }> {
     return this._pairing.createInvite(options);
   }

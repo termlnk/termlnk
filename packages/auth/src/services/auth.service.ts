@@ -19,6 +19,18 @@ import type { AuthState, IAuthCapabilities, IAuthError, VaultState } from '../mo
 import type { ILoginInput, IRegisterInput, IUserAccount } from '../models/user';
 import { createIdentifier } from '@termlnk/core';
 
+// Result of beginGoogleWebSignIn: the URL the browser shell opens in a popup.
+// The device code that correlates the eventual relay code is held server-side
+// (never returned here) so it stays out of any browser-visible URL.
+export interface IGoogleWebSignInBegin {
+  authorizeUrl: string;
+}
+
+// Outcome of a pollGoogleWebSignIn tick. 'complete' means the session was
+// claimed in place; 'pending' means keep polling; 'expired' means no sign-in
+// is in flight (nothing to poll).
+export type GoogleWebSignInStatus = 'pending' | 'complete' | 'expired';
+
 // Auth contract — implemented on both the main process (HttpAuthService in
 // @termlnk/auth-core, performs the SRP6a handshake + token storage + restore)
 // and the renderer process (AuthService in @termlnk/rpc-client, forwards to
@@ -89,6 +101,18 @@ export interface IAuthService {
   // `termlnk://auth/callback` deep link. Main-process only — invoked by the
   // deep-link handler, not the renderer.
   loginWithGoogle(relayCode: string): Promise<void>;
+
+  // Begin a Google sign-in for the browser shell, which can't receive a
+  // `termlnk://` deep link or register its (unknown) domain with Google. Returns
+  // the authorize URL for the client to open in a popup; the relay code is held
+  // server-side against a device code and retrieved via pollGoogleWebSignIn.
+  beginGoogleWebSignIn(): Promise<IGoogleWebSignInBegin>;
+
+  // Poll the in-flight web sign-in started by beginGoogleWebSignIn. On the first
+  // poll that finds the relay code, the session is claimed in place (currentUser$
+  // / authState$ update) and 'complete' is returned; otherwise 'pending', or
+  // 'expired' when no sign-in is in flight.
+  pollGoogleWebSignIn(): Promise<GoogleWebSignInStatus>;
 
   // First-time set of the encryption password (OAuth accounts have no login password
   // to derive from). Derives the master key, uploads salt + key-check value, unlocks.

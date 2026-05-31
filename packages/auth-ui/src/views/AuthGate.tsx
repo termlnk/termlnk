@@ -14,7 +14,7 @@
  */
 
 import type { IAuthError, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
-import { AuthState, IAuthService, VaultState } from '@termlnk/auth';
+import { AuthState, IAuthService, IGoogleSignInLauncher, VaultState } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { ShieldCheckIcon } from 'lucide-react';
@@ -27,18 +27,14 @@ import { VaultForm } from './VaultForm';
 
 type ViewMode = 'login' | 'register';
 
-// Open a URL in the OS browser via the preload-exposed shell. Typed locally to
-// avoid coupling auth-ui to an Electron preload type; absent in non-Electron hosts.
-function openExternalUrl(url: string): void {
-  const nativeShell = (window as unknown as { nativeShell?: { openExternal: (url: string) => void } }).nativeShell;
-  nativeShell?.openExternal(url);
-}
-
 export function AuthGate() {
   // OPTIONAL: cloud service may be unconfigured; fall through to a placeholder below.
   const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);
   const localeService = useDependency(LocaleService);
+  // Per-shell sign-in flow (Electron system browser vs web popup+poll). OPTIONAL
+  // so a shell without a launcher simply hides the Google button.
+  const googleLauncher = useDependency(IGoogleSignInLauncher, Quantity.OPTIONAL);
 
   const currentUser = useObservable<IUserAccount | null>(
     authClient?.currentUser$ ?? null,
@@ -194,12 +190,11 @@ export function AuthGate() {
           <LoginForm
             busy={busy}
             errorMessage={errorMessage}
-            onGoogleSignIn={googleEnabled
+            onGoogleSignIn={(googleEnabled && googleLauncher)
               ? async () => {
                 beforeSubmit();
                 try {
-                  const url = await authClient.getGoogleAuthorizeUrl();
-                  openExternalUrl(url);
+                  await googleLauncher.launch();
                 } catch (err) {
                   reportError('google', err);
                 }

@@ -17,7 +17,7 @@ import type { ICollabInvite, IInviteClaimResult, IInviteCreateOptions, IInviteSe
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';
-import { share, shareReplay } from 'rxjs';
+import { catchError, EMPTY, merge, ReplaySubject, share, shareReplay } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
 
 /**
@@ -71,7 +71,31 @@ export class InviteService extends Disposable implements IInviteService {
     await this._client.revokeDevice.mutate(deviceId);
   }
 
-  readonly inviteUrl$: Observable<string> = trpcSubscriptionToObservable<string>(
-    (opts) => this._client.inviteUrl$.subscribe(undefined, opts)
+  // Invite URLs arrive from two sources merged into one stream: the tRPC
+  // subscription (desktop OS deep-link router) and a renderer-local subject fed
+  // by `ingestInviteUrl` (the web shell reading `window.location`). Keeping the
+  // browser source local means the fragment never travels to the server.
+  //
+  // ReplaySubject(1) so the URL `ingestInviteUrl` feeds at boot (before the
+  // ParticipantJoinDialog mounts and subscribes) still reaches the late
+  // subscriber — on the web this is the only deep-link path.
+  private readonly _localInviteUrl$ = new ReplaySubject<string>(1);
+
+  readonly inviteUrl$: Observable<string> = merge(
+    // Isolate the network source's failures: a tRPC subscription error must not
+    // tear down the merged stream and with it the local deep-link intake below.
+    trpcSubscriptionToObservable<string>(
+      (opts) => this._client.inviteUrl$.subscribe(undefined, opts)
+    ).pipe(catchError(() => EMPTY)),
+    this._localInviteUrl$
   ).pipe(share());
+
+  ingestInviteUrl(url: string): void {
+    this._localInviteUrl$.next(url);
+  }
+
+  override dispose(): void {
+    super.dispose();
+    this._localInviteUrl$.complete();
+  }
 }

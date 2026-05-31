@@ -31,8 +31,8 @@ interface IInvitePayload {
 /**
  * Participant-side "you've been invited" dialog.
  *
- * Subscribes to IInviteService.inviteUrl$ (sourced from the OS deep-link bus
- * through electron-main → tRPC) and parses incoming termlnk:// / https://
+ * Subscribes to IInviteService.inviteUrl$ (the OS deep-link router's `invite`
+ * host route, through electron-main → tRPC) and parses incoming termlnk:// / https://
  * invite URLs. Displays the human-readable capability metadata so the
  * recipient can verify the session before opting in. Confirming routes
  * through IRemoteSessionService.createSession; failures surface inline so

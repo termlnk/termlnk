@@ -55,6 +55,8 @@ class FakeAuthService implements IAuthService {
   async revokeDevice(): Promise<void> {}
   async getGoogleAuthorizeUrl(): Promise<string> { return ''; }
   async loginWithGoogle(): Promise<void> { throw new Error('not used'); }
+  async beginGoogleWebSignIn(): Promise<{ authorizeUrl: string }> { throw new Error('not used'); }
+  async pollGoogleWebSignIn(): Promise<'pending' | 'complete' | 'expired'> { throw new Error('not used'); }
   async setupEncryptionPassword(): Promise<void> { throw new Error('not used'); }
   async unlockVault(): Promise<void> { throw new Error('not used'); }
   async getServerCapabilities() { return { googleOAuth: false }; }

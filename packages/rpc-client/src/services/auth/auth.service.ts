@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthCapabilities, IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
+import type { GoogleWebSignInStatus, IAuthCapabilities, IAuthError, IAuthService, IDevice, IGoogleWebSignInBegin, ILoginInput, IRegisterInput, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
 import { AuthState, VaultState } from '@termlnk/auth';
 import { Disposable, ILogService, toDisposable } from '@termlnk/core';
@@ -139,8 +139,18 @@ export class AuthService extends Disposable implements IAuthService {
   }
 
   // Driven by the main-process deep-link handler; the renderer never invokes it.
+  // The web shell uses begin/pollGoogleWebSignIn instead (relay code is claimed
+  // server-side), so this stays main-process-only.
   loginWithGoogle(): Promise<void> {
     throw new Error(MAIN_PROCESS_ONLY_MESSAGE);
+  }
+
+  async beginGoogleWebSignIn(): Promise<IGoogleWebSignInBegin> {
+    return this._client.beginGoogleWebSignIn.mutate();
+  }
+
+  async pollGoogleWebSignIn(): Promise<GoogleWebSignInStatus> {
+    return this._client.pollGoogleWebSignIn.mutate() as Promise<GoogleWebSignInStatus>;
   }
 
   // Renderer-side synchronous getter reads the locally mirrored BehaviorSubject; the

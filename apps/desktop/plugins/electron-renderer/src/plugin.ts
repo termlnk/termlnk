@@ -15,6 +15,7 @@
 
 import type { Dependency } from '@termlnk/core';
 import type { IElectronRendererConfig } from './controllers/config.schema';
+import { IGoogleSignInLauncher } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, Injector, IUpdaterService, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IWindowManagerService } from '@termlnk/electron';
 import { IRPCClientService, RPCClientPlugin } from '@termlnk/rpc-client';
@@ -24,6 +25,7 @@ import { Cog } from 'lucide-react';
 import { defaultPluginConfig, ELECTRON_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { HeaderController } from './controllers/header.controller';
 import { TransparencyController } from './controllers/transparency.controller';
+import { ElectronGoogleSignInLauncher } from './services/auth/google-sign-in-launcher.service';
 import { RPCClientService } from './services/rpc/rpc-client.service';
 import { UpdaterService } from './services/updater/updater.service';
 import { WindowManagerService } from './services/window-manager/window-manager.service';
@@ -89,6 +91,7 @@ export class ElectronRendererPlugin extends Plugin {
       [IRPCClientService, { useClass: RPCClientService }],
       [IWindowManagerService, { useClass: WindowManagerService }],
       [IUpdaterService, { useClass: UpdaterService }],
+      [IGoogleSignInLauncher, { useClass: ElectronGoogleSignInLauncher }],
 
       [HeaderController],
       [TransparencyController],

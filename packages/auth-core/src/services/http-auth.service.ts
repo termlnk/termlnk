@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AuthErrorCode, IAuthCapabilities, IAuthError, IAuthService, IDevice, ILoginInput, IRegisterInput, ITokenPair, IUserAccount } from '@termlnk/auth';
+import type { AuthErrorCode, GoogleWebSignInStatus, IAuthCapabilities, IAuthError, IAuthService, IDevice, IGoogleWebSignInBegin, ILoginInput, IRegisterInput, ITokenPair, IUserAccount } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
 import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage, IDeviceNameProvider, IMasterKeyService, ISrpClientService, ITokenManager, IUserStorageService, MasterKeyState, randomBytes, VaultState } from '@termlnk/auth';
 import { Disposable, generateRandomId, ILogService, Optional } from '@termlnk/core';
@@ -192,6 +192,15 @@ interface IGoogleClaimResponseBody {
   e2e: IE2EStatusBody;
 }
 
+interface IGoogleWebBeginResponseBody {
+  authorizeUrl: string;
+  deviceCode: string;
+}
+
+interface IGoogleWebPollResponseBody {
+  relayCode?: string;
+}
+
 // Trust boundary: plaintext password is consumed inside register/login only; master key
 // and tokens never leave the main process.
 export class HttpAuthService extends Disposable implements IAuthService {
@@ -214,9 +223,14 @@ export class HttpAuthService extends Disposable implements IAuthService {
   private _deviceIdCache: string | null = null;
 
   // Tracks when a Google sign-in was initiated on this device (via getGoogleAuthorizeUrl). A
-  // relay code arriving on the deep-link bus without a recent intent is rejected — this defeats
+  // relay code arriving on the deep-link router without a recent intent is rejected — this defeats
   // a forged/replayed `termlnk://auth/callback` signing this device into someone else's account.
   private _googleSignInIntentAt = 0;
+
+  // Device code of the in-flight web sign-in (begin → poll). Single field rather
+  // than per-session because this process is single-user (one master password);
+  // a concurrent web sign-in overwrites it, same assumption as the intent above.
+  private _pendingWebDeviceCode: string | null = null;
 
   constructor(
     private readonly _config: IHttpAuthServiceConfig,
@@ -537,6 +551,38 @@ export class HttpAuthService extends Disposable implements IAuthService {
     const at = this._googleSignInIntentAt;
     this._googleSignInIntentAt = 0;
     return at > 0 && Date.now() - at <= GOOGLE_SIGN_IN_INTENT_TTL_MS;
+  }
+
+  async beginGoogleWebSignIn(): Promise<IGoogleWebSignInBegin> {
+    // Same intent guard as the desktop deep-link flow — the eventual loginWithGoogle
+    // (driven by pollGoogleWebSignIn below) only honors a relay code while this is fresh.
+    this._googleSignInIntentAt = Date.now();
+    const resp = await this._fetchAuthFreeJson<IGoogleWebBeginResponseBody>('/auth/google/web/begin', {});
+    this._pendingWebDeviceCode = resp.deviceCode;
+    return { authorizeUrl: resp.authorizeUrl };
+  }
+
+  async pollGoogleWebSignIn(): Promise<GoogleWebSignInStatus> {
+    const deviceCode = this._pendingWebDeviceCode;
+    if (!deviceCode) {
+      return 'expired';
+    }
+    let resp: IGoogleWebPollResponseBody;
+    try {
+      resp = await this._fetchAuthFreeJson<IGoogleWebPollResponseBody>('/auth/google/web/poll', { deviceCode });
+    } catch (err) {
+      // Transient network blip — let the caller poll again rather than aborting the flow.
+      this._logService.warn('[HttpAuthService] web sign-in poll failed:', err);
+      return 'pending';
+    }
+    if (!resp.relayCode) {
+      return 'pending';
+    }
+    // Relay code retrieved — claim it (consumes the sign-in intent set in begin) and
+    // clear the device code so a late poll can't double-claim.
+    this._pendingWebDeviceCode = null;
+    await this.loginWithGoogle(resp.relayCode);
+    return 'complete';
   }
 
   async setupEncryptionPassword(password: string): Promise<void> {

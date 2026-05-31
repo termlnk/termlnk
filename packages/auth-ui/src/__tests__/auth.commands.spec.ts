@@ -49,6 +49,8 @@ class FakeAuthService implements IAuthService {
   async restore(): Promise<void> {}
   async getGoogleAuthorizeUrl(): Promise<string> { return ''; }
   async loginWithGoogle(): Promise<void> {}
+  async beginGoogleWebSignIn(): Promise<{ authorizeUrl: string }> { return { authorizeUrl: '' }; }
+  async pollGoogleWebSignIn(): Promise<'pending' | 'complete' | 'expired'> { return 'pending'; }
   async setupEncryptionPassword(): Promise<void> {}
   async unlockVault(): Promise<void> {}
   async getServerCapabilities() { return { googleOAuth: false }; }

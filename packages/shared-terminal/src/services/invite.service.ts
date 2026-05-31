@@ -42,6 +42,15 @@ export interface IInviteService {
 
   // Deep-link intake (OS-level termlnk:// URLs forwarded from electron-main)
   readonly inviteUrl$: Observable<string>;
+
+  /**
+   * Feed an invite URL captured outside the OS deep-link router — used by the
+   * browser shell, which has no main process and reads the URL straight from
+   * `window.location`. The URL surfaces on `inviteUrl$` like any other; the
+   * fragment (carrying `ephPriv`) is parsed renderer-side and never sent to a
+   * server, preserving the zero-knowledge boundary.
+   */
+  ingestInviteUrl(url: string): void;
 }
 
 export const IInviteService = createIdentifier<IInviteService>(

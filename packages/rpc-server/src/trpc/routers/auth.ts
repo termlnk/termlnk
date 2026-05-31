@@ -129,6 +129,26 @@ export const authRouter = router({
       return authService.getGoogleAuthorizeUrl();
     }),
 
+  /**
+   * Begin a browser-shell Google sign-in. The web shell has no `termlnk://` deep
+   * link and its domain can't be registered with Google, so the relay code is
+   * held server-side against a device code and pulled via pollGoogleWebSignIn —
+   * loginWithGoogle is never exposed to the renderer (desktop drives it from the
+   * main-process deep-link handler).
+   */
+  beginGoogleWebSignIn: publicProcedure
+    .mutation(({ ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      return authService.beginGoogleWebSignIn();
+    }),
+
+  /** Poll the in-flight web sign-in; claims the session in place once ready. */
+  pollGoogleWebSignIn: publicProcedure
+    .mutation(({ ctx }) => {
+      const authService = requireAuthService(ctx.injector);
+      return authService.pollGoogleWebSignIn();
+    }),
+
   /** Optional sign-in methods the cloud server advertises (gates the Google button). */
   getServerCapabilities: publicProcedure
     .query(({ ctx }) => {
