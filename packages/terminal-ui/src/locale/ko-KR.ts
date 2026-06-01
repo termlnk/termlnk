@@ -200,6 +200,9 @@ const locale: typeof enUS = {
       'delete-host': '호스트 삭제',
       'maximize-session': '세션 최대화/복원',
       'open-local-terminal': '새 로컬 터미널',
+      'select-tab': '인덱스로 탭 선택',
+      'split-down': '아래로 분할',
+      'split-right': '오른쪽으로 분할',
     },
     pane: {
       'split-right': '오른쪽으로 분할',

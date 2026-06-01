@@ -198,6 +198,9 @@ const locale = {
       'delete-host': 'Delete Host',
       'maximize-session': 'Maximize/Restore Session',
       'open-local-terminal': 'New Local Terminal',
+      'select-tab': 'Select Tab by Index',
+      'split-down': 'Split Down',
+      'split-right': 'Split Right',
     },
     pane: {
       'split-right': 'Split right',

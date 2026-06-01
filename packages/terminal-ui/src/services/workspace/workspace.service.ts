@@ -14,7 +14,7 @@
  */
 
 import type { Observable } from 'rxjs';
-import type { DropSide, IMagnifyState, IPaneToTabDragState, ITabItem, IWorkspace, IWorkspaceLayoutNode } from '../../models/workspace.model';
+import type { DropSide, IMagnifyState, IPaneToTabDragState, ITabItem, IWorkspace, IWorkspaceLayoutBranch, IWorkspaceLayoutNode, WorkspaceLayoutDirection } from '../../models/workspace.model';
 import type { ITerminalSession } from '../terminal/terminal-ui.service';
 import { createIdentifier, Disposable, ILogService } from '@termlnk/core';
 import { nanoid } from 'nanoid';
@@ -221,6 +221,13 @@ export interface IWorkspaceService {
   // Merge operations
   mergeSessionIntoWorkspace(sessionId: string, workspaceId: string, targetSessionId: string, side: DropSide): void;
   mergeTwoSessions(sessionIdA: string, sessionIdB: string, side?: DropSide): string;
+
+  /**
+   * Attach an existing session as a new pane beside a source session. If the source is a
+   * standalone tab it is promoted into a new workspace honoring the split direction; if it
+   * already lives in a workspace the pane is inserted next to it. The new pane is focused.
+   */
+  splitSession(sourceSessionId: string, newSessionId: string, side: DropSide): void;
 
   // Layout operations
   updatePanelSizes(workspaceId: string, branchPath: number[], sizes: number[]): void;
@@ -563,38 +570,35 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
       throw new Error('Workspace requires at least 2 sessions');
     }
 
-    const id = `ws_${nanoid()}`;
     const children: IWorkspaceLayoutNode[] = sessionIds.map((sid) => ({ type: 'leaf' as const, sessionId: sid }));
     const sizes = Array.from({ length: sessionIds.length }).fill(100 / sessionIds.length) as number[];
+    const layout: IWorkspaceLayoutBranch = { type: 'branch', direction: 'horizontal', children, sizes };
 
-    const workspace: IWorkspace = {
-      id,
-      name: name ?? 'Workspace',
-      layout: {
-        type: 'branch',
-        direction: 'horizontal',
-        children,
-        sizes,
-      },
-      activeSessionId: sessionIds[0],
-    };
+    return this._registerWorkspace(layout, sessionIds[0], name);
+  }
 
+  /**
+   * Register a freshly-built branch layout as a new workspace: insert it into the tab order
+   * in place of the sessions it absorbs (keeping their earliest slot) and focus the given
+   * session. Shared by every code path that turns standalone sessions into a workspace.
+   */
+  private _registerWorkspace(layout: IWorkspaceLayoutBranch, activeSessionId: string, name?: string): string {
+    const sessionIds = collectSessionIds(layout);
+    const id = `ws_${nanoid()}`;
+    const workspace: IWorkspace = { id, name: name ?? 'Workspace', layout, activeSessionId };
     this._workspaces$.next([...this._workspaces$.value, workspace]);
 
-    // Update tab order: replace the first session with workspace, remove others
-    const order = [...this._tabItemOrder$.value];
-    const firstIndex = Math.min(...sessionIds.map((sid) => order.indexOf(sid)).filter((i) => i >= 0));
-    const newOrder = order.filter((oid) => !sessionIds.includes(oid));
-    if (firstIndex >= 0 && firstIndex <= newOrder.length) {
-      newOrder.splice(firstIndex, 0, id);
-    } else {
-      newOrder.push(id);
-    }
+    // Replace the absorbed sessions in the tab order with the workspace, anchored at the
+    // earliest slot they occupied.
+    const order = this._tabItemOrder$.value;
+    const anchorIndex = Math.min(...sessionIds.map((sid) => order.indexOf(sid)).filter((i) => i >= 0));
+    const absorbed = new Set(sessionIds);
+    const newOrder = order.filter((tabId) => !absorbed.has(tabId));
+    newOrder.splice(Number.isFinite(anchorIndex) ? Math.min(anchorIndex, newOrder.length) : newOrder.length, 0, id);
     this._tabItemOrder$.next(newOrder);
 
-    // Set as active
     this._activeTabItemId$.next(id);
-    this._terminalUIService.setActiveSession(sessionIds[0]);
+    this._terminalUIService.setActiveSession(activeSessionId);
 
     this._logService.debug('[WorkspaceService]', `Created workspace ${id} with ${sessionIds.length} sessions`);
     return id;
@@ -717,6 +721,29 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
     const workspaceId = this.createWorkspace([sessionIdB, sessionIdA]);
     this.setActiveTabItem(workspaceId);
     return workspaceId;
+  }
+
+  splitSession(sourceSessionId: string, newSessionId: string, side: DropSide): void {
+    const ws = this.getWorkspaceForSession(sourceSessionId);
+    if (ws) {
+      this.mergeSessionIntoWorkspace(newSessionId, ws.id, sourceSessionId, side);
+      this.setActiveSessionInWorkspace(ws.id, newSessionId);
+      return;
+    }
+
+    // Source is a standalone tab: promote both into a fresh workspace, already focused on
+    // the new pane by _registerWorkspace.
+    this._createWorkspaceFromSplit(sourceSessionId, newSessionId, side);
+  }
+
+  private _createWorkspaceFromSplit(sourceSessionId: string, newSessionId: string, side: DropSide): string {
+    const direction: WorkspaceLayoutDirection = side === 'left' || side === 'right' ? 'horizontal' : 'vertical';
+    const insertBefore = side === 'left' || side === 'top';
+    const sourceLeaf: IWorkspaceLayoutNode = { type: 'leaf', sessionId: sourceSessionId };
+    const newLeaf: IWorkspaceLayoutNode = { type: 'leaf', sessionId: newSessionId };
+    const children = insertBefore ? [newLeaf, sourceLeaf] : [sourceLeaf, newLeaf];
+
+    return this._registerWorkspace({ type: 'branch', direction, children, sizes: [50, 50] }, newSessionId);
   }
 
   private _mergeWorkspaces(source: IWorkspace, target: IWorkspace, side: DropSide): string {

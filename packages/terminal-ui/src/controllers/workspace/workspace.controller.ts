@@ -17,7 +17,15 @@ import { Disposable, ICommandService } from '@termlnk/core';
 import { IShortcutService } from '@termlnk/ui';
 import { CloseActiveTabCommand } from '../../commands/close-active-tab.command';
 import { MaximizeSessionCommand } from '../../commands/maximize-session.command';
-import { CloseActiveTabShortcut, MaximizeSessionShortcut } from './shortcut';
+import { SelectTabByIndexCommand } from '../../commands/select-tab-by-index.command';
+import { SplitSessionCommand } from '../../commands/split-session.command';
+import {
+  CloseActiveTabShortcut,
+  MaximizeSessionShortcut,
+  SelectTabByIndexShortcuts,
+  SplitDownShortcut,
+  SplitRightShortcut,
+} from './shortcut';
 
 export class WorkspaceController extends Disposable {
   constructor(
@@ -32,7 +40,15 @@ export class WorkspaceController extends Disposable {
   private _init(): void {
     this.disposeWithMe(this._commandService.registerCommand(CloseActiveTabCommand));
     this.disposeWithMe(this._commandService.registerCommand(MaximizeSessionCommand));
+    this.disposeWithMe(this._commandService.registerCommand(SplitSessionCommand));
+    this.disposeWithMe(this._commandService.registerCommand(SelectTabByIndexCommand));
+
     this.disposeWithMe(this._shortcutService.registerShortcut(CloseActiveTabShortcut));
     this.disposeWithMe(this._shortcutService.registerShortcut(MaximizeSessionShortcut));
+    this.disposeWithMe(this._shortcutService.registerShortcut(SplitRightShortcut));
+    this.disposeWithMe(this._shortcutService.registerShortcut(SplitDownShortcut));
+    for (const shortcut of SelectTabByIndexShortcuts) {
+      this.disposeWithMe(this._shortcutService.registerShortcut(shortcut));
+    }
   }
 }

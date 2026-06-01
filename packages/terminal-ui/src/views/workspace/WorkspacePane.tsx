@@ -16,7 +16,7 @@
 import type { MouseEvent, ReactNode, PointerEvent as ReactPointerEvent } from 'react';
 import type { DropSide } from '../../models/workspace.model';
 import type { TerminalSessionStatus } from '../../services/terminal/terminal-ui.service';
-import { Platform, platform } from '@termlnk/core';
+import { ILogService, Platform, platform } from '@termlnk/core';
 import { Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { ISSHService } from '@termlnk/rpc-client';
 import { IPTYService } from '@termlnk/terminal';
@@ -26,6 +26,7 @@ import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState }
 import { CloseActiveTabCommand } from '../../commands/close-active-tab.command';
 import { MaximizeSessionCommand } from '../../commands/maximize-session.command';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
+import { splitTerminalSession } from '../../services/workspace/split-session';
 import { IWorkspaceService } from '../../services/workspace/workspace.service';
 import { useWindowTransparency } from '../hooks';
 import { SessionPortalContext } from './session-portal-context';
@@ -52,6 +53,7 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
   const workspaceService = useDependency(IWorkspaceService);
   const ptyService = useDependency(IPTYService);
   const sshService = useDependency(ISSHService);
+  const logService = useDependency(ILogService);
   const portal = useContext(SessionPortalContext);
   const { dragState, setDragState, dragTarget, setDragTarget, onDrop } = useContext(WorkspaceDragContext);
   const sessions = useObservable(terminalUIService.sessions$, []);
@@ -124,36 +126,10 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
     workspaceService.removeSessionFromWorkspace(workspaceId, sessionId);
   }, [workspaceService, workspaceId, sessionId, portal]);
 
-  const handleSplit = useCallback(async (direction: 'horizontal' | 'vertical') => {
-    if (!session) {
-      return;
-    }
-    // Remote (multiplayer joiner) tabs cannot be split: the joiner doesn't
-    // own the underlying PTY, so dropping a local PTY beside it would be a
-    // surprise; spawning a parallel join for the same sid would mean two xterm
-    // instances racing each other's keystrokes through one driver lock.
-    if (session.type === 'remote') {
-      return;
-    }
-
-    try {
-      let newId: string;
-      const side: DropSide = direction === 'horizontal' ? 'right' : 'bottom';
-
-      if (session.type === 'ssh') {
-        newId = await sshService.createSession(session.hostId);
-        terminalUIService.addSession({ id: newId, type: 'ssh', hostId: session.hostId, hostName: session.hostName });
-      } else {
-        newId = await ptyService.createSession({ cols: 80, rows: 24 });
-        terminalUIService.addSession({ id: newId, type: 'local', hostId: '', hostName: 'Local', status: 'idle' });
-      }
-
-      workspaceService.mergeSessionIntoWorkspace(newId, workspaceId, sessionId, side);
-      workspaceService.setActiveSessionInWorkspace(workspaceId, newId);
-    } catch (err) {
-      console.error('[WorkspacePane] Failed to split session:', err);
-    }
-  }, [session, terminalUIService, workspaceService, workspaceId, sessionId, ptyService, sshService]);
+  const handleSplit = useCallback((direction: 'horizontal' | 'vertical') => {
+    splitTerminalSession({ ptyService, sshService, terminalUIService, workspaceService }, sessionId, direction)
+      .catch((err) => logService.error('[WorkspacePane]', 'Failed to split session:', err));
+  }, [ptyService, sshService, terminalUIService, workspaceService, sessionId, logService]);
 
   // --- Header drag for repositioning ---
   const pointerDownRef = useRef<{ startX: number; startY: number; pointerId: number } | null>(null);

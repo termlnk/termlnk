@@ -200,6 +200,9 @@ const locale: typeof enUS = {
       'delete-host': '刪除主機',
       'maximize-session': '最大化/還原工作階段',
       'open-local-terminal': '新建本機終端機',
+      'select-tab': '按序號選擇分頁',
+      'split-down': '向下分割',
+      'split-right': '向右分割',
     },
     pane: {
       'split-right': '向右分割',
