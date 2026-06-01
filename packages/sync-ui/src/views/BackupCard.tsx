@@ -15,8 +15,8 @@
 
 import type { IBackupClientService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
 import { AuthState, IAuthService } from '@termlnk/auth';
-import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, Button, cn, useDependency, useObservable } from '@termlnk/design';
+import { IConfirmService, ILogService, LocaleService, Quantity } from '@termlnk/core';
+import { Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { IBackupClientService as IBackupClientServiceId } from '@termlnk/sync';
 import { CheckCircle2Icon, DownloadIcon, LockIcon, TriangleAlertIcon, UploadIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -161,34 +161,36 @@ interface IImportTriggerProps {
 
 function ImportTrigger({ disabled, backupClient, setStatus, logService }: IImportTriggerProps) {
   const localeService = useDependency(LocaleService);
+  const confirmService = useDependency(IConfirmService);
+
+  const handleClick = async () => {
+    const confirmed = await confirmService.confirm({
+      id: 'sync-ui.backup.import-confirm',
+      title: { title: localeService.t('sync-ui.backup.import-confirm-title') },
+      description: { title: localeService.t('sync-ui.backup.import-confirm-description') },
+      confirmText: localeService.t('sync-ui.backup.import-confirm-action'),
+      cancelText: localeService.t('sync-ui.backup.cancel'),
+      // Import replaces every host / setting / provider / mcp / skill row in the
+      // local database — irreversible data loss, treat as destructive.
+      confirmVariant: 'destructive',
+    });
+    if (!confirmed) {
+      return;
+    }
+    await runImport(backupClient, setStatus, logService);
+  };
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled} className={cn('tm:gap-1.5')}>
-          <UploadIcon className={cn('tm:size-3.5')} />
-          {localeService.t('sync-ui.backup.import')}
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{localeService.t('sync-ui.backup.import-confirm-title')}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {localeService.t('sync-ui.backup.import-confirm-description')}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{localeService.t('sync-ui.backup.cancel')}</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              void runImport(backupClient, setStatus, logService);
-            }}
-          >
-            {localeService.t('sync-ui.backup.import-confirm-action')}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={disabled}
+      onClick={() => { void handleClick(); }}
+      className={cn('tm:gap-1.5')}
+    >
+      <UploadIcon className={cn('tm:size-3.5')} />
+      {localeService.t('sync-ui.backup.import')}
+    </Button>
   );
 }
 

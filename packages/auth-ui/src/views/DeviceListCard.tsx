@@ -15,29 +15,15 @@
 
 import type { IDevice } from '@termlnk/auth';
 import { AuthState, IAuthService } from '@termlnk/auth';
-import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-  Badge,
-  Button,
-  cn,
-  useDependency,
-  useObservable,
-} from '@termlnk/design';
+import { IConfirmService, ILogService, LocaleService, Quantity } from '@termlnk/core';
+import { Badge, Button, cn, useDependency, useObservable } from '@termlnk/design';
 import { LaptopIcon, LockIcon, RefreshCwIcon, TrashIcon, TriangleAlertIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 export function DeviceListCard() {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
+  const confirmService = useDependency(IConfirmService);
   const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
 
   const authState = useObservable<AuthState>(
@@ -79,13 +65,34 @@ export function DeviceListCard() {
     }
   }, [isUnlocked, loadDevices]);
 
-  const handleRevoke = useCallback(async (deviceId: string) => {
+  const handleRevoke = useCallback(async (device: IDevice) => {
     if (!authClient) {
       return;
     }
-    setRevokingId(deviceId);
+
+    const label = device.deviceName?.trim().length
+      ? device.deviceName
+      : localeService.t('auth-ui.devices.unnamed-device');
+
+    const confirmed = await confirmService.confirm({
+      id: `auth-ui.devices.revoke-confirm.${device.id}`,
+      title: { title: localeService.t('auth-ui.devices.revoke-confirm-title') },
+      description: {
+        title: device.isCurrent
+          ? localeService.t('auth-ui.devices.revoke-confirm-current', label)
+          : localeService.t('auth-ui.devices.revoke-confirm-other', label),
+      },
+      confirmText: localeService.t('auth-ui.devices.revoke'),
+      cancelText: localeService.t('auth-ui.devices.cancel'),
+      confirmVariant: 'destructive',
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    setRevokingId(device.id);
     try {
-      await authClient.revokeDevice(deviceId);
+      await authClient.revokeDevice(device.id);
       await loadDevices();
     } catch (err) {
       logService.error('[DeviceListCard] revokeDevice failed:', err);
@@ -94,7 +101,7 @@ export function DeviceListCard() {
     } finally {
       setRevokingId(null);
     }
-  }, [authClient, loadDevices, logService]);
+  }, [authClient, confirmService, loadDevices, localeService, logService]);
 
   if (!authClient) {
     return null;
@@ -163,7 +170,7 @@ export function DeviceListCard() {
 interface IDeviceListItemProps {
   readonly device: IDevice;
   readonly revoking: boolean;
-  readonly onRevoke: (deviceId: string) => Promise<void> | void;
+  readonly onRevoke: (device: IDevice) => Promise<void> | void;
 }
 
 function DeviceListItem({ device, revoking, onRevoke }: IDeviceListItemProps) {
@@ -209,50 +216,19 @@ function DeviceListItem({ device, revoking, onRevoke }: IDeviceListItemProps) {
         </div>
       </div>
 
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={revoking}
-            className={cn('tm:gap-1.5 tm:text-red')}
-            aria-label={localeService.t('auth-ui.devices.revoke')}
-          >
-            <TrashIcon className={cn('tm:size-3.5')} />
-            {revoking
-              ? localeService.t('auth-ui.devices.revoking')
-              : localeService.t('auth-ui.devices.revoke')}
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {localeService.t('auth-ui.devices.revoke-confirm-title')}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {device.isCurrent
-                ? localeService.t('auth-ui.devices.revoke-confirm-current', label)
-                : localeService.t('auth-ui.devices.revoke-confirm-other', label)}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {localeService.t('auth-ui.devices.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                void onRevoke(device.id);
-              }}
-              className={cn(`
-                tm:bg-red tm:text-white
-                tm:hover:bg-red/90
-              `)}
-            >
-              {localeService.t('auth-ui.devices.revoke')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={revoking}
+        onClick={() => { void onRevoke(device); }}
+        className={cn('tm:gap-1.5 tm:text-red')}
+        aria-label={localeService.t('auth-ui.devices.revoke')}
+      >
+        <TrashIcon className={cn('tm:size-3.5')} />
+        {revoking
+          ? localeService.t('auth-ui.devices.revoking')
+          : localeService.t('auth-ui.devices.revoke')}
+      </Button>
     </li>
   );
 }
