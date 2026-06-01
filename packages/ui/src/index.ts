@@ -25,6 +25,7 @@ export { UI_PLUGIN_NAME, UIPlugin } from './plugin';
 
 export { ComponentManagerService } from './services/component/component-manager.service';
 export type { ComponentList, ComponentType, IComponent, IComponentOptions } from './services/component/component-manager.service';
+export { DesktopConfirmService } from './services/confirm/desktop-confirm.service';
 export { ContentRouterService, DEFAULT_PAGE_ID, IContentRouterService } from './services/content-router/content-router.service';
 export type { IContentPage } from './services/content-router/content-router.service';
 export { ContextMenuService, IContextMenuService } from './services/contextmenu/contextmenu.service';

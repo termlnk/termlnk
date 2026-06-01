@@ -31,6 +31,8 @@ export * from './components/collapsible';
 export * from './components/combobox';
 export { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from './components/command';
 export * from './components/config-provider';
+export { Confirm } from './components/confirm';
+export type { IConfirmProps, IConfirmVariant } from './components/confirm';
 export { ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuLabel, ContextMenuPortal, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from './components/context-menu';
 export { Dialog, DialogClose, DialogContent, DialogDescription, DialogDragHandle, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogPrimitive, DialogTitle, DialogTrigger } from './components/dialog';
 export type { IDialogDragHandleProps, IDialogProps } from './components/dialog';

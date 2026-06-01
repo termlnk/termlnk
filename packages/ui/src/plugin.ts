@@ -15,7 +15,7 @@
 
 import type { Dependency } from '@termlnk/core';
 import type { IUIConfig } from './controllers/config.schema';
-import { IConfigService, IContextService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { IConfigService, IConfirmService, IContextService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { defaultPluginConfig, UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { LeftSidebarController } from './controllers/left-sidebar/left-sidebar.controller';
 import { RightSidebarController } from './controllers/right-sidebar/right-sidebar.controller';
@@ -23,6 +23,7 @@ import { DesktopUIController } from './controllers/ui/desktop-ui.controller';
 import { IUIController } from './controllers/ui/ui.controller';
 import { UpdaterUIController } from './controllers/updater/updater-ui.controller';
 import { ComponentManagerService } from './services/component/component-manager.service';
+import { DesktopConfirmService } from './services/confirm/desktop-confirm.service';
 import { ContentRouterService, IContentRouterService } from './services/content-router/content-router.service';
 import { ContextMenuService, IContextMenuService } from './services/contextmenu/contextmenu.service';
 import { DialogService, IDialogService } from './services/dialog/dialog.service';
@@ -95,6 +96,7 @@ export class UIPlugin extends Plugin {
       [IMenuManagerService, { useClass: MenuManagerService }],
       [IContextMenuService, { useClass: ContextMenuService }],
       [IDialogService, { useClass: DialogService, lazy: true }],
+      [IConfirmService, { useClass: DesktopConfirmService, lazy: true }],
       [IStatusBarService, { useClass: StatusBarService }],
 
       [IUIController, {

@@ -589,6 +589,16 @@ export function Dialog(props: IDialogProps) {
           }
           e.preventDefault();
         }}
+        onFocusOutside={(e) => {
+          // A non-modal Dialog must not close just because focus moved into a
+          // portalled layer outside its React subtree — e.g. a global confirm
+          // dialog opened via IConfirmService, which renders under GLOBAL, not
+          // under this Dialog. Radix's non-modal DismissableLayer treats such
+          // focus as "outside" and would dismiss us. Outside *clicks* still
+          // close via onPointerDownOutside above; focus alone is not a dismiss
+          // intent. Radix's modal path already preventDefaults this internally.
+          e.preventDefault();
+        }}
         onOpenAutoFocus={(e) => {
           if (disableAutoFocus) {
             e.preventDefault();

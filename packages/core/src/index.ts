@@ -48,6 +48,7 @@ export { CommandService, ICommandService, NilCommand, sequenceExecute, sequenceE
 export type { CommandListener, ICommand, ICommandInfo, IExecutionOptions, IMultiCommand, IMutationCommonParams } from './services/command/command.service';
 export { ConfigService, IConfigService } from './services/config/config.service';
 export type { IConfigOptions } from './services/config/config.service';
+export { IConfirmService } from './services/confirm/confirm.service';
 export { ContextService, IContextService } from './services/context/context.service';
 export { ErrorService } from './services/error/error.service';
 export type { IError } from './services/error/error.service';
