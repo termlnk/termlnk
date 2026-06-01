@@ -62,6 +62,10 @@ export class AccountDialogController extends Disposable {
       width: 480,
       title: { title: this._localeService.t('auth-ui.account-dialog.title') },
       children: { componentId: ACCOUNT_DIALOG_COMPONENT_NAME },
+      // This is a presentational dialog; Radix's default "focus first tabbable
+      // element" lands on the logout button, whose tooltip then opens on the
+      // programmatic focus and stays pinned. Keep focus off the controls.
+      disableAutoFocus: true,
       onClose: () => this._accountDialogService.close(),
     });
   }
