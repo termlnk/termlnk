@@ -36,6 +36,10 @@ overrides:
   # electron pinned to 41.x: better-sqlite3 ships no Electron 42 prebuild and
   # fails to build against V8 14.x (v8::External::New signature changed)
   electron: 41.7.1
+  # rolldown 1.0.2 (bundled by vite 8.0.14) regresses cross-chunk init_*() handling,
+  # panicking the CJS build with "init_locales is not in any chunk". Pin back to 1.0.1.
+  # https://github.com/rolldown/rolldown/issues/9515
+  rolldown: 1.0.1
   tar: ^7.5.13
   undici: ^8.3.0
   file-type: ^22.0.0
