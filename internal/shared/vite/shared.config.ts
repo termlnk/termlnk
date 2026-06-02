@@ -52,7 +52,6 @@ const sharedConfig = {
     }),
     react({
       tsDecorators: true,
-      plugins: [['@swc/plugin-styled-components', {}]],
     }),
     vitePluginExternal({
       nodeBuiltins: true,

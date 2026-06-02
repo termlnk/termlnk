@@ -57,7 +57,6 @@ export default defineConfig({
     }),
     react({
       tsDecorators: true,
-      plugins: [['@swc/plugin-styled-components', {}]],
     }),
   ],
   css: {

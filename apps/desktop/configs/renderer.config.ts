@@ -50,7 +50,6 @@ export default mergeConfig(baseConfig, {
     }),
     react({
       tsDecorators: true,
-      plugins: [['@swc/plugin-styled-components', {}]],
     }),
   ],
   css: {

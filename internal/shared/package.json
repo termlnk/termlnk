@@ -23,7 +23,6 @@
     "@eslint/compat": "^2.1.0",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.33",
-    "@swc/plugin-styled-components": "^12.10.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@tailwindcss/vite": "^4.3.0",
     "@typescript-eslint/parser": "^8.59.4",

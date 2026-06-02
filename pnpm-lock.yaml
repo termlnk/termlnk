@@ -1149,9 +1149,6 @@ importers:
       '@swc/core':
         specifier: ^1.15.33
         version: 1.15.33
-      '@swc/plugin-styled-components':
-        specifier: ^12.10.0
-        version: 12.10.0
       '@tailwindcss/postcss':
         specifier: ^4.3.0
         version: 4.3.0
@@ -6797,9 +6794,6 @@ packages:
 
   '@swc/counter@0.1.3':
     resolution: {integrity: sha512-e2BR4lsJkkRlKZ/qCHPw9ZaSxc0MVUd7gtbtaB7aMvHeJVYe8sOB8DBZkP2DtISHGSku9sCK6T6cnY0CtXrOCQ==}
-
-  '@swc/plugin-styled-components@12.10.0':
-    resolution: {integrity: sha512-WWZJ7HlN5KbB3QAJaZgFv/Q0AAqpJT4kM38Yj643us2519ioe+CGNiUGSP6hYKDYeBSdgW/9ii8xtx8LB6GjZA==}
 
   '@swc/types@0.1.26':
     resolution: {integrity: sha512-lyMwd7WGgG79RS7EERZV3T8wMdmPq3xwyg+1nmAM64kIhx5yl+juO2PYIHb7vTiPgPCj8LYjsNV2T5wiQHUEaw==}
@@ -20318,10 +20312,6 @@ snapshots:
       '@swc/core-win32-x64-msvc': 1.15.33
 
   '@swc/counter@0.1.3': {}
-
-  '@swc/plugin-styled-components@12.10.0':
-    dependencies:
-      '@swc/counter': 0.1.3
 
   '@swc/types@0.1.26':
     dependencies:
