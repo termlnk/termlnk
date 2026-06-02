@@ -22,5 +22,6 @@ export { IslandUIController } from './controllers/island-ui.controller';
 export { ISLAND_UI_PLUGIN_NAME, IslandUIPlugin } from './plugin';
 export { IIslandSoundService } from './services/island-sound.service';
 export { IIslandUIStateService } from './services/island-state.service';
+export { ISLAND_SETTINGS_PLUGIN_NAME, IslandSettingsPlugin } from './settings-plugin';
 export { DynamicIsland } from './views/island/DynamicIsland';
 export { NotchLayer } from './views/island/NotchLayer';

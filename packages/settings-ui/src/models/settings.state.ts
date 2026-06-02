@@ -16,25 +16,19 @@
 import { BehaviorSubject, Subject } from 'rxjs';
 
 /**
- * Built-in tab ids. Open string union — extensions and plugins may register
- * tabs with arbitrary namespaced ids (e.g. `my-extension.advanced`) via
- * ISettingsTabRegistryService. SettingsTab values are kept as a convenience
- * for the built-in registrations and for the SettingsButton default-tab
- * routing.
+ * Built-in tab ids registered by settings-ui itself. `activeTab` is an open
+ * string union — other packages (agent-ui, auth-ui, island-ui,
+ * electron-renderer) register their tabs with their own literal ids via
+ * ISettingsTabRegistryService and intentionally do not appear here.
  */
 export enum SettingsTab {
   APPEARANCE = 'appearance',
-  PLATFORM = 'platform',
   INTERFACE = 'interface',
   TERMINAL = 'terminal',
   COLOR_SCHEME = 'color-scheme',
   NETWORK = 'network',
   MCP = 'mcp',
-  AI_PROVIDER = 'ai-provider',
-  CHAT = 'chat',
   SKILL = 'skill',
-  ISLAND = 'island',
-  ACCOUNT = 'account',
   SHORTCUTS = 'shortcuts',
   ABOUT = 'about',
 }

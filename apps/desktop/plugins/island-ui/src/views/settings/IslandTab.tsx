@@ -145,7 +145,7 @@ export function IslandTab() {
           <div className="tm:flex tm:min-w-0 tm:flex-col tm:gap-1.5">
             <div className="tm:flex tm:items-start tm:justify-between tm:gap-4">
               <FieldLabel htmlFor="settings-island-enabled" className="tm:text-sm tm:font-semibold tm:text-white">
-                {localeService.t('settings-ui.island.enable')}
+                {localeService.t('island-ui.island-tab.enable')}
               </FieldLabel>
               <Switch
                 id="settings-island-enabled"
@@ -154,7 +154,7 @@ export function IslandTab() {
               />
             </div>
             <CardDescription className="tm:text-xs">
-              {localeService.t('settings-ui.island.enable-description')}
+              {localeService.t('island-ui.island-tab.enable-description')}
             </CardDescription>
           </div>
         </CardHeader>
@@ -170,7 +170,7 @@ export function IslandTab() {
           >
             <div className="tm:flex tm:items-start tm:justify-between tm:gap-4">
               <FieldLabel htmlFor="settings-island-sound-enabled" className="tm:text-sm tm:font-semibold tm:text-white">
-                {localeService.t('settings-ui.island.sound-title')}
+                {localeService.t('island-ui.island-tab.sound-title')}
               </FieldLabel>
               <Switch
                 id="settings-island-sound-enabled"
@@ -186,7 +186,7 @@ export function IslandTab() {
                 {/* Volume Slider */}
                 <Field orientation="horizontal">
                   <FieldLabel className="tm:h-8 tm:w-20 tm:flex-none tm:shrink-0 tm:text-sm/8 tm:font-normal">
-                    {localeService.t('settings-ui.island.sound-volume')}
+                    {localeService.t('island-ui.island-tab.sound-volume')}
                   </FieldLabel>
                   <FieldContent className="tm:items-end">
                     <div className="tm:flex tm:w-full tm:max-w-[260px] tm:items-center tm:gap-3">
@@ -214,31 +214,31 @@ export function IslandTab() {
                 {/* Session Events */}
                 <div className="tm:flex tm:flex-col tm:gap-3">
                   <h4 className="tm:text-xs tm:font-semibold tm:text-grey-fg2">
-                    {localeService.t('settings-ui.island.category-session')}
+                    {localeService.t('island-ui.island-tab.category-session')}
                   </h4>
                   <Card className="tm:gap-0 tm:bg-black/15 tm:py-0">
                     <CardContent className="tm:py-3">
                       <FieldGroup className="tm:gap-4">
                         <SoundEventRow
                           id="settings-island-sound-session-start"
-                          labelKey="settings-ui.island.event-session-start"
-                          descriptionKey="settings-ui.island.event-session-start-description"
+                          labelKey="island-ui.island-tab.event-session-start"
+                          descriptionKey="island-ui.island-tab.event-session-start-description"
                           checked={settings.sound.sessionStart.enabled}
                           onCheckedChange={(checked) => updateSoundEvent('sessionStart', { enabled: checked })}
                           onPlay={() => playPreview('sessionStart')}
                         />
                         <SoundEventRow
                           id="settings-island-sound-task-complete"
-                          labelKey="settings-ui.island.event-task-complete"
-                          descriptionKey="settings-ui.island.event-task-complete-description"
+                          labelKey="island-ui.island-tab.event-task-complete"
+                          descriptionKey="island-ui.island-tab.event-task-complete-description"
                           checked={settings.sound.taskComplete.enabled}
                           onCheckedChange={(checked) => updateSoundEvent('taskComplete', { enabled: checked })}
                           onPlay={() => playPreview('taskComplete')}
                         />
                         <SoundEventRow
                           id="settings-island-sound-task-error"
-                          labelKey="settings-ui.island.event-task-error"
-                          descriptionKey="settings-ui.island.event-task-error-description"
+                          labelKey="island-ui.island-tab.event-task-error"
+                          descriptionKey="island-ui.island-tab.event-task-error-description"
                           checked={settings.sound.taskError.enabled}
                           onCheckedChange={(checked) => updateSoundEvent('taskError', { enabled: checked })}
                           onPlay={() => playPreview('taskError')}
@@ -251,23 +251,23 @@ export function IslandTab() {
                 {/* Interaction Events */}
                 <div className="tm:flex tm:flex-col tm:gap-3">
                   <h4 className="tm:text-xs tm:font-semibold tm:text-grey-fg2">
-                    {localeService.t('settings-ui.island.category-interaction')}
+                    {localeService.t('island-ui.island-tab.category-interaction')}
                   </h4>
                   <Card className="tm:gap-0 tm:bg-black/15 tm:py-0">
                     <CardContent className="tm:py-3">
                       <FieldGroup className="tm:gap-4">
                         <SoundEventRow
                           id="settings-island-sound-needs-approval"
-                          labelKey="settings-ui.island.event-needs-approval"
-                          descriptionKey="settings-ui.island.event-needs-approval-description"
+                          labelKey="island-ui.island-tab.event-needs-approval"
+                          descriptionKey="island-ui.island-tab.event-needs-approval-description"
                           checked={settings.sound.needsApproval.enabled}
                           onCheckedChange={(checked) => updateSoundEvent('needsApproval', { enabled: checked })}
                           onPlay={() => playPreview('needsApproval')}
                         />
                         <SoundEventRow
                           id="settings-island-sound-task-confirmed"
-                          labelKey="settings-ui.island.event-task-confirmed"
-                          descriptionKey="settings-ui.island.event-task-confirmed-description"
+                          labelKey="island-ui.island-tab.event-task-confirmed"
+                          descriptionKey="island-ui.island-tab.event-task-confirmed-description"
                           checked={settings.sound.taskConfirmed.enabled}
                           onCheckedChange={(checked) => updateSoundEvent('taskConfirmed', { enabled: checked })}
                           onPlay={() => playPreview('taskConfirmed')}
@@ -280,23 +280,23 @@ export function IslandTab() {
                 {/* System Events */}
                 <div className="tm:flex tm:flex-col tm:gap-3">
                   <h4 className="tm:text-xs tm:font-semibold tm:text-grey-fg2">
-                    {localeService.t('settings-ui.island.category-system')}
+                    {localeService.t('island-ui.island-tab.category-system')}
                   </h4>
                   <Card className="tm:gap-0 tm:bg-black/15 tm:py-0">
                     <CardContent className="tm:py-3">
                       <FieldGroup className="tm:gap-4">
                         <SoundEventRow
                           id="settings-island-sound-context-limit"
-                          labelKey="settings-ui.island.event-context-limit"
-                          descriptionKey="settings-ui.island.event-context-limit-description"
+                          labelKey="island-ui.island-tab.event-context-limit"
+                          descriptionKey="island-ui.island-tab.event-context-limit-description"
                           checked={settings.sound.contextLimit.enabled}
                           onCheckedChange={(checked) => updateSoundEvent('contextLimit', { enabled: checked })}
                           onPlay={() => playPreview('contextLimit')}
                         />
                         <SoundEventRow
                           id="settings-island-sound-rapid-submit"
-                          labelKey="settings-ui.island.event-rapid-submit"
-                          descriptionKey="settings-ui.island.event-rapid-submit-description"
+                          labelKey="island-ui.island-tab.event-rapid-submit"
+                          descriptionKey="island-ui.island-tab.event-rapid-submit-description"
                           checked={settings.sound.rapidSubmitDetection.enabled}
                           onCheckedChange={(checked) => updateSoundEvent('rapidSubmitDetection', { enabled: checked })}
                           onPlay={() => playPreview('rapidSubmitDetection')}

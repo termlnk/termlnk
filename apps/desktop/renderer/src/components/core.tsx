@@ -23,6 +23,7 @@ import { ElectronPlugin } from '@termlnk/electron';
 import { ElectronRendererPlugin } from '@termlnk/electron-renderer';
 import { ExtensionPlugin } from '@termlnk/extension';
 import { ExtensionUIPlugin } from '@termlnk/extension-ui';
+import { IslandSettingsPlugin } from '@termlnk/island-ui';
 import { RPCPlugin } from '@termlnk/rpc';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { SettingsUIPlugin } from '@termlnk/settings-ui';
@@ -86,6 +87,7 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   core.registerPlugin(SharedTerminalUIPlugin);
   core.registerPlugin(SFTPUIPlugin);
   core.registerPlugin(SettingsUIPlugin);
+  core.registerPlugin(IslandSettingsPlugin);
   core.registerPlugin(ExtensionPlugin);
   core.registerPlugin(ExtensionUIPlugin);
   core.registerPlugin(AgentUIPlugin);

@@ -49,7 +49,7 @@ export function SoundEventRow({ id, labelKey, descriptionKey, checked, onChecked
               tm:hover:bg-one-bg2 tm:hover:text-white
             `
           )}
-          aria-label={localeService.t('settings-ui.island.sound-enable')}
+          aria-label={localeService.t('island-ui.island-tab.sound-enable')}
           onClick={onPlay}
         >
           <Play className="tm:size-3.5" />
