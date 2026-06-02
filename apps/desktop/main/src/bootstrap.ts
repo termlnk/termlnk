@@ -184,17 +184,11 @@ function withAsarEnabled<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
-// Production cloud endpoint baked into the packaged build.
+// Production cloud endpoint baked into the build; used whenever the env var is unset.
 const PRODUCTION_CLOUD_BASE_URL = 'https://cloud.termlnk.com/v1';
 
-// Env var only wins in unpackaged builds so a stray shell variable can't redirect
-// end-user traffic.
-function resolveCloudBaseUrl(): string | undefined {
-  const envValue = process.env.TERMLNK_CLOUD_BASE_URL?.trim();
-  if (envValue && !app.isPackaged) {
-    return envValue;
-  }
-  return PRODUCTION_CLOUD_BASE_URL;
+function resolveCloudBaseUrl(): string {
+  return process.env.TERMLNK_CLOUD_BASE_URL?.trim() || PRODUCTION_CLOUD_BASE_URL;
 }
 
 // Relay shares the cloud host (HTTPS + WSS on the same origin); derive from cloudBaseUrl
@@ -298,13 +292,12 @@ app.whenReady().then(async () => {
     ],
   });
 
-  // Cloud endpoint: TERMLNK_CLOUD_BASE_URL (dev) or PRODUCTION_CLOUD_BASE_URL (packaged).
-  // Empty/unset → cloud stays offline and AuthGate shows the "unavailable" placeholder.
+  // Cloud endpoint: TERMLNK_CLOUD_BASE_URL when set, otherwise the baked-in PRODUCTION_CLOUD_BASE_URL.
   const cloudBaseUrl = resolveCloudBaseUrl();
   const relayBaseUrl = resolveRelayBaseUrl(cloudBaseUrl);
   const inviteBaseUrl = resolveInviteBaseUrl(cloudBaseUrl);
   const logService = core.getInjector().get(ILogService);
-  logService.log(`[Bootstrap] cloudBaseUrl = ${cloudBaseUrl ?? '(unset — cloud features disabled)'}`);
+  logService.log(`[Bootstrap] cloudBaseUrl = ${cloudBaseUrl}`);
   logService.log(`[Bootstrap] relayBaseUrl = ${relayBaseUrl ?? '(unset — shared-terminal disabled)'}`);
   logService.log(`[Bootstrap] inviteBaseUrl = ${inviteBaseUrl ?? '(unset — invite URL cannot be stamped)'}`);
   core.registerPlugin(AuthPlugin);
