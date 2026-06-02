@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/agent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Agent shared contracts for termlnk - AI, Skill, and MCP interfaces, types, constants, and DI identifiers",
   "author": "telan <telanflow@gmail.com>",

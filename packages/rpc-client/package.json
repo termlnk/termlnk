@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/rpc-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "RPC client types and plugin for termlnk",
   "author": "telan <telanflow@gmail.com>",
