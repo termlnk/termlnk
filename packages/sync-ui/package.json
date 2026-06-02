@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/sync-ui",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": false,
   "description": "Sync UI components for termlnk - status panel, device list, and conflict resolution views",
   "author": "telan <telanflow@gmail.com>",

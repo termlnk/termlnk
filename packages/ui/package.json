@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/ui",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "private": false,
   "description": "UI library for termlnk",
   "author": "telan <telanflow@gmail.com>",

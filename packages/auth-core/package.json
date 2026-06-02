@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/auth-core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": false,
   "description": "Auth core implementations for termlnk - master key derivation (Argon2id + HKDF), SRP6a client, and token management",
   "author": "telan <telanflow@gmail.com>",
