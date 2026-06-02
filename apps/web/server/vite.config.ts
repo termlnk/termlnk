@@ -13,9 +13,32 @@
  * governing permissions and limitations under the License.
  */
 
+import react from '@vitejs/plugin-react-swc';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  plugins: [
+    // @vitejs/plugin-react-swc runs SWC during `build` only when `plugins` or
+    // `useAtYourOwnRisk_mutateSwcOptions` is set; otherwise build falls back to
+    // esbuild, which drops experimentalDecorators across workspace package
+    // boundaries and breaks redi's @Inject. The identity mutator is the lightest
+    // way to force the build-time SWC transform without pulling extra plugins.
+    // eslint-disable-next-line react/no-unnecessary-use-prefix -- vite plugin option name, not a hook
+    react({ tsDecorators: true, useAtYourOwnRisk_mutateSwcOptions: (options) => options }),
+  ],
+  build: {
+    ssr: 'src/main.ts',
+    outDir: 'dist',
+    target: 'node24',
+    rollupOptions: {
+      // .mjs forces ESM regardless of whether a package.json type:module sits
+      // above; the runtime image runs `node dist/main.mjs` from a bare /app.
+      output: {
+        entryFileNames: 'main.mjs',
+        chunkFileNames: '[name].mjs',
+      },
+    },
+  },
   ssr: {
     noExternal: [/^@termlnk\//],
     external: [
@@ -27,5 +50,23 @@ export default defineConfig({
   },
   resolve: {
     conditions: ['node', 'import'],
+    alias: [
+      // @xterm/headless and @xterm/addon-serialize ship both CJS and ESM
+      // bundles but their package.json "main" points at the CJS file (and
+      // @xterm/headless's "module" field even points at a path that doesn't
+      // exist). Vite's resolver picks CJS by default; under the SSR
+      // ModuleRunner, named imports against that CJS bundle fail because
+      // cjs-module-lexer can't statically see `module.exports.Terminal`
+      // (the IIFE assigns it at runtime). Bypass the broken metadata and
+      // point straight at the ESM build so ESM-to-ESM named imports work.
+      {
+        find: /^@xterm\/headless$/,
+        replacement: '@xterm/headless/lib-headless/xterm-headless.mjs',
+      },
+      {
+        find: /^@xterm\/addon-serialize$/,
+        replacement: '@xterm/addon-serialize/lib/addon-serialize.mjs',
+      },
+    ],
   },
 });

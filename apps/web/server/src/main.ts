@@ -39,6 +39,8 @@ import { ExtensionCorePlugin } from '@termlnk/extension-core';
 import { IFetchProvider, NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { appRouter, RPCServerPlugin } from '@termlnk/rpc-server';
+import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
+import { SharedTerminalCorePlugin } from '@termlnk/shared-terminal-core';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncCorePlugin } from '@termlnk/sync-core';
 import { IWebServerRouterProvider, WebServerPlugin } from '@termlnk/web-server';
@@ -62,6 +64,19 @@ const host = process.env.TERMLNK_WEB_HOST ?? '127.0.0.1';
 const staticRoot = process.env.TERMLNK_WEB_STATIC_ROOT;
 const tlsCert = process.env.TERMLNK_WEB_TLS_CERT;
 const tlsKey = process.env.TERMLNK_WEB_TLS_KEY;
+
+// Mirrors apps/desktop/main/src/bootstrap.ts: TERMLNK_CLOUD_BASE_URL when set,
+// otherwise the baked-in production endpoint so a fresh self-hosted deploy can
+// sign in against cloud.termlnk.com without any extra configuration.
+const PRODUCTION_CLOUD_BASE_URL = 'https://cloud.termlnk.com/v1';
+const cloudBaseUrl = process.env.TERMLNK_CLOUD_BASE_URL?.trim() || PRODUCTION_CLOUD_BASE_URL;
+
+// Relay shares the cloud host (HTTPS + WSS on the same origin); derive directly
+// so a single env var is the source of truth. Same scheme swap as desktop.
+const relayBaseUrl = cloudBaseUrl.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+// Invite landing page lives at the cloud origin root (outside `/v1`); strip the
+// version suffix and any trailing slashes.
+const inviteBaseUrl = cloudBaseUrl.replace(/\/v\d+\/?$/, '').replace(/\/+$/, '');
 
 async function bootstrap(): Promise<void> {
   const dbAdaptor = new SQLiteAdaptor({ filename: dbPath, migrationsFolder });
@@ -96,7 +111,7 @@ async function bootstrap(): Promise<void> {
   });
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
-    cloudBaseUrl: process.env.TERMLNK_CLOUD_BASE_URL,
+    cloudBaseUrl,
     // OsHostnameDeviceNameProvider lives in ./platform/ so auth-core stays free of
     // node:os imports.
     override: [
@@ -105,8 +120,15 @@ async function bootstrap(): Promise<void> {
   });
   core.registerPlugin(SyncPlugin);
   core.registerPlugin(SyncCorePlugin, {
-    cloudBaseUrl: process.env.TERMLNK_CLOUD_BASE_URL,
+    cloudBaseUrl,
   });
+  // SharedTerminalCorePlugin must follow AuthCorePlugin (HttpCollabInviteTransport
+  // resolves TokenManager from the same singleton) and DatabasePlugin (for the
+  // pairing/keypair repositories). Mirrors apps/desktop/main/src/bootstrap.ts.
+  // Node 24 has no native RTCPeerConnection — WebRTCTransportService's
+  // isSupported() returns false and CompositeTransportService falls back to relay.
+  core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl, relayBaseUrl, inviteBaseUrl });
+  core.registerPlugin(SharedTerminalCorePlugin);
   core.registerPlugin(AgentCorePlugin, {
     bundledSkillsDir,
     userSkillsDir,

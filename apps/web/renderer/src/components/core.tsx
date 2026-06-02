@@ -52,8 +52,6 @@ export interface ICreateTermlnkConfig extends ICoreConfig {
   terminalUIConfig?: ITerminalUIConfig;
 }
 
-// Browser counterpart to apps/desktop/renderer's core.tsx: drops Electron and island
-// plugins, adds WebRendererPlugin (HTTP/WS RPC, Noop window manager, GitHub-poll updater).
 export function createCore(ref: string | HTMLElement, options?: Partial<ICreateTermlnkConfig>) {
   const {
     terminalUIConfig,
@@ -72,22 +70,19 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   const core = new Core(defaultOptions);
   core.registerPlugin(RPCPlugin);
   core.registerPlugin(RPCClientPlugin);
-  // NetworkPlugin gives the browser HTTPService for direct HTTP (updater poll, shell
-  // session checks). Browser keeps the default IFetchProvider — proxy injection is
-  // node-only and handled in the server bootstrap.
+  core.registerPlugin(UIPlugin, {
+    container: ref!,
+  });
   core.registerPlugin(NetworkPlugin, { useFetchImpl: true });
+  core.registerPlugin(WebRendererPlugin);
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthUIPlugin);
   core.registerPlugin(SyncPlugin);
   core.registerPlugin(SyncUIPlugin);
-  core.registerPlugin(SharedTerminalPlugin);
-  core.registerPlugin(SharedTerminalUIPlugin);
-  core.registerPlugin(UIPlugin, {
-    container: ref!,
-  });
-  core.registerPlugin(WebRendererPlugin);
   core.registerPlugin(TerminalPlugin);
   core.registerPlugin(TerminalUIPlugin, terminalUIConfig);
+  core.registerPlugin(SharedTerminalPlugin);
+  core.registerPlugin(SharedTerminalUIPlugin);
   core.registerPlugin(SFTPUIPlugin);
   core.registerPlugin(SettingsUIPlugin);
   core.registerPlugin(ExtensionPlugin);

@@ -14,10 +14,10 @@
   "scripts": {
     "predev": "node ./scripts/ensure-node-abi.mjs",
     "dev": "node ./bin/dev.js",
+    "build": "vite build",
     "prestart": "node ./scripts/ensure-node-abi.mjs",
-    "start": "node ./bin/dev.js",
-    "typecheck": "tsgo --noEmit",
-    "build": "echo 'apps/web/server has no compile step — main.ts runs through vite/module-runner; image build (apps/web/Dockerfile) bundles every workspace dependency to lib/es first.' && exit 0"
+    "start": "node ./dist/main.mjs",
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@termlnk/agent-core": "workspace:*",
@@ -29,12 +29,15 @@
     "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
+    "@termlnk/shared-terminal": "workspace:*",
+    "@termlnk/shared-terminal-core": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/sync-core": "workspace:*",
     "@termlnk/web-server": "workspace:*"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
+    "@vitejs/plugin-react-swc": "^4.3.0",
     "vite": "^8.0.14"
   }
 }

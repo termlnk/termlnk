@@ -2,3 +2,6 @@
 .env
 .env.local
 .env.*.local
+
+# Production build output (vite build -> dist/main.js).
+dist/

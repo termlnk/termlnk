@@ -1110,6 +1110,12 @@ importers:
       '@termlnk/rpc-server':
         specifier: workspace:*
         version: link:../../../packages/rpc-server
+      '@termlnk/shared-terminal':
+        specifier: workspace:*
+        version: link:../../../packages/shared-terminal
+      '@termlnk/shared-terminal-core':
+        specifier: workspace:*
+        version: link:../../../packages/shared-terminal-core
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../../../packages/sync
@@ -1123,6 +1129,9 @@ importers:
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../../internal/shared
+      '@vitejs/plugin-react-swc':
+        specifier: ^4.3.0
+        version: 4.3.1(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.1)(tsx@4.22.3)(yaml@2.9.0))
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.1)(tsx@4.22.3)(yaml@2.9.0)
@@ -19814,9 +19823,7 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.85.3': {}
 
