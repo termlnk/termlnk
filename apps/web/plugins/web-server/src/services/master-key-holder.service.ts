@@ -15,6 +15,8 @@
 
 import type { Observable } from 'rxjs';
 import type { IWebServerConfig } from '../controllers/config.schema';
+import { randomBytes } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import process from 'node:process';
 // eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
 import { hkdf } from '@noble/hashes/hkdf.js';
@@ -231,14 +233,50 @@ export class MasterKeyHolderService extends Disposable implements IMasterKeyHold
       return cfg.masterPassword;
     }
     const envName = cfg.masterPasswordEnv ?? 'TERMLNK_MASTER_PASSWORD';
+
+    // Docker/k8s secrets convention: `<ENV>_FILE` points at a mounted file
+    // (e.g. /run/secrets/master_password) so the password never lands in the
+    // container's environment or `docker inspect` output. Takes precedence over
+    // the inline env var when both are set.
+    const fromFile = await this._readPasswordFile(`${envName}_FILE`);
+    if (fromFile) {
+      return fromFile;
+    }
+
     const fromEnv = process.env[envName];
     if (fromEnv && fromEnv.length > 0) {
       return fromEnv;
     }
     throw new Error(
       '[MasterKeyHolderService] no master password source available — '
-      + `set masterPassword or env "${envName}"`
+      + `set masterPassword, env "${envName}", or secrets file env "${envName}_FILE"`
     );
+  }
+
+  private async _readPasswordFile(fileEnvName: string): Promise<string | null> {
+    const filePath = process.env[fileEnvName]?.trim();
+    if (!filePath) {
+      return null;
+    }
+    let raw: string;
+    try {
+      raw = await readFile(filePath, 'utf8');
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `[MasterKeyHolderService] cannot read master password file "${filePath}" (from ${fileEnvName}): ${reason}`
+      );
+    }
+    // Strip UTF-8 BOM (silent corruption on Windows-edited secrets) and a single
+    // trailing newline (`echo > secret` adds one). Other whitespace could be a
+    // deliberate part of the passphrase, so preserve it.
+    const password = raw.replace(/^\uFEFF/, '').replace(/\r?\n$/, '');
+    if (password.length === 0) {
+      throw new Error(
+        `[MasterKeyHolderService] master password file "${filePath}" (from ${fileEnvName}) is empty`
+      );
+    }
+    return password;
   }
 
   private _deriveSubKeys(masterKey: Uint8Array): { authKey: Uint8Array; encKey: Uint8Array; indexKey: Uint8Array } {
@@ -251,7 +289,6 @@ export class MasterKeyHolderService extends Disposable implements IMasterKeyHold
   }
 
   private async _deriveAccessVerifier(password: string): Promise<IAccessVerifier> {
-    const { randomBytes } = await import('node:crypto');
     const saltSeed = new Uint8Array(randomBytes(SALT_LEN));
     // Mix in a domain tag so a leaked verifier cannot be cross-replayed against
     // any other Argon2id usage in the system that might share salt material.

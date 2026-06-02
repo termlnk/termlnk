@@ -71,7 +71,9 @@ export interface IWebServerConfig {
    *
    * Resolution order on startup:
    *   1. `masterPassword` (literal — only for tests; never set in production).
-   *   2. `masterPasswordEnv` env-var name (defaults to `TERMLNK_MASTER_PASSWORD`).
+   *   2. `<masterPasswordEnv>_FILE` file path (docker/k8s secrets; preferred in
+   *      production so the secret never appears in the container environment).
+   *   3. `masterPasswordEnv` env var (defaults to `TERMLNK_MASTER_PASSWORD`).
    *
    * Without any source available the server starts in `error` state with a
    * clear message; nothing else can come up because RPC procedures need the

@@ -15,6 +15,7 @@
 
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { IWebServerConfig } from '../controllers/config.schema';
+import process from 'node:process';
 import { ConfigService, IConfigService, ILogService as ILogServiceId, Injector } from '@termlnk/core';
 import { initTRPC } from '@trpc/server';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -262,6 +263,41 @@ describe('p7.1c — auth routes (login / logout / status, session cookie, idle t
     expect(getLogin.status).toBe(405);
     const getLogout = await fetch(`${bed.origin}${TERMLNK_WEB_AUTH_PATH_PREFIX}/logout`);
     expect(getLogout.status).toBe(405);
+  });
+
+  it('unlocks from a <ENV>_FILE secrets file and strips the trailing newline', { timeout: 30000 }, async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const dir = mkdtempSync(join(tmpdir(), 'tlw-secret-'));
+    const fileEnv = 'TERMLNK_TEST_PWD_NONEXISTENT_FILE';
+    try {
+      const secretPath = join(dir, 'master_password');
+      // Trailing newline mimics `printf '%s\n' pw > secret`; the holder must strip it.
+      // Prepend a UTF-8 BOM to verify the Windows-Notepad case is also stripped.
+      writeFileSync(secretPath, '﻿file-sourced-passphrase\n', 'utf8');
+      // setupBed pins masterPasswordEnv to TERMLNK_TEST_PWD_NONEXISTENT, so the
+      // file env the holder reads is that name plus the _FILE suffix.
+      process.env[fileEnv] = secretPath;
+
+      bed = await setupBed();
+      await bed.holder.initialize();
+
+      const status = await fetch(`${bed.origin}${TERMLNK_WEB_AUTH_PATH_PREFIX}/status`).then((r) => r.json()) as any;
+      expect(status.holderStatus).toBe('unlocked');
+
+      // BOM- and newline-stripped content is the valid access password.
+      const resp = await fetch(`${bed.origin}${TERMLNK_WEB_AUTH_PATH_PREFIX}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: 'file-sourced-passphrase' }),
+      });
+      expect(resp.status).toBe(200);
+    } finally {
+      delete process.env[fileEnv];
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
