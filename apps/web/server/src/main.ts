@@ -92,17 +92,10 @@ async function bootstrap(): Promise<void> {
     migrationsFolder,
     override: [
       [IDBAdaptorService, { useValue: dbAdaptor }],
-      // No Electron safeStorage here; LocalDerivedSecretCipher derives a
-      // device-bound key (hostname + username + fixed salt) which is enough
-      // to keep the SQLite file uninteresting to a casual disk grab.
       [ISecretCipherService, { useClass: LocalDerivedSecretCipher }],
     ],
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
-  // Same shape as desktop main: route all node-side HTTP through the user's
-  // configured proxy via NodeProxyFetchProvider. Registers HTTPService for
-  // any future node-side direct callers and aligns AI Provider / MCP / web
-  // tool fetches with the proxy preference stored in network.config.
   core.registerPlugin(NetworkPlugin, {
     useFetchImpl: true,
     override: [
@@ -112,8 +105,6 @@ async function bootstrap(): Promise<void> {
   core.registerPlugin(AuthPlugin);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl,
-    // OsHostnameDeviceNameProvider lives in ./platform/ so auth-core stays free of
-    // node:os imports.
     override: [
       [IDeviceNameProvider, { useClass: OsHostnameDeviceNameProvider }],
     ],
@@ -122,11 +113,6 @@ async function bootstrap(): Promise<void> {
   core.registerPlugin(SyncCorePlugin, {
     cloudBaseUrl,
   });
-  // SharedTerminalCorePlugin must follow AuthCorePlugin (HttpCollabInviteTransport
-  // resolves TokenManager from the same singleton) and DatabasePlugin (for the
-  // pairing/keypair repositories). Mirrors apps/desktop/main/src/bootstrap.ts.
-  // Node 24 has no native RTCPeerConnection — WebRTCTransportService's
-  // isSupported() returns false and CompositeTransportService falls back to relay.
   core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl, relayBaseUrl, inviteBaseUrl });
   core.registerPlugin(SharedTerminalCorePlugin);
   core.registerPlugin(AgentCorePlugin, {
