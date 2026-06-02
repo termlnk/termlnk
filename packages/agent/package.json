@@ -52,7 +52,7 @@
     "@termlnk/core": "workspace:*"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.77.0",
+    "@earendil-works/pi-ai": "^0.78.0",
     "@termlnk/core": "workspace:*"
   },
   "devDependencies": {

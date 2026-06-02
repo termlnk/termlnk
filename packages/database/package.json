@@ -54,7 +54,7 @@
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
-    "better-sqlite3": "^12.9.0",
+    "better-sqlite3": "^12.10.0",
     "nanoid": "^5.1.11",
     "rxjs": ">=7.0.0"
   },
@@ -62,7 +62,7 @@
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/terminal": "workspace:*",
-    "better-sqlite3": "^12.9.0",
+    "better-sqlite3": "^12.10.0",
     "drizzle-orm": "1.0.0-rc.3",
     "nanoid": "^5.1.11"
   },
