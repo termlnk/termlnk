@@ -18,9 +18,11 @@ import { Disposable, ILogService } from '@termlnk/core';
 import { IRPCClientService } from '@termlnk/rpc-client';
 
 // Browser-side IBrowserFileTransferService backed by sftp.writeFile / sftp.readFile.
-// tRPC's HTTP transport encodes the whole payload in one request and the standalone
-// adapter caps bodies at 1 MiB, so we pre-check size and reject loudly instead of
-// letting the server truncate silently.
+// Each call serializes the whole file as base64 inside one tRPC mutation/query body,
+// so memory peaks at ~1.5x the file size on both ends. The ceiling is a self-imposed
+// guard until the streaming SFTP procedure lands; it also stays clear of typical
+// reverse-proxy defaults (nginx client_max_body_size 1m, etc.). tRPC's standalone
+// adapter and Caddy v2 do not cap body size by themselves.
 const MAX_BYTES_PER_FILE = 4 * 1024 * 1024;
 
 export class BrowserFileTransferService extends Disposable implements IBrowserFileTransferService {

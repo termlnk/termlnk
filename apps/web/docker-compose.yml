@@ -1,24 +1,69 @@
+# termlnk-web — self-hosted server twin of the desktop app.
+#
+# Quick start:  ./install.sh                 (generates the secret + brings it up)
+# Manual:       printf '%s' 'your-strong-pass' > master_password.secret
+#               docker compose up -d
+# With HTTPS:   TERMLNK_WEB_DOMAIN=termlnk.example.com docker compose --profile tls up -d
+# Build local:  docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 services:
   termlnk-web:
-    build:
-      context: ../..
-      dockerfile: apps/web/Dockerfile
-    image: termlnk-web:latest
+    image: ghcr.io/termlnk/termlnk-web:${TERMLNK_WEB_TAG:-latest}
     restart: unless-stopped
+    # Loopback-only by default — terminate TLS in a reverse proxy in front (see
+    # the caddy profile below, or docs/agent/termlnk-web-self-hosting.md). With
+    # the tls profile, caddy reaches this over the compose network.
     ports:
       - "127.0.0.1:3000:3000"
     environment:
-      TERMLNK_MASTER_PASSWORD: ${TERMLNK_MASTER_PASSWORD:?TERMLNK_MASTER_PASSWORD must be set}
+      # Master password is read from a docker secret file, so it never lands in
+      # the container environment or `docker inspect`. See secrets: below.
+      TERMLNK_MASTER_PASSWORD_FILE: /run/secrets/master_password
       TERMLNK_WEB_HOST: "0.0.0.0"
       TERMLNK_WEB_PORT: "3000"
+    secrets:
+      - master_password
     volumes:
       - vault:/data
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/__termlnk-web/status >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    # Healthcheck is baked into the image (Dockerfile HEALTHCHECK via node fetch).
+
+  # Optional reverse proxy with automatic HTTPS (Let's Encrypt). Enable with:
+  #   TERMLNK_WEB_DOMAIN=my.example.com docker compose --profile tls up -d
+  # Requires the domain's A/AAAA record to point at this host and ports 80/443
+  # reachable from the internet.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["tls"]
+    restart: unless-stopped
+    depends_on:
+      - termlnk-web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Optional (not `:?`) because compose interpolates every service even
+      # when its profile is inactive — a `:?` would break the default `up`.
+      # The entrypoint below fails fast with a clear error if the var is empty
+      # when this profile is actually started.
+      TERMLNK_WEB_DOMAIN: ${TERMLNK_WEB_DOMAIN:-}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ -z "$$TERMLNK_WEB_DOMAIN" ]; then
+          echo "ERROR: TERMLNK_WEB_DOMAIN must be set when bringing up the tls profile (e.g. ./install.sh --tls my.example.com)" >&2
+          exit 1
+        fi
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+secrets:
+  master_password:
+    file: ./master_password.secret
 
 volumes:
   vault:
+  caddy_data:
+  caddy_config:

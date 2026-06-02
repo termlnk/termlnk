@@ -1,0 +1,13 @@
+# Build the image locally from source instead of pulling from ghcr.io.
+# Layer this on top of the base compose file:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml build
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d
+#
+# Useful for air-gapped hosts, local development, or testing image changes
+# before they are published.
+services:
+  termlnk-web:
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+    image: termlnk-web:local
