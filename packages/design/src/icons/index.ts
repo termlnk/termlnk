@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-export { default as LogoIcon } from './assets/logo.svg';
+export { LogoIcon } from './LogoIcon';
 export { Bot as BotIcon } from 'lucide-react';
 export { Files as FilesIcon } from 'lucide-react';
 export { PanelRightClose as PanelRightCloseIcon } from 'lucide-react';
