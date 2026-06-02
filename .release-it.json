@@ -28,7 +28,15 @@
       "workspaces": [
         "packages/*",
         "internal/*",
-        "apps/desktop"
+        "apps/desktop",
+        "apps/desktop/main",
+        "apps/desktop/renderer",
+        "apps/desktop/plugins/*",
+        "apps/web/server",
+        "apps/web/renderer",
+        "apps/web/plugins/*",
+        "apps/mobile",
+        "apps/mobile/packages/*"
       ]
     }
   }
