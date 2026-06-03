@@ -26,7 +26,7 @@ import { DEFAULT_HOST_ROOT, HostType } from '@termlnk/terminal';
 import { IContextMenuService, TooltipWrapper } from '@termlnk/ui';
 import { CirclePlus, FolderPlus, RotateCw } from 'lucide-react';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { debounceTime } from 'rxjs';
+import { buffer, debounceTime, filter, share } from 'rxjs';
 import { ToggleHostDialogCommand } from '../../commands/toggle-host-dialog.command';
 import { HostDialogMode } from '../../models/host-dialog.state';
 import { HOSTS_EXPLORER_BLANK_MENU, HOSTS_EXPLORER_FOCUSED_CONTEXT } from '../../services/hosts-explorer/contextmenu-positions';
@@ -209,16 +209,33 @@ export function HostExplorer() {
   }, [focusedItem, hostExplorerService, tree]);
 
   useEffect(() => {
-    const subscription = hostsManagerService.onChanged$().pipe(
-      debounceTime(50)
-    ).subscribe((event) => {
-      if (event.type === 'update') {
-        tree.getItemInstance(event.id)?.invalidateItemData();
-      } else {
-        tree.getItemInstance(event.pid)?.invalidateChildrenIds();
-        if (event.type === 'move') {
-          tree.getItemInstance(event.id)?.invalidateItemData();
+    // A cloud-sync pull writes many rows in one burst, emitting one changed$ per
+    // row. `debounceTime` would keep only the last event and drop the rest, so the
+    // tree stays empty after the first sync. Buffer the burst (closing 50ms after
+    // it goes quiet) and refresh every affected node instead. `share` keeps the
+    // single tRPC subscription shared between the buffer and its closing notifier.
+    const changed$ = hostsManagerService.onChanged$().pipe(share());
+    const subscription = changed$.pipe(
+      buffer(changed$.pipe(debounceTime(50))),
+      filter((events) => events.length > 0)
+    ).subscribe((events) => {
+      const childrenToRefresh = new Set<string>();
+      const dataToRefresh = new Set<string>();
+      for (const event of events) {
+        if (event.type === 'update') {
+          dataToRefresh.add(event.id);
+        } else {
+          childrenToRefresh.add(event.pid);
+          if (event.type === 'move') {
+            dataToRefresh.add(event.id);
+          }
         }
+      }
+      for (const id of dataToRefresh) {
+        tree.getItemInstance(id)?.invalidateItemData();
+      }
+      for (const pid of childrenToRefresh) {
+        tree.getItemInstance(pid)?.invalidateChildrenIds();
       }
     });
     return () => subscription.unsubscribe();
