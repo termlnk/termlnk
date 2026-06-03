@@ -29,17 +29,12 @@ Termlnk
 </summary>
 
 - [🌈 주요 특징](#-주요-특징)
-- [✨ 기능](#-기능)
-    - [🖥 터미널 및 세션](#-터미널-및-세션)
-    - [🔐 SSH 및 SFTP](#-ssh-및-sftp)
-    - [🤖 AI Agent](#-ai-agent)
-    - [🧩 플러그인 시스템](#-플러그인-시스템)
-    - [🎨 테마 시스템](#-테마-시스템)
-- [📸 스크린샷](#-스크린샷)
 - [🚀 빠른 시작](#-빠른-시작)
 - [💻 플랫폼 및 설치 안내](#-플랫폼-및-설치-안내)
+- [🌐 Web 에디션 셀프 호스팅](#-web-에디션-셀프-호스팅)
 - [🛠 개발](#-개발)
 - [🌐 국제화](#-국제화)
+- [📸 스크린샷](#-스크린샷)
 - [🤝 기여하기](#-기여하기)
 - [💬 커뮤니티](#-커뮤니티)
 - [🙏 감사의 말](#-감사의-말)
@@ -49,85 +44,16 @@ Termlnk
 
 ## 🌈 주요 특징
 
-- 🖥 **크로스 플랫폼 네이티브 터미널** — 로컬 퍼스트, 완전 오프라인 작동, macOS(Intel 및 Apple Silicon), Windows, Linux 지원.
-- 🔐 **풀 기능 SSH 클라이언트** — 트리 기반 호스트 탐색기, 키 인증, 프록시 점프, X11 포워딩.
-- 🤖 **내장 AI Agent** — 멀티턴 채팅 + MCP 도구 호출, OpenAI, Claude, Gemini, DeepSeek, Qwen 또는 OpenAI 호환 엔드포인트 간 자유 전환.
-- 📂 **SFTP 파일 브라우저** — 듀얼 팬 레이아웃, 드래그 앤 드롭 전송, 일괄 작업, 권한 편집기.
-- 🎨 **71개의 기본 테마** — NvChad Base46 호환(다크 56 + 라이트 15), 라이브 테마 에디터.
-- 🧩 **플러그인 아키텍처** — VS Code 스타일 기여 포인트, 마켓플레이스에서 원클릭 설치.
-- 🪟 **워크스페이스 분할** — 재귀 이진 트리 레이아웃, 드래그로 크기 조절, 확대 모드.
-- 🔗 **Shell 통합** — OSC 633 명령 추적, 작업 디렉터리 동기화, AI 지원 `terminal_run`.
-- 🏝 **Dynamic Island(macOS)** — 노치를 인식하는 AI Agent 세션용 플로팅 상태 오버레이. 세션 시작, 작업 완료, 승인 대기, 오류 등의 이벤트에 커스텀 사운드를 지정할 수 있습니다.
-- 🪟 **투명성 및 커스터마이징** — 블러, 불투명도, 폰트, 키바인딩 구성 가능.
+Termlnk는 빠른 네이티브 터미널, 풀 기능 SSH/SFTP 클라이언트, 내장 AI Agent를 하나의 앱에 통합합니다 —— 데스크톱에서도, 셀프 호스팅 후 브라우저에서도 사용할 수 있습니다.
 
-## ✨ 기능
-
-### 🖥 터미널 및 세션
-
-- 같은 워크스페이스 안에서 로컬 PTY와 원격 SSH 세션을 함께 사용.
-- 재귀 분할 레이아웃: 수평 / 수직 / 확대, 드래그로 크기 조절.
-- 풀 xterm.js 렌더링: 리거처, 트루 컬러, Sixel, 이미지 프로토콜.
-- 내장 버퍼 검색, 하이퍼링크 감지, IME 입력.
-- 재시작 시 세션 복원, 워크스페이스 단위 저장.
-
-### 🔐 SSH 및 SFTP
-
-- 계층적 호스트 트리, 그룹화 / 태그 / 드래그 재정렬 지원.
-- 비밀번호, 개인 키, SSH Agent 인증.
-- 프록시 점프 체인(`ProxyJump`)과 SOCKS5 프록시.
-- X11 포워딩, `trzsz` / `zmodem` 파일 전송.
-- 듀얼 팬 SFTP, 전송 대기열, 권한 편집기, 대량 작업.
-
-### 🤖 AI Agent
-
-- Markdown과 코드 하이라이트를 지원하는 채팅 패널.
-- MCP(Model Context Protocol) 클라이언트 — 로컬 및 원격 도구 서버에 연결 가능.
-- Provider 레지스트리: OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen, OpenAI 호환 엔드포인트.
-- `terminal_run` 도구로 사용자 승인 후 선택한 터미널에서 명령 실행.
-- Skill의 탐색, 설치 및 세션별 활성화.
-
-### 🧩 플러그인 시스템
-
-- VS Code 스타일 기여 포인트: 명령, 메뉴, UI 파트, 설정.
-- 마켓플레이스에서의 탐색, 설치, 활성화, 비활성화 흐름.
-- 격리된 플러그인 런타임, 안정적인 TypeScript API 제공.
-- 사용자 정의 React 컴포넌트를 임의의 `BuiltInUIPart` 위치에 주입 가능.
-
-### 🎨 테마 시스템
-
-- 71개의 내장 Base46 테마 — 다크 56개, 라이트 15개.
-- 요소별 커스터마이징: 터미널, 크롬, 구문 강조.
-- 실시간 미리보기 테마 에디터.
-- 앱 내 클래스는 Tailwind CSS v4 + `tm:` 콜론 접두사.
-
-## 📸 스크린샷
-
-<table>
-<tr>
-<td width="25%"><img src="screenshots/workspace.png" alt="워크스페이스" /></td>
-<td width="25%"><img src="screenshots/ssh-split.png" alt="SSH 분할" /></td>
-<td width="25%"><img src="screenshots/drag-split-screen.png" alt="드래그 분할" /></td>
-<td width="25%"><img src="screenshots/terminal-maximize.png" alt="터미널 확대" /></td>
-</tr>
-<tr>
-<td align="center"><b>워크스페이스</b></td>
-<td align="center"><b>SSH 분할</b></td>
-<td align="center"><b>드래그 분할</b></td>
-<td align="center"><b>팬 확대</b></td>
-</tr>
-<tr>
-<td width="25%"><img src="screenshots/agent.png" alt="AI Agent" /></td>
-<td width="25%"><img src="screenshots/sftp.png" alt="SFTP" /></td>
-<td width="25%"><img src="screenshots/themes.png" alt="테마" /></td>
-<td width="25%"><img src="screenshots/transparent.png" alt="투명 창" /></td>
-</tr>
-<tr>
-<td align="center"><b>AI Agent</b></td>
-<td align="center"><b>SFTP 브라우저</b></td>
-<td align="center"><b>71개 테마</b></td>
-<td align="center"><b>투명 창</b></td>
-</tr>
-</table>
+- 🖥 **터미널 및 세션** — 같은 워크스페이스에서 로컬 PTY와 원격 SSH를 함께 사용. 재귀 분할 / 확대 레이아웃, 풀 xterm.js 렌더링(리거처, 트루 컬러, Sixel, 이미지 프로토콜), 버퍼 검색, 하이퍼링크, IME 입력, Shell 통합(OSC 633), 세션 복원.
+- 🔐 **SSH 및 SFTP** — 계층적 호스트 트리와 비밀번호 / 키 / SSH Agent 인증, `ProxyJump` 체인, SOCKS5 및 X11 포워딩, 그리고 전송 대기열·`trzsz` / `zmodem`·권한 편집기를 갖춘 듀얼 팬 SFTP 브라우저.
+- 🤖 **AI Agent** — MCP 도구 서버를 활용한 멀티턴 채팅. OpenAI / Claude / Gemini / DeepSeek / Qwen 또는 OpenAI 호환 엔드포인트 간 전환 가능. 사용자 승인 방식의 `terminal_run` 도구와 세션별 Skill도 제공.
+- 🧩 **플러그인 시스템** — VS Code 스타일 기여 포인트(명령, 메뉴, UI 파트, 설정), 원클릭 마켓플레이스, 안정적인 TypeScript API, React 컴포넌트를 임의의 UI 위치에 주입.
+- 🎨 **테마 및 창** — 71개의 내장 Base46 테마(다크 56, 라이트 15) + 라이브 미리보기 에디터, 블러·불투명도·폰트·키바인딩 구성 가능.
+- 💻 **크로스 플랫폼 + 오프라인 퍼스트** — macOS(Intel 및 Apple Silicon), Windows, Linux용 네이티브 앱으로 완전 오프라인 작동.
+- 🌐 **셀프 호스팅 가능한 Web 에디션** — 동일한 터미널, SSH, AI Agent, SFTP를 브라우저에서. Docker 원커맨드 배포와 Caddy 자동 HTTPS 내장.
+- 🏝 **Dynamic Island(macOS)** — 노치를 인식하는 AI Agent 세션용 플로팅 상태 오버레이. 시작, 완료, 승인, 오류 사운드 지원.
 
 ## 🚀 빠른 시작
 
@@ -181,6 +107,34 @@ xattr -cr /Applications/Termlnk.app
 
 </details>
 
+## 🌐 Web 에디션 셀프 호스팅
+
+데스크톱 앱 외에도 Termlnk는 **termlnk-web** —— 셀프 호스팅 가능한 서버 트윈을 제공합니다. 데스크톱과 완전히 동일한 DI 컨테이너, 비즈니스 플러그인, vault를 실행하며 Electron IPC만 HTTP + WebSocket으로 교체했습니다. 최신 브라우저에서 터미널, 호스트, AI Agent, SFTP, 스킬에 접근할 수 있습니다.
+
+> ⚠ **termlnk-web은 신뢰할 수 있는 머신에서만 실행하세요.** vault 마스터 키를 보유하며 데스크톱 메인 프로세스와 동일한 실행 권한(SSH/SFTP 직접 연결, AI 추론, 로컬 파일 시스템 접근)을 가집니다. zero-knowledge 공개 백엔드가 **아닙니다**.
+
+사전 빌드된 멀티 아키텍처 이미지(amd64 / arm64)가 GHCR에 게시되어 있어 monorepo 전체를 clone할 필요가 없습니다.
+
+```bash
+cd apps/web
+
+# 원클릭: 강력한 master password 생성 → 이미지 pull → 시작 → 헬스 체크
+./install.sh
+
+# 자동 HTTPS(내장 Caddy + Let's Encrypt):
+./install.sh --tls termlnk.example.com
+```
+
+또는 Docker Compose로 수동 배포:
+
+```bash
+cd apps/web
+printf '%s' 'choose-a-strong-passphrase' > master_password.secret && chmod 600 master_password.secret
+docker compose up -d
+```
+
+원클릭 및 수동 배포, 리버스 프록시(Caddy / nginx) 설정, 환경 변수, 데이터 영속화, 업그레이드, 보안 체크리스트는 **[termlnk-web 배포 가이드](../apps/web/README.md)**를 참고하세요.
+
 ## 🛠 개발
 
 ```bash
@@ -205,6 +159,35 @@ Termlnk는 기본으로 5개 언어를 지원합니다.
 | 한국어 | `ko-KR` |
 
 새 언어 추가는 [기여 가이드](#-기여하기)를 참고하세요.
+
+## 📸 스크린샷
+
+<table>
+<tr>
+<td width="25%"><img src="screenshots/workspace.png" alt="워크스페이스" /></td>
+<td width="25%"><img src="screenshots/ssh-split.png" alt="SSH 분할" /></td>
+<td width="25%"><img src="screenshots/drag-split-screen.png" alt="드래그 분할" /></td>
+<td width="25%"><img src="screenshots/terminal-maximize.png" alt="터미널 확대" /></td>
+</tr>
+<tr>
+<td align="center"><b>워크스페이스</b></td>
+<td align="center"><b>SSH 분할</b></td>
+<td align="center"><b>드래그 분할</b></td>
+<td align="center"><b>팬 확대</b></td>
+</tr>
+<tr>
+<td width="25%"><img src="screenshots/agent.png" alt="AI Agent" /></td>
+<td width="25%"><img src="screenshots/sftp.png" alt="SFTP" /></td>
+<td width="25%"><img src="screenshots/themes.png" alt="테마" /></td>
+<td width="25%"><img src="screenshots/transparent.png" alt="투명 창" /></td>
+</tr>
+<tr>
+<td align="center"><b>AI Agent</b></td>
+<td align="center"><b>SFTP 브라우저</b></td>
+<td align="center"><b>71개 테마</b></td>
+<td align="center"><b>투명 창</b></td>
+</tr>
+</table>
 
 ## 🤝 기여하기
 

@@ -29,17 +29,12 @@ A modern, extensible smart terminal for developers.<br />
 </summary>
 
 - [🌈 Highlights](#-highlights)
-- [✨ Features](#-features)
-    - [🖥 Terminal &amp; Sessions](#-terminal--sessions)
-    - [🔐 SSH &amp; SFTP](#-ssh--sftp)
-    - [🤖 AI Agent](#-ai-agent)
-    - [🧩 Extension System](#-extension-system)
-    - [🎨 Theming](#-theming)
-- [📸 Screenshots](#-screenshots)
 - [🚀 Quick Start](#-quick-start)
 - [💻 Platform &amp; Installation Notes](#-platform--installation-notes)
+- [🌐 Web Edition (Self-Hosting)](#-web-edition-self-hosting)
 - [🛠 Development](#-development)
 - [🌐 Internationalization](#-internationalization)
+- [📸 Screenshots](#-screenshots)
 - [🤝 Contributing](#-contributing)
 - [💬 Community](#-community)
 - [🙏 Acknowledgements](#-acknowledgements)
@@ -49,85 +44,16 @@ A modern, extensible smart terminal for developers.<br />
 
 ## 🌈 Highlights
 
-- 🖥 **Cross-platform native terminal** — local-first, runs fully offline on macOS (Intel &amp; Apple Silicon), Windows, Linux.
-- 🔐 **Full-featured SSH client** — tree-based host explorer, key auth, proxy jump, X11 forwarding.
-- 🤖 **Built-in AI Agent** — multi-turn chat with MCP tool calling; swap freely between OpenAI, Claude, Gemini, DeepSeek, Qwen or any OpenAI-compatible endpoint.
-- 📂 **SFTP file browser** — dual-pane layout, drag-drop transfer, batch operations, permission editor.
-- 🎨 **71 themes out of the box** — NvChad Base46-compatible (56 dark + 15 light), live theme editor.
-- 🧩 **Plugin architecture** — VS Code-style contribution points with a marketplace for one-click install.
-- 🪟 **Workspace splits** — recursive binary-tree layout, drag-to-resize, magnify mode.
-- 🔗 **Shell integration** — OSC 633 command tracking, working-directory sync, AI-assisted `terminal_run`.
-- 🏝 **Dynamic Island (macOS)** — notch-aware floating status overlay for AI agent sessions with configurable sounds for session start, task complete, approval and errors.
-- 🪟 **Transparent &amp; customizable** — configurable blur, opacity, fonts and keybindings.
+Termlnk packs a fast native terminal, a complete SSH/SFTP client, and a built-in AI agent into a single app — on your desktop, or self-hosted in any browser.
 
-## ✨ Features
-
-### 🖥 Terminal &amp; Sessions
-
-- Local PTY and remote SSH sessions in a single workspace.
-- Recursive split layout: horizontal / vertical / magnify, drag to resize.
-- Full xterm.js rendering: ligatures, true color, Sixel, image protocols.
-- Built-in buffer search, hyperlink detection, IME input.
-- Session restore on restart and per-workspace persistence.
-
-### 🔐 SSH &amp; SFTP
-
-- Hierarchical host tree with grouping, tagging, drag-reorder.
-- Password, private key, and SSH-agent authentication.
-- Proxy jump chains (`ProxyJump`) and SOCKS5 proxy.
-- X11 forwarding, `trzsz` / `zmodem` file transfer.
-- Dual-pane SFTP with transfer queue, permission editor, and bulk ops.
-
-### 🤖 AI Agent
-
-- Chat panel with Markdown and syntax-highlighted code rendering.
-- MCP (Model Context Protocol) client — connect local and remote tool servers.
-- Provider registry: OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen, or any OpenAI-compatible endpoint.
-- `terminal_run` tool lets the agent execute commands in a chosen terminal with user approval.
-- Skill discovery, installation and per-session enabling.
-
-### 🧩 Extension System
-
-- VS Code-style contribution points: commands, menus, UI parts, settings.
-- Marketplace discovery, install, enable, and disable flows.
-- Isolated extension runtime with a stable TypeScript API.
-- Ship bundled React components into any `BuiltInUIPart` location.
-
-### 🎨 Theming
-
-- 71 built-in Base46 themes — 56 dark, 15 light.
-- Per-element customization: terminal, chrome, syntax.
-- Live preview theme editor.
-- Tailwind CSS v4 with the `tm:` colon prefix for in-app class names.
-
-## 📸 Screenshots
-
-<table>
-<tr>
-<td width="25%"><img src="docs/screenshots/workspace.png" alt="Workspace" /></td>
-<td width="25%"><img src="docs/screenshots/ssh-split.png" alt="SSH split" /></td>
-<td width="25%"><img src="docs/screenshots/drag-split-screen.png" alt="Drag to split" /></td>
-<td width="25%"><img src="docs/screenshots/terminal-maximize.png" alt="Terminal magnify" /></td>
-</tr>
-<tr>
-<td align="center"><b>Workspace</b></td>
-<td align="center"><b>SSH split</b></td>
-<td align="center"><b>Drag to split</b></td>
-<td align="center"><b>Magnify pane</b></td>
-</tr>
-<tr>
-<td width="25%"><img src="docs/screenshots/agent.png" alt="AI Agent" /></td>
-<td width="25%"><img src="docs/screenshots/sftp.png" alt="SFTP" /></td>
-<td width="25%"><img src="docs/screenshots/themes.png" alt="Themes" /></td>
-<td width="25%"><img src="docs/screenshots/transparent.png" alt="Transparent window" /></td>
-</tr>
-<tr>
-<td align="center"><b>AI Agent</b></td>
-<td align="center"><b>SFTP browser</b></td>
-<td align="center"><b>71 themes</b></td>
-<td align="center"><b>Transparent window</b></td>
-</tr>
-</table>
+- 🖥 **Terminal &amp; sessions** — local PTY and remote SSH in one workspace, with recursive split / magnify layouts, full xterm.js rendering (ligatures, true color, Sixel, image protocols), buffer search, hyperlinks, IME input, shell integration (OSC 633), and session restore.
+- 🔐 **SSH &amp; SFTP** — a hierarchical host tree with password / key / agent auth, `ProxyJump` chains, SOCKS5 and X11 forwarding, plus a dual-pane SFTP browser with transfer queue, `trzsz` / `zmodem`, and a permission editor.
+- 🤖 **AI agent** — multi-turn chat with MCP tool servers, swappable across OpenAI, Claude, Gemini, DeepSeek, Qwen or any OpenAI-compatible endpoint, plus an approval-gated `terminal_run` tool and per-session skills.
+- 🧩 **Extensions** — VS Code-style contribution points (commands, menus, UI parts, settings) with a one-click marketplace, a stable TypeScript API, and React components injectable into any UI slot.
+- 🎨 **Theming &amp; window** — 71 built-in Base46 themes (56 dark, 15 light) with a live editor, plus configurable blur, opacity, fonts, and keybindings.
+- 💻 **Cross-platform &amp; offline-first** — a native app for macOS (Intel &amp; Apple Silicon), Windows and Linux that runs fully offline.
+- 🌐 **Self-hostable web edition** — the same terminals, SSH, AI agent and SFTP from any browser, via a one-command Docker deploy with built-in Caddy auto-HTTPS.
+- 🏝 **Dynamic Island (macOS)** — a notch-aware status overlay for AI agent sessions, with sounds for start, completion, approvals and errors.
 
 ## 🚀 Quick Start
 
@@ -181,6 +107,34 @@ xattr -cr /Applications/Termlnk.app
 
 </details>
 
+## 🌐 Web Edition (Self-Hosting)
+
+Beyond the desktop app, Termlnk ships **termlnk-web** — a self-hosted server twin that runs the exact same DI container, business plugins, and vault, with Electron IPC swapped for HTTP + WebSocket. Reach your terminals, hosts, AI agent, SFTP, and skills from any modern browser.
+
+> ⚠ **Run termlnk-web only on a machine you trust.** It holds the vault master key and has the same execution power as the desktop's main process (direct SSH/SFTP, AI inference, local filesystem access). It is *not* a zero-knowledge public backend.
+
+Prebuilt multi-arch images (amd64 / arm64) are published to GHCR — no need to clone the monorepo.
+
+```bash
+cd apps/web
+
+# One-click: generate a strong master password, pull the image, start, health-check
+./install.sh
+
+# With automatic HTTPS (built-in Caddy + Let's Encrypt)
+./install.sh --tls termlnk.example.com
+```
+
+Or deploy manually with Docker Compose:
+
+```bash
+cd apps/web
+printf '%s' 'choose-a-strong-passphrase' > master_password.secret && chmod 600 master_password.secret
+docker compose up -d
+```
+
+See the **[termlnk-web deployment guide](apps/web/README.md)** for one-click &amp; manual deployment, reverse-proxy (Caddy / nginx) configs, environment variables, data persistence, upgrades, and the security checklist.
+
 ## 🛠 Development
 
 ```bash
@@ -205,6 +159,35 @@ Termlnk ships with 5 languages out of the box:
 | 한국어 | `ko-KR` |
 
 Help us add new languages by following the [contribution guide](#-contributing).
+
+## 📸 Screenshots
+
+<table>
+<tr>
+<td width="25%"><img src="docs/screenshots/workspace.png" alt="Workspace" /></td>
+<td width="25%"><img src="docs/screenshots/ssh-split.png" alt="SSH split" /></td>
+<td width="25%"><img src="docs/screenshots/drag-split-screen.png" alt="Drag to split" /></td>
+<td width="25%"><img src="docs/screenshots/terminal-maximize.png" alt="Terminal magnify" /></td>
+</tr>
+<tr>
+<td align="center"><b>Workspace</b></td>
+<td align="center"><b>SSH split</b></td>
+<td align="center"><b>Drag to split</b></td>
+<td align="center"><b>Magnify pane</b></td>
+</tr>
+<tr>
+<td width="25%"><img src="docs/screenshots/agent.png" alt="AI Agent" /></td>
+<td width="25%"><img src="docs/screenshots/sftp.png" alt="SFTP" /></td>
+<td width="25%"><img src="docs/screenshots/themes.png" alt="Themes" /></td>
+<td width="25%"><img src="docs/screenshots/transparent.png" alt="Transparent window" /></td>
+</tr>
+<tr>
+<td align="center"><b>AI Agent</b></td>
+<td align="center"><b>SFTP browser</b></td>
+<td align="center"><b>71 themes</b></td>
+<td align="center"><b>Transparent window</b></td>
+</tr>
+</table>
 
 ## 🤝 Contributing
 

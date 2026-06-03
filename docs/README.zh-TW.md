@@ -29,17 +29,12 @@ Termlnk
 </summary>
 
 - [🌈 亮點](#-亮點)
-- [✨ 功能](#-功能)
-    - [🖥 終端與工作階段](#-終端與工作階段)
-    - [🔐 SSH 與 SFTP](#-ssh-與-sftp)
-    - [🤖 AI Agent](#-ai-agent)
-    - [🧩 外掛系統](#-外掛系統)
-    - [🎨 主題系統](#-主題系統)
-- [📸 螢幕截圖](#-螢幕截圖)
 - [🚀 快速開始](#-快速開始)
 - [💻 平台與安裝說明](#-平台與安裝說明)
+- [🌐 Web 版自架部署](#-web-版自架部署)
 - [🛠 開發](#-開發)
 - [🌐 國際化](#-國際化)
+- [📸 螢幕截圖](#-螢幕截圖)
 - [🤝 貢獻](#-貢獻)
 - [💬 社群](#-社群)
 - [🙏 致謝](#-致謝)
@@ -49,85 +44,16 @@ Termlnk
 
 ## 🌈 亮點
 
-- 🖥 **跨平台原生終端** — 本機優先，完全離線可用，支援 macOS（Intel 與 Apple Silicon）、Windows、Linux。
-- 🔐 **功能完備的 SSH 用戶端** — 樹狀主機瀏覽器、金鑰認證、Proxy Jump、X11 轉發。
-- 🤖 **內建 AI Agent** — 多輪對話 + MCP 工具呼叫，可在 OpenAI、Claude、Gemini、DeepSeek、Qwen 或任意 OpenAI 相容端點間自由切換。
-- 📂 **SFTP 檔案瀏覽** — 雙面板佈局、拖放傳輸、批次操作、權限編輯。
-- 🎨 **71 款開箱主題** — 相容 NvChad Base46（56 深色 + 15 淺色），內建主題編輯器。
-- 🧩 **外掛式架構** — 類 VS Code 貢獻點機制，支援外掛市集一鍵安裝。
-- 🪟 **工作區分割** — 遞迴二元樹佈局，可拖曳調整，支援放大模式。
-- 🔗 **Shell 整合** — OSC 633 命令追蹤、目錄同步、AI 輔助的 `terminal_run`。
-- 🏝 **靈動島（macOS）** — 適配瀏海屏的 AI Agent 會話浮動狀態提示，支援會話啟動、任務完成、待審批與錯誤等事件的自訂音效。
-- 🪟 **透明與深度自訂** — 可配置模糊、透明度、字型與快捷鍵。
+Termlnk 將快速的原生終端、功能完備的 SSH/SFTP 用戶端與內建 AI Agent 整合在單一應用中 —— 既可在桌面執行，也可自架後從任意瀏覽器存取。
 
-## ✨ 功能
-
-### 🖥 終端與工作階段
-
-- 同一工作區內並存本地 PTY 與遠端 SSH 會話。
-- 遞迴分割佈局：水平、垂直、放大，可拖曳調整。
-- 完整 xterm.js 渲染：連字、全彩、Sixel、影像協定。
-- 內建緩衝區搜尋、超連結偵測、IME 輸入。
-- 重新啟動後自動恢復工作階段，可按工作區持久化。
-
-### 🔐 SSH 與 SFTP
-
-- 階層式主機樹，支援分組、標籤、拖曳排序。
-- 密碼、私鑰、SSH Agent 驗證。
-- Proxy Jump 鏈（`ProxyJump`）與 SOCKS5 代理。
-- X11 轉發，`trzsz` / `zmodem` 檔案傳輸。
-- 雙面板 SFTP，帶傳輸佇列、權限編輯、批次操作。
-
-### 🤖 AI Agent
-
-- 聊天面板支援 Markdown 與程式碼高亮渲染。
-- MCP（Model Context Protocol）用戶端，可連接本地與遠端工具伺服器。
-- Provider 註冊表：OpenAI、Anthropic、Google Gemini、DeepSeek、Qwen 或任意 OpenAI 相容端點。
-- `terminal_run` 工具讓 Agent 在指定終端中執行命令（需使用者確認）。
-- Skill 的探索、安裝與按工作階段啟用。
-
-### 🧩 外掛系統
-
-- 類 VS Code 貢獻點：命令、選單、UI 部件、設定。
-- 外掛市集的探索、安裝、啟用、停用流程。
-- 隔離的外掛執行階段，提供穩定的 TypeScript API。
-- 可將自訂 React 元件注入任意 `BuiltInUIPart` 位置。
-
-### 🎨 主題系統
-
-- 71 款內建 Base46 主題 — 56 深色、15 淺色。
-- 分元素自訂：終端、視窗、語法高亮。
-- 即時預覽主題編輯器。
-- Tailwind CSS v4 + `tm:` colon 前綴於應用內使用。
-
-## 📸 螢幕截圖
-
-<table>
-<tr>
-<td width="25%"><img src="screenshots/workspace.png" alt="工作區" /></td>
-<td width="25%"><img src="screenshots/ssh-split.png" alt="SSH 分割" /></td>
-<td width="25%"><img src="screenshots/drag-split-screen.png" alt="拖曳分割" /></td>
-<td width="25%"><img src="screenshots/terminal-maximize.png" alt="終端放大" /></td>
-</tr>
-<tr>
-<td align="center"><b>工作區</b></td>
-<td align="center"><b>SSH 分割</b></td>
-<td align="center"><b>拖曳分割</b></td>
-<td align="center"><b>窗格放大</b></td>
-</tr>
-<tr>
-<td width="25%"><img src="screenshots/agent.png" alt="AI Agent" /></td>
-<td width="25%"><img src="screenshots/sftp.png" alt="SFTP" /></td>
-<td width="25%"><img src="screenshots/themes.png" alt="主題" /></td>
-<td width="25%"><img src="screenshots/transparent.png" alt="透明視窗" /></td>
-</tr>
-<tr>
-<td align="center"><b>AI Agent</b></td>
-<td align="center"><b>SFTP 瀏覽器</b></td>
-<td align="center"><b>71 款主題</b></td>
-<td align="center"><b>透明視窗</b></td>
-</tr>
-</table>
+- 🖥 **終端與工作階段** — 同一工作區並存本地 PTY 與遠端 SSH，遞迴分割 / 放大佈局，完整 xterm.js 渲染（連字、全彩、Sixel、影像協定），緩衝區搜尋、超連結、IME 輸入、Shell 整合（OSC 633）與工作階段恢復。
+- 🔐 **SSH 與 SFTP** — 階層式主機樹，支援密碼 / 金鑰 / SSH Agent 驗證、`ProxyJump` 跳板鏈、SOCKS5 與 X11 轉發，外加雙面板 SFTP 瀏覽器（傳輸佇列、`trzsz` / `zmodem`、權限編輯）。
+- 🤖 **AI Agent** — 多輪對話 + MCP 工具伺服器，可在 OpenAI、Claude、Gemini、DeepSeek、Qwen 或任意 OpenAI 相容端點間切換，並提供需使用者確認的 `terminal_run` 工具與按工作階段啟用的 Skill。
+- 🧩 **外掛系統** — 類 VS Code 貢獻點（命令、選單、UI 部件、設定），外掛市集一鍵安裝，穩定的 TypeScript API，可將 React 元件注入任意 UI 位置。
+- 🎨 **主題與視窗** — 71 款內建 Base46 主題（56 深色、15 淺色）+ 即時預覽編輯器，可配置模糊、透明度、字型與快捷鍵。
+- 💻 **跨平台 + 離線優先** — 面向 macOS（Intel 與 Apple Silicon）、Windows、Linux 的原生應用，完全離線可用。
+- 🌐 **可自架的 Web 版** — 在任意瀏覽器中使用同一套終端、SSH、AI Agent 與 SFTP，一條命令完成 Docker 部署，內建 Caddy 自動 HTTPS。
+- 🏝 **靈動島（macOS）** — 適配瀏海屏的 AI Agent 會話浮動狀態提示，支援啟動、完成、待審批與錯誤音效。
 
 ## 🚀 快速開始
 
@@ -181,6 +107,34 @@ xattr -cr /Applications/Termlnk.app
 
 </details>
 
+## 🌐 Web 版自架部署
+
+除桌面應用外，Termlnk 還提供 **termlnk-web** —— 一個可自架的伺服器孿生版本，執行與桌面端完全相同的 DI 容器、業務外掛與 vault，只是把 Electron IPC 換成了 HTTP + WebSocket。你可以在任意現代瀏覽器中存取自己的終端、主機、AI Agent、SFTP 與 skill。
+
+> ⚠ **termlnk-web 只能部署在你信任的機器上。** 它持有 vault master key，與桌面端主行程擁有相同的執行權限（直連 SSH/SFTP、跑 AI 推理、讀取本機檔案系統），**不是** zero-knowledge 公共後端。
+
+預建置多架構映像（amd64 / arm64）已發佈到 GHCR，無需 clone 整個 monorepo。
+
+```bash
+cd apps/web
+
+# 一鍵部署：產生強 master password、拉映像、啟動、健康檢查
+./install.sh
+
+# 需要自動 HTTPS（內建 Caddy + Let's Encrypt）：
+./install.sh --tls termlnk.example.com
+```
+
+或使用 Docker Compose 手動部署：
+
+```bash
+cd apps/web
+printf '%s' 'choose-a-strong-passphrase' > master_password.secret && chmod 600 master_password.secret
+docker compose up -d
+```
+
+一鍵與手動部署、反代（Caddy / nginx）設定、環境變數、資料持久化、升級與安全檢查清單，詳見 **[termlnk-web 部署指南](../apps/web/README.md)**。
+
 ## 🛠 開發
 
 ```bash
@@ -205,6 +159,35 @@ Termlnk 開箱支援 5 種語言：
 | 한국어 | `ko-KR` |
 
 按 [貢獻指南](#-貢獻) 參與新語言的添加。
+
+## 📸 螢幕截圖
+
+<table>
+<tr>
+<td width="25%"><img src="screenshots/workspace.png" alt="工作區" /></td>
+<td width="25%"><img src="screenshots/ssh-split.png" alt="SSH 分割" /></td>
+<td width="25%"><img src="screenshots/drag-split-screen.png" alt="拖曳分割" /></td>
+<td width="25%"><img src="screenshots/terminal-maximize.png" alt="終端放大" /></td>
+</tr>
+<tr>
+<td align="center"><b>工作區</b></td>
+<td align="center"><b>SSH 分割</b></td>
+<td align="center"><b>拖曳分割</b></td>
+<td align="center"><b>窗格放大</b></td>
+</tr>
+<tr>
+<td width="25%"><img src="screenshots/agent.png" alt="AI Agent" /></td>
+<td width="25%"><img src="screenshots/sftp.png" alt="SFTP" /></td>
+<td width="25%"><img src="screenshots/themes.png" alt="主題" /></td>
+<td width="25%"><img src="screenshots/transparent.png" alt="透明視窗" /></td>
+</tr>
+<tr>
+<td align="center"><b>AI Agent</b></td>
+<td align="center"><b>SFTP 瀏覽器</b></td>
+<td align="center"><b>71 款主題</b></td>
+<td align="center"><b>透明視窗</b></td>
+</tr>
+</table>
 
 ## 🤝 貢獻
 

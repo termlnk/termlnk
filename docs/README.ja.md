@@ -29,17 +29,12 @@ Termlnk
 </summary>
 
 - [🌈 ハイライト](#-ハイライト)
-- [✨ 機能](#-機能)
-    - [🖥 ターミナルとセッション](#-ターミナルとセッション)
-    - [🔐 SSH と SFTP](#-ssh-と-sftp)
-    - [🤖 AI Agent](#-ai-agent)
-    - [🧩 プラグインシステム](#-プラグインシステム)
-    - [🎨 テーマシステム](#-テーマシステム)
-- [📸 スクリーンショット](#-スクリーンショット)
 - [🚀 クイックスタート](#-クイックスタート)
 - [💻 プラットフォームとインストール上の注意](#-プラットフォームとインストール上の注意)
+- [🌐 Web 版セルフホスティング](#-web-版セルフホスティング)
 - [🛠 開発](#-開発)
 - [🌐 国際化](#-国際化)
+- [📸 スクリーンショット](#-スクリーンショット)
 - [🤝 コントリビュート](#-コントリビュート)
 - [💬 コミュニティ](#-コミュニティ)
 - [🙏 謝辞](#-謝辞)
@@ -49,85 +44,16 @@ Termlnk
 
 ## 🌈 ハイライト
 
-- 🖥 **クロスプラットフォームネイティブターミナル** — ローカルファースト、完全オフラインで動作し、macOS（Intel および Apple Silicon）、Windows、Linux をサポート。
-- 🔐 **フル機能の SSH クライアント** — ツリー状ホストエクスプローラ、鍵認証、プロキシジャンプ、X11 転送。
-- 🤖 **内蔵 AI Agent** — マルチターン対話 + MCP ツール呼び出し、OpenAI / Claude / Gemini / DeepSeek / Qwen または OpenAI 互換エンドポイントを自由に切り替え可能。
-- 📂 **SFTP ファイルブラウザ** — デュアルペイン、ドラッグ＆ドロップ転送、バッチ操作、パーミッション編集。
-- 🎨 **71 種類のテーマ内蔵** — NvChad Base46 互換（ダーク 56 + ライト 15）、ライブテーマエディタ。
-- 🧩 **プラグインアーキテクチャ** — VS Code 風のコントリビューションポイント、マーケットプレイスからワンクリックインストール。
-- 🪟 **ワークスペース分割** — 再帰的二分木レイアウト、ドラッグでリサイズ、拡大モード。
-- 🔗 **Shell 統合** — OSC 633 コマンド追跡、cwd 同期、AI 支援の `terminal_run`。
-- 🏝 **Dynamic Island（macOS）** — ノッチに対応した AI Agent セッション用の浮動ステータスオーバーレイ。セッション開始、タスク完了、承認待ち、エラーなどのイベントにカスタムサウンドを設定可能。
-- 🪟 **透明化と細かなカスタマイズ** — ブラー、不透明度、フォント、キーバインドを設定可能。
+Termlnk は、高速なネイティブターミナル、フル機能の SSH/SFTP クライアント、内蔵 AI Agent を 1 つのアプリに統合しています —— デスクトップでも、セルフホストしてブラウザからでも利用できます。
 
-## ✨ 機能
-
-### 🖥 ターミナルとセッション
-
-- 同一ワークスペース内にローカル PTY とリモート SSH を併存。
-- 再帰的分割レイアウト：水平 / 垂直 / 拡大、ドラッグでリサイズ。
-- フル xterm.js レンダリング：リガチャ、トゥルーカラー、Sixel、画像プロトコル。
-- 内蔵バッファ検索、ハイパーリンク検出、IME 入力。
-- 再起動後のセッション復元、ワークスペース単位で永続化。
-
-### 🔐 SSH と SFTP
-
-- 階層化ホストツリー、グループ化、タグ、ドラッグ並べ替え対応。
-- パスワード、秘密鍵、SSH Agent 認証。
-- プロキシジャンプチェーン（`ProxyJump`）と SOCKS5 プロキシ。
-- X11 転送、`trzsz` / `zmodem` ファイル転送。
-- デュアルペイン SFTP、転送キュー、パーミッション編集、一括操作。
-
-### 🤖 AI Agent
-
-- Markdown とコードハイライト対応のチャットパネル。
-- MCP（Model Context Protocol）クライアント、ローカル・リモートのツールサーバーに接続可能。
-- Provider レジストリ：OpenAI、Anthropic、Google Gemini、DeepSeek、Qwen、OpenAI 互換エンドポイント。
-- `terminal_run` ツールにより、ユーザー承認のうえ指定ターミナルでコマンドを実行。
-- Skill の発見・インストール・セッション単位の有効化。
-
-### 🧩 プラグインシステム
-
-- VS Code 風コントリビューションポイント：コマンド、メニュー、UI パーツ、設定。
-- マーケットプレイスでの発見・インストール・有効化・無効化。
-- 隔離されたプラグインランタイム、安定した TypeScript API を提供。
-- 独自 React コンポーネントを任意の `BuiltInUIPart` にマウント可能。
-
-### 🎨 テーマシステム
-
-- 71 種類の Base46 テーマ内蔵 — ダーク 56、ライト 15。
-- 要素別カスタマイズ：ターミナル、クローム、シンタックスハイライト。
-- ライブプレビュー付きテーマエディタ。
-- アプリ内クラスには Tailwind CSS v4 + `tm:` コロンプレフィックスを使用。
-
-## 📸 スクリーンショット
-
-<table>
-<tr>
-<td width="25%"><img src="screenshots/workspace.png" alt="ワークスペース" /></td>
-<td width="25%"><img src="screenshots/ssh-split.png" alt="SSH 分割" /></td>
-<td width="25%"><img src="screenshots/drag-split-screen.png" alt="ドラッグ分割" /></td>
-<td width="25%"><img src="screenshots/terminal-maximize.png" alt="ターミナル拡大" /></td>
-</tr>
-<tr>
-<td align="center"><b>ワークスペース</b></td>
-<td align="center"><b>SSH 分割</b></td>
-<td align="center"><b>ドラッグ分割</b></td>
-<td align="center"><b>ペイン拡大</b></td>
-</tr>
-<tr>
-<td width="25%"><img src="screenshots/agent.png" alt="AI Agent" /></td>
-<td width="25%"><img src="screenshots/sftp.png" alt="SFTP" /></td>
-<td width="25%"><img src="screenshots/themes.png" alt="テーマ" /></td>
-<td width="25%"><img src="screenshots/transparent.png" alt="透明ウィンドウ" /></td>
-</tr>
-<tr>
-<td align="center"><b>AI Agent</b></td>
-<td align="center"><b>SFTP ブラウザ</b></td>
-<td align="center"><b>71 テーマ</b></td>
-<td align="center"><b>透明ウィンドウ</b></td>
-</tr>
-</table>
+- 🖥 **ターミナルとセッション** — 同一ワークスペースにローカル PTY とリモート SSH を併存。再帰的な分割 / 拡大レイアウト、フル xterm.js レンダリング（リガチャ、トゥルーカラー、Sixel、画像プロトコル）、バッファ検索、ハイパーリンク、IME 入力、Shell 統合（OSC 633）、セッション復元。
+- 🔐 **SSH と SFTP** — 階層化ホストツリーとパスワード / 鍵 / SSH Agent 認証、`ProxyJump` チェーン、SOCKS5 と X11 転送、さらに転送キュー・`trzsz` / `zmodem`・パーミッション編集を備えたデュアルペイン SFTP ブラウザ。
+- 🤖 **AI Agent** — MCP ツールサーバーを使ったマルチターン対話。OpenAI / Claude / Gemini / DeepSeek / Qwen または OpenAI 互換エンドポイントを切り替え可能。ユーザー承認制の `terminal_run` ツールとセッション単位の Skill も。
+- 🧩 **プラグインシステム** — VS Code 風コントリビューションポイント（コマンド、メニュー、UI パーツ、設定）、ワンクリックのマーケットプレイス、安定した TypeScript API、任意の UI 位置に React コンポーネントを注入。
+- 🎨 **テーマとウィンドウ** — 71 種類の Base46 テーマ内蔵（ダーク 56、ライト 15）+ ライブプレビューエディタ、ブラー・不透明度・フォント・キーバインドを設定可能。
+- 💻 **クロスプラットフォーム + オフラインファースト** — macOS（Intel および Apple Silicon）、Windows、Linux 向けのネイティブアプリで、完全オフラインで動作。
+- 🌐 **セルフホスト可能な Web 版** — 同じターミナル / SSH / AI Agent / SFTP をブラウザから。Docker のワンコマンド配置と Caddy 自動 HTTPS を内蔵。
+- 🏝 **Dynamic Island（macOS）** — ノッチに対応した AI Agent セッション用の浮動ステータスオーバーレイ。開始・完了・承認・エラーのサウンドに対応。
 
 ## 🚀 クイックスタート
 
@@ -181,6 +107,34 @@ xattr -cr /Applications/Termlnk.app
 
 </details>
 
+## 🌐 Web 版セルフホスティング
+
+デスクトップアプリに加え、Termlnk は **termlnk-web** —— セルフホスト可能なサーバー版を提供します。デスクトップと完全に同じ DI コンテナ・業務プラグイン・vault を実行し、Electron IPC を HTTP + WebSocket に置き換えただけです。あらゆるモダンブラウザから、ターミナル・ホスト・AI Agent・SFTP・スキルにアクセスできます。
+
+> ⚠ **termlnk-web は信頼できるマシンでのみ実行してください。** vault のマスターキーを保持し、デスクトップのメインプロセスと同じ実行権限（SSH/SFTP への直接接続、AI 推論、ローカルファイルシステムへのアクセス）を持ちます。zero-knowledge な公開バックエンドでは **ありません**。
+
+ビルド済みのマルチアーキテクチャイメージ（amd64 / arm64）が GHCR で公開されており、monorepo 全体を clone する必要はありません。
+
+```bash
+cd apps/web
+
+# ワンクリック：強力な master password を生成 → イメージ取得 → 起動 → ヘルスチェック
+./install.sh
+
+# 自動 HTTPS（内蔵 Caddy + Let's Encrypt）：
+./install.sh --tls termlnk.example.com
+```
+
+または Docker Compose で手動配置：
+
+```bash
+cd apps/web
+printf '%s' 'choose-a-strong-passphrase' > master_password.secret && chmod 600 master_password.secret
+docker compose up -d
+```
+
+ワンクリック / 手動配置、リバースプロキシ（Caddy / nginx）設定、環境変数、データ永続化、アップグレード、セキュリティチェックリストは **[termlnk-web デプロイガイド](../apps/web/README.md)** を参照してください。
+
 ## 🛠 開発
 
 ```bash
@@ -205,6 +159,35 @@ Termlnk は標準で 5 言語をサポートします。
 | 한국어 | `ko-KR` |
 
 新しい言語の追加は [コントリビュートガイド](#-コントリビュート) を参照してください。
+
+## 📸 スクリーンショット
+
+<table>
+<tr>
+<td width="25%"><img src="screenshots/workspace.png" alt="ワークスペース" /></td>
+<td width="25%"><img src="screenshots/ssh-split.png" alt="SSH 分割" /></td>
+<td width="25%"><img src="screenshots/drag-split-screen.png" alt="ドラッグ分割" /></td>
+<td width="25%"><img src="screenshots/terminal-maximize.png" alt="ターミナル拡大" /></td>
+</tr>
+<tr>
+<td align="center"><b>ワークスペース</b></td>
+<td align="center"><b>SSH 分割</b></td>
+<td align="center"><b>ドラッグ分割</b></td>
+<td align="center"><b>ペイン拡大</b></td>
+</tr>
+<tr>
+<td width="25%"><img src="screenshots/agent.png" alt="AI Agent" /></td>
+<td width="25%"><img src="screenshots/sftp.png" alt="SFTP" /></td>
+<td width="25%"><img src="screenshots/themes.png" alt="テーマ" /></td>
+<td width="25%"><img src="screenshots/transparent.png" alt="透明ウィンドウ" /></td>
+</tr>
+<tr>
+<td align="center"><b>AI Agent</b></td>
+<td align="center"><b>SFTP ブラウザ</b></td>
+<td align="center"><b>71 テーマ</b></td>
+<td align="center"><b>透明ウィンドウ</b></td>
+</tr>
+</table>
 
 ## 🤝 コントリビュート
 
