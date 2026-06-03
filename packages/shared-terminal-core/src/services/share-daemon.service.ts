@@ -197,6 +197,19 @@ export class ShareDaemonService extends Disposable implements IShareDaemonServic
       this._handleInboundFrame(sessionId, inbound.source, inbound.frame);
     }));
 
+    // 4. transport.peerLeft$ → mux.detachClient. The relay is the authoritative
+    //    source for joiner liveness; a peer_left lets us drop the participant
+    //    immediately instead of waiting for the heartbeat reaper. detachClient
+    //    is idempotent (no-op for an unknown clientId), so a later reap of the
+    //    same client is harmless.
+    subscriptions.push(transport.peerLeft$.subscribe((connectionId) => {
+      try {
+        this._mux.detachClient(sessionId, connectionId);
+      } catch (err) {
+        this._logService.warn(`[ShareDaemonService] detachClient on peer_left failed for ${sessionId}/${connectionId}:`, err);
+      }
+    }));
+
     this._attached.set(sessionId, { transport, subscriptions, daemonSeq: 0, candidateKeys });
   }
 

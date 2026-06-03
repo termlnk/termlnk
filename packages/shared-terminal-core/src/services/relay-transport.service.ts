@@ -94,6 +94,16 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   private readonly _terminalError$ = new Subject<{ code: number; reason: string }>();
   readonly terminalError$: Observable<{ code: number; reason: string }> = this._terminalError$.asObservable();
 
+  /**
+   * Fires when the relay reports that a participant connection closed (after
+   * the relay's grace window). Carries the relay-assigned connectionId of the
+   * departed peer. Daemon-side ShareDaemonService subscribes to detach the
+   * participant from the mux immediately, instead of waiting for the heartbeat
+   * reaper. Joiner-mode transports never receive this envelope.
+   */
+  private readonly _peerLeft$ = new Subject<string>();
+  readonly peerLeft$: Observable<string> = this._peerLeft$.asObservable();
+
   private readonly _webSocketCtor: RelayWebSocketCtor;
   private _ws: Nullable<IRelayWebSocket> = null;
   private _options: Nullable<ITransportConnectOptions> = null;
@@ -124,6 +134,7 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     this._connectionId$.complete();
     this._frames$.complete();
     this._terminalError$.complete();
+    this._peerLeft$.complete();
   }
 
   async connect(options: ITransportConnectOptions, sharedKey: ISharedKey): Promise<void> {
@@ -300,6 +311,13 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
 
     if (envelope.type === 'ready' && envelope.connectionId) {
       this._connectionId$.next(envelope.connectionId);
+      return;
+    }
+    if (envelope.type === 'peer_left' && envelope.connectionId) {
+      // Relay tells the daemon a participant's connection closed (after its
+      // grace window). Surface the connectionId so ShareDaemonService detaches
+      // the participant from the mux immediately.
+      this._peerLeft$.next(envelope.connectionId);
       return;
     }
     if (envelope.type === 'pong') {

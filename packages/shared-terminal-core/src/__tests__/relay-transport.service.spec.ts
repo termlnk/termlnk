@@ -160,6 +160,27 @@ describe('RelayTransportService', () => {
     expect(received).toEqual(['from-daemon']);
   });
 
+  it('surfaces relay peer_left envelopes on peerLeft$', async () => {
+    const left: string[] = [];
+    service.peerLeft$.subscribe((id) => left.push(id));
+    const connectPromise = service.connect({
+      relayBaseUrl: 'wss://relay.example.test/v1',
+      sessionId: 'session-1',
+      accountToken: 'token-1',
+      mode: 'daemon',
+    }, { bytes: new Uint8Array(32).fill(7) });
+    sockets[0]!.emit('open', {});
+    await connectPromise;
+
+    // peer_left is a plaintext control envelope (relay holds no session key),
+    // recognised before the frame-decrypt path — same shape as ready/pong/error.
+    sockets[0]!.emit('message', {
+      data: JSON.stringify({ type: 'peer_left', connectionId: 'c1' }),
+    });
+
+    expect(left).toEqual(['c1']);
+  });
+
   it('rejects daemon-only operations in client mode', async () => {
     const connectPromise = service.connect({
       relayBaseUrl: 'wss://relay.example.test/v1',

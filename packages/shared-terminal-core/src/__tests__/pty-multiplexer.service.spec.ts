@@ -330,6 +330,35 @@ describe('PtyMultiplexerService', () => {
     expect(participants).toHaveLength(0);
   });
 
+  it('detachClient broadcasts participant_left and keeps remaining participants listed', () => {
+    const ts = createSource('s1');
+    mux.register(ts.source);
+    mux.attachClient('s1', 'a', SharedTerminalRole.CoPilot);
+    mux.attachClient('s1', 'b', SharedTerminalRole.CoPilot);
+    outbound = [];
+
+    // detachClient is the path driven by a relay peer_left — it must both update
+    // the owner participant list and tell the surviving joiners someone left.
+    mux.detachClient('s1', 'a');
+
+    const leftFrame = outbound.find((f) => {
+      if (f.frame.channel !== FrameChannel.SessionEvent) {
+        return false;
+      }
+      const payload = JSON.parse(new TextDecoder().decode(f.frame.payload));
+      return payload.type === 'participant_left';
+    });
+    expect(leftFrame).toBeDefined();
+    expect(leftFrame!.target).toBe('broadcast');
+    expect(JSON.parse(new TextDecoder().decode(leftFrame!.frame.payload)).clientId).toBe('a');
+
+    let participants: readonly { connectionId: string }[] = [];
+    mux.participants$('s1').subscribe((p) => {
+      participants = p;
+    });
+    expect(participants.map((p) => p.connectionId)).toEqual(['b']);
+  });
+
   it('resize from driver propagates to PTY source', () => {
     const ts = createSource('s1');
     mux.register(ts.source);
