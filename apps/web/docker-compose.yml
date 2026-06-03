@@ -10,8 +10,8 @@ services:
     image: ghcr.io/termlnk/termlnk-web:${TERMLNK_WEB_TAG:-latest}
     restart: unless-stopped
     # Loopback-only by default — terminate TLS in a reverse proxy in front (see
-    # the caddy profile below, or docs/agent/termlnk-web-self-hosting.md). With
-    # the tls profile, caddy reaches this over the compose network.
+    # the caddy profile below, or apps/web/README.md). With the tls profile,
+    # caddy reaches this over the compose network.
     ports:
       - "127.0.0.1:3000:3000"
     environment:
