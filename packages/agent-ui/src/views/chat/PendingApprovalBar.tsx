@@ -19,16 +19,15 @@ import { LocaleService } from '@termlnk/core';
 import {
   Button,
   cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   useDependency,
   useObservable,
 } from '@termlnk/design';
 import { IAgentToolPermissionService } from '@termlnk/rpc-client';
+import { IContextMenuService } from '@termlnk/ui';
 import { AlertTriangle, ChevronDown, ShieldCheck, ShieldQuestion } from 'lucide-react';
 import { memo, useState } from 'react';
+import { APPROVAL_MENU } from '../../controllers/menu/approval.menu';
+import { ApprovalMenuService } from '../../services/approval/approval-menu.service';
 import { pickPermissionHighlight } from './parts/permission/highlight';
 
 function riskIcon(level: ToolRiskLevel): ReactElement {
@@ -44,12 +43,18 @@ function riskIcon(level: ToolRiskLevel): ReactElement {
 export const PendingApprovalBar = memo(function PendingApprovalBar() {
   const localeService = useDependency(LocaleService);
   const permissionService = useDependency(IAgentToolPermissionService);
+  const contextMenuService = useDependency(IContextMenuService);
+  const approvalMenuService = useDependency(ApprovalMenuService);
   const pending = useObservable(permissionService.pendingRequests$, []);
+  const allowAlwaysSubmitting = useObservable(approvalMenuService.submitting$, false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (pending.length === 0) {
     return null;
   }
+
+  // Lock every action while any response (button or menu-driven) is in flight.
+  const busy = isSubmitting || allowAlwaysSubmitting;
 
   const t = (key: string, ...args: string[]): string =>
     localeService.t(`agent-ui.permission.${key}`, ...args);
@@ -79,24 +84,15 @@ export const PendingApprovalBar = memo(function PendingApprovalBar() {
     void submit({ requestId: request.id, decision: 'deny', scope: 'once' });
   };
 
-  const handleAllowAlways = (suggestion: ISuggestedRule): void => {
-    void submit({
-      requestId: request.id,
-      decision: 'allow',
-      scope: 'user',
-      rule: {
-        toolName: request.toolName,
-        pattern: suggestion.pattern,
-        matchField: suggestion.matchField,
-        decision: 'allow',
-      },
-    });
-  };
-
   // Fall back to a single tool-wide suggestion when the server didn't generate any.
   const suggestions: ISuggestedRule[] = request.suggestedRules?.length
     ? request.suggestedRules
     : [{ label: t('allow-always'), decision: 'allow' }];
+
+  const openAllowAlwaysMenu = (e: React.MouseEvent): void => {
+    approvalMenuService.setTarget({ request, suggestions });
+    contextMenuService.triggerContextMenu(e.nativeEvent, APPROVAL_MENU);
+  };
 
   return (
     <div
@@ -157,34 +153,21 @@ export const PendingApprovalBar = memo(function PendingApprovalBar() {
         <Button
           size="sm"
           variant="primary"
-          disabled={isSubmitting}
+          disabled={busy}
           onClick={handleAllowOnce}
         >
           {t('allow-once')}
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isSubmitting}
-            >
-              {t('allow-always')}
-              <ChevronDown size={12} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="tm:min-w-56">
-            {suggestions.map((s) => (
-              <DropdownMenuItem
-                key={`${s.matchField ?? ''}|${s.pattern ?? '__tool_wide__'}|${s.label}`}
-                onSelect={() => handleAllowAlways(s)}
-              >
-                <span className="tm:truncate">{s.label}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={openAllowAlwaysMenu}
+        >
+          {t('allow-always')}
+          <ChevronDown size={12} />
+        </Button>
 
         <div className="tm:flex-1" />
 
@@ -195,7 +178,7 @@ export const PendingApprovalBar = memo(function PendingApprovalBar() {
             tm:text-red
             tm:hover:bg-red/10 tm:hover:text-red
           `}
-          disabled={isSubmitting}
+          disabled={busy}
           onClick={handleDeny}
         >
           {t('deny')}

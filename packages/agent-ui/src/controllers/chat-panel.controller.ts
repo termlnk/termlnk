@@ -16,6 +16,7 @@
 import { ICommandService, Inject, Injector, RxDisposable } from '@termlnk/core';
 import { BotIcon, BotIconKey, connectInjector } from '@termlnk/design';
 import { BuiltInUIPart, ComponentManagerService, IMenuManagerService, IUIPartsService } from '@termlnk/ui';
+import { AllowAlwaysCommand } from '../commands/approval/allow-always.command';
 import { CopyMessageCommand } from '../commands/copy-message.command';
 import { EditUserMessageCommand } from '../commands/edit-user-message.command';
 import { RetryMessageCommand } from '../commands/retry-message.command';
@@ -63,6 +64,7 @@ export class ChatPanelController extends RxDisposable {
     this.disposeWithMe(this._commandService.registerCommand(CopyMessageCommand));
     this.disposeWithMe(this._commandService.registerCommand(RetryMessageCommand));
     this.disposeWithMe(this._commandService.registerCommand(EditUserMessageCommand));
+    this.disposeWithMe(this._commandService.registerCommand(AllowAlwaysCommand));
   }
 
   private _initMenus(): void {

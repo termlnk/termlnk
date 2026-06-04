@@ -30,7 +30,7 @@ const locale: typeof enUS = {
     },
     browser: { local: 'ローカル', remote: 'リモート', empty: '空のディレクトリ', loading: '読み込み中...', items: '{count}件', selected: '{count}件選択' },
     file: { name: '名前', size: 'サイズ', modified: '更新日時', permissions: '権限' },
-    action: { download: 'ダウンロード', upload: 'アップロード', rename: '名前変更', delete: '削除', newFolder: '新しいフォルダ', permissions: '権限', refresh: '更新' },
+    action: { download: 'ダウンロード', downloadToBrowser: 'ブラウザにダウンロード', upload: 'アップロード', rename: '名前変更', delete: '削除', newFolder: '新しいフォルダ', permissions: '権限', refresh: '更新' },
     transfer: { title: '転送', clearCompleted: '完了した転送をクリア' },
     dialog: {
       rename: { title: '名前変更' },

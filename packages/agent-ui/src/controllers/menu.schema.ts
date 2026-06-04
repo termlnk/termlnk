@@ -17,6 +17,7 @@ import type { MenuSchemaType } from '@termlnk/ui';
 import { MenuPosition } from '@termlnk/ui';
 import { ToggleAIPanelCommand } from '../commands/toggle-ai-panel.command';
 import { aiPanelMenuFactory } from './menu/ai-panel.menu';
+import { allowAlwaysMenuFactory, APPROVAL_MENU } from './menu/approval.menu';
 
 export const menuSchema: MenuSchemaType = {
   [MenuPosition.SIDE_TAB_BAR]: {
@@ -24,5 +25,8 @@ export const menuSchema: MenuSchemaType = {
       order: 5,
       menuItemFactory: aiPanelMenuFactory,
     },
+  },
+  [APPROVAL_MENU]: {
+    'agent-ui.approval.allow-always': { order: 0, menuItemFactory: allowAlwaysMenuFactory },
   },
 };

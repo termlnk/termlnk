@@ -27,6 +27,7 @@ import { ProvidersPoint } from './contributions/providers.point';
 import { AIAgentController } from './controllers/ai-agent.controller';
 import { ChatPanelController } from './controllers/chat-panel.controller';
 import { AGENT_UI_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
+import { ApprovalMenuService } from './services/approval/approval-menu.service';
 import { GenerativeUIRegistryService, IGenerativeUIRegistryService } from './services/generative-ui/generative-ui-registry.service';
 import { ProviderRegistryService } from './services/provider-registry.service';
 import { AgentTab } from './views/settings/AgentTab';
@@ -100,6 +101,7 @@ export class AgentUIPlugin extends Plugin {
     const dependencies: Dependency[] = [
       [IProviderRegistryService, { useClass: ProviderRegistryService }],
       [IGenerativeUIRegistryService, { useClass: GenerativeUIRegistryService }],
+      [ApprovalMenuService, { useClass: ApprovalMenuService }],
       [AIAgentController],
       [ChatPanelController],
     ];

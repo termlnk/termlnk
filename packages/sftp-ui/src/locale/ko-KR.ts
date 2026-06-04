@@ -30,7 +30,7 @@ const locale: typeof enUS = {
     },
     browser: { local: '로컬', remote: '원격', empty: '빈 디렉토리', loading: '로딩 중...', items: '{count}개 항목', selected: '{count}개 선택됨' },
     file: { name: '이름', size: '크기', modified: '수정 날짜', permissions: '권한' },
-    action: { download: '다운로드', upload: '업로드', rename: '이름 변경', delete: '삭제', newFolder: '새 폴더', permissions: '권한', refresh: '새로고침' },
+    action: { download: '다운로드', downloadToBrowser: '브라우저로 다운로드', upload: '업로드', rename: '이름 변경', delete: '삭제', newFolder: '새 폴더', permissions: '권한', refresh: '새로고침' },
     transfer: { title: '전송', clearCompleted: '완료된 전송 지우기' },
     dialog: {
       rename: { title: '이름 변경' },

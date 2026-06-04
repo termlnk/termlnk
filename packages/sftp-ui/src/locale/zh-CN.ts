@@ -59,6 +59,7 @@ const locale: typeof enUS = {
     },
     action: {
       download: '下载',
+      downloadToBrowser: '下载到浏览器',
       upload: '上传',
       rename: '重命名',
       delete: '删除',

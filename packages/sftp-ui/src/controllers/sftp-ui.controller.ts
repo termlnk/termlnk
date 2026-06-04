@@ -15,12 +15,14 @@
 
 import { ICommandService, Inject, Injector, RxDisposable } from '@termlnk/core';
 import { connectInjector } from '@termlnk/design';
-import { BuiltInUIPart, ComponentManagerService, IContentRouterService, IUIPartsService } from '@termlnk/ui';
+import { BuiltInUIPart, ComponentManagerService, IContentRouterService, IMenuManagerService, IUIPartsService } from '@termlnk/ui';
 import { FolderSync } from 'lucide-react';
+import { FileActionCommand } from '../commands/file/file-action.command';
 import { NavigateToSFTPCommand, SFTP_PAGE_ID } from '../commands/navigate-sftp.command';
 import { SFTPHeaderButton } from '../views/SFTPHeaderButton';
 import { SFTPPage } from '../views/SFTPPage';
 import { SFTP_ICON_NAME } from './component-names';
+import { fileMenuSchema } from './file/file-menu';
 
 export class SFTPUIController extends RxDisposable {
   constructor(
@@ -28,6 +30,7 @@ export class SFTPUIController extends RxDisposable {
     @ICommandService private readonly _commandService: ICommandService,
     @IContentRouterService private readonly _contentRouterService: IContentRouterService,
     @IUIPartsService private readonly _uiPartsService: IUIPartsService,
+    @IMenuManagerService private readonly _menuManagerService: IMenuManagerService,
     @Inject(ComponentManagerService) private readonly _componentManagerService: ComponentManagerService
   ) {
     super();
@@ -35,6 +38,7 @@ export class SFTPUIController extends RxDisposable {
     this._initComponents();
     this._initPages();
     this._initCommands();
+    this._initMenus();
   }
 
   private _initComponents(): void {
@@ -56,5 +60,10 @@ export class SFTPUIController extends RxDisposable {
 
   private _initCommands(): void {
     this.disposeWithMe(this._commandService.registerCommand(NavigateToSFTPCommand));
+    this.disposeWithMe(this._commandService.registerCommand(FileActionCommand));
+  }
+
+  private _initMenus(): void {
+    this._menuManagerService.mergeMenu(fileMenuSchema);
   }
 }

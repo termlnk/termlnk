@@ -19,11 +19,13 @@ import type { DragSourceType } from '../hooks/use-panel-drop';
 import { ILogService, Quantity } from '@termlnk/core';
 import { Button, useDependency } from '@termlnk/design';
 import { ISFTPService } from '@termlnk/rpc-client';
+import { IContextMenuService } from '@termlnk/ui';
 import { ArrowUp, Eye, EyeOff, FolderPlus, RefreshCw, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SFTP_FILE_MENU } from '../../controllers/file/file-menu';
+import { FileContextService } from '../../services/file-context/file-context.service';
 import { IBrowserFileTransferService } from '../../services/transfer/browser-file-transfer.service';
 import { BreadcrumbNav } from '../file-browser/BreadcrumbNav';
-import { FileContextMenu } from '../file-browser/FileContextMenu';
 import { FileList } from '../file-browser/FileList';
 import { NewFolderDialog } from '../file-browser/NewFolderDialog';
 import { PermissionsDialog } from '../file-browser/PermissionsDialog';
@@ -42,6 +44,8 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
   const sftpService = useDependency(ISFTPService);
   const browserTransfer = useDependency(IBrowserFileTransferService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);
+  const contextMenuService = useDependency(IContextMenuService);
+  const fileContextService = useDependency(FileContextService);
   const browser = useRemoteFileBrowser(sessionId);
   const [showHiddenFiles, setShowHiddenFiles] = useState(false);
 
@@ -66,7 +70,6 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
     onDrop: handleDrop,
   });
 
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; entry: IFileListEntry } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [permEntry, setPermEntry] = useState<IFileListEntry | null>(null);
@@ -79,10 +82,6 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
       browser.navigate(path);
     }
   }, [browser]);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent, entry: IFileListEntry) => {
-    setContextMenu({ x: e.clientX, y: e.clientY, entry });
-  }, []);
 
   const deleteRemotePath = useCallback(async (remotePath: string, isDirectory: boolean) => {
     if (!sessionId) return;
@@ -97,17 +96,16 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
     }
   }, [sessionId, sftpService]);
 
-  const handleDelete = useCallback(async () => {
-    if (!sessionId || !contextMenu) return;
-    const fullPath = `${browser.currentPath}/${contextMenu.entry.filename}`;
+  const handleDelete = useCallback(async (entry: IFileListEntry) => {
+    if (!sessionId) return;
+    const fullPath = `${browser.currentPath}/${entry.filename}`;
     try {
-      await deleteRemotePath(fullPath, contextMenu.entry.isDirectory);
+      await deleteRemotePath(fullPath, entry.isDirectory);
       browser.refresh();
     } catch (err) {
-      console.error('Delete failed:', err);
+      logService.error(`[RemoteFilePane] delete failed: ${err instanceof Error ? err.message : String(err)}`);
     }
-    setContextMenu(null);
-  }, [sessionId, contextMenu, browser, deleteRemotePath]);
+  }, [sessionId, browser, deleteRemotePath, logService]);
 
   const handleRename = useCallback(async (oldName: string, newName: string) => {
     if (!sessionId) return;
@@ -117,10 +115,10 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
       await sftpService.rename(sessionId, oldPath, newPath);
       browser.refresh();
     } catch (err) {
-      console.error('Rename failed:', err);
+      logService.error(`[RemoteFilePane] rename failed: ${err instanceof Error ? err.message : String(err)}`);
     }
     setRenaming(null);
-  }, [sessionId, browser, sftpService]);
+  }, [sessionId, browser, sftpService, logService]);
 
   const handleNewFolder = useCallback(async (name: string) => {
     if (!sessionId) return;
@@ -129,10 +127,10 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
       await sftpService.mkdir(sessionId, path);
       browser.refresh();
     } catch (err) {
-      console.error('Create folder failed:', err);
+      logService.error(`[RemoteFilePane] create folder failed: ${err instanceof Error ? err.message : String(err)}`);
     }
     setShowNewFolder(false);
-  }, [sessionId, browser, sftpService]);
+  }, [sessionId, browser, sftpService, logService]);
 
   const handleChmod = useCallback(async (mode: number) => {
     if (!sessionId || !permEntry) return;
@@ -141,30 +139,43 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
       await sftpService.chmod(sessionId, fullPath, mode);
       browser.refresh();
     } catch (err) {
-      console.error('Chmod failed:', err);
+      logService.error(`[RemoteFilePane] chmod failed: ${err instanceof Error ? err.message : String(err)}`);
     }
     setPermEntry(null);
-  }, [sessionId, permEntry, browser, sftpService]);
+  }, [sessionId, permEntry, browser, sftpService, logService]);
 
-  const handleDownload = useCallback(() => {
-    if (!contextMenu) return;
-    const fullPath = `${browser.currentPath}/${contextMenu.entry.filename}`;
-    onTransferRequest?.(fullPath, contextMenu.entry.filename);
-    setContextMenu(null);
-  }, [contextMenu, browser, onTransferRequest]);
+  const handleDownload = useCallback((entry: IFileListEntry) => {
+    const fullPath = `${browser.currentPath}/${entry.filename}`;
+    onTransferRequest?.(fullPath, entry.filename);
+  }, [browser, onTransferRequest]);
 
-  const handleDownloadToBrowser = useCallback(async () => {
-    if (!sessionId || !browserTransfer || !contextMenu) {
+  const handleDownloadToBrowser = useCallback(async (entry: IFileListEntry) => {
+    if (!sessionId || !browserTransfer) {
       return;
     }
-    const fullPath = `${browser.currentPath}/${contextMenu.entry.filename}`;
-    setContextMenu(null);
+    const fullPath = `${browser.currentPath}/${entry.filename}`;
     try {
-      await browserTransfer.downloadToBrowser(sessionId, fullPath, contextMenu.entry.filename);
+      await browserTransfer.downloadToBrowser(sessionId, fullPath, entry.filename);
     } catch (err) {
       logService.error(`[RemoteFilePane] download-to-browser failed: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [sessionId, browserTransfer, contextMenu, browser, logService]);
+  }, [sessionId, browserTransfer, browser, logService]);
+
+  // Set the right-clicked target, then open the shared context menu. Commands
+  // read the target from FileContextService and invoke these actions.
+  const handleContextMenu = useCallback((e: React.MouseEvent, entry: IFileListEntry) => {
+    fileContextService.setTarget({
+      entry: { filename: entry.filename, isDirectory: entry.isDirectory },
+      actions: {
+        download: () => handleDownload(entry),
+        downloadToBrowser: browserTransfer ? () => handleDownloadToBrowser(entry) : undefined,
+        rename: () => setRenaming(entry.filename),
+        permissions: () => setPermEntry(entry),
+        delete: () => handleDelete(entry),
+      },
+    });
+    contextMenuService.triggerContextMenu(e.nativeEvent, SFTP_FILE_MENU);
+  }, [fileContextService, contextMenuService, browserTransfer, handleDownload, handleDownloadToBrowser, handleDelete]);
 
   const handleUploadFromBrowser = useCallback(async () => {
     if (!sessionId || !browserTransfer) {
@@ -292,19 +303,19 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
         </Button>
         {browserTransfer
           ? (
-              <Button
-                className="
-                  tm:text-white
-                  tm:hover:text-white
-                "
-                variant="ghost"
-                size="icon-sm"
-                onClick={handleUploadFromBrowser}
-                title="Upload from your browser"
-              >
-                <Upload size={12} />
-              </Button>
-            )
+            <Button
+              className="
+                tm:text-white
+                tm:hover:text-white
+              "
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleUploadFromBrowser}
+              title="Upload from your browser"
+            >
+              <Upload size={12} />
+            </Button>
+          )
           : null}
       </div>
 
@@ -352,27 +363,6 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
           </span>
         )}
       </div>
-
-      {/* Context menu */}
-      {contextMenu && (
-        <FileContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          entry={contextMenu.entry}
-          onClose={() => setContextMenu(null)}
-          onDownload={handleDownload}
-          onDownloadToBrowser={browserTransfer ? handleDownloadToBrowser : undefined}
-          onRename={() => {
-            setRenaming(contextMenu.entry.filename);
-            setContextMenu(null);
-          }}
-          onDelete={handleDelete}
-          onPermissions={() => {
-            setPermEntry(contextMenu.entry);
-            setContextMenu(null);
-          }}
-        />
-      )}
 
       {/* Rename input */}
       {renaming && (

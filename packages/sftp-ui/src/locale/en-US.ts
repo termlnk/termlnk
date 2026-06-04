@@ -57,6 +57,7 @@ const locale = {
     },
     action: {
       download: 'Download',
+      downloadToBrowser: 'Download to browser',
       upload: 'Upload',
       rename: 'Rename',
       delete: 'Delete',

@@ -20,6 +20,7 @@ import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { UIPlugin } from '@termlnk/ui';
 import { defaultPluginConfig, SFTP_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { SFTPUIController } from './controllers/sftp-ui.controller';
+import { FileContextService } from './services/file-context/file-context.service';
 import { ITransferHistoryService, TransferHistoryService } from './services/transfer/transfer-history.service';
 
 export const SFTP_UI_PLUGIN_NAME = 'SFTP_UI_PLUGIN';
@@ -55,6 +56,7 @@ export class SFTPUIPlugin extends Plugin {
     const dependencies: Dependency[] = [
       [SFTPUIController],
       [ITransferHistoryService, { useClass: TransferHistoryService }],
+      [FileContextService, { useClass: FileContextService }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }

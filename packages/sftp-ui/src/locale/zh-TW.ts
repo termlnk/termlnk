@@ -30,7 +30,7 @@ const locale: typeof enUS = {
     },
     browser: { local: '本機', remote: '遠端', empty: '空目錄', loading: '載入中...', items: '{count} 個項目', selected: '已選擇 {count} 項' },
     file: { name: '名稱', size: '大小', modified: '修改時間', permissions: '權限' },
-    action: { download: '下載', upload: '上傳', rename: '重新命名', delete: '刪除', newFolder: '新建資料夾', permissions: '權限', refresh: '重新整理' },
+    action: { download: '下載', downloadToBrowser: '下載到瀏覽器', upload: '上傳', rename: '重新命名', delete: '刪除', newFolder: '新建資料夾', permissions: '權限', refresh: '重新整理' },
     transfer: { title: '傳輸', clearCompleted: '清除已完成' },
     dialog: {
       rename: { title: '重新命名' },
