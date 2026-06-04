@@ -113,14 +113,14 @@ export function DesktopHeader() {
     return () => {
       window.removeEventListener('resize', updateNotificationPanelPosition);
     };
-  }, [isPanelOpen, headerTrailingComponents.size]);
+  }, [isPanelOpen, headerTrailingComponents.length]);
 
   const fullScreen = windowState?.fullScreen ?? false;
   const isMaximized = windowState?.isMaximized ?? false;
   const minimizable = windowState?.minimizable ?? true;
   const maximizable = windowState?.maximizable ?? true;
   const leftPercent = layout.left;
-  const hasHeaderActions = headerActionComponents.size > 0;
+  const hasHeaderActions = headerActionComponents.length > 0;
   const sideTabBarWidth = isSidebarVisible ? SIDE_TAB_BAR_WIDTH_REM : 0;
   const usesTrafficLightControls = platform === Platform.Mac || platform === Platform.Linux;
   const showTrafficLightControls = usesTrafficLightControls && !fullScreen;
@@ -175,7 +175,7 @@ export function DesktopHeader() {
             <div ref={notificationTriggerRef} className="tm:flex tm:items-center">
               <NotificationIcon />
             </div>
-            {headerTrailingComponents.size > 0 && (
+            {headerTrailingComponents.length > 0 && (
               <ComponentContainer components={headerTrailingComponents} />
             )}
             <WindowPinToggle windowId={windowId} alwaysOnTop={windowState?.alwaysOnTop ?? false} />

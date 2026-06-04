@@ -38,8 +38,9 @@ export class UpdaterUIController extends Disposable {
       this._componentManagerService.register(UPDATE_DIALOG_COMPONENT_NAME, UpdateDialog)
     );
 
+    // Order 10: update button sits above the account button in the side tab bar.
     this.disposeWithMe(
-      this._uiPartsService.registerComponent(BuiltInUIPart.SIDE_TAB_BAR, () => connectInjector(UpdateButton, this._injector))
+      this._uiPartsService.registerComponent(BuiltInUIPart.SIDE_TAB_BAR, () => connectInjector(UpdateButton, this._injector), 10)
     );
 
     void this._updaterService.checkForUpdates().catch((err) => {

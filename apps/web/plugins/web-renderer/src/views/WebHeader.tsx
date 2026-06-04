@@ -106,10 +106,10 @@ export function WebHeader() {
     return () => {
       window.removeEventListener('resize', updatePosition);
     };
-  }, [isPanelOpen, headerTrailingComponents.size]);
+  }, [isPanelOpen, headerTrailingComponents.length]);
 
   const leftPercent = layout.left;
-  const hasHeaderActions = headerActionComponents.size > 0;
+  const hasHeaderActions = headerActionComponents.length > 0;
   const sideTabBarWidth = isSidebarVisible ? SIDE_TAB_BAR_WIDTH_REM : 0;
 
   const handleLogout = () => {
@@ -155,7 +155,7 @@ export function WebHeader() {
             <div ref={notificationTriggerRef} className="tm:flex tm:items-center">
               <NotificationIcon />
             </div>
-            {headerTrailingComponents.size > 0 && (
+            {headerTrailingComponents.length > 0 && (
               <ComponentContainer components={headerTrailingComponents} />
             )}
             <Tooltip>

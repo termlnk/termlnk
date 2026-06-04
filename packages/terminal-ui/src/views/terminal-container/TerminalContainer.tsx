@@ -173,7 +173,7 @@ export function TerminalContainer(): React.JSX.Element {
   const paneToTabDrag = useObservable<IPaneToTabDragState | null>(workspaceService.paneToTabDrag$, null);
 
   const headerComponents = useComponentsOfPart(BuiltInUIPart.HEADER);
-  const showLocalTabs = headerComponents.size === 0;
+  const showLocalTabs = headerComponents.length === 0;
 
   const workspaceSessionIds = useMemo(
     () => new Set(workspaces.flatMap((ws) => collectSessionIds(ws.layout))),

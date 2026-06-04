@@ -22,6 +22,11 @@ import { Subject } from 'rxjs';
 export type ComponentRenderer = () => ComponentType;
 type ComponentPartKey = BuiltInUIPart | string;
 
+interface IRegisteredComponent {
+  component: ComponentType;
+  order: number;
+}
+
 export enum BuiltInUIPart {
   GLOBAL = 'global',
   FLOATING = 'floating',
@@ -42,8 +47,8 @@ export interface IUIPartsService {
   componentRegistered$: Observable<ComponentPartKey>;
   uiVisibleChange$: Observable<{ ui: ComponentPartKey; visible: boolean }>;
 
-  registerComponent(part: ComponentPartKey, componentFactory: () => ComponentType): IDisposable;
-  getComponents(part: ComponentPartKey): Set<ComponentRenderer>;
+  registerComponent(part: ComponentPartKey, componentFactory: () => ComponentType, order?: number): IDisposable;
+  getComponents(part: ComponentPartKey): ComponentRenderer[];
 
   setUIVisible(part: ComponentPartKey, visible: boolean): void;
 
@@ -53,7 +58,7 @@ export interface IUIPartsService {
 export const IUIPartsService = createIdentifier<IUIPartsService>('ui.parts-service');
 
 export class UIPartsService extends Disposable implements IUIPartsService {
-  private _componentsByPart = new Map<ComponentPartKey, Set<ComponentType>>();
+  private _componentsByPart = new Map<ComponentPartKey, IRegisteredComponent[]>();
 
   private readonly _componentRegistered$ = new Subject<ComponentPartKey>();
   readonly componentRegistered$ = this._componentRegistered$.asObservable();
@@ -79,25 +84,36 @@ export class UIPartsService extends Disposable implements IUIPartsService {
     return this._uiVisible.get(part) ?? true;
   }
 
-  registerComponent<T>(part: ComponentPartKey, componentFactory: () => React.ComponentType<T>): IDisposable {
+  registerComponent<T>(part: ComponentPartKey, componentFactory: () => React.ComponentType<T>, order = 0): IDisposable {
     const componentType = componentFactory();
-    const components = (
-      this._componentsByPart.get(part)
-            || this._componentsByPart.set(part, new Set()).get(part)!
-    ).add(componentType);
+    const entry: IRegisteredComponent = { component: componentType, order };
+    const components = this._componentsByPart.get(part) ?? this._componentsByPart.set(part, []).get(part)!;
+    components.push(entry);
 
     this._componentRegistered$.next(part);
 
     return toDisposable(() => {
-      components.delete(componentType);
-      if (components.size === 0) {
+      const index = components.indexOf(entry);
+      if (index !== -1) {
+        components.splice(index, 1);
+      }
+      if (components.length === 0) {
         this._componentsByPart.delete(part);
       }
       this._componentRegistered$.next(part);
     });
   }
 
-  getComponents(part: ComponentPartKey): Set<ComponentType> {
-    return new Set([...(this._componentsByPart.get(part) || new Set())]);
+  getComponents(part: ComponentPartKey): ComponentType[] {
+    const components = this._componentsByPart.get(part);
+    if (!components) {
+      return [];
+    }
+
+    // Stable sort by ascending order, mirroring the menu schema sort in
+    // menu-manager.service. Equal orders keep insertion order, so parts whose
+    // components register without an explicit order (default 0) preserve their
+    // legacy registration order.
+    return [...components].sort((a, b) => a.order - b.order).map((c) => c.component);
   }
 }

@@ -22,18 +22,18 @@ import { debounceTime, filter, map, startWith } from 'rxjs';
 import { IUIPartsService } from '../../services/parts/parts.service';
 
 export interface IComponentContainerProps {
-  components?: Set<ComponentType> | ComponentType;
+  components?: ComponentType[] | ComponentType;
   fallback?: ReactNode;
   sharedProps?: Record<string, unknown>;
 }
 
 export function ComponentContainer(props: IComponentContainerProps): ReactNode {
   const { components, fallback, sharedProps } = props;
-  if (!components || (components instanceof Set && components.size === 0)) {
+  if (!components || (Array.isArray(components) && components.length === 0)) {
     return fallback ?? null;
   }
 
-  const values = components instanceof Set ? [...components.values()] : [components];
+  const values = Array.isArray(components) ? components : [components];
   return values.map((component, index) => {
     return createElement(component, { key: `${component.displayName ?? index}`, ...sharedProps });
   });
@@ -46,7 +46,7 @@ export function ComponentContainer(props: IComponentContainerProps): ReactNode {
  * @param injector The injector to get the service. It is optional. However, you should not change this prop in a given
  * component.
  */
-export function useComponentsOfPart(part: string, injector?: Injector): Set<ComponentRenderer> {
+export function useComponentsOfPart(part: string, injector?: Injector): ComponentRenderer[] {
   const uiPartsService = injector?.get(IUIPartsService) ?? useDependency(IUIPartsService);
   const uiVisibleChange$ = useMemo(() => uiPartsService.uiVisibleChange$.pipe(filter((ui) => ui.ui === part)), [part, uiPartsService]);
   const changeInfo = useObservable(uiVisibleChange$);
@@ -64,5 +64,5 @@ export function useComponentsOfPart(part: string, injector?: Injector): Set<Comp
     [uiPartsService, part, changeInfo]
   );
 
-  return useMemo(() => uiPartsService.isUIVisible(part) ? uiPartsService.getComponents(part) : new Set(), [componentPartUpdateCount]);
+  return useMemo(() => uiPartsService.isUIVisible(part) ? uiPartsService.getComponents(part) : [], [componentPartUpdateCount]);
 }

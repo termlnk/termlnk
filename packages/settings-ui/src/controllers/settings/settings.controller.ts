@@ -134,8 +134,9 @@ export class SettingsController extends Disposable {
       this._componentManagerService.register(SETTINGS_PANEL_COMPONENT_NAME, SettingsPanel)
     );
 
+    // Order 30: settings button stays at the bottom of the side tab bar.
     this.disposeWithMe(
-      this._uiPartsService.registerComponent(BuiltInUIPart.SIDE_TAB_BAR, () => SettingsButton)
+      this._uiPartsService.registerComponent(BuiltInUIPart.SIDE_TAB_BAR, () => SettingsButton, 30)
     );
 
     for (const tab of BUILTIN_TABS) {

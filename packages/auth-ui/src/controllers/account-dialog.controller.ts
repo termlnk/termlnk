@@ -40,8 +40,9 @@ export class AccountDialogController extends Disposable {
       this._componentManagerService.register(ACCOUNT_DIALOG_COMPONENT_NAME, AccountDialogContent)
     );
 
+    // Order 20: account button sits below update (10) and above settings (30).
     this.disposeWithMe(
-      this._uiPartsService.registerComponent(BuiltInUIPart.SIDE_TAB_BAR, () => AccountButton)
+      this._uiPartsService.registerComponent(BuiltInUIPart.SIDE_TAB_BAR, () => AccountButton, 20)
     );
 
     this.disposeWithMe(
