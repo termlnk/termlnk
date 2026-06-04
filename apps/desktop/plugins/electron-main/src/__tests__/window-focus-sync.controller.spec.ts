@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ILogService, LogLevel } from '@termlnk/core';
+import type { IDisposable, ILogService, LogLevel } from '@termlnk/core';
 import type { ICreateWindowOptions, IWindowManagerService, IWindowState, WindowEvent as WindowEventType } from '@termlnk/electron';
-import type { ISyncError, ISyncService, ISyncStats, SyncState } from '@termlnk/sync';
+import type { IResourceSynchroniser, ISyncError, ISyncService, ISyncStats, SyncState } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { WindowEvent } from '@termlnk/electron';
 import { BehaviorSubject, EMPTY, Subject } from 'rxjs';
@@ -68,7 +68,7 @@ class FakeWindowManagerService implements IWindowManagerService {
 
 class FakeSyncService implements ISyncService {
   readonly state$ = new BehaviorSubject<SyncState>('disabled' as SyncState).asObservable();
-  readonly stats$ = new BehaviorSubject<ISyncStats>({ pendingMutations: 0, lastSyncedAt: null, perResource: {} as never }).asObservable();
+  readonly stats$ = new BehaviorSubject<ISyncStats>({ pendingMutations: 0, lastSyncedAt: null, lastPushedAt: null, perResource: {} as never }).asObservable();
   readonly lastError$ = new BehaviorSubject<ISyncError | null>(null).asObservable();
   readonly enabled$ = new BehaviorSubject<boolean>(false).asObservable();
   syncNowCalls = 0;
@@ -84,6 +84,12 @@ class FakeSyncService implements ISyncService {
   }
 
   async forceFullResync(): Promise<void> {}
+
+  register(_synchroniser: IResourceSynchroniser): IDisposable {
+    return { dispose: () => {} };
+  }
+
+  async stopRuntime(): Promise<void> {}
 }
 
 interface ITestBed {
