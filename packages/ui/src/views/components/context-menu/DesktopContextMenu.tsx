@@ -13,11 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMenuItem, IMenuSchema } from '../../../services/menu/menu';
+import type { IMenuSchema, IMenuSelectorItem, IValueOption } from '../../../services/menu/menu';
 import { ICommandService, LocaleService } from '@termlnk/core';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuShortcut, DropdownMenuTrigger, useDependency, useObservable } from '@termlnk/design';
+import { Check } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isObservable, of } from 'rxjs';
 import { IContextMenuService } from '../../../services/contextmenu/contextmenu.service';
+import { MenuItemType } from '../../../services/menu/menu';
 import { IMenuManagerService } from '../../../services/menu/menu-manager.service';
 import { IShortcutService } from '../../../services/shortcut/shortcut.service';
 
@@ -73,9 +76,9 @@ export function DesktopContextMenu() {
     }
   }, []);
 
-  const handleItemSelect = useCallback((item: IMenuItem) => {
-    if (item.commandId) {
-      commandService.executeCommand(item.commandId);
+  const handleCommand = useCallback((commandId: string | undefined, params?: object) => {
+    if (commandId) {
+      commandService.executeCommand(commandId, params);
     }
     setOpen(false);
   }, [commandService]);
@@ -106,7 +109,7 @@ export function DesktopContextMenu() {
             schema={schema}
             localeService={localeService}
             shortcutService={shortcutService}
-            onSelect={handleItemSelect}
+            onCommand={handleCommand}
           />
         ))}
       </DropdownMenuContent>
@@ -118,10 +121,10 @@ interface IContextMenuItemNodeProps {
   schema: IMenuSchema;
   localeService: LocaleService;
   shortcutService: IShortcutService;
-  onSelect: (item: IMenuItem) => void;
+  onCommand: (commandId: string | undefined, params?: object) => void;
 }
 
-function ContextMenuItemNode({ schema, localeService, shortcutService, onSelect }: IContextMenuItemNodeProps) {
+function ContextMenuItemNode({ schema, localeService, shortcutService, onCommand }: IContextMenuItemNodeProps) {
   const item = schema.item;
 
   const hidden = useObservable(item?.hidden$, false);
@@ -142,15 +145,51 @@ function ContextMenuItemNode({ schema, localeService, shortcutService, onSelect 
     return null;
   }
 
+  if (item.type === MenuItemType.SELECTOR) {
+    return <SelectorOptions item={item} onCommand={onCommand} />;
+  }
+
   const label = item.title ? localeService.t(item.title) : item.id;
 
   return (
     <DropdownMenuItem
       disabled={disabled}
-      onSelect={() => onSelect(item)}
+      onSelect={() => onCommand(item.commandId, item.params)}
     >
       {label}
       {shortcut && <DropdownMenuShortcut>{shortcut}</DropdownMenuShortcut>}
     </DropdownMenuItem>
+  );
+}
+
+interface ISelectorOptionsProps {
+  item: IMenuSelectorItem;
+  onCommand: (commandId: string | undefined, params?: object) => void;
+}
+
+function SelectorOptions({ item, onCommand }: ISelectorOptionsProps) {
+  const selections$ = useMemo(
+    () => (isObservable(item.selections) ? item.selections : of(item.selections ?? [])),
+    [item.selections]
+  );
+  const options = useObservable<IValueOption[]>(selections$, []);
+  const value = useObservable(item.value$);
+
+  return (
+    <>
+      {options.map((option, index) => {
+        const active = option.value !== undefined && option.value === value;
+        return (
+          <DropdownMenuItem
+            key={option.value ?? `${option.label}-${index}`}
+            disabled={option.disabled}
+            onSelect={() => onCommand(option.commandId ?? item.selectionsCommandId, option.params)}
+          >
+            <span className="tm:truncate">{option.label}</span>
+            {active && <Check size={14} className="tm:ml-auto" />}
+          </DropdownMenuItem>
+        );
+      })}
+    </>
   );
 }

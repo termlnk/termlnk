@@ -38,7 +38,7 @@ export type { HostEnvironment } from './services/host-environment/host-environme
 export { SIDE_TAB_BAR_WIDTH_REM } from './services/layout/layout.constants';
 export { DesktopLayoutService, ILayoutService } from './services/layout/layout.service';
 export { MenuItemType, MenuPosition } from './services/menu/menu';
-export type { IMenuItem, IMenuItemFactory, IMenuSchema, MenuConfig, MenuItemConfig, MenuSchemaType } from './services/menu/menu';
+export type { IMenuButtonItem, IMenuItem, IMenuItemFactory, IMenuSchema, IMenuSelectorItem, IValueOption, MenuConfig, MenuItemConfig, MenuSchemaType } from './services/menu/menu';
 export { IMenuManagerService, MenuManagerService } from './services/menu/menu-manager.service';
 export { mergeMenuConfigs } from './services/menu/menu-utils';
 export { BuiltInUIPart, IUIPartsService, UIPartsService } from './services/parts/parts.service';

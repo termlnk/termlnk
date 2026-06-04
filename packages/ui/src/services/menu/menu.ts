@@ -18,11 +18,27 @@ import type { Observable } from 'rxjs';
 
 export enum MenuItemType {
   BUTTON = 'button',
+  /** Opens a dynamic, variable-length option list (e.g. data-driven choices). */
+  SELECTOR = 'selector',
 }
 
-export interface IMenuItem {
+/** One option inside a SELECTOR menu item. `label` is display-ready text. */
+export interface IValueOption {
+  value?: string | number;
+  label: string;
+  icon?: string;
+  /** Params forwarded to the executed command for this option. */
+  params?: object;
+  /** Overrides the parent item's `selectionsCommandId` for this option. */
+  commandId?: string;
+  disabled?: boolean;
+}
+
+interface IMenuItemBase {
   id: string;
   commandId?: string;
+  /** Params forwarded to the command when this item is selected. */
+  params?: object;
 
   type: MenuItemType;
   title?: string;
@@ -35,6 +51,22 @@ export interface IMenuItem {
   disabled$?: Observable<boolean>;
   activated$?: Observable<boolean>;
 }
+
+export interface IMenuButtonItem extends IMenuItemBase {
+  type: MenuItemType.BUTTON;
+}
+
+export interface IMenuSelectorItem extends IMenuItemBase {
+  type: MenuItemType.SELECTOR;
+  /** Static options or a stream of options for variable-length lists. */
+  selections?: IValueOption[] | Observable<IValueOption[]>;
+  /** Command run when an option is chosen (an option may override it). */
+  selectionsCommandId?: string;
+  /** Currently selected value; marks the matching option as active. */
+  value$?: Observable<string | number>;
+}
+
+export type IMenuItem = IMenuButtonItem | IMenuSelectorItem;
 
 export enum MenuPosition {
   CONTAINER = 'container',
