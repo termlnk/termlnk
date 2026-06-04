@@ -22,6 +22,7 @@ import type { ITerminalMiddlewareStack } from '../middleware/terminal-middleware
 import type { ISSHChannel } from '../ssh/ssh-channel';
 import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
 import type { ISSHSocket } from '../ssh/ssh-socket';
+import type { HostKeyVerifyAction, IHostKeyPromptInfo } from '../ssh/ssh-socket.service';
 import * as process from 'node:process';
 import { Disposable, DisposableCollection, ILogService, takeAfter, toDisposable } from '@termlnk/core';
 import { SSHSessionStatus, SSHSocketStatus } from '@termlnk/rpc';
@@ -68,6 +69,7 @@ export class SSHSession extends Disposable implements IDisposable {
   private _chainDisposables = new DisposableCollection();
   private _pendingKeyboardInteractiveFinish: Nullable<KeyboardInteractiveCallback> = null;
   private _pendingChangePasswordDone: Nullable<ChangePasswordCallback> = null;
+  private _pendingHostKeyRespond: Nullable<(action: HostKeyVerifyAction) => void> = null;
   private _hostChain: Nullable<IHostChainHandle> = null;
 
   constructor(
@@ -458,7 +460,34 @@ export class SSHSession extends Disposable implements IDisposable {
     })));
   }
 
+  // Bridges the socket service's host-key verifier to the renderer: emits a host_key_verify
+  // event and resolves once respondHostKeyVerify arrives. Classification and known-hosts
+  // persistence are owned by SSHSocketService.
+  promptHostKey(info: IHostKeyPromptInfo): Promise<HostKeyVerifyAction> {
+    return new Promise<HostKeyVerifyAction>((resolve) => {
+      this._pendingHostKeyRespond = resolve;
+      this._event$.next({
+        type: 'host_key_verify',
+        algorithm: info.algorithm,
+        fingerprint: info.fingerprint,
+        changed: info.changed,
+        knownFingerprint: info.knownFingerprint,
+      });
+    });
+  }
+
+  respondHostKeyVerify(action: HostKeyVerifyAction): void {
+    const respond = this._pendingHostKeyRespond;
+    this._pendingHostKeyRespond = null;
+    respond?.(action);
+  }
+
   override dispose(): void {
+    // Fail closed: a pending host-key prompt left unanswered must reject, never hang or trust.
+    if (this._pendingHostKeyRespond) {
+      this._pendingHostKeyRespond('reject');
+      this._pendingHostKeyRespond = null;
+    }
     this._middlewareStack.dispose();
     this._x11Disposables.dispose();
     this._socketDisposables.dispose();

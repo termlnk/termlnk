@@ -28,10 +28,13 @@ import { ChatRepository } from './repositories/chat';
 import { CollabInviteTokenRepository } from './repositories/collab-invite-token';
 import { ConfigRepository } from './repositories/config';
 import { HostRepository } from './repositories/host';
+import { IdentityRepository } from './repositories/identity';
+import { KnownHostRepository } from './repositories/known-host';
 import { McpOAuthTokenRepository } from './repositories/mcp-oauth-token';
 import { McpServerRepository } from './repositories/mcp-server';
 import { ProviderRepository } from './repositories/provider';
 import { SkillRepository } from './repositories/skill';
+import { SshKeyRepository } from './repositories/ssh-key';
 import { SyncCursorRepository } from './repositories/sync-cursor';
 import { SyncFieldMetaRepository } from './repositories/sync-field-meta';
 import { SyncOutboxRepository } from './repositories/sync-outbox';
@@ -96,10 +99,13 @@ export class DatabasePlugin extends Plugin {
       [ChatRepository, { useClass: ChatRepository }],
       [CollabInviteTokenRepository, { useClass: CollabInviteTokenRepository }],
       [HostRepository, { useClass: HostRepository }],
+      [IdentityRepository, { useClass: IdentityRepository }],
+      [KnownHostRepository, { useClass: KnownHostRepository }],
       [McpServerRepository, { useClass: McpServerRepository }],
       [McpOAuthTokenRepository, { useClass: McpOAuthTokenRepository }],
       [ProviderRepository, { useClass: ProviderRepository }],
       [SkillRepository, { useClass: SkillRepository }],
+      [SshKeyRepository, { useClass: SshKeyRepository }],
       [SyncCursorRepository, { useClass: SyncCursorRepository }],
       [SyncFieldMetaRepository, { useClass: SyncFieldMetaRepository }],
       [SyncOutboxRepository, { useClass: SyncOutboxRepository }],

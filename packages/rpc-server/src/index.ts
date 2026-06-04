@@ -54,6 +54,8 @@ export { hostRouter } from './trpc/routers/host';
 export type { HostRouter } from './trpc/routers/host';
 export { inviteRouter } from './trpc/routers/invite';
 export type { InviteRouter } from './trpc/routers/invite';
+export { keychainRouter } from './trpc/routers/keychain';
+export type { KeychainRouter } from './trpc/routers/keychain';
 export { localFsRouter } from './trpc/routers/local-fs';
 export type { LocalFsRouter } from './trpc/routers/local-fs';
 export { proxyRouter } from './trpc/routers/proxy';

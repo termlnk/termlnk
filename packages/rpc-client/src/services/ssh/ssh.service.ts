@@ -49,6 +49,7 @@ export interface ISSHService {
   error$(sessionId: string): Observable<string>;
   respondKeyboardInteractive(sessionId: string, responses: string[], viaHopId?: string): Promise<void>;
   respondChangePassword(sessionId: string, newPassword: string, viaHopId?: string): Promise<void>;
+  respondHostKeyVerify(sessionId: string, action: 'accept_save' | 'accept_once' | 'reject'): Promise<void>;
   testConnection(input: ISSHTestConnectionInput): Promise<ISSHTestConnectionResult>;
   setFocusedSession(sessionId: string | null): Promise<void>;
 }
@@ -117,6 +118,10 @@ export class SSHService extends Disposable implements ISSHService {
 
   async respondChangePassword(sessionId: string, newPassword: string, viaHopId?: string): Promise<void> {
     await this._client.respondChangePassword.mutate({ sessionId, newPassword, viaHopId });
+  }
+
+  async respondHostKeyVerify(sessionId: string, action: 'accept_save' | 'accept_once' | 'reject'): Promise<void> {
+    await this._client.respondHostKeyVerify.mutate({ sessionId, action });
   }
 
   async testConnection(input: ISSHTestConnectionInput): Promise<ISSHTestConnectionResult> {

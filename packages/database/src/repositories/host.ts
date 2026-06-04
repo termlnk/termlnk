@@ -349,6 +349,22 @@ export class HostRepository extends Disposable {
     return this._decryptEntities(rows);
   }
 
+  // Hosts whose credential references a keychain key or identity. keyId / identityId live
+  // in plaintext on the (otherwise masked) credential JSON, so no decryption is needed.
+  async findByCredentialRef(kind: 'key' | 'identity', id: string): Promise<IHostEntity[]> {
+    const rows = await this._db.select().from(hostEntity).where(eq(hostEntity.type, HostType.HOST));
+    return rows.filter((row) => {
+      const credential = row.credential;
+      if (!credential) {
+        return false;
+      }
+      if (kind === 'key') {
+        return credential.type === 'key' && credential.keyId === id;
+      }
+      return credential.type === 'identity' && credential.identityId === id;
+    });
+  }
+
   /**
    * Resolve `owner.hostChainIds` to its ordered hop list, validating cycles, depth and
    * reference integrity. `owner` need not be persisted; only `owner.id` is used for the
@@ -491,6 +507,7 @@ export class HostRepository extends Disposable {
     }
     switch (incoming.type) {
       case 'always':
+      case 'identity':
         return incoming;
       case 'password':
         if (incoming.password) {
@@ -508,6 +525,16 @@ export class HostRepository extends Disposable {
           return { ...incoming, privateKey: existing.privateKey };
         }
         throw new Error('[HostRepository] RSA credential changed type but no privateKey provided');
+      case 'key':
+        // passphrase is optional (empty falls back to the key's own); keep the old
+        // per-host passphrase when the incoming one is blank.
+        if (incoming.passphrase) {
+          return incoming;
+        }
+        if (existing?.type === 'key') {
+          return { ...incoming, passphrase: existing.passphrase };
+        }
+        return incoming;
     }
   }
 

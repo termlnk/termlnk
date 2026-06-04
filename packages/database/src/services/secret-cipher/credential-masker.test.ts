@@ -41,7 +41,7 @@ describe('credentialMasker', () => {
       const original = { type: 'password' as const, username: 'root', password: 'hunter2' };
       const encrypted = encryptCredential(original, cipher)!;
       expect(encrypted.type).toBe('password');
-      expect(encrypted.username).toBe('root'); // username stays plaintext
+      expect((encrypted as any).username).toBe('root'); // username stays plaintext
       expect((encrypted as any).password).not.toBe('hunter2');
       expect(isEncrypted((encrypted as any).password)).toBe(true);
 
@@ -57,7 +57,7 @@ describe('credentialMasker', () => {
       };
       const encrypted = encryptCredential(original, cipher)!;
       expect(encrypted.type).toBe('rsa');
-      expect(encrypted.username).toBe('admin');
+      expect((encrypted as any).username).toBe('admin');
       expect((encrypted as any).privateKey).not.toBe(original.privateKey);
       expect(isEncrypted((encrypted as any).privateKey)).toBe(true);
 

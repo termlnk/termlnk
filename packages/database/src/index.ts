@@ -16,8 +16,8 @@
 export { DEFAULT_DB_ADAPTOR } from './config/config';
 export { DATABASE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IDatabaseConfig } from './controllers/config.schema';
-export { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity, chatMessageEntity, chatSessionEntity, collabInviteTokenEntity, configEntity, hostEntity, mcpOAuthTokenEntity, mcpServerEntity, skillEntity, syncCursorEntity, syncFieldMetaEntity, syncOutboxEntity, syncRowMetaEntity, terminalSessionBackupEntity } from './entities';
-export type { IAICustomModelEntity, IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntity, IAIProviderModelEntityInsert, IChatMessageEntity, IChatMessageEntityInsert, IChatSessionEntity, IChatSessionEntityInsert, ICollabInviteTokenEntity, ICollabInviteTokenEntityInsert, IConfigEntity, IConfigEntityInsert, IHostEntity, IHostEntityInsert, IMcpOAuthTokenEntity, IMcpOAuthTokenEntityInsert, IMcpServerEntity, IMcpServerEntityInsert, ISkillEntity, ISkillEntityInsert, ISyncCursorEntity, ISyncCursorEntityInsert, ISyncFieldMetaEntity, ISyncFieldMetaEntityInsert, ISyncOutboxEntity, ISyncOutboxEntityInsert, ISyncRowMetaEntity, ISyncRowMetaEntityInsert, ITerminalSessionBackupEntity, ITerminalSessionBackupEntityInsert } from './entities';
+export { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity, chatMessageEntity, chatSessionEntity, collabInviteTokenEntity, configEntity, hostEntity, identityEntity, knownHostEntity, mcpOAuthTokenEntity, mcpServerEntity, skillEntity, sshKeyEntity, syncCursorEntity, syncFieldMetaEntity, syncOutboxEntity, syncRowMetaEntity, terminalSessionBackupEntity } from './entities';
+export type { IAICustomModelEntity, IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntity, IAIProviderModelEntityInsert, IChatMessageEntity, IChatMessageEntityInsert, IChatSessionEntity, IChatSessionEntityInsert, ICollabInviteTokenEntity, ICollabInviteTokenEntityInsert, IConfigEntity, IConfigEntityInsert, IHostEntity, IHostEntityInsert, IIdentityEntity, IIdentityEntityInsert, IKnownHostEntity, IKnownHostEntityInsert, IMcpOAuthTokenEntity, IMcpOAuthTokenEntityInsert, IMcpServerEntity, IMcpServerEntityInsert, ISkillEntity, ISkillEntityInsert, ISshKeyEntity, ISshKeyEntityInsert, ISyncCursorEntity, ISyncCursorEntityInsert, ISyncFieldMetaEntity, ISyncFieldMetaEntityInsert, ISyncOutboxEntity, ISyncOutboxEntityInsert, ISyncRowMetaEntity, ISyncRowMetaEntityInsert, ITerminalSessionBackupEntity, ITerminalSessionBackupEntityInsert } from './entities';
 export { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
 export type { IEncryptSecretsResult } from './migrations/runtime/encrypt-secrets.runtime';
 export { runSkillRelativePathRuntimeMigration } from './migrations/runtime/skill-relative-path.runtime';
@@ -32,11 +32,15 @@ export { CollabInviteTokenRepository } from './repositories/collab-invite-token'
 export type { CollabInviteStatus, ICollabInviteChangeEvent } from './repositories/collab-invite-token';
 export { ConfigRepository } from './repositories/config';
 export { HostRepository } from './repositories/host';
+export { IdentityRepository } from './repositories/identity';
+export { KnownHostRepository } from './repositories/known-host';
+export type { IKnownHostMatchResult, IKnownHostUpsert } from './repositories/known-host';
 export { McpOAuthTokenRepository } from './repositories/mcp-oauth-token';
 export { McpServerRepository } from './repositories/mcp-server';
 export { ProviderRepository } from './repositories/provider';
 export type { IProviderChangeEvent } from './repositories/provider';
 export { SkillRepository } from './repositories/skill';
+export { SshKeyRepository } from './repositories/ssh-key';
 export { SyncCursorRepository } from './repositories/sync-cursor';
 export { SyncFieldMetaRepository } from './repositories/sync-field-meta';
 export { SyncOutboxRepository } from './repositories/sync-outbox';

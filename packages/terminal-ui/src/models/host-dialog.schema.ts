@@ -59,9 +59,23 @@ export const rsaCredentialSchema = z.object({
   privateKey: z.string(),
 });
 
+export const keyCredentialSchema = z.object({
+  type: z.literal('key'),
+  username: z.string().min(1, 'validation.usernameRequired'),
+  keyId: z.string().min(1, 'validation.keyRequired'),
+  passphrase: z.string().optional(),
+});
+
+export const identityCredentialSchema = z.object({
+  type: z.literal('identity'),
+  identityId: z.string().min(1, 'validation.identityRequired'),
+});
+
 export const credentialSchema = z.discriminatedUnion('type', [
   passwordCredentialSchema,
   rsaCredentialSchema,
+  keyCredentialSchema,
+  identityCredentialSchema,
 ]);
 
 export const proxySchema = z.object({

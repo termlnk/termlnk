@@ -58,6 +58,8 @@ const locale: typeof enUS = {
         type: '認証方式',
         password: 'パスワード認証',
         rsa: 'SSH鍵認証',
+        key: 'キー',
+        identity: 'アイデンティティ',
       },
       proxy: {
         enable: 'プロキシを有効化',
@@ -121,6 +123,8 @@ const locale: typeof enUS = {
         portInvalid: 'ポート番号は整数で入力してください',
         usernameRequired: 'ユーザー名は必須です',
         privateKeyRequired: '秘密鍵は必須です',
+        keyRequired: 'キーを選択してください',
+        identityRequired: 'アイデンティティを選択してください',
         proxyHostRequired: 'プロキシホストは必須です',
         proxyPortRequired: 'プロキシポートは必須です',
         timeoutMin: 'タイムアウトは1000ms以上にしてください',
@@ -163,9 +167,14 @@ const locale: typeof enUS = {
         viaHop: '経由: {0}',
       },
       fingerprint: {
-        title: '{0} のフィンガープリントが変更されました',
-        subtitle: 'セキュリティ上のリスクが検出されました。',
-        label: '新しい {0} フィンガープリント',
+        unknown: {
+          title: '不明なホストキー',
+          subtitle: 'このサーバーの身元はこれまで検証されていません。信頼する前にフィンガープリントを確認してください。',
+        },
+        changed: {
+          title: 'ホストキーが変更されました',
+          subtitle: 'セキュリティ上のリスクが検出されました。サーバーが再インストールされたか、接続が傍受されている可能性があります。',
+        },
       },
       hop: {
         connecting: '踏み台 {0} に接続中 ({1}/{2})...',
@@ -178,6 +187,67 @@ const locale: typeof enUS = {
     },
     drop: {
       hint: 'ファイルをドロップしてパスを貼り付け',
+    },
+    keychain: {
+      title: 'キーチェーン',
+      tab: {
+        keys: 'キー',
+        identities: 'アイデンティティ',
+      },
+      action: {
+        newKey: '新規キー',
+        generate: 'キーを生成',
+        newIdentity: '新規アイデンティティ',
+        reveal: '秘密鍵を表示',
+        cancel: 'キャンセル',
+        save: '保存',
+      },
+      empty: {
+        keys: 'キーがありません。SSH キーを生成またはインポートしてください。',
+        identities: 'アイデンティティがありません。',
+      },
+      field: {
+        label: 'ラベル',
+        algorithm: 'キータイプ',
+        bits: 'ビット数',
+        publicKey: '公開鍵',
+        privateKey: '秘密鍵',
+        passphrase: 'パスフレーズ',
+        savePassphrase: 'パスフレーズを保存',
+        cipher: '暗号',
+        rounds: 'KDF ラウンド数',
+        roundsHelp: 'ラウンド数が多いほど秘密鍵の保護は強くなりますが、パスフレーズ検証は遅くなります。',
+        certificate: '証明書（任意）',
+        username: 'ユーザー名',
+        password: 'パスワード',
+        key: 'キー',
+        noKey: 'キーを使用しない',
+      },
+      key: {
+        generateTitle: 'キーを生成',
+        newKeyTitle: '新規キー',
+        editTitle: 'キーを編集',
+      },
+      identity: {
+        newTitle: '新規アイデンティティ',
+        editTitle: 'アイデンティティを編集',
+      },
+    },
+    knownHosts: {
+      title: '既知のホスト',
+      empty: '既知のホストはまだありません。初回接続後にホストキーが記憶されます。',
+      action: {
+        clearAll: 'すべて削除',
+      },
+      detail: {
+        title: 'ホストキーの詳細',
+        host: 'ホスト',
+        port: 'ポート',
+        keyType: 'キータイプ',
+        fingerprint: 'フィンガープリント',
+        publicKey: '公開鍵',
+        close: '閉じる',
+      },
     },
     progress: {
       title: 'ターミナル進捗',

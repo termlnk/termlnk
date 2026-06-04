@@ -21,7 +21,7 @@ import type { ISSHSocket } from '../ssh/ssh-socket';
 import { Disposable, ILogService, Inject, InjectSelf } from '@termlnk/core';
 import { ConfigRepository, HostRepository } from '@termlnk/database';
 import { IFileTransferService, ITerminalSessionNotifyService, SSHSessionStatus, SSHSocketStatus } from '@termlnk/rpc';
-import { normalizeShellIntegrationConfig, SHELL_INTEGRATION_CONFIG_KEY } from '@termlnk/terminal';
+import { getCredentialUsername, normalizeShellIntegrationConfig, SHELL_INTEGRATION_CONFIG_KEY } from '@termlnk/terminal';
 import { filter, take } from 'rxjs';
 import { v4 } from 'uuid';
 import { resolveHostWithProxy } from '../proxy/resolve-effective-proxy';
@@ -119,7 +119,7 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
       hostLabel,
     });
 
-    session.log(`Connecting to ${hostLabel} (${host.addr}:${host.port || 22}) as ${host.credential?.username ?? 'unknown'}...`);
+    session.log(`Connecting to ${hostLabel} (${host.addr}:${host.port || 22}) as ${getCredentialUsername(host.credential) || 'unknown'}...`);
 
     this.disposeWithMe(
       session.status$
@@ -168,6 +168,7 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     } else if (socket.status === SSHSocketStatus.IDLE) {
       const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
         password,
+        onHostKeyPrompt: (info) => session.promptHostKey(info),
       });
       session.log(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
       socket.connect(connectConfig);
@@ -210,6 +211,7 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     } else {
       const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
         password,
+        onHostKeyPrompt: (info) => session.promptHostKey(info),
       });
       newSocket.connect(connectConfig);
     }
@@ -298,6 +300,7 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
         const connectConfig = await this._sshSocketService.createConnectConfig(host, {
           password,
           chainTunnel: finalSock,
+          onHostKeyPrompt: (info) => session.promptHostKey(info),
         });
         if (log) {
           session.log(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);

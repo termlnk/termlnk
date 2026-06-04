@@ -24,6 +24,7 @@ import { extensionRouter } from './routers/extension';
 import { fileTransferRouter } from './routers/file-transfer';
 import { hostRouter } from './routers/host';
 import { inviteRouter } from './routers/invite';
+import { keychainRouter } from './routers/keychain';
 import { localFsRouter } from './routers/local-fs';
 import { mcpRouter } from './routers/mcp';
 import { mcpRegistryRouter } from './routers/mcp-registry';
@@ -50,6 +51,7 @@ export const appRouter = router({
   devicePairing: devicePairingRouter,
   host: hostRouter,
   invite: inviteRouter,
+  keychain: keychainRouter,
   mcp: mcpRouter,
   mcpRegistry: mcpRegistryRouter,
   notify: notifyRouter,

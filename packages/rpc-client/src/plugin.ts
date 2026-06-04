@@ -33,6 +33,7 @@ import { ExtensionClientService, IExtensionClientService } from './services/exte
 import { FileTransferService } from './services/file-transfer/file-transfer.service';
 import { HostManagerService, IHostManagerService } from './services/host/host-manager.service';
 import { InviteService } from './services/invite/invite.service';
+import { IKeychainManagerService, KeychainManagerService } from './services/keychain/keychain-manager.service';
 import { McpRegistryService } from './services/mcp/mcp-registry.service';
 import { McpService } from './services/mcp/mcp.service';
 import { NotifyService } from './services/notify/notify.service';
@@ -91,6 +92,7 @@ export class RPCClientPlugin extends Plugin {
       [IFileTransferService, { useClass: FileTransferService }],
       [IHostManagerService, { useClass: HostManagerService }],
       [IInviteService, { useClass: InviteService }],
+      [IKeychainManagerService, { useClass: KeychainManagerService }],
       [IMcpService, { useClass: McpService }],
       [IMcpRegistryService, { useClass: McpRegistryService }],
       [INotifyService, { useClass: NotifyService }],

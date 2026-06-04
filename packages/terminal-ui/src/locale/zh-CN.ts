@@ -58,6 +58,8 @@ const locale: typeof enUS = {
         type: '认证类型',
         password: '密码认证',
         rsa: '密钥认证',
+        key: '密钥',
+        identity: '身份',
       },
       proxy: {
         enable: '启用代理',
@@ -121,6 +123,8 @@ const locale: typeof enUS = {
         portInvalid: '端口号必须为整数',
         usernameRequired: '用户名不能为空',
         privateKeyRequired: '私钥不能为空',
+        keyRequired: '请选择一个密钥',
+        identityRequired: '请选择一个身份',
         proxyHostRequired: '代理地址不能为空',
         proxyPortRequired: '代理端口不能为空',
         timeoutMin: '连接超时最小为 1000ms',
@@ -163,9 +167,14 @@ const locale: typeof enUS = {
         viaHop: '经由 {0}',
       },
       fingerprint: {
-        title: '{0} 的指纹已更改',
-        subtitle: '检测到潜在的安全风险。',
-        label: '新的 {0} 指纹为',
+        unknown: {
+          title: '未知的主机密钥',
+          subtitle: '此前从未验证过该服务器的身份。请在信任前确认指纹。',
+        },
+        changed: {
+          title: '主机密钥已更改',
+          subtitle: '检测到潜在的安全风险。服务器可能被重装，或连接可能被劫持。',
+        },
       },
       hop: {
         connecting: '正在连接跳板 {0} ({1}/{2})...',
@@ -178,6 +187,67 @@ const locale: typeof enUS = {
     },
     drop: {
       hint: '拖放文件以粘贴路径',
+    },
+    keychain: {
+      title: '密钥链',
+      tab: {
+        keys: '密钥',
+        identities: '身份',
+      },
+      action: {
+        newKey: '新建密钥',
+        generate: '生成密钥',
+        newIdentity: '新建身份',
+        reveal: '显示私钥',
+        cancel: '取消',
+        save: '保存',
+      },
+      empty: {
+        keys: '暂无密钥。生成或导入一个 SSH 密钥。',
+        identities: '暂无身份。',
+      },
+      field: {
+        label: '名称',
+        algorithm: '密钥类型',
+        bits: '位数',
+        publicKey: '公钥',
+        privateKey: '私钥',
+        passphrase: '密钥口令',
+        savePassphrase: '保存口令',
+        cipher: '加密算法',
+        rounds: 'KDF 轮数',
+        roundsHelp: '轮数越高，私钥保护越强，但口令验证越慢。',
+        certificate: '证书（可选）',
+        username: '用户名',
+        password: '密码',
+        key: '密钥',
+        noKey: '不使用密钥',
+      },
+      key: {
+        generateTitle: '生成密钥',
+        newKeyTitle: '新建密钥',
+        editTitle: '编辑密钥',
+      },
+      identity: {
+        newTitle: '新建身份',
+        editTitle: '编辑身份',
+      },
+    },
+    knownHosts: {
+      title: '已知主机',
+      empty: '暂无已知主机。首次连接后会记住主机密钥。',
+      action: {
+        clearAll: '清空全部',
+      },
+      detail: {
+        title: '主机密钥详情',
+        host: '主机',
+        port: '端口',
+        keyType: '密钥类型',
+        fingerprint: '指纹',
+        publicKey: '公钥',
+        close: '关闭',
+      },
     },
     progress: {
       title: '终端进度',

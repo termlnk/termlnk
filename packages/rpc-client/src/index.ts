@@ -23,6 +23,8 @@ export { ConfigManagerService, IConfigManagerService } from './services/config/c
 export { ExtensionClientService, IExtensionClientService } from './services/extension/extension-client.service';
 export { FileTransferService } from './services/file-transfer/file-transfer.service';
 export { HostManagerService, IHostManagerService } from './services/host/host-manager.service';
+export { IKeychainManagerService, KeychainManagerService } from './services/keychain/keychain-manager.service';
+export type { ICreateIdentityInput, IGenerateKeyInput, IImportKeyInput, IKeychainReferrers, IUpdateIdentityInput, IUpdateKeyInput } from './services/keychain/keychain-manager.service';
 export { McpRegistryService } from './services/mcp/mcp-registry.service';
 export { McpService } from './services/mcp/mcp.service';
 export { NotifyService } from './services/notify/notify.service';

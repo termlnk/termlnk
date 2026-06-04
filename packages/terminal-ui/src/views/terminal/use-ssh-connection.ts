@@ -76,7 +76,7 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
       if (event.type === 'log') {
         return;
       }
-      if (event.type === 'keyboard_interactive' || event.type === 'change_password') {
+      if (event.type === 'keyboard_interactive' || event.type === 'change_password' || event.type === 'host_key_verify') {
         setPendingEvent(event);
       }
       if (event.type === 'banner') {
@@ -145,6 +145,17 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
     }
   }, [sshService, sessionId]);
 
+  const respondHostKeyVerify = useCallback(async (action: 'accept_save' | 'accept_once' | 'reject') => {
+    try {
+      await sshService.respondHostKeyVerify(sessionId, action);
+      setPendingEvent(null);
+    } catch (err) {
+      console.error('[Terminal] Host-key verify response failed:', err);
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+    }
+  }, [sshService, sessionId]);
+
   const disconnect = useCallback(() => {
     connectedRef.current = false;
     subscriptions.unsubscribeAll();
@@ -180,6 +191,7 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
     connectRequestedRef,
     retry,
     respondKeyboardInteractive,
+    respondHostKeyVerify,
     disconnect,
     attachToExisting,
   };

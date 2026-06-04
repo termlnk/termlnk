@@ -58,7 +58,12 @@ export type HostItem = IHost | IHostGroup | IHostItemBase;
 
 export type HostTree = HostItem & { children: HostTree[] };
 
-export type ICredential = IPasswordCredential | IRSACredential | IAlwaysCredential;
+export type ICredential =
+  | IPasswordCredential
+  | IRSACredential
+  | IAlwaysCredential
+  | IKeyCredential
+  | IIdentityCredential;
 
 export interface IPasswordCredential {
   type: 'password';
@@ -75,6 +80,30 @@ export interface IRSACredential {
 export interface IAlwaysCredential {
   type: 'always';
   username: string;
+}
+
+/** References a key from the keychain; the host carries its own username. */
+export interface IKeyCredential {
+  type: 'key';
+  username: string;
+  keyId: string;
+  /** Per-host passphrase override (encrypted); empty falls back to the key's own passphrase. */
+  passphrase?: string;
+}
+
+/** References an identity; username/password/key are all resolved from it. */
+export interface IIdentityCredential {
+  type: 'identity';
+  identityId: string;
+}
+
+// Username for display/connection-reuse purposes. Identity credentials resolve their
+// username from the referenced identity at connect time, so none is available here.
+export function getCredentialUsername(credential: ICredential | null | undefined): string {
+  if (!credential) {
+    return '';
+  }
+  return credential.type === 'identity' ? '' : credential.username;
 }
 
 export interface IProxy {

@@ -19,7 +19,7 @@ import { LocaleService } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
 import { IFileTransferService } from '@termlnk/rpc';
 import { IHostManagerService, ISSHService } from '@termlnk/rpc-client';
-import { HostType, IShellIntegrationService } from '@termlnk/terminal';
+import { getCredentialUsername, HostType, IShellIntegrationService } from '@termlnk/terminal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ITerminalInputService } from '../../services/terminal-input/terminal-input.service';
 import { ITerminalPersistenceService } from '../../services/terminal/terminal-persistence.service';
@@ -225,6 +225,10 @@ export function TerminalView(props: ITerminalViewProps) {
     : null;
   const hasKeyboardPrompt = keyboardPromptEvent !== null;
 
+  const hostKeyEvent = connection.pendingEvent?.type === 'host_key_verify'
+    ? connection.pendingEvent
+    : null;
+
   const handlePasswordSubmit = useCallback(async (password: string, shouldSavePassword: boolean) => {
     passwordOverrideRef.current = password;
 
@@ -234,12 +238,16 @@ export function TerminalView(props: ITerminalViewProps) {
       return;
     }
 
-    if (shouldSavePassword && hostInfo) {
+    // Only persist when the credential carries its own username (password/rsa/key). An
+    // identity credential resolves its username elsewhere, so converting it here would drop
+    // the reference and save an empty username — leave it session-only.
+    const username = getCredentialUsername(hostInfo?.credential);
+    if (shouldSavePassword && hostInfo && username) {
       const updatedHost: IHost = {
         ...hostInfo,
         credential: {
-          ...hostInfo.credential,
           type: 'password',
+          username,
           password,
         },
       };
@@ -278,6 +286,9 @@ export function TerminalView(props: ITerminalViewProps) {
 
   const hopFailed = connection.hopStates.some((hop) => hop.status === 'failed');
   const overlayMode = useMemo(() => {
+    if (hostKeyEvent) {
+      return 'fingerprint';
+    }
     if (hasKeyboardPrompt) {
       return 'password';
     }
@@ -291,7 +302,22 @@ export function TerminalView(props: ITerminalViewProps) {
       return 'error';
     }
     return 'progress';
-  }, [hasKeyboardPrompt, requiresPassword, connection.status, hopFailed]);
+  }, [hostKeyEvent, hasKeyboardPrompt, requiresPassword, connection.status, hopFailed]);
+
+  const fingerprintProps = useMemo(() => {
+    if (!hostKeyEvent) {
+      return undefined;
+    }
+    const prefix = hostKeyEvent.changed
+      ? 'terminal-ui.connection.fingerprint.changed'
+      : 'terminal-ui.connection.fingerprint.unknown';
+    return {
+      title: localeService.t(`${prefix}.title`),
+      subtitle: localeService.t(`${prefix}.subtitle`),
+      label: `${hostKeyEvent.algorithm}`,
+      value: hostKeyEvent.fingerprint,
+    };
+  }, [hostKeyEvent, localeService]);
 
   const statusText = useMemo(() => {
     if (hasKeyboardPrompt) {
@@ -342,6 +368,10 @@ export function TerminalView(props: ITerminalViewProps) {
               onClose={handleClose}
               onRetry={() => connection.retry('')}
               onPasswordSubmit={handlePasswordSubmit}
+              fingerprint={fingerprintProps}
+              onFingerprintReplace={() => connection.respondHostKeyVerify('accept_save')}
+              onFingerprintAdd={() => connection.respondHostKeyVerify('accept_save')}
+              onFingerprintCancel={() => connection.respondHostKeyVerify('reject')}
             />
           </div>
         )}

@@ -28,6 +28,7 @@ import { DeepLinkRouterService, IDeepLinkRouterService } from './services/deep-l
 import { IFileDialogService, NoopFileDialogService } from './services/file-transfer/file-dialog.service';
 import { FileTransferService } from './services/file-transfer/file-transfer.service';
 import { NotifyService } from './services/notify/notify.service';
+import { ISshKeygenService, SshKeygenService } from './services/keychain/ssh-keygen.service';
 import { IProxySocketService, ProxySocketService } from './services/proxy/proxy-socket.service';
 import { PTYSessionService } from './services/pty/pty-session.service';
 import { ISFTPSessionService, SFTPSessionService } from './services/sftp/sftp-session.service';
@@ -79,6 +80,7 @@ export class RPCServerPlugin extends Plugin {
       [ISFTPSessionService, { useClass: SFTPSessionService }],
       [ITerminalSessionNotifyService, { useClass: TerminalSessionNotifyService }],
       [ISSHToolService, { useClass: SSHToolService }],
+      [ISshKeygenService, { useClass: SshKeygenService }],
       [ICommandBlockService, { useClass: CommandBlockService }],
       [ITerminalSessionEnvService, { useClass: TerminalSessionEnvService }],
       [IPTYSessionService, { useClass: PTYSessionService }],

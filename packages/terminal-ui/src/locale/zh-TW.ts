@@ -58,6 +58,8 @@ const locale: typeof enUS = {
         type: '認證類型',
         password: '密碼認證',
         rsa: '金鑰認證',
+        key: '金鑰',
+        identity: '身分',
       },
       proxy: {
         enable: '啟用代理',
@@ -121,6 +123,8 @@ const locale: typeof enUS = {
         portInvalid: '連接埠必須為整數',
         usernameRequired: '使用者名稱不能為空',
         privateKeyRequired: '私鑰不能為空',
+        keyRequired: '請選擇一個金鑰',
+        identityRequired: '請選擇一個身分',
         proxyHostRequired: '代理位址不能為空',
         proxyPortRequired: '代理連接埠不能為空',
         timeoutMin: '連線逾時最小為 1000ms',
@@ -163,9 +167,14 @@ const locale: typeof enUS = {
         viaHop: '經由 {0}',
       },
       fingerprint: {
-        title: '{0} 的指紋已變更',
-        subtitle: '偵測到潛在的安全風險。',
-        label: '新的 {0} 指紋為',
+        unknown: {
+          title: '未知的主機金鑰',
+          subtitle: '此前從未驗證過該伺服器的身分。請在信任前確認指紋。',
+        },
+        changed: {
+          title: '主機金鑰已變更',
+          subtitle: '偵測到潛在的安全風險。伺服器可能被重新安裝，或連線可能被攔截。',
+        },
       },
       hop: {
         connecting: '正在連線跳板 {0} ({1}/{2})...',
@@ -178,6 +187,67 @@ const locale: typeof enUS = {
     },
     drop: {
       hint: '拖放檔案以貼上路徑',
+    },
+    keychain: {
+      title: '金鑰鏈',
+      tab: {
+        keys: '金鑰',
+        identities: '身分',
+      },
+      action: {
+        newKey: '新增金鑰',
+        generate: '產生金鑰',
+        newIdentity: '新增身分',
+        reveal: '顯示私鑰',
+        cancel: '取消',
+        save: '儲存',
+      },
+      empty: {
+        keys: '尚無金鑰。產生或匯入一個 SSH 金鑰。',
+        identities: '尚無身分。',
+      },
+      field: {
+        label: '名稱',
+        algorithm: '金鑰類型',
+        bits: '位數',
+        publicKey: '公鑰',
+        privateKey: '私鑰',
+        passphrase: '金鑰密語',
+        savePassphrase: '儲存密語',
+        cipher: '加密演算法',
+        rounds: 'KDF 輪數',
+        roundsHelp: '輪數越高，私鑰保護越強，但密語驗證越慢。',
+        certificate: '憑證（選填）',
+        username: '使用者名稱',
+        password: '密碼',
+        key: '金鑰',
+        noKey: '不使用金鑰',
+      },
+      key: {
+        generateTitle: '產生金鑰',
+        newKeyTitle: '新增金鑰',
+        editTitle: '編輯金鑰',
+      },
+      identity: {
+        newTitle: '新增身分',
+        editTitle: '編輯身分',
+      },
+    },
+    knownHosts: {
+      title: '已知主機',
+      empty: '尚無已知主機。首次連線後會記住主機金鑰。',
+      action: {
+        clearAll: '清除全部',
+      },
+      detail: {
+        title: '主機金鑰詳情',
+        host: '主機',
+        port: '連接埠',
+        keyType: '金鑰類型',
+        fingerprint: '指紋',
+        publicKey: '公鑰',
+        close: '關閉',
+      },
     },
     progress: {
       title: '終端機進度',

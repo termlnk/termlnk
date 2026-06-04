@@ -34,6 +34,11 @@ export function encryptCredential(
       return { ...credential, password: encryptIfNeeded(credential.password, cipher) };
     case 'rsa':
       return { ...credential, privateKey: encryptIfNeeded(credential.privateKey, cipher) };
+    case 'key':
+      return credential.passphrase
+        ? { ...credential, passphrase: encryptIfNeeded(credential.passphrase, cipher) }
+        : credential;
+    case 'identity':
     case 'always':
       return credential;
   }
@@ -51,6 +56,11 @@ export function decryptCredential(
       return { ...credential, password: decryptIfNeeded(credential.password, cipher) };
     case 'rsa':
       return { ...credential, privateKey: decryptIfNeeded(credential.privateKey, cipher) };
+    case 'key':
+      return credential.passphrase
+        ? { ...credential, passphrase: decryptIfNeeded(credential.passphrase, cipher) }
+        : credential;
+    case 'identity':
     case 'always':
       return credential;
   }

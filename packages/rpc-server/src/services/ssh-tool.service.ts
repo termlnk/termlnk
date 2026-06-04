@@ -19,7 +19,7 @@ import type { Observable } from 'rxjs';
 import { Disposable, Inject } from '@termlnk/core';
 import { HostRepository } from '@termlnk/database';
 import { ISSHSessionService, SSHSessionStatus } from '@termlnk/rpc';
-import { HostType } from '@termlnk/terminal';
+import { HostType, getCredentialUsername } from '@termlnk/terminal';
 
 export class SSHToolService extends Disposable implements ISSHToolService {
   constructor(
@@ -44,7 +44,7 @@ export class SSHToolService extends Disposable implements ISSHToolService {
           base.addr = item.addr;
           base.port = item.port ?? 22;
           if ('credential' in item && item.credential) {
-            base.username = item.credential.username;
+            base.username = getCredentialUsername(item.credential);
           }
         }
 
@@ -138,7 +138,7 @@ function sanitizeTree(tree: HostTree[]): IToolHostInfo[] {
       result.addr = node.addr;
       result.port = node.port ?? 22;
       if ('credential' in node && node.credential) {
-        result.username = node.credential.username;
+        result.username = getCredentialUsername(node.credential);
         result.authType = node.credential.type;
       }
     }

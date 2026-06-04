@@ -58,6 +58,8 @@ const locale: typeof enUS = {
         type: '인증 방식',
         password: '비밀번호 인증',
         rsa: 'SSH 키 인증',
+        key: '키',
+        identity: '아이덴티티',
       },
       proxy: {
         enable: '프록시 활성화',
@@ -121,6 +123,8 @@ const locale: typeof enUS = {
         portInvalid: '포트 번호는 정수여야 합니다',
         usernameRequired: '사용자명은 필수입니다',
         privateKeyRequired: '개인 키는 필수입니다',
+        keyRequired: '키를 선택하세요',
+        identityRequired: '아이덴티티를 선택하세요',
         proxyHostRequired: '프록시 호스트는 필수입니다',
         proxyPortRequired: '프록시 포트는 필수입니다',
         timeoutMin: '타임아웃은 최소 1000ms여야 합니다',
@@ -163,9 +167,14 @@ const locale: typeof enUS = {
         viaHop: '경유: {0}',
       },
       fingerprint: {
-        title: '{0}의 지문이 변경되었습니다',
-        subtitle: '잠재적인 보안 위험이 감지되었습니다.',
-        label: '새로운 {0} 지문',
+        unknown: {
+          title: '알 수 없는 호스트 키',
+          subtitle: '이 서버의 신원이 이전에 확인된 적이 없습니다. 신뢰하기 전에 지문을 확인하세요.',
+        },
+        changed: {
+          title: '호스트 키가 변경되었습니다',
+          subtitle: '잠재적인 보안 위험이 감지되었습니다. 서버가 재설치되었거나 연결이 가로채였을 수 있습니다.',
+        },
       },
       hop: {
         connecting: '점프 호스트 {0} 연결 중 ({1}/{2})...',
@@ -178,6 +187,67 @@ const locale: typeof enUS = {
     },
     drop: {
       hint: '파일을 드롭하여 경로 붙여넣기',
+    },
+    keychain: {
+      title: '키체인',
+      tab: {
+        keys: '키',
+        identities: '아이덴티티',
+      },
+      action: {
+        newKey: '새 키',
+        generate: '키 생성',
+        newIdentity: '새 아이덴티티',
+        reveal: '개인 키 표시',
+        cancel: '취소',
+        save: '저장',
+      },
+      empty: {
+        keys: '키가 없습니다. SSH 키를 생성하거나 가져오세요.',
+        identities: '아이덴티티가 없습니다.',
+      },
+      field: {
+        label: '레이블',
+        algorithm: '키 유형',
+        bits: '비트',
+        publicKey: '공개 키',
+        privateKey: '개인 키',
+        passphrase: '암호 구문',
+        savePassphrase: '암호 구문 저장',
+        cipher: '암호화',
+        rounds: 'KDF 라운드 수',
+        roundsHelp: '라운드 수가 높을수록 개인 키 보호가 강해지지만 암호 구문 확인이 느려집니다.',
+        certificate: '인증서 (선택)',
+        username: '사용자 이름',
+        password: '비밀번호',
+        key: '키',
+        noKey: '키 사용 안 함',
+      },
+      key: {
+        generateTitle: '키 생성',
+        newKeyTitle: '새 키',
+        editTitle: '키 편집',
+      },
+      identity: {
+        newTitle: '새 아이덴티티',
+        editTitle: '아이덴티티 편집',
+      },
+    },
+    knownHosts: {
+      title: '알려진 호스트',
+      empty: '알려진 호스트가 아직 없습니다. 첫 연결 후 호스트 키가 기억됩니다.',
+      action: {
+        clearAll: '모두 지우기',
+      },
+      detail: {
+        title: '호스트 키 세부 정보',
+        host: '호스트',
+        port: '포트',
+        keyType: '키 유형',
+        fingerprint: '지문',
+        publicKey: '공개 키',
+        close: '닫기',
+      },
     },
     progress: {
       title: '터미널 진행률',

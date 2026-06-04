@@ -18,6 +18,7 @@ import type { HostFormItem, IHostDialogState } from '../../models/host-dialog.st
 import { LocaleService } from '@termlnk/core';
 import { Button, cn, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
 import { ISSHService } from '@termlnk/rpc-client';
+import { getCredentialUsername } from '@termlnk/terminal';
 import { Loader2Icon } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { getFieldError, hostSchema } from '../../models/host-dialog.schema';
@@ -115,7 +116,7 @@ export function HostDialog() {
     const { addr, port, credential } = formData;
     const failMsg = localeService.t('terminal-ui.host-dialog.test.validationFailed');
 
-    if (!addr || !port || !credential?.username) {
+    if (!addr || !port || !getCredentialUsername(credential)) {
       showTestResult({ ok: false, message: failMsg });
       return;
     }

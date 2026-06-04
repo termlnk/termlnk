@@ -45,7 +45,7 @@ export type SSHSessionEvent =
   | ({ type: 'auth_failed'; message: string } & ISSHHopContext)
   | ({ type: 'keyboard_interactive'; name: string; instructions: string; prompts: Array<{ prompt: string; echo: boolean }> } & ISSHHopContext)
   | ({ type: 'change_password'; message: string } & ISSHHopContext)
-  | { type: 'host_key_verify'; algorithm: string; fingerprint: string }
+  | { type: 'host_key_verify'; algorithm: string; fingerprint: string; changed?: boolean; knownFingerprint?: string }
   | ({ type: 'banner'; message: string } & ISSHHopContext)
   | { type: 'log'; message: string }
   | { type: 'hop_progress'; hopId: string; hopLabel: string; hopIndex: number; hopCount: number; status: SSHHopProgressStatus; message?: string };

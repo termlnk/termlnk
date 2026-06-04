@@ -13,12 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { HostTree, ICredential } from '@termlnk/terminal';
+import type { HostTree, ICredential, IPublicIdentity, IPublicSshKey } from '@termlnk/terminal';
 import type { HostFormItem } from '../../../models/host-dialog.state';
 import { LocaleService } from '@termlnk/core';
 import { Field, FieldContent, FieldError, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, useDependency } from '@termlnk/design';
-import { IHostManagerService } from '@termlnk/rpc-client';
-import { DEFAULT_HOST_ROOT, HostType } from '@termlnk/terminal';
+import { IHostManagerService, IKeychainManagerService } from '@termlnk/rpc-client';
+import { DEFAULT_HOST_ROOT, getCredentialUsername, HostType } from '@termlnk/terminal';
 import { useEffect, useState } from 'react';
 import { HostDialogMode } from '../../../models/host-dialog.state';
 
@@ -55,6 +55,7 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
   const { data, mode, onChange, getError } = props;
   const localeService = useDependency(LocaleService);
   const hostManagerService = useDependency(IHostManagerService);
+  const keychainService = useDependency(IKeychainManagerService);
 
   const credentialType = data.credential?.type ?? 'password';
   const isEdit = mode === HostDialogMode.EDIT;
@@ -64,6 +65,8 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
     : '-----BEGIN RSA PRIVATE KEY-----';
 
   const [groups, setGroups] = useState<IGroupOption[]>([]);
+  const [keys, setKeys] = useState<IPublicSshKey[]>([]);
+  const [identities, setIdentities] = useState<IPublicIdentity[]>([]);
 
   useEffect(() => {
     hostManagerService.tree().then((trees) => {
@@ -71,13 +74,34 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
     });
   }, [hostManagerService]);
 
+  useEffect(() => {
+    keychainService.listKeys().then(setKeys).catch(() => setKeys([]));
+    keychainService.listIdentities().then(setIdentities).catch(() => setIdentities([]));
+  }, [keychainService]);
+
   const handleTypeChange = (type: string) => {
-    if (type !== 'password' && type !== 'rsa') {
+    if (type === 'password' || type === 'rsa') {
+      onChange({ credential: { ...data.credential, type } as ICredential });
       return;
     }
-    onChange({
-      credential: { ...data.credential, type } as ICredential,
-    });
+    if (type === 'key') {
+      onChange({
+        credential: {
+          type: 'key',
+          username: getCredentialUsername(data.credential),
+          keyId: data.credential?.type === 'key' ? data.credential.keyId : '',
+        },
+      });
+      return;
+    }
+    if (type === 'identity') {
+      onChange({
+        credential: {
+          type: 'identity',
+          identityId: data.credential?.type === 'identity' ? data.credential.identityId : '',
+        },
+      });
+    }
   };
 
   return (
@@ -168,6 +192,18 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
           >
             {localeService.t('terminal-ui.host-dialog.credential.rsa')}
           </TabsTrigger>
+          <TabsTrigger
+            value="key"
+            className={credentialTabTriggerCls}
+          >
+            {localeService.t('terminal-ui.host-dialog.credential.key')}
+          </TabsTrigger>
+          <TabsTrigger
+            value="identity"
+            className={credentialTabTriggerCls}
+          >
+            {localeService.t('terminal-ui.host-dialog.credential.identity')}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="password" className="tm:mt-3">
@@ -178,7 +214,7 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
                 <Input
                   id="host-username-pwd"
                   className={compactInputCls}
-                  value={data.credential?.username ?? ''}
+                  value={getCredentialUsername(data.credential)}
                   onChange={(e) => onChange({
                     credential: { ...data.credential, username: e.target.value } as ICredential,
                   })}
@@ -215,7 +251,7 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
                 <Input
                   id="host-username-rsa"
                   className={compactInputCls}
-                  value={data.credential?.username ?? ''}
+                  value={getCredentialUsername(data.credential)}
                   onChange={(e) => onChange({
                     credential: { ...data.credential, username: e.target.value } as ICredential,
                   })}
@@ -239,6 +275,80 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
                   placeholder={privateKeyPlaceholder}
                 />
                 <FieldError>{getError('credential.privateKey')}</FieldError>
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+        </TabsContent>
+
+        <TabsContent value="key" className="tm:mt-3">
+          <FieldGroup className="tm:gap-3">
+            <Field data-invalid={!!getError('credential.username')}>
+              <FieldLabel htmlFor="host-username-key">{localeService.t('terminal-ui.host-dialog.field.username')}</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="host-username-key"
+                  className={compactInputCls}
+                  value={getCredentialUsername(data.credential)}
+                  onChange={(e) => onChange({
+                    credential: { type: 'key', username: e.target.value, keyId: data.credential?.type === 'key' ? data.credential.keyId : '' },
+                  })}
+                  placeholder="root"
+                />
+                <FieldError>{getError('credential.username')}</FieldError>
+              </FieldContent>
+            </Field>
+
+            <Field data-invalid={!!getError('credential.keyId')}>
+              <FieldLabel>{localeService.t('terminal-ui.host-dialog.credential.key')}</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={data.credential?.type === 'key' ? data.credential.keyId : ''}
+                  onValueChange={(keyId) => onChange({
+                    credential: { type: 'key', username: getCredentialUsername(data.credential), keyId },
+                  })}
+                >
+                  <SelectTrigger
+                    className={`
+                      ${compactInputCls}
+                      tm:w-full
+                    `}
+                    size="sm"
+                  >
+                    <SelectValue placeholder={localeService.t('terminal-ui.keychain.field.key')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {keys.map((k) => <SelectItem key={k.id} value={k.id}>{k.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <FieldError>{getError('credential.keyId')}</FieldError>
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+        </TabsContent>
+
+        <TabsContent value="identity" className="tm:mt-3">
+          <FieldGroup className="tm:gap-3">
+            <Field data-invalid={!!getError('credential.identityId')}>
+              <FieldLabel>{localeService.t('terminal-ui.keychain.tab.identities')}</FieldLabel>
+              <FieldContent>
+                <Select
+                  value={data.credential?.type === 'identity' ? data.credential.identityId : ''}
+                  onValueChange={(identityId) => onChange({ credential: { type: 'identity', identityId } })}
+                >
+                  <SelectTrigger
+                    className={`
+                      ${compactInputCls}
+                      tm:w-full
+                    `}
+                    size="sm"
+                  >
+                    <SelectValue placeholder={localeService.t('terminal-ui.keychain.tab.identities')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {identities.map((i) => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <FieldError>{getError('credential.identityId')}</FieldError>
               </FieldContent>
             </Field>
           </FieldGroup>

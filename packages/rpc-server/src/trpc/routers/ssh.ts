@@ -100,6 +100,16 @@ export const sshRouter = router({
       session?.respondChangePassword(input.newPassword, input.viaHopId);
     }),
 
+  respondHostKeyVerify: publicProcedure
+    .input(z.object({
+      sessionId: sessionIdSchema,
+      action: z.enum(['accept_save', 'accept_once', 'reject']),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const session = ctx.injector.get(ISSHSessionService).getSession(input.sessionId);
+      session?.respondHostKeyVerify(input.action);
+    }),
+
   data$: publicProcedure
     .input(sessionIdSchema)
     .subscription(async function* ({ ctx, input }) {

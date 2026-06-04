@@ -21,6 +21,10 @@ export const credentialSchema = z.object({
   username: z.string().optional(),
   password: z.string().optional(),
   privateKey: z.string().optional(),
+  // Keychain references (type 'key' / 'identity').
+  keyId: z.string().optional(),
+  identityId: z.string().optional(),
+  passphrase: z.string().optional(),
 });
 
 export const proxySchema = z.object({

@@ -56,6 +56,8 @@ const locale = {
         type: 'Auth Type',
         password: 'Password',
         rsa: 'Private Key',
+        key: 'Key',
+        identity: 'Identity',
       },
       proxy: {
         enable: 'Enable Proxy',
@@ -119,6 +121,8 @@ const locale = {
         portInvalid: 'Port must be an integer',
         usernameRequired: 'Username is required',
         privateKeyRequired: 'Private key is required',
+        keyRequired: 'Please select a key',
+        identityRequired: 'Please select an identity',
         proxyHostRequired: 'Proxy host is required',
         proxyPortRequired: 'Proxy port is required',
         timeoutMin: 'Timeout must be at least 1000ms',
@@ -161,9 +165,14 @@ const locale = {
         viaHop: 'via {0}',
       },
       fingerprint: {
-        title: 'The fingerprint for {0} has changed',
-        subtitle: 'A potential security breach was detected.',
-        label: 'New {0} fingerprint is',
+        unknown: {
+          title: 'Unknown host key',
+          subtitle: 'This server\'s identity has not been verified before. Confirm the fingerprint before trusting it.',
+        },
+        changed: {
+          title: 'The host key has changed',
+          subtitle: 'A potential security breach was detected. The server may have been reinstalled, or the connection may be intercepted.',
+        },
       },
       hop: {
         connecting: 'Connecting jump host {0} ({1}/{2})...',
@@ -176,6 +185,67 @@ const locale = {
     },
     drop: {
       hint: 'Drop files to paste path',
+    },
+    keychain: {
+      title: 'Keychain',
+      tab: {
+        keys: 'Keys',
+        identities: 'Identities',
+      },
+      action: {
+        newKey: 'New key',
+        generate: 'Generate key',
+        newIdentity: 'New identity',
+        reveal: 'Reveal private key',
+        cancel: 'Cancel',
+        save: 'Save',
+      },
+      empty: {
+        keys: 'No keys yet. Generate or import an SSH key.',
+        identities: 'No identities yet.',
+      },
+      field: {
+        label: 'Label',
+        algorithm: 'Key type',
+        bits: 'Bits',
+        publicKey: 'Public key',
+        privateKey: 'Private key',
+        passphrase: 'Passphrase',
+        savePassphrase: 'Save passphrase',
+        cipher: 'Cipher',
+        rounds: 'Rounds',
+        roundsHelp: 'Higher rounds strengthen the private key but slow passphrase verification.',
+        certificate: 'Certificate (optional)',
+        username: 'Username',
+        password: 'Password',
+        key: 'Key',
+        noKey: 'No key',
+      },
+      key: {
+        generateTitle: 'Generate key',
+        newKeyTitle: 'New key',
+        editTitle: 'Edit key',
+      },
+      identity: {
+        newTitle: 'New identity',
+        editTitle: 'Edit identity',
+      },
+    },
+    knownHosts: {
+      title: 'Known Hosts',
+      empty: 'No known hosts yet. Host keys are remembered after the first connection.',
+      action: {
+        clearAll: 'Clear all',
+      },
+      detail: {
+        title: 'Host Key Details',
+        host: 'Host',
+        port: 'Port',
+        keyType: 'Key type',
+        fingerprint: 'Fingerprint',
+        publicKey: 'Public key',
+        close: 'Close',
+      },
     },
     progress: {
       title: 'Terminal Progress',

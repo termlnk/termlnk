@@ -86,6 +86,8 @@ export function createSSHSocket(id: string): ISSHSocket {
       return _status$.getValue();
     },
 
+    // config.hostVerifier is set by SSHSocketService.createConnectConfig, which owns
+    // host-key classification and known-hosts persistence.
     connect: (config: ConnectConfig) => {
       _status$.next(SSHSocketStatus.CONNECTING);
       client.connect(config);

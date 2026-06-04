@@ -14,14 +14,17 @@
  */
 
 import type { IProviderUserConfig } from '@termlnk/agent';
-import type { IAIProviderEntity, IHostEntity } from '@termlnk/database';
-import type { ICredential, IProxy } from '@termlnk/terminal';
+import type { IAIProviderEntity, IHostEntity, IIdentityEntity, ISshKeyEntity } from '@termlnk/database';
+import type { ICredential, IProxy, IPublicIdentity, IPublicSshKey } from '@termlnk/terminal';
 
 export interface IPublicCredential {
   type: ICredential['type'];
   username: string;
   hasPassword?: boolean;
   hasPrivateKey?: boolean;
+  hasPassphrase?: boolean;
+  keyId?: string;
+  identityId?: string;
 }
 
 export function sanitizeCredential(credential: ICredential | null | undefined): IPublicCredential | null {
@@ -43,6 +46,16 @@ export function sanitizeCredential(credential: ICredential | null | undefined): 
       };
     case 'always':
       return { type: 'always', username: credential.username };
+    case 'key':
+      return {
+        type: 'key',
+        username: credential.username,
+        keyId: credential.keyId,
+        hasPassphrase: !!credential.passphrase,
+      };
+    case 'identity':
+      // Username is resolved from the identity at connect time; not carried on the credential.
+      return { type: 'identity', username: '', identityId: credential.identityId };
   }
 }
 
@@ -115,4 +128,44 @@ export function sanitizeProviderUserConfig(
   }
   const { apiKey, ...rest } = config;
   return { ...rest, apiKeyConfigured: !!apiKey };
+}
+
+// ---------------------------------------------------------------------------
+// Keychain (SSH keys + identities)
+// ---------------------------------------------------------------------------
+
+// Projects entities to the single-source public shapes in @termlnk/terminal, dropping the
+// private key / passphrase / password and exposing only the hasXxx flags.
+
+export function sanitizeSshKey(entity: ISshKeyEntity): IPublicSshKey {
+  return {
+    id: entity.id,
+    label: entity.label,
+    algorithm: entity.algorithm,
+    bits: entity.bits,
+    publicKey: entity.publicKey,
+    certificate: entity.certificate,
+    savePassphrase: entity.savePassphrase,
+    source: entity.source,
+    publicKeyFingerprint: entity.publicKeyFingerprint,
+    hasPassphrase: !!entity.passphrase,
+  };
+}
+
+export function sanitizeSshKeys(entities: ISshKeyEntity[]): IPublicSshKey[] {
+  return entities.map(sanitizeSshKey);
+}
+
+export function sanitizeIdentity(entity: IIdentityEntity): IPublicIdentity {
+  return {
+    id: entity.id,
+    label: entity.label,
+    username: entity.username,
+    keyId: entity.keyId,
+    hasPassword: !!entity.password,
+  };
+}
+
+export function sanitizeIdentities(entities: IIdentityEntity[]): IPublicIdentity[] {
+  return entities.map(sanitizeIdentity);
 }

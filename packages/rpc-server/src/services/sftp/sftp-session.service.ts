@@ -24,6 +24,7 @@ import type { ISFTPFileAttrs, ISFTPFileEntry } from './sftp-session';
 import { createIdentifier, Disposable, ILogService, Inject, InjectSelf } from '@termlnk/core';
 import { ConfigRepository, HostRepository } from '@termlnk/database';
 import { SFTPSessionStatus, SSHSocketStatus, TransferDirection, TransferStatus } from '@termlnk/rpc';
+import { getCredentialUsername } from '@termlnk/terminal';
 import { filter, Subject, take } from 'rxjs';
 import { v4 } from 'uuid';
 import { resolveHostWithProxy } from '../proxy/resolve-effective-proxy';
@@ -128,7 +129,7 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
     this._sessions.set(sessionId, session);
 
     const hostLabel = resolvedHost.label ?? hostId;
-    this._logService.debug(`SFTP connecting to ${hostLabel} (${host.addr}:${host.port || 22}) as ${host.credential?.username ?? 'unknown'}...`);
+    this._logService.debug(`SFTP connecting to ${hostLabel} (${host.addr}:${host.port || 22}) as ${getCredentialUsername(host.credential) || 'unknown'}...`);
 
     this.disposeWithMe(
       session.status$
