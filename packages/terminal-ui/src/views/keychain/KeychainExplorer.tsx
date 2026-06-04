@@ -128,10 +128,9 @@ export function KeychainExplorer() {
                 {keys.map((key) => (
                   <KeychainRow
                     key={key.id}
-                    icon={<KeyRound size={15} strokeWidth={1.6} />}
+                    icon={<KeyRound size={18} strokeWidth={1.6} />}
                     title={key.label}
                     subtitle={`${key.algorithm.toUpperCase()}${key.bits ? ` ${key.bits}` : ''} · ${key.publicKeyFingerprint ?? ''}`}
-                    badge={key.source}
                     onEdit={() => dialogService.openEditKey(key)}
                     onDelete={() => deleteKey(key.id)}
                   />
@@ -148,7 +147,7 @@ export function KeychainExplorer() {
                 {identities.map((identity) => (
                   <KeychainRow
                     key={identity.id}
-                    icon={<UserRound size={15} strokeWidth={1.6} />}
+                    icon={<UserRound size={18} strokeWidth={1.6} />}
                     title={identity.label}
                     subtitle={identity.username}
                     badge={identity.keyId ? 'key' : (identity.hasPassword ? 'password' : undefined)}
@@ -194,26 +193,26 @@ function KeychainRow({ icon, title, subtitle, badge, onEdit, onDelete }: IKeycha
     <li
       className={cn(`
         tm:group
-        tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-2
+        tm:flex tm:items-center tm:gap-2.5 tm:rounded-lg tm:border tm:border-line tm:bg-one-bg tm:p-2.5
         tm:hover:bg-one-bg2
       `)}
     >
       <span
         className="
-          tm:flex tm:size-7 tm:shrink-0 tm:items-center tm:justify-center tm:rounded-md tm:bg-one-bg3 tm:text-nord-blue
+          tm:flex tm:size-9 tm:shrink-0 tm:items-center tm:justify-center tm:rounded-lg tm:bg-blue tm:text-[#fff]
         "
       >
         {icon}
       </span>
       <div className="tm:min-w-0 tm:flex-1">
-        <div className="tm:truncate tm:text-[12px] tm:text-white">{title}</div>
-        <div className="tm:truncate tm:text-[10px] tm:text-grey-fg">{subtitle}</div>
+        <div className="tm:truncate tm:text-[13px] tm:font-semibold tm:text-white">{title}</div>
+        <div className="tm:truncate tm:text-[11px] tm:text-grey-fg">{subtitle}</div>
       </div>
       {badge && <Badge variant="secondary" className="tm:text-[10px]">{badge}</Badge>}
       <div
         className="
-          tm:flex tm:items-center tm:gap-0.5 tm:opacity-0 tm:transition-opacity
-          tm:group-hover:opacity-100
+          tm:hidden tm:items-center tm:gap-0.5
+          tm:group-hover:flex
         "
       >
         <Button variant="ghost" size="icon-xs" onClick={onEdit}><Pencil size={13} /></Button>

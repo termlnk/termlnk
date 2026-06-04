@@ -18,8 +18,7 @@ import type { KeyDialogMode } from '../../services/keychain/keychain-dialog.serv
 import { LocaleService } from '@termlnk/core';
 import { Button, DialogContent, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogPrimitive, DialogTitle, Field, FieldContent, FieldLabel, Input, Switch, Textarea, ToggleGroup, ToggleGroupItem, useDependency } from '@termlnk/design';
 import { IKeychainManagerService } from '@termlnk/rpc-client';
-import { Check, Copy, Eye, EyeOff } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface IKeyDialogProps {
   mode: KeyDialogMode;
@@ -162,13 +161,17 @@ export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
               <Field>
                 <FieldLabel>{t('terminal-ui.keychain.field.publicKey')}</FieldLabel>
                 <FieldContent>
-                  <CopyableSecret value={editKey.publicKey} />
+                  <Textarea
+                    readOnly
+                    className="tm:min-h-28 tm:font-mono tm:text-[12px]"
+                    value={editKey.publicKey}
+                  />
                 </FieldContent>
               </Field>
               <Field>
                 <FieldLabel>{t('terminal-ui.keychain.field.privateKey')}</FieldLabel>
                 <FieldContent>
-                  <RevealablePrivateKey load={() => keychain.revealPrivateKey(editKey.id)} />
+                  <RevealedPrivateKey keyId={editKey.id} />
                 </FieldContent>
               </Field>
             </>
@@ -325,63 +328,25 @@ function SegmentedToggle({ value, options, onValueChange }: ISegmentedToggleProp
   );
 }
 
-const secretBoxCls = `
-  tm:max-h-32 tm:min-h-9 tm:flex-1 tm:overflow-auto tm:rounded-md tm:border tm:border-line tm:bg-one-bg3 tm:px-2.5
-  tm:py-1.5 tm:font-mono tm:text-[11px] tm:break-all tm:whitespace-pre-wrap tm:text-light-grey
-`;
+function RevealedPrivateKey({ keyId }: { keyId: string }) {
+  const keychain = useDependency(IKeychainManagerService);
+  const [value, setValue] = useState('');
 
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = useCallback(() => {
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(true);
-      setTimeout(setCopied, 1200, false);
-    }).catch(() => {});
-  }, [value]);
-
-  return (
-    <Button variant="ghost" size="icon-sm" onClick={copy}>
-      {copied ? <Check size={14} className="tm:text-green" /> : <Copy size={14} />}
-    </Button>
-  );
-}
-
-function CopyableSecret({ value }: { value: string }) {
-  return (
-    <div className="tm:flex tm:items-start tm:gap-1.5">
-      <div className={secretBoxCls}>{value}</div>
-      <CopyButton value={value} />
-    </div>
-  );
-}
-
-function RevealablePrivateKey({ load }: { load: () => Promise<string | undefined> }) {
-  const localeService = useDependency(LocaleService);
-  const t = useCallback((k: string) => localeService.t(k), [localeService]);
-  const [value, setValue] = useState<string | null>(null);
-
-  const reveal = useCallback(() => {
-    load().then((pem) => setValue(pem ?? '')).catch(() => setValue(''));
-  }, [load]);
-
-  if (value === null) {
-    return (
-      <Button variant="outline" size="sm" className="tm:h-9 tm:gap-1.5" onClick={reveal}>
-        <Eye size={14} />
-        {t('terminal-ui.keychain.action.reveal')}
-      </Button>
-    );
-  }
+  useEffect(() => {
+    let active = true;
+    keychain.revealPrivateKey(keyId)
+      .then((pem) => active && setValue(pem ?? ''))
+      .catch(() => active && setValue(''));
+    return () => {
+      active = false;
+    };
+  }, [keychain, keyId]);
 
   return (
-    <div className="tm:flex tm:items-start tm:gap-1.5">
-      <div className={secretBoxCls}>{value}</div>
-      <div className="tm:flex tm:flex-col tm:gap-0.5">
-        <Button variant="ghost" size="icon-sm" onClick={() => setValue(null)}>
-          <EyeOff size={14} />
-        </Button>
-        <CopyButton value={value} />
-      </div>
-    </div>
+    <Textarea
+      readOnly
+      className="tm:min-h-28 tm:font-mono tm:text-[12px]"
+      value={value}
+    />
   );
 }

@@ -102,8 +102,8 @@ export function KnownHostsExplorer() {
                     variant="ghost"
                     size="icon-xs"
                     className="
-                      tm:opacity-0 tm:transition-opacity
-                      tm:group-hover:opacity-100
+                      tm:hidden
+                      tm:group-hover:flex
                     "
                     onClick={(e) => {
                       e.stopPropagation();
