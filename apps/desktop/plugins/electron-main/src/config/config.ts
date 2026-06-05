@@ -27,5 +27,9 @@ export const DEFAULT_WINDOW_OPTIONS: BrowserWindowConstructorOptions = {
     sandbox: false,
     nodeIntegration: true,
     // contextIsolation: true,
+    // Chrome inputs (host name, port, search) are not prose — red spellcheck
+    // squiggles read as a web page, not a native app. Content fields opt in
+    // per-element via the `spellcheck` attribute instead.
+    spellcheck: false,
   },
 };

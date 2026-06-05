@@ -92,8 +92,8 @@ export function ChatModelSelector(props: IChatModelSelectorProps) {
             type="button"
             className={cn(
               `
-                tm:flex tm:min-w-0 tm:cursor-pointer tm:items-center tm:gap-1.5 tm:rounded-md tm:bg-transparent
-                tm:text-light-grey tm:transition-colors
+                tm:flex tm:min-w-0 tm:items-center tm:gap-1.5 tm:rounded-md tm:bg-transparent tm:text-light-grey
+                tm:transition-colors
                 tm:hover:text-white
               `,
               triggerClassName

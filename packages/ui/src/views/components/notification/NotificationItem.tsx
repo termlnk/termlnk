@@ -60,8 +60,8 @@ export function NotificationItem(props: INotificationItemProps) {
       className={cn(
         `
           tm:group
-          tm:flex tm:animate-in tm:cursor-pointer tm:gap-2 tm:rounded-md tm:border tm:border-line tm:p-2
-          tm:transition-all tm:duration-150 tm:fade-in-0 tm:slide-in-from-top-1
+          tm:flex tm:animate-in tm:gap-2 tm:rounded-md tm:border tm:border-line tm:p-2 tm:transition-all tm:duration-150
+          tm:fade-in-0 tm:slide-in-from-top-1
         `,
         {
           'tm:hover:border-line tm:hover:bg-one-bg': isRead,
@@ -73,7 +73,7 @@ export function NotificationItem(props: INotificationItemProps) {
         {getNotificationIcon(notification.type)}
       </div>
 
-      <div className="tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:gap-0.5">
+      <div className="tm:flex tm:min-w-0 tm:flex-1 tm:flex-col tm:gap-0.5 tm:select-text">
         <div className="tm:flex tm:items-start tm:justify-between tm:gap-2">
           <div className="tm:flex tm:min-w-0 tm:items-center tm:gap-1">
             <span

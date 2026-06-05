@@ -351,7 +351,7 @@ export function SessionList({ sessions, animationState, onCollapse }: ISessionLi
     return (
       <div
         onClick={onCollapse}
-        className={cn('tm:flex tm:size-full tm:cursor-pointer tm:flex-col tm:items-center tm:justify-center tm:gap-2')}
+        className={cn('tm:flex tm:size-full tm:flex-col tm:items-center tm:justify-center tm:gap-2')}
       >
         <SleepingMoonIcon />
         <span
@@ -373,7 +373,7 @@ export function SessionList({ sessions, animationState, onCollapse }: ISessionLi
       {/* Header */}
       <div
         onClick={onCollapse}
-        className={cn('tm:flex tm:cursor-pointer tm:items-center tm:gap-1.5 tm:px-2 tm:pb-1')}
+        className={cn('tm:flex tm:items-center tm:gap-1.5 tm:px-2 tm:pb-1')}
         style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}
       >
         <div

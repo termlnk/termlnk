@@ -22,8 +22,8 @@ import { cn } from '../../common/cn';
 const buttonVariants = cva(
   `
     tm:group/button
-    tm:inline-flex tm:shrink-0 tm:cursor-pointer tm:items-center tm:justify-center tm:rounded-md tm:border
-    tm:border-transparent tm:bg-transparent tm:text-sm tm:font-medium tm:whitespace-nowrap tm:outline-hidden
+    tm:inline-flex tm:shrink-0 tm:items-center tm:justify-center tm:rounded-md tm:border tm:border-transparent
+    tm:bg-transparent tm:text-sm tm:font-medium tm:whitespace-nowrap tm:outline-hidden
     tm:transition-[color,box-shadow,background-color,border-color] tm:select-none
     tm:focus-visible:border-blue tm:focus-visible:ring-[3px] tm:focus-visible:ring-blue/50
     tm:disabled:pointer-events-none tm:disabled:opacity-50

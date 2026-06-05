@@ -109,7 +109,7 @@ export function ChatSessionList({ onSelectSession }: IChatSessionListProps) {
             className={cn(
               `
                 tm:group
-                tm:flex tm:cursor-pointer tm:items-center tm:gap-2 tm:rounded-md tm:p-2 tm:text-xs tm:transition-colors
+                tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:p-2 tm:text-xs tm:transition-colors
                 tm:hover:bg-one-bg
               `,
               {

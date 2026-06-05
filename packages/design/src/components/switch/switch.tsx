@@ -31,8 +31,8 @@ function Switch({
       className={cn(
         `
           tm:peer tm:group/switch
-          tm:relative tm:inline-flex tm:shrink-0 tm:cursor-pointer tm:items-center tm:rounded-full tm:border
-          tm:border-transparent tm:transition-all tm:outline-none
+          tm:relative tm:inline-flex tm:shrink-0 tm:items-center tm:rounded-full tm:border tm:border-transparent
+          tm:transition-all tm:outline-none
           tm:after:absolute tm:after:-inset-x-3 tm:after:-inset-y-2
           tm:hover:border-blue
           tm:focus-visible:border-blue tm:focus-visible:ring-3 tm:focus-visible:ring-blue/50

@@ -372,7 +372,7 @@ export function ChatSkillSelector() {
                       htmlFor={checkboxId}
                       className={cn(
                         `
-                          tm:flex tm:cursor-pointer tm:items-start tm:gap-2 tm:px-3.5 tm:py-1.5 tm:transition-colors
+                          tm:flex tm:items-start tm:gap-2 tm:px-3.5 tm:py-1.5 tm:transition-colors
                           tm:hover:bg-one-bg/60
                         `,
                         {

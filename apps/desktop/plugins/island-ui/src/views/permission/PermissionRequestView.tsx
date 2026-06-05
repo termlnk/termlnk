@@ -96,7 +96,7 @@ export function PermissionRequestView({ request }: { request: IPermissionRequest
             e.stopPropagation();
             onDeny();
           }}
-          className={cn('tm:flex-1 tm:cursor-pointer tm:border-none')}
+          className={cn('tm:flex-1 tm:border-none')}
           style={{
             padding: '5px 12px',
             borderRadius: 6,
@@ -115,7 +115,7 @@ export function PermissionRequestView({ request }: { request: IPermissionRequest
             e.stopPropagation();
             onAllow();
           }}
-          className={cn('tm:flex-1 tm:cursor-pointer tm:border-none')}
+          className={cn('tm:flex-1 tm:border-none')}
           style={{
             padding: '5px 12px',
             borderRadius: 6,

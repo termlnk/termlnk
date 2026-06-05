@@ -35,7 +35,7 @@ function ComboboxTrigger({
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
       className={cn(`
-        tm:cursor-pointer tm:items-center tm:transition-colors
+        tm:items-center tm:transition-colors
         tm:hover:text-white
         tm:[&_svg:not([class*='size-'])]:size-4
       `, className)}
@@ -191,8 +191,8 @@ function ComboboxItem({
       data-slot="combobox-item"
       className={cn(
         `
-          tm:relative tm:flex tm:w-full tm:cursor-pointer tm:items-center tm:gap-2 tm:rounded-xs tm:py-1.5 tm:pr-8
-          tm:pl-2 tm:text-sm tm:text-white tm:outline-hidden tm:select-none
+          tm:relative tm:flex tm:w-full tm:items-center tm:gap-2 tm:rounded-xs tm:py-1.5 tm:pr-8 tm:pl-2 tm:text-sm
+          tm:text-white tm:outline-hidden tm:select-none
           tm:hover:bg-one-bg2 tm:hover:text-white
           tm:focus:bg-one-bg3 tm:focus:text-white
           tm:data-disabled:pointer-events-none tm:data-disabled:opacity-50

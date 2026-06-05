@@ -42,7 +42,7 @@ export const ThinkingPart = memo(function ThinkingPart({ part }: IThinkingPartPr
         <span>Thinking</span>
       </button>
       {expanded && (
-        <div className="tm:mt-1 tm:rounded-sm tm:bg-one-bg tm:p-2 tm:text-xs/relaxed tm:text-grey-fg">
+        <div className="tm:mt-1 tm:rounded-sm tm:bg-one-bg tm:p-2 tm:text-xs/relaxed tm:text-grey-fg tm:select-text">
           {part.thinking}
         </div>
       )}

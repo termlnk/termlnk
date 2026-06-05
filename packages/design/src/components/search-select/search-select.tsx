@@ -155,8 +155,8 @@ function SearchSelectItem({
       data-selected-value={selected || undefined}
       className={cn(
         `
-          tm:relative tm:flex tm:cursor-pointer tm:items-center tm:gap-2 tm:rounded-sm tm:px-2 tm:py-1.5 tm:text-sm
-          tm:outline-hidden tm:transition-colors tm:duration-150 tm:select-none
+          tm:relative tm:flex tm:items-center tm:gap-2 tm:rounded-sm tm:px-2 tm:py-1.5 tm:text-sm tm:outline-hidden
+          tm:transition-colors tm:duration-150 tm:select-none
           tm:hover:bg-blue/20
           tm:data-[disabled=true]:pointer-events-none tm:data-[disabled=true]:opacity-50
         `,

@@ -556,8 +556,7 @@ export function ChatToolSelector() {
                               key={tool.id}
                               htmlFor={checkboxId}
                               className="
-                                tm:flex tm:cursor-pointer tm:items-start tm:gap-2 tm:px-3.5 tm:py-1.5
-                                tm:transition-colors
+                                tm:flex tm:items-start tm:gap-2 tm:px-3.5 tm:py-1.5 tm:transition-colors
                                 tm:hover:bg-one-bg/60
                               "
                             >
@@ -674,10 +673,7 @@ export function ChatToolSelector() {
                     const statusIndicator = (
                       <div
                         className={cn(
-                          `
-                            tm:flex tm:size-3 tm:shrink-0 tm:cursor-pointer tm:items-center tm:justify-center
-                            tm:rounded-full
-                          `,
+                          'tm:flex tm:size-3 tm:shrink-0 tm:items-center tm:justify-center tm:rounded-full',
                           {
                             'tm:bg-[#e4f4ea] tm:text-[#3d9b63]': server.status === 'connected',
                             'tm:bg-[#fff0d8] tm:text-[#c88b07]': server.status === 'connecting',

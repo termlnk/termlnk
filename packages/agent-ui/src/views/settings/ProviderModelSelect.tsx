@@ -151,8 +151,8 @@ export function ProviderModelSelect(props: IProviderModelSelectProps): ReactElem
             disabled={disabled}
             className={cn(
               `
-                tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:cursor-pointer tm:items-center tm:gap-2 tm:rounded-md tm:border
-                tm:border-line tm:bg-black/30 tm:px-3 tm:text-sm tm:text-light-grey tm:transition-colors
+                tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-line
+                tm:bg-black/30 tm:px-3 tm:text-sm tm:text-light-grey tm:transition-colors
                 tm:hover:bg-black/40
                 tm:disabled:cursor-not-allowed tm:disabled:opacity-60
               `,

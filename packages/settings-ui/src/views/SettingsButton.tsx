@@ -32,8 +32,7 @@ export function SettingsButton() {
     >
       <div
         className={`
-          tm:grid tm:h-[2.8rem] tm:w-full tm:cursor-pointer tm:grid-cols-[2px_1fr_2px] tm:items-center
-          tm:overflow-hidden tm:text-center
+          tm:grid tm:h-[2.8rem] tm:w-full tm:grid-cols-[2px_1fr_2px] tm:items-center tm:overflow-hidden tm:text-center
           tm:hover:text-white
         `}
         onClick={openSettingsDialog}

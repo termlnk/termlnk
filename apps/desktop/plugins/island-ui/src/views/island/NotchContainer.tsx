@@ -61,7 +61,7 @@ export function NotchContainer({
   return (
     <div className={cn('tm:flex tm:w-full tm:justify-center')}>
       <div
-        className={cn('tm:relative tm:cursor-pointer')}
+        className={cn('tm:relative')}
         style={{
           background: '#000000',
           width: size.w,

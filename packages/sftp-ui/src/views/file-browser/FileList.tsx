@@ -108,8 +108,7 @@ export function FileList(props: IFileListProps) {
             key={col.key}
             className={cn(
               'tm:flex tm:items-center tm:gap-1 tm:px-1 tm:select-none',
-              col.width,
-              col.sortable && 'tm:cursor-pointer'
+              col.width
             )}
             onClick={() => col.sortable && onSort(col.key)}
           >
@@ -131,7 +130,7 @@ export function FileList(props: IFileListProps) {
             <div
               key={entry.filename}
               className={cn(
-                'tm:flex tm:cursor-pointer tm:items-center tm:px-2 tm:py-1 tm:text-[12px]',
+                'tm:flex tm:items-center tm:px-2 tm:py-1 tm:text-[12px]',
                 {
                   'tm:bg-blue/20 tm:text-light-grey': isSelected,
                   'tm:text-grey-fg2 tm:hover:bg-one-bg': !isSelected,

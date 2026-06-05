@@ -101,7 +101,7 @@ export function AgentTab() {
         <CardContent>
           <div className="tm:flex tm:flex-col tm:gap-5 tm:py-4">
             <div className="tm:flex tm:flex-col tm:gap-1.5">
-              <label className="tm:flex tm:cursor-pointer tm:items-center tm:gap-2">
+              <label className="tm:flex tm:items-center tm:gap-2">
                 <Checkbox
                   checked={config.enabled}
                   onCheckedChange={handleEnabledChange}

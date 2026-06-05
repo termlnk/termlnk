@@ -106,7 +106,7 @@ export function HostSelector({ selectedHostId, selectedHostName, onSelect }: IHo
               key={host.id}
               className={cn(
                 `
-                  tm:flex tm:cursor-pointer tm:items-center tm:gap-2 tm:rounded-md tm:px-2.5 tm:py-2 tm:text-[13px]
+                  tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:px-2.5 tm:py-2 tm:text-[13px]
                   tm:hover:bg-one-bg2
                 `,
                 {

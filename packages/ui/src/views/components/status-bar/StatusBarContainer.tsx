@@ -71,7 +71,7 @@ function StatusBarItemView(props: { item: IStatusBarItem; onInvoke: () => void }
       title={item.tooltip}
       onClick={interactive ? onInvoke : undefined}
       className={cn('tm:flex tm:items-center tm:gap-1 tm:rounded-sm tm:px-1.5 tm:py-0.5', {
-        'tm:cursor-pointer tm:hover:bg-one-bg2': interactive,
+        'tm:hover:bg-one-bg2': interactive,
         'tm:cursor-default': !interactive,
       })}
       style={item.color ? { color: item.color } : undefined}

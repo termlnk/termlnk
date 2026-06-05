@@ -60,8 +60,8 @@ export function WorkspaceTabItem(props: IWorkspaceTabItemProps) {
       className={cn(
         `
           tm:group
-          tm:relative tm:flex tm:h-full tm:max-w-[200px] tm:min-w-[120px] tm:cursor-pointer tm:items-center tm:px-1
-          tm:text-white tm:select-none
+          tm:relative tm:flex tm:h-full tm:max-w-[200px] tm:min-w-[120px] tm:items-center tm:px-1 tm:text-white
+          tm:select-none
           tm:[&+&]:before:absolute tm:[&+&]:before:top-1/4 tm:[&+&]:before:left-0 tm:[&+&]:before:h-1/2
           tm:[&+&]:before:w-px tm:[&+&]:before:bg-line tm:[&+&]:before:opacity-40 tm:[&+&]:before:transition-opacity
           tm:[&+&]:before:duration-150 tm:[&+&]:before:content-['']

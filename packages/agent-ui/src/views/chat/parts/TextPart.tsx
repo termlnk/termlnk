@@ -24,7 +24,7 @@ interface ITextPartProps {
 
 export const TextPart = memo(function TextPart({ part, isStreaming }: ITextPartProps) {
   return (
-    <div className="tm:text-white">
+    <div className="tm:text-white tm:select-text">
       <MarkdownRenderer content={part.text} isStreaming={isStreaming} />
     </div>
   );

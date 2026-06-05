@@ -28,8 +28,8 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
           data-slot="input"
           className={cn(
             `
-              tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:pr-3 tm:pl-3 tm:py-2
-              tm:pr-9 tm:text-sm tm:text-white tm:outline-hidden tm:transition-colors
+              tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:py-2 tm:pr-3
+              tm:pr-9 tm:pl-3 tm:text-sm tm:text-white tm:outline-hidden tm:transition-colors
               tm:file:border-0 tm:file:bg-black tm:file:text-sm tm:file:font-medium tm:file:text-white
               tm:placeholder:text-grey-fg
               tm:hover:border-blue
@@ -44,8 +44,8 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
         <button
           type="button"
           className={`
-            tm:absolute tm:top-1/2 tm:right-2 tm:inline-flex tm:size-5 tm:-translate-y-1/2 tm:cursor-pointer
-            tm:items-center tm:justify-center tm:rounded-sm tm:text-white
+            tm:absolute tm:top-1/2 tm:right-2 tm:inline-flex tm:size-5 tm:-translate-y-1/2 tm:items-center
+            tm:justify-center tm:rounded-sm tm:text-white
             tm:hover:bg-transparent
             tm:focus-visible:ring-0 tm:focus-visible:outline-none
             tm:disabled:cursor-not-allowed tm:disabled:opacity-50
@@ -66,7 +66,7 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
       data-slot="input"
       className={cn(
         `
-          tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:pr-3 tm:pl-3 tm:py-2
+          tm:flex tm:h-10 tm:w-full tm:min-w-0 tm:rounded-md tm:border tm:border-line tm:bg-black tm:px-3 tm:py-2
           tm:text-sm tm:text-white tm:outline-hidden tm:transition-colors
           tm:file:border-0 tm:file:bg-black tm:file:text-sm tm:file:font-medium tm:file:text-white
           tm:placeholder:text-grey-fg

@@ -538,7 +538,7 @@ export function ChatInput() {
                 size="icon-xs"
                 className={`
                   tm:group
-                  tm:flex tm:size-7 tm:shrink-0 tm:cursor-pointer tm:items-center tm:justify-center tm:transition-colors
+                  tm:flex tm:size-7 tm:shrink-0 tm:items-center tm:justify-center tm:transition-colors
                   tm:hover:bg-transparent
                 `}
                 onClick={handleStop}

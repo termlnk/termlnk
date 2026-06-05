@@ -83,8 +83,7 @@ export function KnownHostsExplorer() {
                   key={row.id}
                   className={`
                     tm:group
-                    tm:flex tm:cursor-pointer tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-line
-                    tm:bg-one-bg tm:p-2
+                    tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-2
                     tm:hover:bg-one-bg2
                   `}
                   onClick={() => setDetail(row)}

@@ -63,7 +63,7 @@ export function ColorPicker({
           onChange={handleColorChange}
           disabled={disabled}
           className={`
-            tm:size-10 tm:cursor-pointer tm:rounded-sm tm:border tm:border-line
+            tm:size-10 tm:rounded-sm tm:border tm:border-line
             tm:disabled:cursor-not-allowed tm:disabled:opacity-50
           `}
           style={{ backgroundColor: value }}

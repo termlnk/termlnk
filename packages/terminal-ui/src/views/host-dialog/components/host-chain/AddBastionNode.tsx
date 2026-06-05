@@ -53,8 +53,8 @@ export function AddBastionNode(props: IAddBastionNodeProps) {
             disabled={disabled}
             className={cn(
               `
-                tm:flex tm:w-full tm:cursor-pointer tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-dashed
-                tm:border-one-bg3 tm:bg-transparent tm:px-2 tm:py-1.5 tm:text-xs tm:text-white tm:transition-colors
+                tm:flex tm:w-full tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-dashed tm:border-one-bg3
+                tm:bg-transparent tm:px-2 tm:py-1.5 tm:text-xs tm:text-white tm:transition-colors
                 tm:hover:border-blue tm:hover:text-blue
                 tm:focus-visible:border-blue tm:focus-visible:text-blue tm:focus-visible:outline-hidden
               `,

@@ -64,8 +64,8 @@ export function SidebarButton(props: ISidebarButtonProps) {
   return (
     <button
       className={cn(`
-        tm:flex tm:h-[48px] tm:w-full tm:animate-in tm:cursor-pointer tm:justify-center tm:overflow-hidden
-        tm:border-none tm:bg-transparent tm:text-center tm:text-light-grey tm:outline-hidden tm:transition-colors
+        tm:flex tm:h-[48px] tm:w-full tm:animate-in tm:justify-center tm:overflow-hidden tm:border-none
+        tm:bg-transparent tm:text-center tm:text-light-grey tm:outline-hidden tm:transition-colors
         tm:hover:bg-one-bg2
       `, {
         '': noIcon,

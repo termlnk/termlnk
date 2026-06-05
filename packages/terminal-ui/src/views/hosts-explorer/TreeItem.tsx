@@ -107,8 +107,7 @@ export function TreeItem(props: ITreeItemProps) {
       onContextMenu={handleContextMenu}
       className={cn(`
         tm:group
-        tm:relative tm:box-border tm:flex tm:h-[22px] tm:w-full tm:cursor-pointer tm:flex-row tm:items-center
-        tm:leading-[22px]
+        tm:relative tm:box-border tm:flex tm:h-[22px] tm:w-full tm:flex-row tm:items-center tm:leading-[22px]
         tm:hover:bg-one-bg
       `, {
         'tm:bg-one-bg2': shouldShowFocusStyle || shouldShowBlurredSelectionStyle,
@@ -133,7 +132,7 @@ export function TreeItem(props: ITreeItemProps) {
         type="button"
         onClick={handleEdit}
         className="
-          tm:mr-2 tm:hidden tm:cursor-pointer tm:items-center
+          tm:mr-2 tm:hidden tm:items-center
           tm:group-hover:flex
         "
       >

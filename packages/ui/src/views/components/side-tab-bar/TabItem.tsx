@@ -52,8 +52,7 @@ export function TabItem(props: IDisplayMenuItem<IMenuItem>) {
   const renderButtonItem = () => (
     <div
       className={cn(`
-        tm:grid tm:h-[2.8rem] tm:w-full tm:cursor-pointer tm:grid-cols-[2px_1fr_2px] tm:items-center tm:overflow-hidden
-        tm:text-center
+        tm:grid tm:h-[2.8rem] tm:w-full tm:grid-cols-[2px_1fr_2px] tm:items-center tm:overflow-hidden tm:text-center
         tm:hover:text-white
       `, {
         'tm:text-white': activated && expand,

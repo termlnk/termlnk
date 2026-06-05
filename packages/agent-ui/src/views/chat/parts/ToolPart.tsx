@@ -192,8 +192,8 @@ export const ToolPart = memo(function ToolPart({ part, messageIsStreaming = fals
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className={`
-          tm:flex tm:w-full tm:min-w-0 tm:cursor-pointer tm:items-center tm:gap-1.5 tm:px-2 tm:py-1.5 tm:text-left
-          tm:text-xs tm:transition-colors
+          tm:flex tm:w-full tm:min-w-0 tm:items-center tm:gap-1.5 tm:px-2 tm:py-1.5 tm:text-left tm:text-xs
+          tm:transition-colors
           tm:hover:bg-one-bg2
         `}
       >

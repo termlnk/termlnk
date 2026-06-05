@@ -200,7 +200,7 @@ export function AboutTab() {
                 openExternal(AUTHOR_URL);
               }}
               className="
-                tm:cursor-pointer tm:text-light-grey
+                tm:text-light-grey
                 tm:hover:text-blue tm:hover:underline
               "
             >
@@ -208,7 +208,7 @@ export function AboutTab() {
             </a>
           </p>
 
-          <div className="tm:flex tm:flex-wrap tm:items-center tm:justify-center tm:gap-2">
+          <div className="tm:flex tm:flex-wrap tm:items-center tm:justify-center tm:gap-2 tm:select-text">
             <Badge variant="secondary">
               {localeService.t('settings-ui.about.version-app')}
               {' '}

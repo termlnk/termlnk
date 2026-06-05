@@ -80,8 +80,8 @@ function TabsTrigger({
       className={cn(
         orientation === 'vertical'
           ? `
-            tm:relative tm:flex tm:cursor-pointer tm:items-center tm:justify-start tm:gap-2 tm:px-4 tm:py-2.5 tm:text-sm
-            tm:font-medium tm:whitespace-nowrap tm:text-white tm:transition-colors
+            tm:relative tm:flex tm:items-center tm:justify-start tm:gap-2 tm:px-4 tm:py-2.5 tm:text-sm tm:font-medium
+            tm:whitespace-nowrap tm:text-white tm:transition-colors
             tm:hover:text-white
             tm:focus-visible:ring-2 tm:focus-visible:ring-blue/50 tm:focus-visible:outline-none
             tm:disabled:pointer-events-none tm:disabled:opacity-50
@@ -90,8 +90,8 @@ function TabsTrigger({
             tm:[&_svg:not([class*='size-'])]:size-4
           `
           : `
-            tm:inline-flex tm:h-full tm:cursor-pointer tm:items-center tm:justify-center tm:gap-1.5 tm:rounded-md
-            tm:px-3 tm:py-1.5 tm:text-sm tm:font-medium tm:whitespace-nowrap tm:text-white tm:transition-all
+            tm:inline-flex tm:h-full tm:items-center tm:justify-center tm:gap-1.5 tm:rounded-md tm:px-3 tm:py-1.5
+            tm:text-sm tm:font-medium tm:whitespace-nowrap tm:text-white tm:transition-all
             tm:hover:text-white
             tm:focus-visible:ring-2 tm:focus-visible:ring-blue/50 tm:focus-visible:outline-none
             tm:disabled:pointer-events-none tm:disabled:opacity-50

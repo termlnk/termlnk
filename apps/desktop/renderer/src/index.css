@@ -24,3 +24,21 @@ body,
   height: 100vh;
   overflow: hidden;
 }
+
+/* Native chrome — sidebar items, tabs, labels, headings — is not selectable.
+ * Invert the web default: text is non-selectable, inherited from `body` (so it
+ * also reaches portaled dialogs/menus/popovers mounted outside #root), and
+ * content regions opt back in with `user-select: text` (which descendants
+ * inherit) via this rule or a `tm:select-text` utility. The terminal manages
+ * its own selection inside xterm and is unaffected. */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  user-select: text;
+  -webkit-user-select: text;
+}

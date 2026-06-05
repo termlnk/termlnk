@@ -22,7 +22,11 @@ interface IErrorPartProps {
 
 export const ErrorPart = memo(function ErrorPart({ part }: IErrorPartProps) {
   return (
-    <div className="tm:rounded-lg tm:border tm:border-red/20 tm:bg-red/5 tm:px-3 tm:py-2 tm:text-sm tm:text-red">
+    <div
+      className="
+        tm:rounded-lg tm:border tm:border-red/20 tm:bg-red/5 tm:px-3 tm:py-2 tm:text-sm tm:text-red tm:select-text
+      "
+    >
       {part.message}
     </div>
   );

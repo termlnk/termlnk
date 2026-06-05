@@ -104,8 +104,7 @@ export function ChatPermissionModeSelector() {
                   onClick={() => handleModeChange(option.value)}
                   className={cn(
                     `
-                      tm:flex tm:w-full tm:cursor-pointer tm:items-center tm:gap-2.5 tm:px-3 tm:py-2 tm:text-left
-                      tm:transition-colors
+                      tm:flex tm:w-full tm:items-center tm:gap-2.5 tm:px-3 tm:py-2 tm:text-left tm:transition-colors
                       tm:hover:bg-one-bg
                     `,
                     { 'tm:bg-one-bg': isSelected }

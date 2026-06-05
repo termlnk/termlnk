@@ -131,7 +131,7 @@ export function MCPTab() {
               <Field orientation="horizontal" className="tm:group/mcp-transport">
                 <FieldLabel
                   htmlFor="settings-mcp-transport"
-                  className={cn('tm:h-8 tm:w-28 tm:flex-none tm:shrink-0 tm:cursor-pointer tm:text-xs/8')}
+                  className={cn('tm:h-8 tm:w-28 tm:flex-none tm:shrink-0 tm:text-xs/8')}
                 >
                   {localeService.t('settings-ui.mcp.transport')}
                 </FieldLabel>
