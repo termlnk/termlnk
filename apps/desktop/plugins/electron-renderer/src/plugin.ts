@@ -22,6 +22,7 @@ import { IRPCClientService, RPCClientPlugin } from '@termlnk/rpc-client';
 import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
 import { UIPlugin } from '@termlnk/ui';
 import { Cog } from 'lucide-react';
+import { CompositorWarmupController } from './controllers/compositor-warmup.controller';
 import { defaultPluginConfig, ELECTRON_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { HeaderController } from './controllers/header.controller';
 import { TransparencyController } from './controllers/transparency.controller';
@@ -58,6 +59,7 @@ export class ElectronRendererPlugin extends Plugin {
     touchDependencies(this._injector, [
       [HeaderController],
       [TransparencyController],
+      [CompositorWarmupController],
     ]);
   }
 
@@ -95,6 +97,7 @@ export class ElectronRendererPlugin extends Plugin {
 
       [HeaderController],
       [TransparencyController],
+      [CompositorWarmupController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }
