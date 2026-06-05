@@ -18,9 +18,12 @@ import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { ISyncService, SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
 import { ConfigSynchroniser } from '../synchronisers/config-synchroniser';
 import { HostSynchroniser } from '../synchronisers/host-synchroniser';
+import { IdentitySynchroniser } from '../synchronisers/identity-synchroniser';
+import { KnownHostSynchroniser } from '../synchronisers/known-host-synchroniser';
 import { McpSynchroniser } from '../synchronisers/mcp-synchroniser';
 import { ProviderSynchroniser } from '../synchronisers/provider-synchroniser';
 import { SkillSynchroniser } from '../synchronisers/skill-synchroniser';
+import { SshKeySynchroniser } from '../synchronisers/ssh-key-synchroniser';
 
 // Registers synchronisers at onReady (plugin onStarting is too early — dependencies
 // are not yet constructed). Synchroniser construction is side-effect free; start()
@@ -35,7 +38,10 @@ export class SynchroniserRegistrationController extends Disposable {
     @Inject(ConfigSynchroniser) private readonly _config: ConfigSynchroniser,
     @Inject(ProviderSynchroniser) private readonly _provider: ProviderSynchroniser,
     @Inject(McpSynchroniser) private readonly _mcp: McpSynchroniser,
-    @Inject(SkillSynchroniser) private readonly _skill: SkillSynchroniser
+    @Inject(SkillSynchroniser) private readonly _skill: SkillSynchroniser,
+    @Inject(SshKeySynchroniser) private readonly _sshKey: SshKeySynchroniser,
+    @Inject(IdentitySynchroniser) private readonly _identity: IdentitySynchroniser,
+    @Inject(KnownHostSynchroniser) private readonly _knownHost: KnownHostSynchroniser
   ) {
     super();
 
@@ -46,6 +52,9 @@ export class SynchroniserRegistrationController extends Disposable {
       ['ai_provider', this._provider],
       ['mcp_server', this._mcp],
       ['skill', this._skill],
+      ['ssh_key', this._sshKey],
+      ['identity', this._identity],
+      ['known_host', this._knownHost],
     ];
 
     for (const [resourceId, synchroniser] of candidates) {

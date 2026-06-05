@@ -31,9 +31,12 @@ import { SyncOutboxService } from './services/outbox.service';
 import { SyncService } from './services/sync.service';
 import { ConfigSynchroniser } from './synchronisers/config-synchroniser';
 import { HostSynchroniser } from './synchronisers/host-synchroniser';
+import { IdentitySynchroniser } from './synchronisers/identity-synchroniser';
+import { KnownHostSynchroniser } from './synchronisers/known-host-synchroniser';
 import { McpSynchroniser } from './synchronisers/mcp-synchroniser';
 import { ProviderSynchroniser } from './synchronisers/provider-synchroniser';
 import { SkillSynchroniser } from './synchronisers/skill-synchroniser';
+import { SshKeySynchroniser } from './synchronisers/ssh-key-synchroniser';
 
 export const SYNC_CORE_PLUGIN_NAME = 'SYNC_CORE_PLUGIN';
 
@@ -69,6 +72,9 @@ export class SyncCorePlugin extends Plugin {
       [ProviderSynchroniser, { useClass: ProviderSynchroniser }],
       [McpSynchroniser, { useClass: McpSynchroniser }],
       [SkillSynchroniser, { useClass: SkillSynchroniser }],
+      [SshKeySynchroniser, { useClass: SshKeySynchroniser }],
+      [IdentitySynchroniser, { useClass: IdentitySynchroniser }],
+      [KnownHostSynchroniser, { useClass: KnownHostSynchroniser }],
 
       [SynchroniserRegistrationController],
       [AuthSyncBridgeController],

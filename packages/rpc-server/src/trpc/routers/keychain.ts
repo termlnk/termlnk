@@ -94,16 +94,12 @@ export const keychainRouter = router({
       identities: identities.map((i) => ({ id: i.id, label: i.label })),
     };
   }),
-  // Blocks when a host still references the key; nulls out identity references first.
+  // Blocks the UI delete when a host still references the key. The identity.keyId
+  // cascade is handled by SshKeyRepository.delete so sync apply gets the same guarantee.
   deleteKey: publicProcedure.input(z.string()).mutation(async ({ input, ctx }) => {
     const hostRefs = await ctx.injector.get(HostRepository).findByCredentialRef('key', input);
     if (hostRefs.length > 0) {
       throw new Error(`Key is referenced by ${hostRefs.length} host(s) and cannot be deleted`);
-    }
-    const identityRepo = ctx.injector.get(IdentityRepository);
-    const identityRefs = await identityRepo.getReferrersByKeyId(input);
-    for (const identity of identityRefs) {
-      await identityRepo.update(identity.id, { keyId: null });
     }
     return ctx.injector.get(SshKeyRepository).delete(input);
   }),

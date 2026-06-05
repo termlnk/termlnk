@@ -16,7 +16,16 @@
 // Resource IDs that map to SQLite tables. All except `config` use row-level LWW; `config`
 // is field-level LWW because its value is a nested JSON blob. Chat-family rows, terminal
 // session backups and MCP OAuth tokens are intentionally never synced.
-export const SYNC_RESOURCES = ['host', 'config', 'ai_provider', 'mcp_server', 'skill'] as const;
+export const SYNC_RESOURCES = [
+  'host',
+  'config',
+  'ai_provider',
+  'mcp_server',
+  'skill',
+  'ssh_key',
+  'identity',
+  'known_host',
+] as const;
 export type SyncResourceId = (typeof SYNC_RESOURCES)[number];
 
 // Trigger cadences in milliseconds.

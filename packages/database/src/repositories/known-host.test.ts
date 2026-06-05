@@ -15,7 +15,7 @@
 
 import type { IKnownHostEntity } from '../entities';
 import { describe, expect, it } from 'vitest';
-import { classifyKnownHost } from './known-host';
+import { classifyKnownHost, makeKnownHostId } from './known-host';
 
 function row(partial: Partial<IKnownHostEntity>): IKnownHostEntity {
   return {
@@ -53,5 +53,33 @@ describe('classifyKnownHost', () => {
   it('returns unknown when only a different key type is stored', () => {
     const candidates = [row({ keyType: 'ssh-rsa', fingerprint: 'SHA256:rsa' })];
     expect(classifyKnownHost(candidates, 'ssh-ed25519', 'SHA256:ed').verdict).toBe('unknown');
+  });
+});
+
+describe('makeKnownHostId', () => {
+  it('is deterministic for the same (host, port, keyType)', () => {
+    expect(makeKnownHostId('example.com', 22, 'ssh-ed25519'))
+      .toBe(makeKnownHostId('example.com', 22, 'ssh-ed25519'));
+  });
+
+  it('differs for different hosts', () => {
+    expect(makeKnownHostId('a.example.com', 22, 'ssh-ed25519'))
+      .not.toBe(makeKnownHostId('b.example.com', 22, 'ssh-ed25519'));
+  });
+
+  it('differs for different ports', () => {
+    expect(makeKnownHostId('example.com', 22, 'ssh-ed25519'))
+      .not.toBe(makeKnownHostId('example.com', 2222, 'ssh-ed25519'));
+  });
+
+  it('differs for different key types', () => {
+    expect(makeKnownHostId('example.com', 22, 'ssh-ed25519'))
+      .not.toBe(makeKnownHostId('example.com', 22, 'ssh-rsa'));
+  });
+
+  it('produces an opaque kh_ prefix (does not leak host plaintext)', () => {
+    const id = makeKnownHostId('example.com', 22, 'ssh-ed25519');
+    expect(id).toMatch(/^kh_[0-9a-f]{24}$/);
+    expect(id).not.toContain('example.com');
   });
 });

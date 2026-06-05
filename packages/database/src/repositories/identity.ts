@@ -96,4 +96,25 @@ export class IdentityRepository extends Disposable {
     await this._db.delete(identityEntity).where(eq(identityEntity.id, id));
     this._changed$.next({ type: 'delete', id });
   }
+
+  // Sync write path: applies a row verbatim. Skips update()'s "empty password = keep"
+  // shortcut, which would corrupt LWW.
+  async syncUpsertRow(entity: IIdentityEntity): Promise<void> {
+    const encrypted: IIdentityEntity = {
+      ...entity,
+      password: encryptIfNeeded(entity.password, this._cipher),
+    };
+    const existing = await this._db
+      .select({ id: identityEntity.id })
+      .from(identityEntity)
+      .where(eq(identityEntity.id, entity.id))
+      .limit(1);
+    if (existing.length > 0) {
+      await this._db.update(identityEntity).set(encrypted).where(eq(identityEntity.id, entity.id));
+      this._changed$.next({ type: 'update', id: entity.id });
+    } else {
+      await this._db.insert(identityEntity).values(encrypted);
+      this._changed$.next({ type: 'add', id: entity.id });
+    }
+  }
 }

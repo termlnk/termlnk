@@ -18,9 +18,12 @@ import type { IResourceSynchroniser, ISyncMutation, ISyncPatchItem, SyncResource
 import type { Observable } from 'rxjs';
 import type { ConfigSynchroniser } from '../synchronisers/config-synchroniser';
 import type { HostSynchroniser } from '../synchronisers/host-synchroniser';
+import type { IdentitySynchroniser } from '../synchronisers/identity-synchroniser';
+import type { KnownHostSynchroniser } from '../synchronisers/known-host-synchroniser';
 import type { McpSynchroniser } from '../synchronisers/mcp-synchroniser';
 import type { ProviderSynchroniser } from '../synchronisers/provider-synchroniser';
 import type { SkillSynchroniser } from '../synchronisers/skill-synchroniser';
+import type { SshKeySynchroniser } from '../synchronisers/ssh-key-synchroniser';
 import { SYNC_PLUGIN_CONFIG_KEY, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject, EMPTY } from 'rxjs';
 import { describe, expect, it } from 'vitest';
@@ -115,47 +118,57 @@ function createBed(excluded: SyncResourceId[] | undefined): ITestBed {
     new StubSynchroniser('config') as unknown as ConfigSynchroniser,
     new StubSynchroniser('ai_provider') as unknown as ProviderSynchroniser,
     new StubSynchroniser('mcp_server') as unknown as McpSynchroniser,
-    new StubSynchroniser('skill') as unknown as SkillSynchroniser
+    new StubSynchroniser('skill') as unknown as SkillSynchroniser,
+    new StubSynchroniser('ssh_key') as unknown as SshKeySynchroniser,
+    new StubSynchroniser('identity') as unknown as IdentitySynchroniser,
+    new StubSynchroniser('known_host') as unknown as KnownHostSynchroniser
   );
   return { config, fakeSync, controller };
 }
 
+const ALL_RESOURCES_SORTED: SyncResourceId[] = [
+  'ai_provider',
+  'config',
+  'host',
+  'identity',
+  'known_host',
+  'mcp_server',
+  'skill',
+  'ssh_key',
+];
+
 describe('SynchroniserRegistrationController', () => {
-  it('registers all five synchronisers when config has no excludedResources', () => {
+  it('registers all synchronisers when config has no excludedResources', () => {
     const bed = createBed(undefined);
-    expect(bed.fakeSync.registered.sort()).toEqual(
-      ['ai_provider', 'config', 'host', 'mcp_server', 'skill'].sort()
-    );
+    expect(bed.fakeSync.registered.sort()).toEqual(ALL_RESOURCES_SORTED);
     bed.controller.dispose();
   });
 
-  it('registers all five synchronisers when excludedResources is empty', () => {
+  it('registers all synchronisers when excludedResources is empty', () => {
     const bed = createBed([]);
-    expect(bed.fakeSync.registered.sort()).toEqual(
-      ['ai_provider', 'config', 'host', 'mcp_server', 'skill'].sort()
-    );
+    expect(bed.fakeSync.registered.sort()).toEqual(ALL_RESOURCES_SORTED);
     bed.controller.dispose();
   });
 
   it('skips a single excluded synchroniser', () => {
     const bed = createBed(['host']);
-    expect(bed.fakeSync.registered.sort()).toEqual(
-      ['ai_provider', 'config', 'mcp_server', 'skill'].sort()
-    );
+    expect(bed.fakeSync.registered.sort()).toEqual([
+      'ai_provider', 'config', 'identity', 'known_host', 'mcp_server', 'skill', 'ssh_key',
+    ]);
     bed.controller.dispose();
   });
 
   it('skips multiple excluded synchronisers', () => {
     const bed = createBed(['ai_provider', 'mcp_server', 'skill']);
-    expect(bed.fakeSync.registered.sort()).toEqual(['config', 'host'].sort());
+    expect(bed.fakeSync.registered.sort()).toEqual([
+      'config', 'host', 'identity', 'known_host', 'ssh_key',
+    ]);
     bed.controller.dispose();
   });
 
   it('honours an unknown excludedResource entry without crashing (forward compat)', () => {
     const bed = createBed(['nonexistent' as SyncResourceId]);
-    expect(bed.fakeSync.registered.sort()).toEqual(
-      ['ai_provider', 'config', 'host', 'mcp_server', 'skill'].sort()
-    );
+    expect(bed.fakeSync.registered.sort()).toEqual(ALL_RESOURCES_SORTED);
     bed.controller.dispose();
   });
 

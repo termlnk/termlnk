@@ -17,7 +17,7 @@ import type { ISshKeyChangeEvent } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { ISshKeyEntity, ISshKeyEntityInsert } from '../entities';
-import { Disposable } from '@termlnk/core';
+import { Disposable, Inject } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
 import { Subject } from 'rxjs';
 import { generateId } from '../entities/base';
@@ -25,6 +25,7 @@ import { sshKeyEntity } from '../entities/ssh-key';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { ISecretCipherService } from '../services/secret-cipher.service';
 import { decryptIfNeeded, encryptIfNeeded } from '../services/secret-cipher/credential-masker';
+import { IdentityRepository } from './identity';
 
 export class SshKeyRepository extends Disposable {
   private readonly _changed$ = new Subject<ISshKeyChangeEvent>();
@@ -32,7 +33,8 @@ export class SshKeyRepository extends Disposable {
 
   constructor(
     @IDBAdaptorService private readonly _dbService: IDBAdaptorService,
-    @ISecretCipherService private readonly _cipher: ISecretCipherService
+    @ISecretCipherService private readonly _cipher: ISecretCipherService,
+    @Inject(IdentityRepository) private readonly _identityRepo: IdentityRepository
   ) {
     super();
   }
@@ -96,8 +98,46 @@ export class SshKeyRepository extends Disposable {
     this._changed$.next({ type: 'update', id });
   }
 
+  // Repository-level referential integrity: clears identity.keyId before the row
+  // disappears so neither UI router nor sync apply can leave dangling identity refs.
+  // host.credential references are JSON blobs and are not cleared here — the UI surfaces
+  // dangling host refs on the next edit.
   async delete(id: string): Promise<void> {
+    const referrers = await this._identityRepo.getReferrersByKeyId(id);
+    for (const referrer of referrers) {
+      await this._identityRepo.update(referrer.id, { keyId: null });
+    }
     await this._db.delete(sshKeyEntity).where(eq(sshKeyEntity.id, id));
     this._changed$.next({ type: 'delete', id });
+  }
+
+  // Sync apply path: deletes the row without the identity.keyId cascade. The originating
+  // device already syncs the cascaded identity change, so re-cascading here would make the
+  // IdentitySynchroniser re-push it as a spurious local mutation.
+  async syncDeleteRow(id: string): Promise<void> {
+    await this._db.delete(sshKeyEntity).where(eq(sshKeyEntity.id, id));
+    this._changed$.next({ type: 'delete', id });
+  }
+
+  // Sync write path: applies a row verbatim. Skips update()'s "empty privateKey = keep"
+  // and "savePassphrase=false clears passphrase" shortcuts, which would corrupt LWW.
+  async syncUpsertRow(entity: ISshKeyEntity): Promise<void> {
+    const encrypted: ISshKeyEntity = {
+      ...entity,
+      privateKey: encryptIfNeeded(entity.privateKey, this._cipher),
+      passphrase: encryptIfNeeded(entity.passphrase, this._cipher),
+    };
+    const existing = await this._db
+      .select({ id: sshKeyEntity.id })
+      .from(sshKeyEntity)
+      .where(eq(sshKeyEntity.id, entity.id))
+      .limit(1);
+    if (existing.length > 0) {
+      await this._db.update(sshKeyEntity).set(encrypted).where(eq(sshKeyEntity.id, entity.id));
+      this._changed$.next({ type: 'update', id: entity.id });
+    } else {
+      await this._db.insert(sshKeyEntity).values(encrypted);
+      this._changed$.next({ type: 'add', id: entity.id });
+    }
   }
 }
