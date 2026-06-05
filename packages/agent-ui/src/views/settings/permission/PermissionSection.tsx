@@ -127,8 +127,8 @@ export function PermissionSection() {
                       tm:transition-colors
                     `,
                     {
-                      'tm:border-blue tm:bg-one-bg2': active,
-                      'tm:border-line tm:bg-one-bg/30 tm:hover:bg-one-bg2/60': !active,
+                      'tm:border-blue tm:bg-blue/15': active,
+                      'tm:border-line tm:hover:bg-one-bg2/60': !active,
                     }
                   )}
                 >
