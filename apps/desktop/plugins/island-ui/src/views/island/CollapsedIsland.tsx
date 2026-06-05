@@ -83,21 +83,20 @@ export function CollapsedIsland({ sessions, activeSession, animationState, onCli
       >
         {primaryText}
       </span>
-      {sessions.length > 0 && (
-        <span
-          className={cn('tm:shrink-0')}
-          style={{
-            fontSize: 9,
-            fontWeight: 600,
-            background: 'rgba(255,255,255,0.12)',
-            padding: '1px 5px',
-            borderRadius: 4,
-            color: 'rgba(255,255,255,0.6)',
-          }}
-        >
-          {sessions.length}
-        </span>
-      )}
+      {/* Always show the session count — defaults to 0 when no agent is active. */}
+      <span
+        className={cn('tm:shrink-0')}
+        style={{
+          fontSize: 9,
+          fontWeight: 600,
+          background: 'rgba(255,255,255,0.12)',
+          padding: '1px 5px',
+          borderRadius: 4,
+          color: 'rgba(255,255,255,0.6)',
+        }}
+      >
+        {sessions.length}
+      </span>
     </div>
   );
 }
