@@ -14,7 +14,7 @@
  */
 
 import type { InlineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
+import react from '@vitejs/plugin-react';
 import vitePluginExternal from 'vite-plugin-external';
 import svgr from 'vite-plugin-svgr';
 import { autoDetectedExternalPlugin, trimClassNamePlugin } from './plugins';
@@ -50,9 +50,7 @@ const sharedConfig = {
     svgr({
       include: /\.svg(?:\?(?:react|import).*)?$/,
     }),
-    react({
-      tsDecorators: true,
-    }),
+    react(),
     vitePluginExternal({
       nodeBuiltins: true,
     }),

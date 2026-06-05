@@ -27,7 +27,6 @@
     "@tailwindcss/vite": "^4.3.0",
     "@typescript-eslint/parser": "^8.59.4",
     "@vitejs/plugin-react": "^6.0.2",
-    "@vitejs/plugin-react-swc": "^4.3.1",
     "@vitest/coverage-istanbul": "^4.1.7",
     "eslint-plugin-better-tailwindcss": "^4.5.0",
     "eslint-plugin-header": "^3.1.1",

@@ -18,7 +18,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
-import react from '@vitejs/plugin-react-swc';
+import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import svgr from 'vite-plugin-svgr';
 
@@ -55,9 +55,7 @@ export default defineConfig({
     svgr({
       include: /\.svg(?:\?(?:react|import).*)?$/,
     }),
-    react({
-      tsDecorators: true,
-    }),
+    react(),
   ],
   css: {
     modules: {

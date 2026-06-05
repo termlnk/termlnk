@@ -13,18 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import react from '@vitejs/plugin-react-swc';
+import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [
-    // @vitejs/plugin-react-swc runs SWC during `build` only when `plugins` or
-    // `useAtYourOwnRisk_mutateSwcOptions` is set; otherwise build falls back to
-    // esbuild, which drops experimentalDecorators across workspace package
-    // boundaries and breaks redi's @Inject. The identity mutator is the lightest
-    // way to force the build-time SWC transform without pulling extra plugins.
-    // eslint-disable-next-line react/no-unnecessary-use-prefix -- vite plugin option name, not a hook
-    react({ tsDecorators: true, useAtYourOwnRisk_mutateSwcOptions: (options) => options }),
+    react(),
   ],
   build: {
     ssr: 'src/main.ts',

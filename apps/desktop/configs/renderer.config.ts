@@ -16,7 +16,7 @@
 import type { RendererViteConfig } from 'electron-vite';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
-import react from '@vitejs/plugin-react-swc';
+import react from '@vitejs/plugin-react';
 import { resolve } from 'pathe';
 import { mergeConfig } from 'vite';
 import svgr from 'vite-plugin-svgr';
@@ -48,9 +48,7 @@ export default mergeConfig(baseConfig, {
     svgr({
       include: /\.svg(?:\?(?:react|import).*)?$/,
     }),
-    react({
-      tsDecorators: true,
-    }),
+    react(),
   ],
   css: {
     modules: {
