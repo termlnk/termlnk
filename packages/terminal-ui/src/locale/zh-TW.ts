@@ -60,6 +60,8 @@ const locale: typeof enUS = {
         rsa: '金鑰認證',
         key: '金鑰',
         identity: '身分',
+        keyMissing: '所選金鑰已不存在，請重新選擇。',
+        identityMissing: '所選身分已不存在，請重新選擇。',
       },
       proxy: {
         enable: '啟用代理',
@@ -231,6 +233,7 @@ const locale: typeof enUS = {
       identity: {
         newTitle: '新增身分',
         editTitle: '編輯身分',
+        keyMissing: '所選金鑰已不存在。',
       },
     },
     knownHosts: {

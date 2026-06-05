@@ -60,6 +60,8 @@ const locale: typeof enUS = {
         rsa: 'SSH鍵認証',
         key: 'キー',
         identity: 'アイデンティティ',
+        keyMissing: '選択したキーは既に存在しません。別のキーを選択してください。',
+        identityMissing: '選択したアイデンティティは既に存在しません。別のものを選択してください。',
       },
       proxy: {
         enable: 'プロキシを有効化',
@@ -231,6 +233,7 @@ const locale: typeof enUS = {
       identity: {
         newTitle: '新規アイデンティティ',
         editTitle: 'アイデンティティを編集',
+        keyMissing: '選択したキーは既に存在しません。',
       },
     },
     knownHosts: {

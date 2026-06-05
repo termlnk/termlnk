@@ -41,12 +41,23 @@ export function IdentityDialog({ editIdentity, onClose }: IIdentityDialogProps) 
   const [password, setPassword] = useState('');
   const [keyId, setKeyId] = useState(editIdentity?.keyId ?? NO_KEY);
   const [keys, setKeys] = useState<IPublicSshKey[]>([]);
+  const [keysLoaded, setKeysLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    keychain.listKeys().then(setKeys).catch(() => setKeys([]));
+    // Only a successful load proves the key is gone; a failed fetch must not look "missing".
+    keychain.listKeys().then((list) => {
+      setKeys(list);
+      setKeysLoaded(true);
+    }, () => {});
   }, [keychain]);
+
+  // Warns when the stored keyId no longer resolves — cross-device sync can leave it
+  // dangling. Repository-level cascade keeps single-device deletes clean.
+  const keyMissing = keysLoaded
+    && keyId !== NO_KEY
+    && !keys.some((k) => k.id === keyId);
 
   const handleSubmit = useCallback(async () => {
     if (!label.trim() || !username.trim()) {
@@ -133,6 +144,11 @@ export function IdentityDialog({ editIdentity, onClose }: IIdentityDialogProps) 
                   {keys.map((k) => <SelectItem key={k.id} value={k.id}>{k.label}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {keyMissing && (
+                <div className="tm:mt-1 tm:text-[11px] tm:text-yellow">
+                  {t('terminal-ui.keychain.identity.keyMissing')}
+                </div>
+              )}
             </FieldContent>
           </Field>
 

@@ -67,6 +67,8 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
   const [groups, setGroups] = useState<IGroupOption[]>([]);
   const [keys, setKeys] = useState<IPublicSshKey[]>([]);
   const [identities, setIdentities] = useState<IPublicIdentity[]>([]);
+  const [keysLoaded, setKeysLoaded] = useState(false);
+  const [identitiesLoaded, setIdentitiesLoaded] = useState(false);
 
   useEffect(() => {
     hostManagerService.tree().then((trees) => {
@@ -75,9 +77,24 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
   }, [hostManagerService]);
 
   useEffect(() => {
-    keychainService.listKeys().then(setKeys).catch(() => setKeys([]));
-    keychainService.listIdentities().then(setIdentities).catch(() => setIdentities([]));
+    // Only a successful load proves a reference is gone; a failed fetch must not look
+    // "missing" and push the user to re-pick a still-valid credential.
+    keychainService.listKeys().then((list) => {
+      setKeys(list);
+      setKeysLoaded(true);
+    }, () => {});
+    keychainService.listIdentities().then((list) => {
+      setIdentities(list);
+      setIdentitiesLoaded(true);
+    }, () => {});
   }, [keychainService]);
+
+  // Surface a warning when the host references a key / identity that no longer exists
+  // locally — cross-device sync can leave host.credential pointing at a deleted row.
+  const credentialKeyId = data.credential?.type === 'key' ? data.credential.keyId : null;
+  const credentialIdentityId = data.credential?.type === 'identity' ? data.credential.identityId : null;
+  const keyMissing = keysLoaded && !!credentialKeyId && !keys.some((k) => k.id === credentialKeyId);
+  const identityMissing = identitiesLoaded && !!credentialIdentityId && !identities.some((i) => i.id === credentialIdentityId);
 
   const handleTypeChange = (type: string) => {
     if (type === 'password' || type === 'rsa') {
@@ -321,6 +338,11 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
                   </SelectContent>
                 </Select>
                 <FieldError>{getError('credential.keyId')}</FieldError>
+                {keyMissing && (
+                  <div className="tm:text-[11px] tm:text-yellow">
+                    {localeService.t('terminal-ui.host-dialog.credential.keyMissing')}
+                  </div>
+                )}
               </FieldContent>
             </Field>
           </FieldGroup>
@@ -349,6 +371,11 @@ export function BasicInfoTab(props: IBasicInfoTabProps) {
                   </SelectContent>
                 </Select>
                 <FieldError>{getError('credential.identityId')}</FieldError>
+                {identityMissing && (
+                  <div className="tm:text-[11px] tm:text-yellow">
+                    {localeService.t('terminal-ui.host-dialog.credential.identityMissing')}
+                  </div>
+                )}
               </FieldContent>
             </Field>
           </FieldGroup>

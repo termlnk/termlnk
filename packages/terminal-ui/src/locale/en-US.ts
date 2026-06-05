@@ -58,6 +58,8 @@ const locale = {
         rsa: 'Private Key',
         key: 'Key',
         identity: 'Identity',
+        keyMissing: 'Selected key no longer exists. Please pick another.',
+        identityMissing: 'Selected identity no longer exists. Please pick another.',
       },
       proxy: {
         enable: 'Enable Proxy',
@@ -229,6 +231,7 @@ const locale = {
       identity: {
         newTitle: 'New identity',
         editTitle: 'Edit identity',
+        keyMissing: 'Selected key no longer exists.',
       },
     },
     knownHosts: {

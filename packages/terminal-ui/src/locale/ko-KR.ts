@@ -60,6 +60,8 @@ const locale: typeof enUS = {
         rsa: 'SSH 키 인증',
         key: '키',
         identity: '아이덴티티',
+        keyMissing: '선택한 키가 더 이상 존재하지 않습니다. 다른 키를 선택해 주세요.',
+        identityMissing: '선택한 아이덴티티가 더 이상 존재하지 않습니다. 다른 것을 선택해 주세요.',
       },
       proxy: {
         enable: '프록시 활성화',
@@ -231,6 +233,7 @@ const locale: typeof enUS = {
       identity: {
         newTitle: '새 아이덴티티',
         editTitle: '아이덴티티 편집',
+        keyMissing: '선택한 키가 더 이상 존재하지 않습니다.',
       },
     },
     knownHosts: {
