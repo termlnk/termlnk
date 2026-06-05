@@ -32,6 +32,8 @@ export interface IIslandSceneService {
   readonly hovered$: Observable<boolean>;
 
   setHovered(value: boolean): void;
+  /** Report the overview session-list's measured natural height (px). */
+  setOverviewContentHeight(height: number): void;
 }
 
 export const IIslandSceneService = createIdentifier<IIslandSceneService>('island-ui.island-scene-service');
@@ -43,6 +45,13 @@ const HOVER_NUDGE_H = 2;
 export class IslandSceneService extends Disposable implements IIslandSceneService {
   private readonly _hovered$ = new BehaviorSubject<boolean>(false);
   readonly hovered$: Observable<boolean> = this._hovered$.asObservable();
+
+  /**
+   * Measured natural height of the overview session list. `null` until the
+   * first ResizeObserver report — `getSceneSize` then falls back to a rough
+   * per-session estimate for that single frame.
+   */
+  private readonly _overviewContentHeight$ = new BehaviorSubject<number | null>(null);
 
   readonly scene$: Observable<IslandScene>;
   readonly size$: Observable<ISceneSize>;
@@ -61,14 +70,17 @@ export class IslandSceneService extends Disposable implements IIslandSceneServic
       distinctUntilChanged()
     );
 
-    // Base size from scene + interaction; hover nudge layered on for the
-    // compact pill only. Two pipes fused into one for a single emission.
+    // Base size from scene + interaction. The measured height is passed through
+    // unconditionally — `getSceneSize` only consumes it for the overview scene.
     const baseSize$ = combineLatest([
       this.scene$,
       this._stateService.sessions$,
       this._stateService.pendingInteractions$,
+      this._overviewContentHeight$,
     ]).pipe(
-      map(([scene, sessions, interactions]) => getSceneSize(scene, sessions.length, interactions[0])),
+      map(([scene, sessions, interactions, contentHeight]) =>
+        getSceneSize(scene, sessions.length, interactions[0], contentHeight ?? undefined)
+      ),
       distinctUntilChanged((a, b) => a.w === b.w && a.h === b.h && a.r === b.r)
     );
 
@@ -96,10 +108,17 @@ export class IslandSceneService extends Disposable implements IIslandSceneServic
 
     this.disposeWithMe(toDisposable(() => {
       this._hovered$.complete();
+      this._overviewContentHeight$.complete();
     }));
   }
 
   setHovered(value: boolean): void {
     this._hovered$.next(value);
+  }
+
+  setOverviewContentHeight(height: number): void {
+    if (height !== this._overviewContentHeight$.getValue()) {
+      this._overviewContentHeight$.next(height);
+    }
   }
 }

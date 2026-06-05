@@ -40,11 +40,27 @@ export const SCENE_SIZES: Record<IslandScene, ISceneSize> = {
 
 // ---------------------------------------------------------------------------
 // Overview dynamic height
+//
+// The expanded overview height is content-driven: the renderer measures the
+// session list's natural height (ResizeObserver) and feeds it back through
+// `size$`, clamped to the bounds below. The container keeps a numeric height
+// so its `transition: height` morph animation survives.
 // ---------------------------------------------------------------------------
 
+// Pre-measurement fallback estimate only — used for the single frame before
+// the ResizeObserver reports the real height. Card heights vary with content
+// (prompt/tool/todos), so these never match every case; measurement does.
 export const OVERVIEW_HEADER_HEIGHT = 44;
 export const MINI_SESSION_HEIGHT = 68;
-export const OVERVIEW_PADDING = 12;
+
+// Bottom breathing room below the session list. NotchLayer applies it as the
+// expanded layer's CSS `paddingBottom`; getSceneSize adds it to the measured
+// height so the container hugs the content.
+export const OVERVIEW_PADDING = 15;
+
+// Total container-height bounds for the overview scene (NOTCH_OFFSET included).
+// Content shorter than MIN is floored; taller than MAX scrolls.
+export const OVERVIEW_MIN_HEIGHT = 120;
 export const OVERVIEW_MAX_HEIGHT = 360;
 
 // ---------------------------------------------------------------------------

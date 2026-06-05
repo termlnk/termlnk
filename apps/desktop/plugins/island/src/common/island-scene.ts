@@ -16,7 +16,7 @@
 import type { IPendingInteractionPayload } from '@termlnk/agent';
 import type { AnimationState } from '../models/island';
 import type { ISceneSize, IslandScene } from './constants';
-import { MINI_SESSION_HEIGHT, OVERVIEW_HEADER_HEIGHT, OVERVIEW_MAX_HEIGHT, OVERVIEW_PADDING, SCENE_SHADOWS, SCENE_SIZES, STATE_GLOW } from './constants';
+import { MINI_SESSION_HEIGHT, OVERVIEW_HEADER_HEIGHT, OVERVIEW_MAX_HEIGHT, OVERVIEW_MIN_HEIGHT, OVERVIEW_PADDING, SCENE_SHADOWS, SCENE_SIZES, STATE_GLOW } from './constants';
 
 /** Offset for expanded scenes — equal to the compact pill height. */
 export const NOTCH_OFFSET = SCENE_SIZES.compact.h;
@@ -46,32 +46,38 @@ export function deriveScene(
 }
 
 /**
- * Compute the scene's base size. The approval scene always uses the fixed
- * permission layout now that AskUserQuestion no longer surfaces a picker.
+ * Compute the scene's base size. Pure — consumed by the renderer's
+ * `IIslandSceneService` to drive the CSS morph (the Electron window itself is
+ * fixed-size). The overview height is content-driven: pass the measured
+ * session-list height as `overviewContentHeight` and it is clamped to
+ * `[OVERVIEW_MIN_HEIGHT, OVERVIEW_MAX_HEIGHT]`. When omitted (before the first
+ * measurement) a rough per-session estimate fills a single frame.
+ *
+ * The approval scene always uses the fixed permission layout now that
+ * AskUserQuestion no longer surfaces a picker.
  */
 export function getSceneSize(
   scene: IslandScene,
   sessionCount: number,
-  _activeInteraction: IPendingInteractionPayload | undefined
+  _activeInteraction: IPendingInteractionPayload | undefined,
+  overviewContentHeight?: number
 ): ISceneSize {
-  let base: ISceneSize;
-
   if (scene === 'overview') {
-    const h = sessionCount === 0
-      ? EMPTY_OVERVIEW_HEIGHT
-      : Math.min(
-        OVERVIEW_HEADER_HEIGHT + sessionCount * MINI_SESSION_HEIGHT + OVERVIEW_PADDING,
-        OVERVIEW_MAX_HEIGHT
-      );
-    base = { w: SCENE_SIZES.overview.w, h, r: SCENE_SIZES.overview.r };
-  } else {
-    base = SCENE_SIZES[scene];
+    if (sessionCount === 0) {
+      return { w: SCENE_SIZES.overview.w, h: EMPTY_OVERVIEW_HEIGHT + NOTCH_OFFSET, r: SCENE_SIZES.overview.r };
+    }
+    const rawHeight = overviewContentHeight != null
+      ? NOTCH_OFFSET + overviewContentHeight + OVERVIEW_PADDING
+      : NOTCH_OFFSET + OVERVIEW_HEADER_HEIGHT + sessionCount * MINI_SESSION_HEIGHT + OVERVIEW_PADDING;
+    const h = Math.max(OVERVIEW_MIN_HEIGHT, Math.min(rawHeight, OVERVIEW_MAX_HEIGHT));
+    return { w: SCENE_SIZES.overview.w, h, r: SCENE_SIZES.overview.r };
   }
 
-  if (scene === 'overview' || scene === 'approval') {
-    return { w: base.w, h: base.h + NOTCH_OFFSET, r: base.r };
+  if (scene === 'approval') {
+    return { w: SCENE_SIZES.approval.w, h: SCENE_SIZES.approval.h + NOTCH_OFFSET, r: SCENE_SIZES.approval.r };
   }
-  return base;
+
+  return SCENE_SIZES[scene];
 }
 
 /**

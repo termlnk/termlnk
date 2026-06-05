@@ -15,6 +15,7 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '@termlnk/design';
+import { OVERVIEW_PADDING } from '@termlnk/island';
 
 interface INotchLayerProps {
   active: boolean;
@@ -41,7 +42,7 @@ export function NotchLayer({ active, children, className, topOffset, scrollable 
         overflowX: 'hidden',
         overflowY: scrollable && active ? 'auto' : 'hidden',
         borderRadius: 'inherit',
-        padding: topOffset ? '0 14px 15px' : '0 14px',
+        padding: topOffset ? `0 14px ${OVERVIEW_PADDING}px` : '0 14px',
       }}
     >
       {children}

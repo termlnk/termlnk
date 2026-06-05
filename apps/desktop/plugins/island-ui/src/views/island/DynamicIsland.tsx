@@ -14,13 +14,14 @@
  */
 
 import { LocaleService } from '@termlnk/core';
-import { useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
+import { cn, useDependency, useObservable, useUpdateBinder } from '@termlnk/design';
 import { AnimationState, NOTCH_OFFSET, SCENE_SIZES } from '@termlnk/island';
 import { useCallback } from 'react';
 import { IIslandSceneService } from '../../services/island-scene.service';
 import { IIslandUIStateService } from '../../services/island-state.service';
 import { IPermissionRequestService } from '../../services/permission-request.service';
 import { useAutoCollapse } from '../hooks/use-auto-collapse';
+import { useMeasuredHeight } from '../hooks/use-measured-height';
 import { PermissionRequestView } from '../permission/PermissionRequestView';
 import { SessionList } from '../session/SessionList';
 import { CollapsedIsland } from './CollapsedIsland';
@@ -60,6 +61,12 @@ export function DynamicIsland() {
     stateService.setExpanded(!expanded);
   }, [expanded, stateService]);
 
+  const setOverviewHeight = useCallback(
+    (height: number) => sceneService.setOverviewContentHeight(height),
+    [sceneService]
+  );
+  const overviewContentRef = useMeasuredHeight(setOverviewHeight);
+
   const { onMouseEnter: autoCollapseEnter, onMouseLeave: autoCollapseLeave } = useAutoCollapse(
     expanded,
     (v: boolean) => stateService.setExpanded(v),
@@ -98,19 +105,28 @@ export function DynamicIsland() {
         active={scene === 'overview'}
         topOffset={NOTCH_OFFSET}
         scrollable
-        className="tm:flex-col tm:items-stretch tm:justify-start tm:gap-0 tm:p-2"
+        className="tm:flex-col tm:items-stretch tm:justify-start tm:gap-0"
       >
-        <SessionList
-          sessions={sessions}
-          animationState={animationState}
-          onCollapse={handleToggle}
-        />
+        {/* `shrink-0` keeps the measured height truthful when content overflows the capped layer. */}
+        <div
+          ref={overviewContentRef}
+          className={cn('tm:flex tm:w-full tm:flex-col', {
+            'tm:size-full tm:items-center tm:justify-center': sessions.length === 0,
+            'tm:shrink-0': sessions.length > 0,
+          })}
+        >
+          <SessionList
+            sessions={sessions}
+            animationState={animationState}
+            onCollapse={handleToggle}
+          />
+        </div>
       </NotchLayer>
 
       <NotchLayer
         active={scene === 'approval'}
         topOffset={NOTCH_OFFSET}
-        className="tm:flex-col tm:items-stretch tm:justify-start tm:gap-0 tm:p-2"
+        className="tm:flex-col tm:items-stretch tm:justify-start tm:gap-0"
       >
         {activeRequest && <PermissionRequestView request={activeRequest} />}
       </NotchLayer>
