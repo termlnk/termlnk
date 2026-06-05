@@ -101,7 +101,12 @@ class FakeOutbox implements ISyncOutboxService {
   }
 
   async ack(): Promise<void> {}
-  async markRejected(): Promise<void> {}
+  async markRejected(): Promise<Map<number, number>> {
+    return new Map();
+  }
+
+  async updateBaseVersion(): Promise<void> {}
+  async discard(): Promise<void> {}
 
   async countByResource(): Promise<number> {
     return 0;

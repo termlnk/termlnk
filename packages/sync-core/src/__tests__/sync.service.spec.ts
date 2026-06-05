@@ -14,9 +14,9 @@
  */
 
 import type { ILogService, LogLevel } from '@termlnk/core';
-import type { ConfigRepository, ISyncCursorEntity, SyncCursorRepository } from '@termlnk/database';
+import type { ConfigRepository, ISyncCursorEntity, SyncCursorRepository, SyncRowMetaRepository } from '@termlnk/database';
 import type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse, IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
-import { SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD, SynchroniserStatus } from '@termlnk/sync';
+import { SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SyncService } from '../services/sync.service';
@@ -35,6 +35,8 @@ class FakeOutbox implements ISyncOutboxService {
   rows: ISyncMutation[] = [];
   ackedIds: number[][] = [];
   rejectedIds: Array<{ ids: number[]; reason: string }> = [];
+  discardedIds: number[][] = [];
+  retryCounts: Map<number, number> = new Map();
 
   async enqueue(mutation: Omit<ISyncMutation, 'id' | 'createdAt'>): Promise<ISyncMutation> {
     const m = { ...mutation, id: this.rows.length + 1, createdAt: Date.now() } as ISyncMutation;
@@ -54,8 +56,26 @@ class FakeOutbox implements ISyncOutboxService {
     this.pendingCount$.next(this.rows.length);
   }
 
-  async markRejected(ids: number[], reason: string): Promise<void> {
+  async markRejected(ids: number[], reason: string): Promise<Map<number, number>> {
     this.rejectedIds.push({ ids, reason });
+    const out = new Map<number, number>();
+    for (const id of ids) {
+      const next = (this.retryCounts.get(id) ?? 0) + 1;
+      this.retryCounts.set(id, next);
+      out.set(id, next);
+    }
+    return out;
+  }
+
+  async updateBaseVersion(mutationId: number, baseVersion: number): Promise<void> {
+    this.rows = this.rows.map((r) => (r.id === mutationId ? { ...r, baseVersion } : r));
+  }
+
+  async discard(ids: number[]): Promise<void> {
+    this.discardedIds.push(ids);
+    const set = new Set(ids);
+    this.rows = this.rows.filter((r) => !set.has(r.id));
+    this.pendingCount$.next(this.rows.length);
   }
 
   async countByResource(resource: SyncResourceId): Promise<number> {
@@ -156,6 +176,22 @@ class FakeCursorRepo {
   }
 }
 
+class FakeRowMeta {
+  private _rows: Map<string, { resource: SyncResourceId; entityId: string; version: number; updatedAt: number }> = new Map();
+
+  private _key(resource: SyncResourceId, entityId: string): string {
+    return `${resource}::${entityId}`;
+  }
+
+  set(resource: SyncResourceId, entityId: string, version: number): void {
+    this._rows.set(this._key(resource, entityId), { resource, entityId, version, updatedAt: 0 });
+  }
+
+  async get(resource: SyncResourceId, entityId: string): Promise<{ resource: SyncResourceId; entityId: string; version: number; updatedAt: number } | null> {
+    return this._rows.get(this._key(resource, entityId)) ?? null;
+  }
+}
+
 class FakeCryptoService implements ISyncCryptoService {
   constructor(public available: boolean) {}
   encrypt(_plaintext: Uint8Array): Uint8Array {
@@ -242,6 +278,7 @@ interface ITestBed {
   transport: FakeTransport;
   cursors: FakeCursorRepo;
   config: FakeConfigRepo;
+  rowMeta: FakeRowMeta;
   crypto: FakeCryptoService;
   service: SyncService;
 }
@@ -251,6 +288,7 @@ function createTestBed(opts: { cryptoAvailable?: boolean } = {}): ITestBed {
   const transport = new FakeTransport();
   const cursors = new FakeCursorRepo();
   const config = new FakeConfigRepo();
+  const rowMeta = new FakeRowMeta();
   const crypto = new FakeCryptoService(opts.cryptoAvailable ?? true);
   const service = new SyncService(
     outbox,
@@ -258,9 +296,10 @@ function createTestBed(opts: { cryptoAvailable?: boolean } = {}): ITestBed {
     crypto,
     cursors as unknown as SyncCursorRepository,
     config as unknown as ConfigRepository,
+    rowMeta as unknown as SyncRowMetaRepository,
     new NoopLogService()
   );
-  return { outbox, transport, cursors, config, crypto, service };
+  return { outbox, transport, cursors, config, rowMeta, crypto, service };
 }
 
 async function flushAsync(extraMs: number = 0): Promise<void> {
@@ -446,7 +485,7 @@ describe('SyncService', () => {
     expect(sk.pushAccepted).toEqual([]);
   });
 
-  it('push rejection triggers a follow-up pull', async () => {
+  it('push rejection pulls the affected resource (config-style baseVersion=null is not rebased)', async () => {
     const sk = new FakeSynchroniser('skill');
     bed.service.register(sk);
     await bed.service.enable();
@@ -470,10 +509,87 @@ describe('SyncService', () => {
     });
     await flushAsync(600);
 
+    // Single push: baseVersion=null cannot be rebased, so no retry is fired.
     expect(bed.transport.pushCalls.length).toBe(1);
     expect(bed.outbox.rejectedIds[0]?.ids).toContain(1);
-    // Pull was triggered by rejection
-    expect(bed.transport.pullCalls.length).toBeGreaterThan(0);
+    // The rebase path still pulls the rejected mutation's resource to refresh local state.
+    expect(bed.transport.pullCalls.some((c) => c.resource === 'skill')).toBe(true);
+  });
+
+  it('rebases a row-level baseVersion conflict onto the latest version and retries', async () => {
+    const host = new FakeSynchroniser('host');
+    bed.service.register(host);
+    await bed.service.enable();
+    await flushAsync(50);
+
+    // Server holds version 7 for this row; the local mutation was built against 5.
+    bed.rowMeta.set('host', 'h1', 7);
+    bed.transport.pushCalls.length = 0;
+
+    let pushCount = 0;
+    bed.transport.push = async (req) => {
+      bed.transport.pushCalls.push(req);
+      pushCount++;
+      if (pushCount === 1) {
+        return { accepted: [], acceptedDetails: [], rejected: [{ id: 1, reason: 'baseVersion mismatch' }], lastServerVersion: 7 };
+      }
+      return {
+        accepted: [1],
+        acceptedDetails: [{ id: 1, resource: 'host', entityId: 'h1', version: 8 }],
+        rejected: [],
+        lastServerVersion: 8,
+      };
+    };
+
+    await bed.outbox.enqueue({ resource: 'host', op: 'upsert', entityId: 'h1', payload: new Uint8Array([1]), baseVersion: 5 });
+    await flushAsync(800);
+
+    // First push rejected → rebased to version 7 → retry accepted.
+    expect(bed.transport.pushCalls.length).toBeGreaterThanOrEqual(2);
+    expect(bed.transport.pushCalls[1].mutations[0].baseVersion).toBe(7);
+    expect(bed.outbox.ackedIds.flat()).toContain(1);
+  });
+
+  it('drops a mutation that keeps losing the baseVersion conflict past the retry cap', async () => {
+    const host = new FakeSynchroniser('host');
+    bed.service.register(host);
+    await bed.service.enable();
+    await flushAsync(50);
+
+    bed.rowMeta.set('host', 'h1', 2);
+    bed.transport.pushResponse = {
+      accepted: [],
+      acceptedDetails: [],
+      rejected: [{ id: 1, reason: 'baseVersion mismatch' }],
+      lastServerVersion: 2,
+    };
+    // Pre-bump retryCount to the cap so the next rejection trips the drop.
+    bed.outbox.retryCounts.set(1, SYNC_MAX_BASE_VERSION_RETRIES);
+
+    await bed.outbox.enqueue({ resource: 'host', op: 'upsert', entityId: 'h1', payload: new Uint8Array([1]), baseVersion: 1 });
+    await flushAsync(800);
+
+    expect(bed.outbox.discardedIds.flat()).toContain(1);
+  });
+
+  it('drops a rejected mutation when the server has deleted the entity', async () => {
+    const host = new FakeSynchroniser('host');
+    bed.service.register(host);
+    await bed.service.enable();
+    await flushAsync(50);
+
+    // No rowMeta entry for h1 → entity deleted server-side (pull applied a tombstone).
+    bed.transport.pushResponse = {
+      accepted: [],
+      acceptedDetails: [],
+      rejected: [{ id: 1, reason: 'baseVersion mismatch' }],
+      lastServerVersion: 3,
+    };
+
+    await bed.outbox.enqueue({ resource: 'host', op: 'upsert', entityId: 'h1', payload: new Uint8Array([1]), baseVersion: 2 });
+    await flushAsync(800);
+
+    expect(bed.outbox.discardedIds.flat()).toContain(1);
   });
 
   it('poke triggers a pull (after the 200ms debounce)', async () => {

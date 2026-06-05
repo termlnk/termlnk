@@ -14,11 +14,11 @@
  */
 
 import type { IDisposable } from '@termlnk/core';
-import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncService, ISyncStats, SyncResourceId } from '@termlnk/sync';
+import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncMutation, ISyncService, ISyncStats, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { Disposable, generateRandomId, ILogService, Inject, toDisposable } from '@termlnk/core';
-import { ConfigRepository, SyncCursorRepository } from '@termlnk/database';
-import { ISyncCryptoService, ISyncOutboxService, ISyncTransportService, NON_SYNCABLE_CONFIG_KEYS, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SYNC_USER_ENABLED_FIELD, SynchroniserStatus, SyncState } from '@termlnk/sync';
+import { ConfigRepository, SyncCursorRepository, SyncRowMetaRepository } from '@termlnk/database';
+import { ISyncCryptoService, ISyncOutboxService, ISyncTransportService, NON_SYNCABLE_CONFIG_KEYS, SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SYNC_USER_ENABLED_FIELD, SynchroniserStatus, SyncState } from '@termlnk/sync';
 import { BehaviorSubject, debounceTime, distinctUntilChanged, filter, interval, merge, Subject, Subscription } from 'rxjs';
 
 const CLIENT_ID_FIELD = 'clientId';
@@ -82,6 +82,7 @@ export class SyncService extends Disposable implements ISyncService {
     @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
     @Inject(SyncCursorRepository) private readonly _cursors: SyncCursorRepository,
     @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
+    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
     @ILogService private readonly _logService: ILogService
   ) {
     super();
@@ -313,15 +314,17 @@ export class SyncService extends Disposable implements ISyncService {
           await this._outboxService.ack(idsToAck);
           anyAccepted = true;
         }
+        let rebased = 0;
         if (resp.rejected.length > 0) {
           const rejectedIds = resp.rejected.map((r) => r.id);
           const reason = resp.rejected.map((r) => `${r.id}:${r.reason}`).join(';');
-          await this._outboxService.markRejected(rejectedIds, reason);
-          // Rejections almost always mean a baseVersion conflict; pull first so the next
-          // push is built against the latest state.
-          this._pullTrigger$.next();
+          const retryCounts = await this._outboxService.markRejected(rejectedIds, reason);
+          // Local-first: rebase rejected row-level mutations onto the latest server version so
+          // the loop's next iteration retries them with a fresh baseVersion (serial, no re-entry).
+          rebased = await this._rebaseRejectedMutations(mutations, retryCounts);
         }
-        if (resp.accepted.length === 0) {
+        // No progress this round — nothing accepted and nothing left to retry.
+        if (resp.accepted.length === 0 && rebased === 0) {
           break;
         }
       }
@@ -457,29 +460,7 @@ export class SyncService extends Disposable implements ISyncService {
     try {
       this._state$.next(SyncState.Syncing);
       for (const resource of SYNC_RESOURCES) {
-        const synchroniser = this._synchronisers.get(resource);
-        if (!synchroniser) {
-          continue;
-        }
-        const cursorRow = await this._cursors.get(resource);
-        const resp = await this._transportService.pull({
-          clientId: this._clientId,
-          resource,
-          cursor: cursorRow?.cursor ?? null,
-        });
-        if (resp.patch.length > 0) {
-          await synchroniser.applyPatch([...resp.patch]);
-        }
-        if (resp.lastMutationId > 0) {
-          // Backstop ack: push.accepted has usually cleared the outbox already, but if
-          // we crashed mid-push this keeps the outbox in sync with what the server has.
-          await this._outboxService.ack([resp.lastMutationId]);
-        }
-        await this._cursors.upsert({
-          resource,
-          cursor: resp.cursor,
-          lastPulledAt: Date.now(),
-        });
+        await this._pullResource(resource);
       }
       // refreshStats must precede the Idle emit so subscribers never observe
       // "Idle + stale lastSyncedAt" between two BehaviorSubject ticks.
@@ -491,6 +472,89 @@ export class SyncService extends Disposable implements ISyncService {
       this._reportError('network', `pull failed: ${(err as Error).message}`);
       await this._refreshStats();
     }
+  }
+
+  // Single-resource pull, shared by _runPull and the rebase path. Throws on transport/apply
+  // failure so callers decide handling.
+  private async _pullResource(resource: SyncResourceId): Promise<void> {
+    const clientId = this._clientId;
+    const synchroniser = this._synchronisers.get(resource);
+    if (!clientId || !synchroniser) {
+      return;
+    }
+    const cursorRow = await this._cursors.get(resource);
+    const resp = await this._transportService.pull({
+      clientId,
+      resource,
+      cursor: cursorRow?.cursor ?? null,
+    });
+    if (resp.patch.length > 0) {
+      await synchroniser.applyPatch([...resp.patch]);
+    }
+    if (resp.lastMutationId > 0) {
+      // Backstop ack: push.accepted has usually cleared the outbox already, but if
+      // we crashed mid-push this keeps the outbox in sync with what the server has.
+      await this._outboxService.ack([resp.lastMutationId]);
+    }
+    await this._cursors.upsert({
+      resource,
+      cursor: resp.cursor,
+      lastPulledAt: Date.now(),
+    });
+  }
+
+  // Local-first conflict resolution: keep each rejected mutation's payload (the local change)
+  // and rebase its baseVersion onto the latest server version so the next push wins. Drop
+  // mutations past the retry cap (yield to remote) or whose entity the server has deleted.
+  private async _rebaseRejectedMutations(
+    batch: ISyncMutation[],
+    retryCounts: Map<number, number>
+  ): Promise<number> {
+    const rejectedMutations = batch.filter((m) => retryCounts.has(m.id));
+    if (rejectedMutations.length === 0) {
+      return 0;
+    }
+
+    // Refresh sync_row_meta / local rows for the affected resources before rebasing. A pull
+    // failure is non-fatal: skip and let the next tick retry.
+    const resources = new Set(rejectedMutations.map((m) => m.resource));
+    for (const resource of resources) {
+      try {
+        await this._pullResource(resource);
+      } catch (err) {
+        this._logService.warn(`[SyncService] rebase pull failed for ${resource}:`, err);
+        return 0;
+      }
+    }
+
+    let rebasedCount = 0;
+    for (const m of rejectedMutations) {
+      // config (field-level LWW) carries no baseVersion; there is nothing to rebase.
+      if (m.baseVersion === null) {
+        continue;
+      }
+      const retryCount = retryCounts.get(m.id) ?? 0;
+      if (retryCount > SYNC_MAX_BASE_VERSION_RETRIES) {
+        this._logService.warn(
+          `[SyncService] dropping stale mutation ${m.id} (${m.resource}/${m.entityId}) after ${retryCount} baseVersion conflicts`
+        );
+        await this._outboxService.discard([m.id]);
+        continue;
+      }
+      const meta = await this._rowMetaRepo.get(m.resource, m.entityId);
+      if (!meta) {
+        // Server deleted this entity (the pull applied a del tombstone). Honour the
+        // "delete wins" convention and drop the local mutation.
+        this._logService.log(
+          `[SyncService] dropping mutation ${m.id} for server-deleted ${m.resource}/${m.entityId}`
+        );
+        await this._outboxService.discard([m.id]);
+        continue;
+      }
+      await this._outboxService.updateBaseVersion(m.id, meta.version);
+      rebasedCount++;
+    }
+    return rebasedCount;
   }
 
   private _reportError(code: ISyncError['code'], message: string, extra?: Partial<Omit<ISyncError, 'code' | 'message'>>): void {

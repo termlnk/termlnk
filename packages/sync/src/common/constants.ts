@@ -51,6 +51,12 @@ export const SYNC_TRIGGER_INTERVALS = {
 // 32 KiB encrypted payloads (200 * 32 KiB ~= 6.4 MiB).
 export const SYNC_PUSH_BATCH_SIZE = 200;
 
+// Max times a row-level mutation may be re-pushed after a baseVersion conflict before the
+// outbox drops it. Local-first conflict resolution rebases the mutation onto the latest
+// server version and retries; this cap stops two devices editing the same row from
+// ping-ponging forever — past the cap the local change yields to the remote value.
+export const SYNC_MAX_BASE_VERSION_RETRIES = 5;
+
 // Plugin config keys whose contents are device-specific runtime state — never sync across
 // devices. Used by the `config` resource synchroniser to drop both inbound patches and
 // outbound mutations for these keys, and to purge any residual outbox rows on startup.

@@ -72,11 +72,22 @@ class FakeOutboxRepository {
     this._rows = this._rows.filter((r) => !drop.has(r.clientMutId));
   }
 
-  async incrementRetry(ids: number[]): Promise<void> {
+  async incrementRetry(ids: number[]): Promise<{ clientMutId: number; retryCount: number }[]> {
     const target = new Set(ids);
+    const out: { clientMutId: number; retryCount: number }[] = [];
     for (const r of this._rows) {
       if (target.has(r.clientMutId)) {
         r.retryCount += 1;
+        out.push({ clientMutId: r.clientMutId, retryCount: r.retryCount });
+      }
+    }
+    return out;
+  }
+
+  async updateBaseVersion(clientMutId: number, baseVersion: number): Promise<void> {
+    for (const r of this._rows) {
+      if (r.clientMutId === clientMutId) {
+        r.baseVersion = baseVersion;
       }
     }
   }
@@ -91,6 +102,12 @@ class FakeOutboxRepository {
 
   async deleteByResource(resource: SyncResourceId): Promise<void> {
     this._rows = this._rows.filter((r) => r.resource !== resource);
+  }
+
+  async deleteByResourceAndEntityId(resource: SyncResourceId, entityId: string): Promise<number> {
+    const before = this._rows.length;
+    this._rows = this._rows.filter((r) => !(r.resource === resource && r.entityId === entityId));
+    return before - this._rows.length;
   }
 
   async maxClientMutId(): Promise<number> {
@@ -194,6 +211,22 @@ describe('SyncOutboxService', () => {
     expect(queued[0].op).toBe('delete');
   });
 
+  it('enqueue collapses a superseded pending mutation for the same (resource, entityId)', async () => {
+    const first = await bed.service.enqueue(buildSampleMutation({ entityId: 'h1', payload: new Uint8Array([1]) }));
+    const second = await bed.service.enqueue(buildSampleMutation({ entityId: 'h1', payload: new Uint8Array([2]) }));
+
+    const queued = await bed.service.peek();
+    expect(queued).toHaveLength(1);
+    expect(queued[0].id).toBe(second.id);
+    expect(queued[0].payload).toEqual(new Uint8Array([2]));
+    expect(second.id).toBeGreaterThan(first.id);
+    expect(await firstValue(bed.service.pendingCount$)).toBe(1);
+
+    // A different entity is unaffected.
+    await bed.service.enqueue(buildSampleMutation({ entityId: 'h2' }));
+    expect(await firstValue(bed.service.pendingCount$)).toBe(2);
+  });
+
   it('peek returns FIFO order by createdAt then clientMutId', async () => {
     await bed.service.enqueue(buildSampleMutation({ entityId: 'a' }));
     await bed.service.enqueue(buildSampleMutation({ entityId: 'b' }));
@@ -240,6 +273,43 @@ describe('SyncOutboxService', () => {
     const rows = bed.outboxRepo._allRows();
     expect(rows).toHaveLength(1);
     expect(rows[0].retryCount).toBe(2);
+    expect(await firstValue(bed.service.pendingCount$)).toBe(1);
+  });
+
+  it('markRejected returns the bumped retry counts keyed by mutationId', async () => {
+    const a = await bed.service.enqueue(buildSampleMutation({ entityId: 'a' }));
+    const b = await bed.service.enqueue(buildSampleMutation({ entityId: 'b' }));
+
+    const first = await bed.service.markRejected([a.id, b.id], 'baseVersion mismatch');
+    expect(first.get(a.id)).toBe(1);
+    expect(first.get(b.id)).toBe(1);
+
+    const second = await bed.service.markRejected([a.id], 'still bad');
+    expect(second.get(a.id)).toBe(2);
+  });
+
+  it('updateBaseVersion rebases a row without changing its FIFO position', async () => {
+    const a = await bed.service.enqueue(buildSampleMutation({ entityId: 'a', baseVersion: 3 }));
+    await bed.service.enqueue(buildSampleMutation({ entityId: 'b' }));
+    const createdAtBefore = bed.outboxRepo._allRows().find((r) => r.clientMutId === a.id)!.createdAt;
+
+    await bed.service.updateBaseVersion(a.id, 9);
+
+    const row = bed.outboxRepo._allRows().find((r) => r.clientMutId === a.id)!;
+    expect(row.baseVersion).toBe(9);
+    expect(row.createdAt).toBe(createdAtBefore);
+    // FIFO order is unchanged — 'a' still ahead of 'b'.
+    expect((await bed.service.peek()).map((m) => m.entityId)).toEqual(['a', 'b']);
+  });
+
+  it('discard drops the given rows and refreshes pendingCount', async () => {
+    const a = await bed.service.enqueue(buildSampleMutation({ entityId: 'a' }));
+    await bed.service.enqueue(buildSampleMutation({ entityId: 'b' }));
+    expect(await firstValue(bed.service.pendingCount$)).toBe(2);
+
+    await bed.service.discard([a.id]);
+
+    expect((await bed.service.peek()).map((m) => m.entityId)).toEqual(['b']);
     expect(await firstValue(bed.service.pendingCount$)).toBe(1);
   });
 

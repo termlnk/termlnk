@@ -76,15 +76,27 @@ export class SyncOutboxRepository extends Disposable {
       .where(inArray(syncOutboxEntity.clientMutId, clientMutIds));
   }
 
-  /** Bump `retry_count` when the server rejects rows; the rows stay. */
-  async incrementRetry(clientMutIds: number[]): Promise<void> {
+  /** Bump `retry_count` when the server rejects rows; the rows stay. Returns the new counts. */
+  async incrementRetry(clientMutIds: number[]): Promise<{ clientMutId: number; retryCount: number }[]> {
     if (clientMutIds.length === 0) {
-      return;
+      return [];
     }
-    await this._db
+    return this._db
       .update(syncOutboxEntity)
       .set({ retryCount: sql`${syncOutboxEntity.retryCount} + 1` })
-      .where(inArray(syncOutboxEntity.clientMutId, clientMutIds));
+      .where(inArray(syncOutboxEntity.clientMutId, clientMutIds))
+      .returning({ clientMutId: syncOutboxEntity.clientMutId, retryCount: syncOutboxEntity.retryCount });
+  }
+
+  /**
+   * Rebase a pending mutation onto a newer server version after a baseVersion conflict.
+   * Leaves `created_at` untouched so the row keeps its FIFO position.
+   */
+  async updateBaseVersion(clientMutId: number, baseVersion: number): Promise<void> {
+    await this._db
+      .update(syncOutboxEntity)
+      .set({ baseVersion })
+      .where(eq(syncOutboxEntity.clientMutId, clientMutId));
   }
 
   async countAll(): Promise<number> {
@@ -106,6 +118,15 @@ export class SyncOutboxRepository extends Disposable {
     await this._db
       .delete(syncOutboxEntity)
       .where(eq(syncOutboxEntity.resource, resource));
+  }
+
+  /** Drop the pending row(s) for one (resource, entityId); returns the deleted count. */
+  async deleteByResourceAndEntityId(resource: SyncResourceId, entityId: string): Promise<number> {
+    const result = await this._db
+      .delete(syncOutboxEntity)
+      .where(and(eq(syncOutboxEntity.resource, resource), eq(syncOutboxEntity.entityId, entityId)))
+      .returning({ clientMutId: syncOutboxEntity.clientMutId });
+    return result.length;
   }
 
   /**

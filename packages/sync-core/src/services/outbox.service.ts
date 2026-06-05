@@ -57,6 +57,12 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
     const clientMutId = await this._allocateClientMutId();
     const createdAt = Date.now();
 
+    // The outbox holds the latest pending state per (resource, entityId), not an op log.
+    // Collapsing a superseded row stops stacked local edits from piling up and
+    // self-conflicting on baseVersion during push (they all carry the same stale version
+    // until the first one acks).
+    const superseded = await this._outboxRepo.deleteByResourceAndEntityId(mutation.resource, mutation.entityId);
+
     const persisted = await this._outboxRepo.insert({
       clientMutId,
       resource: mutation.resource,
@@ -67,7 +73,7 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
       createdAt,
     });
 
-    this._pendingCount$.next(this._pendingCount$.getValue() + 1);
+    this._pendingCount$.next(this._pendingCount$.getValue() + 1 - superseded);
 
     return {
       id: persisted.clientMutId,
@@ -99,20 +105,34 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
       return;
     }
     await this._hydratePromise;
-    await this._outboxRepo.deleteByClientMutIds(mutationIds);
-    await this._refreshPendingCount();
+    await this._deleteAndRefresh(mutationIds);
   }
 
-  async markRejected(mutationIds: number[], reason: string): Promise<void> {
+  async markRejected(mutationIds: number[], reason: string): Promise<Map<number, number>> {
     if (mutationIds.length === 0) {
-      return;
+      return new Map();
     }
     await this._hydratePromise;
-    await this._outboxRepo.incrementRetry(mutationIds);
+    const updated = await this._outboxRepo.incrementRetry(mutationIds);
     this._logService.warn(
       `[SyncOutboxService] server rejected ${mutationIds.length} mutation(s) — reason: ${reason}`
     );
     // Rejection does not change `pendingCount` — the row stays for retry.
+    return new Map(updated.map((r) => [r.clientMutId, r.retryCount]));
+  }
+
+  async updateBaseVersion(mutationId: number, baseVersion: number): Promise<void> {
+    await this._hydratePromise;
+    // pendingCount is unchanged — the row stays queued, only its baseVersion is rebased.
+    await this._outboxRepo.updateBaseVersion(mutationId, baseVersion);
+  }
+
+  async discard(mutationIds: number[]): Promise<void> {
+    if (mutationIds.length === 0) {
+      return;
+    }
+    await this._hydratePromise;
+    await this._deleteAndRefresh(mutationIds);
   }
 
   async countByResource(resource: SyncResourceId): Promise<number> {
@@ -161,6 +181,11 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
     // Persist the high-water mark so the sequence survives an outbox fully drained by ack.
     await this._configRepo.setField(SYNC_PLUGIN_CONFIG_KEY, LAST_CLIENT_MUT_ID_FIELD, next);
     return next;
+  }
+
+  private async _deleteAndRefresh(mutationIds: number[]): Promise<void> {
+    await this._outboxRepo.deleteByClientMutIds(mutationIds);
+    await this._refreshPendingCount();
   }
 
   private async _refreshPendingCount(): Promise<void> {

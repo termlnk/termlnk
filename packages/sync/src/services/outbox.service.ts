@@ -34,8 +34,17 @@ export interface ISyncOutboxService {
   // Server confirmed receipt — drop by mutationId.
   ack(mutationIds: number[]): Promise<void>;
 
-  // Server rejected (e.g. baseVersion conflict) — mark for retry.
-  markRejected(mutationIds: number[], reason: string): Promise<void>;
+  // Server rejected (e.g. baseVersion conflict) — bump retry counts; returns mutationId ->
+  // new retryCount so the caller can drop a mutation that keeps losing the conflict.
+  markRejected(mutationIds: number[], reason: string): Promise<Map<number, number>>;
+
+  // Rebase a pending mutation onto the latest server version after a baseVersion conflict,
+  // keeping its payload (the local change) so the next push wins. FIFO position preserved.
+  updateBaseVersion(mutationId: number, baseVersion: number): Promise<void>;
+
+  // Permanently drop unpushable mutations. Distinct from ack(), which means "server
+  // accepted"; discard means "give up on this mutation".
+  discard(mutationIds: number[]): Promise<void>;
 
   countByResource(resource: SyncResourceId): Promise<number>;
 
