@@ -104,13 +104,14 @@ export function KnownHostsExplorer() {
                     className="
                       tm:hidden
                       tm:group-hover:flex
+                      tm:hover:bg-red/10 tm:hover:text-red
                     "
                     onClick={(e) => {
                       e.stopPropagation();
                       remove(row.id);
                     }}
                   >
-                    <Trash2 size={13} className="tm:text-red" />
+                    <Trash2 size={13} />
                   </Button>
                 </li>
               ))}
