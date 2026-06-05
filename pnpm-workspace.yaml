@@ -13,20 +13,26 @@ packages:
   - apps/mobile/packages/*
   - apps/mobile/plugins/*
 
-ignoredBuiltDependencies:
-  - javascript-obfuscator
+nodeLinker: hoisted
+shamefullyHoist: true
+autoInstallPeers: true
+strictPeerDependencies: false
+symlink: true
+gitChecks: false
+pmOnFail: warn
 
-onlyBuiltDependencies:
-  - '@swc/core'
-  - '@tailwindcss/oxide'
-  - electron
-  - esbuild
-  - fs-xattr
-  - macos-alias
-  - protobufjs
-  - react-native-libsodium
-  - sharp
-  - uniffi-bindgen-react-native
+allowBuilds:
+  '@swc/core': true
+  '@tailwindcss/oxide': true
+  electron: true
+  esbuild: true
+  fs-xattr: true
+  macos-alias: true
+  protobufjs: true
+  react-native-libsodium: true
+  sharp: true
+  uniffi-bindgen-react-native: true
+  javascript-obfuscator: false
 
 overrides:
   '@types/react': ^19.2.15
