@@ -31,3 +31,16 @@ body,
 #island-root {
   position: relative;
 }
+
+/* Honor the OS "reduce motion" accessibility setting — the island's
+ * hover-expand and notch transitions collapse to instant when it's on. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

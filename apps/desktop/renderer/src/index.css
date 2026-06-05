@@ -42,3 +42,17 @@ textarea,
   user-select: text;
   -webkit-user-select: text;
 }
+
+/* Honor the OS "reduce motion" accessibility setting. Native apps drop
+ * non-essential animation when it's on; transitions collapse to instant
+ * rather than disappear so layout still settles. Only affects opted-in users. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
