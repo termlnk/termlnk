@@ -159,7 +159,8 @@ const locale: typeof enUS = {
         retry: '重試',
         continue: '繼續',
         replace: '取代',
-        addNew: '作為新指紋新增',
+        acceptOnce: '僅本次連線',
+        addAndContinue: '新增並繼續',
         cancel: '取消',
       },
       password: {

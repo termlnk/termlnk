@@ -159,7 +159,8 @@ const locale: typeof enUS = {
         retry: '재시도',
         continue: '계속',
         replace: '교체',
-        addNew: '새 지문으로 추가',
+        acceptOnce: '이번만 연결',
+        addAndContinue: '추가하고 계속',
         cancel: '취소',
       },
       password: {

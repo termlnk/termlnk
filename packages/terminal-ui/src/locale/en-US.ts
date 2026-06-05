@@ -157,7 +157,8 @@ const locale = {
         retry: 'Retry',
         continue: 'Continue',
         replace: 'Replace',
-        addNew: 'Add as new',
+        acceptOnce: 'Connect once',
+        addAndContinue: 'Add and continue',
         cancel: 'Cancel',
       },
       password: {

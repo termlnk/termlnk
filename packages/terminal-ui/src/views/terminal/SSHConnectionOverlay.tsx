@@ -40,14 +40,19 @@ export interface ISSHConnectionOverlayProps {
   onRetry?: () => void;
   onPasswordSubmit?: (password: string, savePassword: boolean) => void;
   fingerprint?: {
+    /** A changed key offers "replace"; a first-seen key offers "add and continue". */
+    changed?: boolean;
     title?: string;
     subtitle?: string;
     label?: string;
     value?: string;
   };
-  onFingerprintReplace?: () => void;
-  onFingerprintAdd?: () => void;
-  onFingerprintCancel?: () => void;
+  /** Accept and persist: first-seen adds the key, a changed key overwrites the old record. */
+  onFingerprintTrust?: () => void;
+  /** Accept for this session only, without writing to known hosts. */
+  onFingerprintAcceptOnce?: () => void;
+  /** Reject the key and abort the connection. */
+  onFingerprintReject?: () => void;
 }
 
 interface IStepDef {
@@ -163,9 +168,9 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
     onRetry,
     onPasswordSubmit,
     fingerprint,
-    onFingerprintReplace,
-    onFingerprintAdd,
-    onFingerprintCancel,
+    onFingerprintTrust,
+    onFingerprintAcceptOnce,
+    onFingerprintReject,
   } = props;
 
   const localeService = useDependency(LocaleService);
@@ -396,22 +401,26 @@ export function SSHConnectionOverlay(props: ISSHConnectionOverlayProps) {
               )}
             </div>
             <div className="tm:flex tm:flex-wrap tm:items-center tm:gap-2">
-              <Button variant="primary" size="sm" onClick={onFingerprintReplace}>
-                {localeService.t('terminal-ui.connection.action.replace')}
+              <Button variant="primary" size="sm" onClick={onFingerprintTrust}>
+                {localeService.t(
+                  fingerprint?.changed
+                    ? 'terminal-ui.connection.action.replace'
+                    : 'terminal-ui.connection.action.addAndContinue'
+                )}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className={outlineBtnClass}
-                onClick={onFingerprintAdd}
+                onClick={onFingerprintAcceptOnce}
               >
-                {localeService.t('terminal-ui.connection.action.addNew')}
+                {localeService.t('terminal-ui.connection.action.acceptOnce')}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 className={outlineBtnClass}
-                onClick={onFingerprintCancel}
+                onClick={onFingerprintReject}
               >
                 {localeService.t('terminal-ui.connection.action.cancel')}
               </Button>

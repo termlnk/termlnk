@@ -312,6 +312,7 @@ export function TerminalView(props: ITerminalViewProps) {
       ? 'terminal-ui.connection.fingerprint.changed'
       : 'terminal-ui.connection.fingerprint.unknown';
     return {
+      changed: hostKeyEvent.changed,
       title: localeService.t(`${prefix}.title`),
       subtitle: localeService.t(`${prefix}.subtitle`),
       label: `${hostKeyEvent.algorithm}`,
@@ -369,9 +370,9 @@ export function TerminalView(props: ITerminalViewProps) {
               onRetry={() => connection.retry('')}
               onPasswordSubmit={handlePasswordSubmit}
               fingerprint={fingerprintProps}
-              onFingerprintReplace={() => connection.respondHostKeyVerify('accept_save')}
-              onFingerprintAdd={() => connection.respondHostKeyVerify('accept_save')}
-              onFingerprintCancel={() => connection.respondHostKeyVerify('reject')}
+              onFingerprintTrust={() => connection.respondHostKeyVerify('accept_save')}
+              onFingerprintAcceptOnce={() => connection.respondHostKeyVerify('accept_once')}
+              onFingerprintReject={() => connection.respondHostKeyVerify('reject')}
             />
           </div>
         )}

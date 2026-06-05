@@ -159,7 +159,8 @@ const locale: typeof enUS = {
         retry: '再試行',
         continue: '続行',
         replace: '置換',
-        addNew: '新しいフィンガープリントとして追加',
+        acceptOnce: '今回のみ接続',
+        addAndContinue: '追加して続行',
         cancel: 'キャンセル',
       },
       password: {
