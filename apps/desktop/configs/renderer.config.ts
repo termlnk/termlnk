@@ -27,6 +27,11 @@ const RENDERER_ROOT = resolve(DESKTOP_ROOT, './renderer');
 export default mergeConfig(baseConfig, {
   root: RENDERER_ROOT,
   base: './',
+  resolve: {
+    alias: {
+      'node:diagnostics_channel': resolve(__dirname, './polyfills/diagnostics-channel.ts'),
+    },
+  },
   build: {
     outDir: 'dist/renderer',
     rolldownOptions: {
