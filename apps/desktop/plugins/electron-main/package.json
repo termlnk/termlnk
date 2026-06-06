@@ -36,7 +36,7 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "^0.78.0",
+    "@earendil-works/pi-agent-core": "^0.78.1",
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
     "@sinclair/typebox": "^0.34.49",
     "@termlnk/agent": "workspace:*",
@@ -63,7 +63,7 @@
     "electron": "41.7.1",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.14",
-    "vitest": "^4.1.7"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
   }
 }

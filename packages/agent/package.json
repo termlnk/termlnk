@@ -52,14 +52,14 @@
     "@termlnk/core": "workspace:*"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "^0.78.0",
+    "@earendil-works/pi-ai": "^0.78.1",
     "@termlnk/core": "workspace:*"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.14",
-    "vitest": "^4.1.7"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
   }
 }

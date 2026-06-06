@@ -97,7 +97,7 @@ export default {
   'lucide-react': {
     global: 'lucide-react',
     name: 'lucide-react',
-    version: '^1.16.0',
+    version: '^1.17.0',
   },
   dayjs: {
     global: 'dayjs',
