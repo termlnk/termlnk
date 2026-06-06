@@ -349,6 +349,47 @@ async function stageModules(deps: IResolvedModule[]): Promise<void> {
 }
 
 /**
+ * Build-only packages are intentionally not staged, so remove dependency edges
+ * to them from staged package metadata before electron-builder runs `npm list`.
+ */
+async function pruneBuildOnlyDependencyEdges(stagedModules: IResolvedModule[]): Promise<void> {
+  await Promise.all(
+    stagedModules.map(async (mod) => {
+      const modPkgPath = resolve(TARGET_NODE_MODULES, mod.name, 'package.json');
+      if (!existsSync(modPkgPath)) {
+        return;
+      }
+
+      const modPkg = JSON.parse(await readFile(modPkgPath, 'utf-8'));
+      let changed = false;
+
+      for (const field of ['dependencies', 'optionalDependencies'] as const) {
+        const deps = modPkg[field] as Record<string, string> | undefined;
+        if (!deps) {
+          continue;
+        }
+
+        for (const buildOnlyPkg of BUILD_ONLY_PACKAGES) {
+          if (deps[buildOnlyPkg] !== undefined) {
+            delete deps[buildOnlyPkg];
+            changed = true;
+          }
+        }
+
+        if (Object.keys(deps).length === 0) {
+          delete modPkg[field];
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        await writeFile(modPkgPath, JSON.stringify(modPkg, null, 2), 'utf-8');
+      }
+    })
+  );
+}
+
+/**
  * Removes node-pty prebuilds for platforms other than the target, and
  * ensures spawn-helper is executable.
  */
@@ -538,16 +579,19 @@ async function main(): Promise<void> {
   // 6. Stage runtime native modules (with copy-time filter)
   await stageModules(deps);
 
-  // 7. Generate package-lock.json to force npm collector in electron-builder
+  // 7. Keep staged package metadata consistent with the files we copied
+  await pruneBuildOnlyDependencyEdges(deps);
+
+  // 8. Generate package-lock.json to force npm collector in electron-builder
   await generatePackageLockJson(deps);
 
-  // 8. Strip non-target platform prebuilds
+  // 9. Strip non-target platform prebuilds
   await stripPrebuilds();
 
-  // 9. Strip non-target architecture native bins
+  // 10. Strip non-target architecture native bins
   await stripNativeBins();
 
-  // 10. Strip build artifacts from staged modules
+  // 11. Strip build artifacts from staged modules
   await stripBuildArtifacts();
 
   const elapsed = ((performance.now() - start) / 1000).toFixed(1);
