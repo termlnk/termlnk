@@ -464,6 +464,48 @@ async function generatePackageJson(runtimeModules: IRuntimeModule[], stagedModul
   );
 }
 
+/**
+ * Generates a lockfileVersion-3 package-lock.json so electron-builder detects
+ * npm instead of pnpm. The pnpm collector walks up to the monorepo workspace
+ * root and runs `pnpm list --depth Infinity`, which hits the OS EMFILE limit
+ * on Windows. The npm collector only reads the local node_modules tree.
+ */
+async function generatePackageLockJson(stagedModules: IResolvedModule[]): Promise<void> {
+  const raw = await readFile(resolve(BUILD_APP_DIR, 'package.json'), 'utf-8');
+  const pkg = JSON.parse(raw);
+
+  const packages: Record<string, Record<string, unknown>> = {
+    '': {
+      name: pkg.name,
+      version: pkg.version,
+      dependencies: pkg.dependencies ?? {},
+      optionalDependencies: pkg.optionalDependencies ?? {},
+    },
+  };
+
+  for (const mod of stagedModules) {
+    const modPkgPath = resolve(TARGET_NODE_MODULES, mod.name, 'package.json');
+    if (!existsSync(modPkgPath)) {
+      continue;
+    }
+    const modPkg = JSON.parse(await readFile(modPkgPath, 'utf-8'));
+    const entry: Record<string, unknown> = { version: modPkg.version };
+    if (modPkg.dependencies) {
+      entry.dependencies = modPkg.dependencies;
+    }
+    if (modPkg.optionalDependencies) {
+      entry.optionalDependencies = modPkg.optionalDependencies;
+    }
+    packages[`node_modules/${mod.name}`] = entry;
+  }
+
+  await writeFile(
+    resolve(BUILD_APP_DIR, 'package-lock.json'),
+    JSON.stringify({ name: pkg.name, version: pkg.version, lockfileVersion: 3, requires: true, packages }, null, 2),
+    'utf-8'
+  );
+}
+
 // ===========================================================================
 // Pipeline
 // ===========================================================================
@@ -496,13 +538,16 @@ async function main(): Promise<void> {
   // 6. Stage runtime native modules (with copy-time filter)
   await stageModules(deps);
 
-  // 7. Strip non-target platform prebuilds
+  // 7. Generate package-lock.json to force npm collector in electron-builder
+  await generatePackageLockJson(deps);
+
+  // 8. Strip non-target platform prebuilds
   await stripPrebuilds();
 
-  // 8. Strip non-target architecture native bins
+  // 9. Strip non-target architecture native bins
   await stripNativeBins();
 
-  // 9. Strip build artifacts from staged modules
+  // 10. Strip build artifacts from staged modules
   await stripBuildArtifacts();
 
   const elapsed = ((performance.now() - start) / 1000).toFixed(1);
