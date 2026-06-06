@@ -33,6 +33,16 @@ allowBuilds:
   sharp: true
   uniffi-bindgen-react-native: true
   javascript-obfuscator: false
+  # Native modules are built by apps/desktop/scripts/postinstall.mjs against the
+  # Electron ABI, not Node's. Letting pnpm run these build scripts would produce
+  # wrong-ABI binaries; ssh2/cpu-features/msgpackr-extract fall back to pure JS.
+  '@google/genai': false
+  better-sqlite3: false
+  cpu-features: false
+  electron-winstaller: false
+  msgpackr-extract: false
+  node-pty: false
+  ssh2: false
 
 overrides:
   '@types/react': ^19.2.15
