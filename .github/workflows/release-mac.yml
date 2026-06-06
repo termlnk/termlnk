@@ -82,7 +82,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: pnpm stage -- --platform darwin --arch ${{ matrix.arch }} && npx electron-builder --mac --${{ matrix.arch }} --publish never
+        run: pnpm run stage -- --platform darwin --arch ${{ matrix.arch }} && npx electron-builder --mac --${{ matrix.arch }} --publish never
 
       - name: Upload to R2
         working-directory: apps/desktop/release

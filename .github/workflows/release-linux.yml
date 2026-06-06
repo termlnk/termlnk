@@ -75,7 +75,7 @@ jobs:
 
       - name: Stage & Build
         working-directory: apps/desktop
-        run: pnpm stage -- --platform linux --arch ${{ matrix.arch }} && npx electron-builder --linux --${{ matrix.arch }} --publish never
+        run: pnpm run stage -- --platform linux --arch ${{ matrix.arch }} && npx electron-builder --linux --${{ matrix.arch }} --publish never
 
       - name: Upload to R2
         working-directory: apps/desktop/release

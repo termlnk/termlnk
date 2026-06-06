@@ -76,7 +76,7 @@ jobs:
         env:
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-        run: pnpm stage -- --platform win32 --arch ${{ matrix.arch }} && npx electron-builder --win --${{ matrix.arch }} --publish never
+        run: pnpm run stage -- --platform win32 --arch ${{ matrix.arch }} && npx electron-builder --win --${{ matrix.arch }} --publish never
 
       - name: Upload to R2
         working-directory: apps/desktop/release
