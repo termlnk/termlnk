@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/sync",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": false,
   "description": "Sync shared contracts for termlnk - resource synchroniser, outbox, transport, and crypto interfaces",
   "author": "telan <telanflow@gmail.com>",

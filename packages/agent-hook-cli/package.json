@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/agent-hook-cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Termlnk agent hook launcher + Node client. Shipped as-is to user home on app startup; invoked by external AI agent hook commands to forward events to the running Termlnk HTTP hook server.",
   "author": "telan <telanflow@gmail.com>",
