@@ -60,6 +60,7 @@ export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
   const [label, setLabel] = useState(editKey?.label ?? '');
   const [algorithm, setAlgorithm] = useState<SshKeyAlgorithm>(editKey?.algorithm ?? 'ed25519');
   const [bits, setBits] = useState<number>(4096);
+  const [publicKey, setPublicKey] = useState(editKey?.publicKey ?? '');
   const [privateKey, setPrivateKey] = useState('');
   const [certificate, setCertificate] = useState(editKey?.certificate ?? '');
   const [passphrase, setPassphrase] = useState('');
@@ -68,6 +69,27 @@ export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
   const [savePassphrase, setSavePassphrase] = useState(editKey?.savePassphrase ?? false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (mode !== 'edit' || !editKey) {
+      return;
+    }
+    let active = true;
+    keychain.revealPrivateKey(editKey.id)
+      .then((pem) => {
+        if (active) {
+          setPrivateKey(pem ?? '');
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setPrivateKey('');
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [keychain, editKey, mode]);
 
   const bitOptions = useMemo(() => getBitOptions(algorithm), [algorithm]);
 
@@ -109,6 +131,8 @@ export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
         await keychain.updateKey({
           id: editKey.id,
           label: label.trim(),
+          publicKey,
+          privateKey,
           certificate: certificate || undefined,
           passphrase: passphrase || undefined,
           savePassphrase,
@@ -120,14 +144,14 @@ export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
     } finally {
       setBusy(false);
     }
-  }, [mode, editKey, keychain, label, algorithm, bits, bitOptions, privateKey, certificate, passphrase, cipher, rounds, savePassphrase, onClose]);
+  }, [mode, editKey, keychain, label, algorithm, bits, bitOptions, publicKey, privateKey, certificate, passphrase, cipher, rounds, savePassphrase, onClose]);
 
   const titleKey = mode === 'generate'
     ? 'terminal-ui.keychain.key.generateTitle'
     : mode === 'new'
       ? 'terminal-ui.keychain.key.newKeyTitle'
       : 'terminal-ui.keychain.key.editTitle';
-  const canSubmit = !!label.trim() && (mode !== 'new' || !!privateKey.trim());
+  const canSubmit = !!label.trim() && (mode === 'generate' || !!privateKey.trim());
 
   return (
     <DialogPrimitive open onOpenChange={(open) => !open && onClose()}>
@@ -159,19 +183,23 @@ export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
           {mode === 'edit' && editKey && (
             <>
               <Field>
-                <FieldLabel>{t('terminal-ui.keychain.field.publicKey')}</FieldLabel>
+                <FieldLabel>{t('terminal-ui.keychain.field.privateKey')}</FieldLabel>
                 <FieldContent>
                   <Textarea
-                    readOnly
                     className="tm:min-h-28 tm:font-mono tm:text-[12px]"
-                    value={editKey.publicKey}
+                    value={privateKey}
+                    onChange={(e) => setPrivateKey(e.target.value)}
                   />
                 </FieldContent>
               </Field>
               <Field>
-                <FieldLabel>{t('terminal-ui.keychain.field.privateKey')}</FieldLabel>
+                <FieldLabel>{t('terminal-ui.keychain.field.publicKey')}</FieldLabel>
                 <FieldContent>
-                  <RevealedPrivateKey keyId={editKey.id} />
+                  <Textarea
+                    className="tm:min-h-28 tm:font-mono tm:text-[12px]"
+                    value={publicKey}
+                    onChange={(e) => setPublicKey(e.target.value)}
+                  />
                 </FieldContent>
               </Field>
             </>
@@ -325,28 +353,5 @@ function SegmentedToggle({ value, options, onValueChange }: ISegmentedToggleProp
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
-  );
-}
-
-function RevealedPrivateKey({ keyId }: { keyId: string }) {
-  const keychain = useDependency(IKeychainManagerService);
-  const [value, setValue] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    keychain.revealPrivateKey(keyId)
-      .then((pem) => active && setValue(pem ?? ''))
-      .catch(() => active && setValue(''));
-    return () => {
-      active = false;
-    };
-  }, [keychain, keyId]);
-
-  return (
-    <Textarea
-      readOnly
-      className="tm:min-h-28 tm:font-mono tm:text-[12px]"
-      value={value}
-    />
   );
 }

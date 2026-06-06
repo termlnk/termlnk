@@ -118,6 +118,11 @@ export const keychainRouter = router({
     const identity = await repo.getById(input);
     return identity ? sanitizeIdentity(identity) : undefined;
   }),
+  revealPassword: publicProcedure.input(z.string()).query(async ({ input, ctx }) => {
+    const repo = ctx.injector.get(IdentityRepository);
+    const identity = await repo.getById(input);
+    return identity?.password ?? undefined;
+  }),
   createIdentity: publicProcedure.input(createIdentitySchema).mutation(async ({ input, ctx }) => {
     const repo = ctx.injector.get(IdentityRepository);
     return repo.create({

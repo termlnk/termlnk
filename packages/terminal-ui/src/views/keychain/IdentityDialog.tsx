@@ -46,6 +46,23 @@ export function IdentityDialog({ editIdentity, onClose }: IIdentityDialogProps) 
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!editIdentity) {
+      return;
+    }
+    let active = true;
+    keychain.revealPassword(editIdentity.id)
+      .then((pw) => {
+        if (active) {
+          setPassword(pw ?? '');
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [keychain, editIdentity]);
+
+  useEffect(() => {
     // Only a successful load proves the key is gone; a failed fetch must not look "missing".
     keychain.listKeys().then((list) => {
       setKeys(list);

@@ -40,6 +40,8 @@ export interface IImportKeyInput {
 export interface IUpdateKeyInput {
   id: string;
   label?: string;
+  publicKey?: string;
+  privateKey?: string;
   certificate?: string;
   passphrase?: string;
   savePassphrase?: boolean;
@@ -79,6 +81,8 @@ export interface IKeychainManagerService {
 
   listIdentities(): Promise<IPublicIdentity[]>;
   getIdentity(id: string): Promise<IPublicIdentity | undefined>;
+  /** Decrypted password for editing (explicit reveal only). */
+  revealPassword(id: string): Promise<string | undefined>;
   createIdentity(input: ICreateIdentityInput): Promise<string>;
   updateIdentity(input: IUpdateIdentityInput): Promise<void>;
   getIdentityReferrers(id: string): Promise<{ hosts: Array<{ id: string; label: string }> }>;
@@ -142,6 +146,10 @@ export class KeychainManagerService extends Disposable implements IKeychainManag
 
   getIdentity(id: string): Promise<IPublicIdentity | undefined> {
     return this._client().getIdentity.query(id);
+  }
+
+  revealPassword(id: string): Promise<string | undefined> {
+    return this._client().revealPassword.query(id);
   }
 
   createIdentity(input: ICreateIdentityInput): Promise<string> {

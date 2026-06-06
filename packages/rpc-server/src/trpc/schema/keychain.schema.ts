@@ -38,6 +38,8 @@ export const importKeySchema = z.object({
 export const updateSshKeySchema = z.object({
   id: z.string(),
   label: z.string().optional(),
+  publicKey: z.string().optional(),
+  privateKey: z.string().optional(),
   certificate: z.string().optional(),
   passphrase: z.string().optional(),
   savePassphrase: z.boolean().optional(),
