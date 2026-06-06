@@ -21,6 +21,7 @@ const isSigningEnabled = !!process.env.CSC_LINK;
 const config: Configuration = {
   appId: 'com.termlnk.desktop',
   productName: 'Termlnk',
+  executableName: 'termlnk',
   buildVersion: process.env.BUILD_VERSION,
   directories: {
     app: 'build/app',
