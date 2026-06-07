@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IIdentitySyncRepository } from '@termlnk/sync';
 import type { IIdentityChangeEvent } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
@@ -26,7 +27,7 @@ import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { ISecretCipherService } from '../services/secret-cipher.service';
 import { decryptIfNeeded, encryptIfNeeded } from '../services/secret-cipher/credential-masker';
 
-export class IdentityRepository extends Disposable {
+export class IdentityRepository extends Disposable implements IIdentitySyncRepository {
   private readonly _changed$ = new Subject<IIdentityChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 

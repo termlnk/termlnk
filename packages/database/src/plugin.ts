@@ -19,6 +19,21 @@ import type { IDatabaseConfig } from './controllers/config.schema';
 import type * as entities from './entities';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
+import {
+  IBackupRepository,
+  IHostSyncRepository,
+  IIdentitySyncRepository,
+  IKnownHostSyncRepository,
+  IMcpServerSyncRepository,
+  IProviderSyncRepository,
+  ISkillSyncRepository,
+  ISshKeySyncRepository,
+  ISyncConfigRepository,
+  ISyncCursorRepository,
+  ISyncFieldMetaRepository,
+  ISyncOutboxRepository,
+  ISyncRowMetaRepository,
+} from '@termlnk/sync';
 import { DEFAULT_DB_ADAPTOR } from './config/config';
 import { DATABASE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
@@ -111,6 +126,23 @@ export class DatabasePlugin extends Plugin {
       [SyncOutboxRepository, { useClass: SyncOutboxRepository }],
       [SyncRowMetaRepository, { useClass: SyncRowMetaRepository }],
       [TerminalSessionBackupRepository, { useClass: TerminalSessionBackupRepository }],
+
+      // Sync-engine repository contracts (@termlnk/sync) aliased to the Drizzle classes
+      // above via useExisting so the platform-agnostic engine injects interfaces while a
+      // single instance backs both the concrete-class token and the interface token.
+      [IBackupRepository, { useExisting: BackupRepository }],
+      [ISyncConfigRepository, { useExisting: ConfigRepository }],
+      [IHostSyncRepository, { useExisting: HostRepository }],
+      [IIdentitySyncRepository, { useExisting: IdentityRepository }],
+      [IKnownHostSyncRepository, { useExisting: KnownHostRepository }],
+      [IMcpServerSyncRepository, { useExisting: McpServerRepository }],
+      [IProviderSyncRepository, { useExisting: ProviderRepository }],
+      [ISkillSyncRepository, { useExisting: SkillRepository }],
+      [ISshKeySyncRepository, { useExisting: SshKeyRepository }],
+      [ISyncCursorRepository, { useExisting: SyncCursorRepository }],
+      [ISyncFieldMetaRepository, { useExisting: SyncFieldMetaRepository }],
+      [ISyncOutboxRepository, { useExisting: SyncOutboxRepository }],
+      [ISyncRowMetaRepository, { useExisting: SyncRowMetaRepository }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
   }

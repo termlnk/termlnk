@@ -13,10 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { BackupImportMode, IBackupExportSummary, IBackupImportSummary, IBackupService } from '@termlnk/sync';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
-import { BackupRepository } from '@termlnk/database';
-import { BACKUP_PAYLOAD_PREFIX, ISyncCryptoService } from '@termlnk/sync';
+import type { BackupImportMode, IBackupExportSummary, IBackupImportSummary, IBackupService, IBackupSnapshot } from '@termlnk/sync';
+import { Disposable, ILogService } from '@termlnk/core';
+import { BACKUP_PAYLOAD_PREFIX, IBackupRepository, ISyncCryptoService } from '@termlnk/sync';
 
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
@@ -27,7 +26,7 @@ const PREFIX_BYTES = TEXT_ENCODER.encode(BACKUP_PAYLOAD_PREFIX);
 // rather than reporting misleading success.
 export class BackupService extends Disposable implements IBackupService {
   constructor(
-    @Inject(BackupRepository) private readonly _backupRepo: BackupRepository,
+    @IBackupRepository private readonly _backupRepo: IBackupRepository,
     @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
     @ILogService private readonly _logService: ILogService
   ) {
@@ -67,7 +66,7 @@ export class BackupService extends Disposable implements IBackupService {
 
     const inner = payload.subarray(PREFIX_BYTES.length);
     const decryptedBytes = this._cryptoService.decrypt(inner);
-    let snapshot: import('@termlnk/database').IBackupSnapshot;
+    let snapshot: IBackupSnapshot;
     try {
       snapshot = JSON.parse(TEXT_DECODER.decode(decryptedBytes));
     } catch (err) {
@@ -86,7 +85,7 @@ export class BackupService extends Disposable implements IBackupService {
     return summary;
   }
 
-  private _countResources(resources: import('@termlnk/database').IBackupSnapshot['resources']): Record<string, number> {
+  private _countResources(resources: IBackupSnapshot['resources']): Record<string, number> {
     return {
       host: resources.host.length,
       config: resources.config.length,

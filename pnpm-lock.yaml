@@ -1548,6 +1548,9 @@ importers:
       '@termlnk/core':
         specifier: workspace:*
         version: link:../core
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../sync
       '@termlnk/terminal':
         specifier: workspace:*
         version: link:../terminal
@@ -1567,9 +1570,6 @@ importers:
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared
-      '@termlnk/sync':
-        specifier: workspace:*
-        version: link:../sync
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -2215,12 +2215,6 @@ importers:
 
   packages/sync-core:
     dependencies:
-      '@noble/ciphers':
-        specifier: ^2.2.0
-        version: 2.2.0
-      '@noble/hashes':
-        specifier: ^2.2.0
-        version: 2.2.0
       '@termlnk/auth':
         specifier: workspace:*
         version: link:../auth
@@ -2236,10 +2230,59 @@ importers:
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../sync
+      '@termlnk/sync-engine':
+        specifier: workspace:*
+        version: link:../sync-engine
     devDependencies:
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.1)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.8(@types/node@25.9.1)(@vitest/coverage-istanbul@4.1.8)(happy-dom@20.9.0)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.1)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/sync-engine:
+    dependencies:
+      '@noble/ciphers':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@noble/hashes':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../core
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../sync
+    devDependencies:
+      '@termlnk/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@termlnk/auth-core':
+        specifier: workspace:*
+        version: link:../auth-core
+      '@termlnk/database':
+        specifier: workspace:*
+        version: link:../database
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      '@termlnk/terminal':
+        specifier: workspace:*
+        version: link:../terminal
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
@@ -20234,7 +20277,7 @@ snapshots:
       babel-dead-code-elimination: 1.0.12
       diff: 8.0.4
       pathe: 2.0.3
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
     transitivePeerDependencies:
       - supports-color
 
@@ -20839,7 +20882,7 @@ snapshots:
       debug: 4.4.3
       minimatch: 10.2.4
       semver: 7.7.4
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(typescript@6.0.3)
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -20854,7 +20897,7 @@ snapshots:
       debug: 4.4.3
       minimatch: 10.2.4
       semver: 7.7.4
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(typescript@6.0.3)
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -20869,7 +20912,7 @@ snapshots:
       debug: 4.4.3
       minimatch: 10.2.4
       semver: 7.7.4
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(typescript@6.0.3)
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -20884,7 +20927,7 @@ snapshots:
       debug: 4.4.3
       minimatch: 10.2.4
       semver: 7.7.4
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(typescript@6.0.3)
       typescript: 6.0.3
     transitivePeerDependencies:
@@ -23627,7 +23670,7 @@ snapshots:
       jsonc-eslint-parser: 3.1.0
       pathe: 2.0.3
       pnpm-workspace-yaml: 1.6.0
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       yaml: 2.9.0
       yaml-eslint-parser: 2.0.0
 
@@ -29917,7 +29960,7 @@ snapshots:
       std-env: 4.0.0
       tinybench: 2.9.0
       tinyexec: 1.1.2
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
       vite: 8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.1)(tsx@4.22.4)(yaml@2.9.0)
       why-is-node-running: 2.3.0

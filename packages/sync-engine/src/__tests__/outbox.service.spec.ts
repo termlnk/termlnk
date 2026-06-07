@@ -14,9 +14,7 @@
  */
 
 import type { ILogService, LogLevel } from '@termlnk/core';
-import type { ConfigRepository, ISyncOutboxEntity, ISyncOutboxEntityInsert, SyncOutboxRepository } from '@termlnk/database';
-import type { ISyncMutation, SyncResourceId } from '@termlnk/sync';
-import { Buffer } from 'node:buffer';
+import type { ISyncConfigRepository, ISyncMutation, ISyncOutboxInsert, ISyncOutboxRepository, ISyncOutboxRow, SyncResourceId } from '@termlnk/sync';
 import { SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SyncOutboxService } from '../services/outbox.service';
@@ -37,18 +35,18 @@ class NoopLogService implements ILogService {
  * (which use the real SQLite native binding).
  */
 class FakeOutboxRepository {
-  private _rows: ISyncOutboxEntity[] = [];
+  private _rows: { -readonly [K in keyof ISyncOutboxRow]: ISyncOutboxRow[K] }[] = [];
   private _idCounter = 0;
 
-  async insert(record: Omit<ISyncOutboxEntityInsert, 'id'> & { id?: string }): Promise<ISyncOutboxEntity> {
+  async insert(record: ISyncOutboxInsert): Promise<ISyncOutboxRow> {
     const id = record.id ?? `gen-${++this._idCounter}`;
-    const row: ISyncOutboxEntity = {
+    const row = {
       id,
       clientMutId: record.clientMutId,
       resource: record.resource as SyncResourceId,
       op: record.op,
       entityId: record.entityId,
-      payload: record.payload === null || record.payload === undefined ? null : Buffer.from(record.payload),
+      payload: record.payload ?? null,
       baseVersion: record.baseVersion ?? null,
       createdAt: record.createdAt,
       retryCount: record.retryCount ?? 0,
@@ -57,7 +55,7 @@ class FakeOutboxRepository {
     return row;
   }
 
-  async selectFifo(limit?: number): Promise<ISyncOutboxEntity[]> {
+  async selectFifo(limit?: number): Promise<ISyncOutboxRow[]> {
     const sorted = [...this._rows].sort((a, b) => {
       if (a.createdAt !== b.createdAt) {
         return a.createdAt - b.createdAt;
@@ -115,7 +113,7 @@ class FakeOutboxRepository {
   }
 
   // For tests: peek at internal state
-  _allRows(): readonly ISyncOutboxEntity[] {
+  _allRows(): readonly ISyncOutboxRow[] {
     return this._rows;
   }
 }
@@ -150,8 +148,8 @@ async function createTestBed(): Promise<ITestBed> {
   const configRepo = new FakeConfigRepository();
   const logService = new NoopLogService();
   const service = new SyncOutboxService(
-    outboxRepo as unknown as SyncOutboxRepository,
-    configRepo as unknown as ConfigRepository,
+    outboxRepo as unknown as ISyncOutboxRepository,
+    configRepo as unknown as ISyncConfigRepository,
     logService
   );
   // Wait for the constructor's hydrate() to finish.
@@ -350,8 +348,8 @@ describe('SyncOutboxService', () => {
     bed.service.dispose();
 
     const reborn = new SyncOutboxService(
-      bed.outboxRepo as unknown as SyncOutboxRepository,
-      bed.configRepo as unknown as ConfigRepository,
+      bed.outboxRepo as unknown as ISyncOutboxRepository,
+      bed.configRepo as unknown as ISyncConfigRepository,
       bed.logService
     );
     bed.service = reborn;
@@ -369,15 +367,15 @@ describe('SyncOutboxService', () => {
       resource: 'host',
       op: 'upsert',
       entityId: 'pre-existing',
-      payload: Buffer.from([0]),
+      payload: new Uint8Array([0]),
       baseVersion: null,
       createdAt: Date.now(),
     });
 
     bed.service.dispose();
     const fresh = new SyncOutboxService(
-      bed.outboxRepo as unknown as SyncOutboxRepository,
-      bed.configRepo as unknown as ConfigRepository,
+      bed.outboxRepo as unknown as ISyncOutboxRepository,
+      bed.configRepo as unknown as ISyncConfigRepository,
       bed.logService
     );
     bed.service = fresh;

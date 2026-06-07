@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IProviderSyncRepository } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntityInsert } from '../entities/provider';
@@ -30,7 +31,7 @@ export interface IProviderChangeEvent {
   id: string;
 }
 
-export class ProviderRepository extends Disposable {
+export class ProviderRepository extends Disposable implements IProviderSyncRepository {
   private readonly _changed$ = new Subject<IProviderChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 

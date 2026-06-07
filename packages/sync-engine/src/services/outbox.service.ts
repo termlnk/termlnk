@@ -15,10 +15,8 @@
 
 import type { ISyncMutation, ISyncOutboxService, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { Buffer } from 'node:buffer';
-import { Disposable, ILogService, Inject } from '@termlnk/core';
-import { ConfigRepository, SyncOutboxRepository } from '@termlnk/database';
-import { SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
+import { Disposable, ILogService } from '@termlnk/core';
+import { ISyncConfigRepository, ISyncOutboxRepository, SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const LAST_CLIENT_MUT_ID_FIELD = 'lastClientMutId';
@@ -38,8 +36,8 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
   private _hydratePromise: Promise<void> | null = null;
 
   constructor(
-    @Inject(SyncOutboxRepository) private readonly _outboxRepo: SyncOutboxRepository,
-    @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
+    @ISyncOutboxRepository private readonly _outboxRepo: ISyncOutboxRepository,
+    @ISyncConfigRepository private readonly _configRepo: ISyncConfigRepository,
     @ILogService private readonly _logService: ILogService
   ) {
     super();
@@ -68,7 +66,7 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
       resource: mutation.resource,
       op: mutation.op,
       entityId: mutation.entityId,
-      payload: mutation.payload === null ? null : Buffer.from(mutation.payload),
+      payload: mutation.payload,
       baseVersion: mutation.baseVersion,
       createdAt,
     });
@@ -80,7 +78,7 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
       resource: persisted.resource,
       op: persisted.op,
       entityId: persisted.entityId,
-      payload: persisted.payload === null ? null : new Uint8Array(persisted.payload),
+      payload: persisted.payload,
       baseVersion: persisted.baseVersion,
       createdAt: persisted.createdAt,
     };
@@ -94,7 +92,7 @@ export class SyncOutboxService extends Disposable implements ISyncOutboxService 
       resource: row.resource,
       op: row.op,
       entityId: row.entityId,
-      payload: row.payload === null ? null : new Uint8Array(row.payload),
+      payload: row.payload,
       baseVersion: row.baseVersion,
       createdAt: row.createdAt,
     }));

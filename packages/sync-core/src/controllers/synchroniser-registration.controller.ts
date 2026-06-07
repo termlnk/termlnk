@@ -16,14 +16,7 @@
 import type { IResourceSynchroniser, ISyncPluginConfig, SyncResourceId } from '@termlnk/sync';
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { ISyncService, SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
-import { ConfigSynchroniser } from '../synchronisers/config-synchroniser';
-import { HostSynchroniser } from '../synchronisers/host-synchroniser';
-import { IdentitySynchroniser } from '../synchronisers/identity-synchroniser';
-import { KnownHostSynchroniser } from '../synchronisers/known-host-synchroniser';
-import { McpSynchroniser } from '../synchronisers/mcp-synchroniser';
-import { ProviderSynchroniser } from '../synchronisers/provider-synchroniser';
-import { SkillSynchroniser } from '../synchronisers/skill-synchroniser';
-import { SshKeySynchroniser } from '../synchronisers/ssh-key-synchroniser';
+import { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, ProviderSynchroniser, SkillSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 
 // Registers synchronisers at onReady (plugin onStarting is too early — dependencies
 // are not yet constructed). Synchroniser construction is side-effect free; start()

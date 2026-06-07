@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { SyncResourceId } from '@termlnk/sync';
+import type { ISyncFieldMetaRepository, SyncResourceId } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { ISyncFieldMetaEntity } from '../entities/sync-field-meta';
@@ -29,7 +29,7 @@ import { IDBAdaptorService } from '../services/db-adaptor.service';
  * each other's unrelated subKeys. `ConfigSynchroniser` keeps an `updatedAt`
  * timestamp per `(key, subKey)` instead.
  */
-export class SyncFieldMetaRepository extends Disposable {
+export class SyncFieldMetaRepository extends Disposable implements ISyncFieldMetaRepository {
   constructor(
     @IDBAdaptorService private readonly _dbService: IDBAdaptorService
   ) {

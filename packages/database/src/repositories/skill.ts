@@ -14,6 +14,7 @@
  */
 
 import type { ISkillChangeEvent } from '@termlnk/agent';
+import type { ISkillSyncRepository } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { ISkillEntity, ISkillEntityInsert } from '../entities';
@@ -24,7 +25,7 @@ import { generateId } from '../entities/base';
 import { skillEntity } from '../entities/skill';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 
-export class SkillRepository extends Disposable {
+export class SkillRepository extends Disposable implements ISkillSyncRepository {
   private readonly _changed$ = new Subject<ISkillChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 

@@ -13,12 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity } from '@termlnk/database';
-import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncEntityRow, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { ILogService, Inject, RxDisposable } from '@termlnk/core';
-import { ProviderRepository, SyncRowMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService, ISyncOutboxService, SynchroniserStatus } from '@termlnk/sync';
+import { ILogService, RxDisposable } from '@termlnk/core';
+import { IProviderSyncRepository, ISyncCryptoService, ISyncOutboxService, ISyncRowMetaRepository, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const RESOURCE_ID = 'ai_provider' as const;
@@ -37,7 +35,7 @@ type ProviderKind = keyof typeof KIND_PREFIX;
 
 interface IProviderPayload {
   readonly kind: ProviderKind;
-  readonly row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity;
+  readonly row: ISyncEntityRow;
 }
 
 // Row-level LWW across three tables (ai_provider / ai_provider_model / ai_custom_model).
@@ -53,8 +51,8 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
   private _started = false;
 
   constructor(
-    @Inject(ProviderRepository) private readonly _providerRepo: ProviderRepository,
-    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
+    @IProviderSyncRepository private readonly _providerRepo: IProviderSyncRepository,
+    @ISyncRowMetaRepository private readonly _rowMetaRepo: ISyncRowMetaRepository,
     @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
     @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
     @ILogService private readonly _logService: ILogService
@@ -161,7 +159,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
     return out;
   }
 
-  private async _enqueueUpsertIfUnsynced(kind: ProviderKind, row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity, id: string): Promise<ISyncMutation | null> {
+  private async _enqueueUpsertIfUnsynced(kind: ProviderKind, row: ISyncEntityRow, id: string): Promise<ISyncMutation | null> {
     const entityId = `${KIND_PREFIX[kind]}${id}`;
     const meta = await this._rowMetaRepo.get(RESOURCE_ID, entityId);
     if (meta) {
@@ -226,9 +224,9 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
     }
   }
 
-  private async _readRow(kind: ProviderKind, id: string): Promise<IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity | null> {
+  private async _readRow(kind: ProviderKind, id: string): Promise<ISyncEntityRow | null> {
     if (kind === 'provider') {
-      return this._providerRepo.getProviderById(id);
+      return (await this._providerRepo.getProviderById(id)) ?? null;
     }
     if (kind === 'modelConfig') {
       const all = await this._providerRepo.getAllModelConfigs();
@@ -238,7 +236,7 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
     return customs.find((r) => r.id === id) ?? null;
   }
 
-  private _buildUpsertMutation(kind: ProviderKind, row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity, entityId: string, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
+  private _buildUpsertMutation(kind: ProviderKind, row: ISyncEntityRow, entityId: string, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
     const payloadObj: IProviderPayload = { kind, row };
     const json = JSON.stringify(payloadObj);
     const payload = this._cryptoService.encrypt(TEXT_ENCODER.encode(json));
@@ -315,16 +313,16 @@ export class ProviderSynchroniser extends RxDisposable implements IResourceSynch
     return { kind: null, id: entityId };
   }
 
-  private async _upsertByKind(kind: ProviderKind, row: IAIProviderEntity | IAIProviderModelEntity | IAICustomModelEntity): Promise<void> {
+  private async _upsertByKind(kind: ProviderKind, row: ISyncEntityRow): Promise<void> {
     if (kind === 'provider') {
-      await this._providerRepo.upsertProvider(row as IAIProviderEntity);
+      await this._providerRepo.upsertProvider(row);
       return;
     }
     if (kind === 'modelConfig') {
-      await this._providerRepo.upsertModelConfig(row as IAIProviderModelEntity);
+      await this._providerRepo.upsertModelConfig(row);
       return;
     }
-    await this._providerRepo.upsertCustomModel(row as IAICustomModelEntity);
+    await this._providerRepo.upsertCustomModel(row);
   }
 
   private async _deleteByKind(kind: ProviderKind, id: string): Promise<void> {

@@ -13,21 +13,20 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ISshKeyEntity } from '@termlnk/database';
-import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncEntityRow, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { ILogService, Inject, RxDisposable } from '@termlnk/core';
-import { SshKeyRepository, SyncRowMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService, ISyncOutboxService, SynchroniserStatus } from '@termlnk/sync';
+import { ILogService, RxDisposable } from '@termlnk/core';
+import { IKnownHostSyncRepository, ISyncCryptoService, ISyncOutboxService, ISyncRowMetaRepository, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
-const RESOURCE_ID = 'ssh_key' as const;
+const RESOURCE_ID = 'known_host' as const;
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
-// Row-level LWW for ssh_key. getById decrypts on read; sync re-encrypts the row under the
-// master key for transport; the receiver's syncUpsertRow re-encrypts under the local cipher.
-export class SshKeySynchroniser extends RxDisposable implements IResourceSynchroniser {
+// Row-level LWW for known_host. All columns are public material but payload is still wrapped
+// in E2EE for uniform transport. touchLastSeen() deliberately skips changed$ so high-frequency
+// last-seen refreshes do not flood the outbox.
+export class KnownHostSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
 
   private readonly _status$ = new BehaviorSubject<SynchroniserStatus>(SynchroniserStatus.Idle);
@@ -37,8 +36,8 @@ export class SshKeySynchroniser extends RxDisposable implements IResourceSynchro
   private _started = false;
 
   constructor(
-    @Inject(SshKeyRepository) private readonly _sshKeyRepo: SshKeyRepository,
-    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
+    @IKnownHostSyncRepository private readonly _knownHostRepo: IKnownHostSyncRepository,
+    @ISyncRowMetaRepository private readonly _rowMetaRepo: ISyncRowMetaRepository,
     @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
     @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
     @ILogService private readonly _logService: ILogService
@@ -57,7 +56,7 @@ export class SshKeySynchroniser extends RxDisposable implements IResourceSynchro
     }
     this._started = true;
     this.disposeWithMe(
-      this._sshKeyRepo.changed$.subscribe((event) => {
+      this._knownHostRepo.changed$.subscribe((event) => {
         if (this._applyingPatch) {
           return;
         }
@@ -102,7 +101,7 @@ export class SshKeySynchroniser extends RxDisposable implements IResourceSynchro
     const all = await this._rowMetaRepo.getAll(RESOURCE_ID);
     for (const meta of all) {
       if (!serverEntityIds.has(meta.entityId)) {
-        this._logService.log(`[SshKeySynchroniser] dropping ghost meta for ${meta.entityId}`);
+        this._logService.log(`[KnownHostSynchroniser] dropping ghost meta for ${meta.entityId}`);
         await this._rowMetaRepo.delete(RESOURCE_ID, meta.entityId);
       }
     }
@@ -110,7 +109,7 @@ export class SshKeySynchroniser extends RxDisposable implements IResourceSynchro
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
     // Skip rows that already have sync_row_meta so re-enable() never re-pushes.
-    const rows = await this._sshKeyRepo.getList();
+    const rows = await this._knownHostRepo.getList();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
       const meta = await this._rowMetaRepo.get(RESOURCE_ID, row.id);
@@ -140,7 +139,7 @@ export class SshKeySynchroniser extends RxDisposable implements IResourceSynchro
         return;
       }
 
-      const row = await this._sshKeyRepo.getById(id);
+      const row = await this._knownHostRepo.getById(id);
       if (!row) {
         await this._outboxService.enqueue({
           resource: RESOURCE_ID,
@@ -158,7 +157,7 @@ export class SshKeySynchroniser extends RxDisposable implements IResourceSynchro
         this._status$.next(SynchroniserStatus.CryptoLocked);
         return;
       }
-      this._logService.error(`[SshKeySynchroniser] failed to enqueue mutation for ${id}:`, err);
+      this._logService.error(`[KnownHostSynchroniser] failed to enqueue mutation for ${id}:`, err);
       this._status$.next(SynchroniserStatus.Error);
     } finally {
       if (this._status$.getValue() === SynchroniserStatus.PushingMutations) {
@@ -167,7 +166,7 @@ export class SshKeySynchroniser extends RxDisposable implements IResourceSynchro
     }
   }
 
-  private _buildUpsertMutation(row: ISshKeyEntity, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
+  private _buildUpsertMutation(row: ISyncEntityRow, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
     const json = JSON.stringify(row);
     const payload = this._cryptoService.encrypt(TEXT_ENCODER.encode(json));
     return {
@@ -181,35 +180,35 @@ export class SshKeySynchroniser extends RxDisposable implements IResourceSynchro
 
   private async _applyOne(item: ISyncPatchItem): Promise<void> {
     if (item.op === 'clear') {
-      const all = await this._sshKeyRepo.getList();
+      const all = await this._knownHostRepo.getList();
       for (const r of all) {
-        await this._sshKeyRepo.syncDeleteRow(r.id);
+        await this._knownHostRepo.delete(r.id);
       }
       await this._rowMetaRepo.deleteResource(RESOURCE_ID);
       return;
     }
 
     if (item.entityId === null) {
-      this._logService.warn('[SshKeySynchroniser] patch item missing entityId; skipping');
+      this._logService.warn('[KnownHostSynchroniser] patch item missing entityId; skipping');
       return;
     }
 
     if (item.op === 'del') {
-      await this._sshKeyRepo.syncDeleteRow(item.entityId);
+      await this._knownHostRepo.delete(item.entityId);
       await this._rowMetaRepo.delete(RESOURCE_ID, item.entityId);
       return;
     }
 
     if (item.op === 'put') {
       if (!item.payload) {
-        this._logService.warn(`[SshKeySynchroniser] put without payload for ${item.entityId}`);
+        this._logService.warn(`[KnownHostSynchroniser] put without payload for ${item.entityId}`);
         return;
       }
       const decrypted = this._cryptoService.decrypt(item.payload);
-      const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISshKeyEntity;
+      const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISyncEntityRow;
       // entityId is the source of truth if payload.id ever drifts.
-      const normalised: ISshKeyEntity = { ...row, id: item.entityId };
-      await this._sshKeyRepo.syncUpsertRow(normalised);
+      const normalised: ISyncEntityRow = { ...row, id: item.entityId };
+      await this._knownHostRepo.syncUpsertRow(normalised);
       await this._rowMetaRepo.upsert({
         resource: RESOURCE_ID,
         entityId: item.entityId,

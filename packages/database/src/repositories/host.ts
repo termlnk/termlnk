@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IHostSyncRepository } from '@termlnk/sync';
 import type { HostItem, HostTree, IHost, IHostChangeEvent } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
@@ -53,7 +54,7 @@ export class HostChainInvalidRefError extends Error {
   }
 }
 
-export class HostRepository extends Disposable {
+export class HostRepository extends Disposable implements IHostSyncRepository {
   private readonly _changed$ = new Subject<IHostChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 

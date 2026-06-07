@@ -53,6 +53,7 @@
   "peerDependencies": {
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "better-sqlite3": "^12.10.0",
     "nanoid": "^5.1.11",
@@ -61,6 +62,7 @@
   "dependencies": {
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "better-sqlite3": "^12.10.0",
     "drizzle-orm": "1.0.0-rc.3",
@@ -69,7 +71,6 @@
   "devDependencies": {
     "@termlnk/agent": "workspace:*",
     "@termlnk/shared": "workspace:*",
-    "@termlnk/sync": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.9.1",
     "drizzle-kit": "1.0.0-rc.3",

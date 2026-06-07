@@ -1,8 +1,8 @@
 {
-  "name": "@termlnk/sync-core",
+  "name": "@termlnk/sync-engine",
   "version": "0.2.1",
   "private": false,
-  "description": "Sync core implementations for termlnk - E2EE crypto (XChaCha20-Poly1305), outbox queue, transport, and per-resource synchronisers",
+  "description": "Platform-agnostic sync engine for termlnk - E2EE crypto (XChaCha20-Poly1305), outbox queue, HTTP/WS transport, and per-resource synchronisers; shared by the desktop (Drizzle) and mobile (expo-sqlite) repository implementations",
   "author": "telan <telanflow@gmail.com>",
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
@@ -50,24 +50,23 @@
   },
   "peerDependencies": {
     "@termlnk/auth": "workspace:*",
-    "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
-    "@termlnk/database": "workspace:*",
     "@termlnk/sync": "workspace:*",
-    "@termlnk/sync-engine": "workspace:*",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
+    "@noble/ciphers": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
     "@termlnk/auth": "workspace:*",
-    "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
-    "@termlnk/database": "workspace:*",
-    "@termlnk/sync": "workspace:*",
-    "@termlnk/sync-engine": "workspace:*"
+    "@termlnk/sync": "workspace:*"
   },
   "devDependencies": {
+    "@termlnk/agent": "workspace:*",
     "@termlnk/auth-core": "workspace:*",
+    "@termlnk/database": "workspace:*",
     "@termlnk/shared": "workspace:*",
+    "@termlnk/terminal": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",

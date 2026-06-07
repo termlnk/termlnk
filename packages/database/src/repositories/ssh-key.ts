@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ISshKeySyncRepository } from '@termlnk/sync';
 import type { ISshKeyChangeEvent } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
@@ -27,7 +28,7 @@ import { ISecretCipherService } from '../services/secret-cipher.service';
 import { decryptIfNeeded, encryptIfNeeded } from '../services/secret-cipher/credential-masker';
 import { IdentityRepository } from './identity';
 
-export class SshKeyRepository extends Disposable {
+export class SshKeyRepository extends Disposable implements ISshKeySyncRepository {
   private readonly _changed$ = new Subject<ISshKeyChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 

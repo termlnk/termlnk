@@ -13,12 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ISkillEntity } from '@termlnk/database';
-import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem, ISyncSkillRow } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { ILogService, Inject, RxDisposable } from '@termlnk/core';
-import { SkillRepository, SyncRowMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService, ISyncOutboxService, SynchroniserStatus } from '@termlnk/sync';
+import { ILogService, RxDisposable } from '@termlnk/core';
+import { ISkillSyncRepository, ISyncCryptoService, ISyncOutboxService, ISyncRowMetaRepository, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const RESOURCE_ID = 'skill' as const;
@@ -50,8 +48,8 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
   private _builtinIdsReady: Promise<void> | null = null;
 
   constructor(
-    @Inject(SkillRepository) private readonly _skillRepo: SkillRepository,
-    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
+    @ISkillSyncRepository private readonly _skillRepo: ISkillSyncRepository,
+    @ISyncRowMetaRepository private readonly _rowMetaRepo: ISyncRowMetaRepository,
     @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
     @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
     @ILogService private readonly _logService: ILogService
@@ -220,7 +218,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
     }
   }
 
-  private async _buildUpsertMutation(row: ISkillEntity, baseVersion: number | null): Promise<Omit<ISyncMutation, 'id' | 'createdAt'>> {
+  private async _buildUpsertMutation(row: ISyncSkillRow, baseVersion: number | null): Promise<Omit<ISyncMutation, 'id' | 'createdAt'>> {
     const json = JSON.stringify(row);
     const payload = this._cryptoService.encrypt(TEXT_ENCODER.encode(json));
     return {
@@ -274,7 +272,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
         return;
       }
       const decrypted = this._cryptoService.decrypt(item.payload);
-      const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISkillEntity;
+      const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISyncSkillRow;
       // Refuse to write a built-in row pulled from the server — those belong to the binary,
       // not to user data. This also catches the case where an older client pushed a
       // built-in row before this filter existed.
@@ -282,7 +280,7 @@ export class SkillSynchroniser extends RxDisposable implements IResourceSynchron
         return;
       }
       // entityId is the source of truth if payload.id ever drifts.
-      const normalised: ISkillEntity = { ...row, id: item.entityId };
+      const normalised: ISyncSkillRow = { ...row, id: item.entityId };
       await this._skillRepo.upsert(normalised);
       await this._rowMetaRepo.upsert({
         resource: RESOURCE_ID,

@@ -13,22 +13,22 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IIdentityEntity } from '@termlnk/database';
-import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncEntityRow, ISyncMutation, ISyncPatchItem, ISyncWritableRow } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { ILogService, Inject, RxDisposable } from '@termlnk/core';
-import { IdentityRepository, SyncRowMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService, ISyncOutboxService, SynchroniserStatus } from '@termlnk/sync';
+import { ILogService, RxDisposable } from '@termlnk/core';
+import { IMcpServerSyncRepository, ISyncCryptoService, ISyncOutboxService, ISyncRowMetaRepository, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
-const RESOURCE_ID = 'identity' as const;
+const RESOURCE_ID = 'mcp_server' as const;
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
-// Row-level LWW for identity. password is decrypted on read, re-encrypted under the master
-// key for transport, then re-encrypted under the local cipher on apply. keyId is a soft
-// reference to ssh_key with no FK — cross-resource pull order may briefly leave it dangling.
-export class IdentitySynchroniser extends RxDisposable implements IResourceSynchroniser {
+// Row-level LWW for IMcpServerEntity. Repository decrypts sensitive `config` fields on
+// read; sync re-encrypts them under the master key, and the receiver re-encrypts with
+// the local SecretCipher. mcp_oauth_token is not synced — each device re-runs OAuth.
+// Patches overwrite runtime fields like status/lastError; MCPClientService rewrites
+// them on next connect.
+export class McpSynchroniser extends RxDisposable implements IResourceSynchroniser {
   readonly resourceId = RESOURCE_ID;
 
   private readonly _status$ = new BehaviorSubject<SynchroniserStatus>(SynchroniserStatus.Idle);
@@ -38,8 +38,8 @@ export class IdentitySynchroniser extends RxDisposable implements IResourceSynch
   private _started = false;
 
   constructor(
-    @Inject(IdentityRepository) private readonly _identityRepo: IdentityRepository,
-    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
+    @IMcpServerSyncRepository private readonly _mcpRepo: IMcpServerSyncRepository,
+    @ISyncRowMetaRepository private readonly _rowMetaRepo: ISyncRowMetaRepository,
     @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
     @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
     @ILogService private readonly _logService: ILogService
@@ -58,7 +58,7 @@ export class IdentitySynchroniser extends RxDisposable implements IResourceSynch
     }
     this._started = true;
     this.disposeWithMe(
-      this._identityRepo.changed$.subscribe((event) => {
+      this._mcpRepo.changed$.subscribe((event) => {
         if (this._applyingPatch) {
           return;
         }
@@ -103,7 +103,7 @@ export class IdentitySynchroniser extends RxDisposable implements IResourceSynch
     const all = await this._rowMetaRepo.getAll(RESOURCE_ID);
     for (const meta of all) {
       if (!serverEntityIds.has(meta.entityId)) {
-        this._logService.log(`[IdentitySynchroniser] dropping ghost meta for ${meta.entityId}`);
+        this._logService.log(`[McpSynchroniser] dropping ghost meta for ${meta.entityId}`);
         await this._rowMetaRepo.delete(RESOURCE_ID, meta.entityId);
       }
     }
@@ -111,7 +111,7 @@ export class IdentitySynchroniser extends RxDisposable implements IResourceSynch
 
   async buildInitialSnapshot(): Promise<ISyncMutation[]> {
     // Skip rows that already have sync_row_meta so re-enable() never re-pushes.
-    const rows = await this._identityRepo.getList();
+    const rows = await this._mcpRepo.getAll();
     const out: ISyncMutation[] = [];
     for (const row of rows) {
       const meta = await this._rowMetaRepo.get(RESOURCE_ID, row.id);
@@ -141,7 +141,7 @@ export class IdentitySynchroniser extends RxDisposable implements IResourceSynch
         return;
       }
 
-      const row = await this._identityRepo.getById(id);
+      const row = await this._mcpRepo.getById(id);
       if (!row) {
         await this._outboxService.enqueue({
           resource: RESOURCE_ID,
@@ -159,7 +159,7 @@ export class IdentitySynchroniser extends RxDisposable implements IResourceSynch
         this._status$.next(SynchroniserStatus.CryptoLocked);
         return;
       }
-      this._logService.error(`[IdentitySynchroniser] failed to enqueue mutation for ${id}:`, err);
+      this._logService.error(`[McpSynchroniser] failed to enqueue mutation for ${id}:`, err);
       this._status$.next(SynchroniserStatus.Error);
     } finally {
       if (this._status$.getValue() === SynchroniserStatus.PushingMutations) {
@@ -168,7 +168,7 @@ export class IdentitySynchroniser extends RxDisposable implements IResourceSynch
     }
   }
 
-  private _buildUpsertMutation(row: IIdentityEntity, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
+  private _buildUpsertMutation(row: ISyncEntityRow, baseVersion: number | null): Omit<ISyncMutation, 'id' | 'createdAt'> {
     const json = JSON.stringify(row);
     const payload = this._cryptoService.encrypt(TEXT_ENCODER.encode(json));
     return {
@@ -182,35 +182,42 @@ export class IdentitySynchroniser extends RxDisposable implements IResourceSynch
 
   private async _applyOne(item: ISyncPatchItem): Promise<void> {
     if (item.op === 'clear') {
-      const all = await this._identityRepo.getList();
+      const all = await this._mcpRepo.getAll();
       for (const r of all) {
-        await this._identityRepo.delete(r.id);
+        await this._mcpRepo.delete(r.id);
+        await this._rowMetaRepo.delete(RESOURCE_ID, r.id);
       }
-      await this._rowMetaRepo.deleteResource(RESOURCE_ID);
       return;
     }
 
     if (item.entityId === null) {
-      this._logService.warn('[IdentitySynchroniser] patch item missing entityId; skipping');
+      this._logService.warn('[McpSynchroniser] patch item missing entityId; skipping');
       return;
     }
 
     if (item.op === 'del') {
-      await this._identityRepo.delete(item.entityId);
+      await this._mcpRepo.delete(item.entityId);
       await this._rowMetaRepo.delete(RESOURCE_ID, item.entityId);
       return;
     }
 
     if (item.op === 'put') {
       if (!item.payload) {
-        this._logService.warn(`[IdentitySynchroniser] put without payload for ${item.entityId}`);
+        this._logService.warn(`[McpSynchroniser] put without payload for ${item.entityId}`);
         return;
       }
       const decrypted = this._cryptoService.decrypt(item.payload);
-      const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as IIdentityEntity;
-      // entityId is the source of truth if payload.id ever drifts.
-      const normalised: IIdentityEntity = { ...row, id: item.entityId };
-      await this._identityRepo.syncUpsertRow(normalised);
+      const row = JSON.parse(TEXT_DECODER.decode(decrypted)) as ISyncWritableRow;
+
+      const existing = await this._mcpRepo.getById(item.entityId);
+      if (existing) {
+        // Repository re-encrypts sensitive `config` fields on write.
+        const { id: _id, ...rest } = row;
+        await this._mcpRepo.update(item.entityId, rest);
+      } else {
+        await this._mcpRepo.create({ ...row, id: item.entityId });
+      }
+
       await this._rowMetaRepo.upsert({
         resource: RESOURCE_ID,
         entityId: item.entityId,

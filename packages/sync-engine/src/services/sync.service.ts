@@ -16,9 +16,8 @@
 import type { IDisposable } from '@termlnk/core';
 import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncMutation, ISyncService, ISyncStats, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { Disposable, generateRandomId, ILogService, Inject, toDisposable } from '@termlnk/core';
-import { ConfigRepository, SyncCursorRepository, SyncRowMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService, ISyncOutboxService, ISyncTransportService, NON_SYNCABLE_CONFIG_KEYS, SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SYNC_USER_ENABLED_FIELD, SynchroniserStatus, SyncState } from '@termlnk/sync';
+import { Disposable, generateRandomId, ILogService, toDisposable } from '@termlnk/core';
+import { ISyncConfigRepository, ISyncCryptoService, ISyncCursorRepository, ISyncOutboxService, ISyncRowMetaRepository, ISyncTransportService, NON_SYNCABLE_CONFIG_KEYS, SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SYNC_USER_ENABLED_FIELD, SynchroniserStatus, SyncState } from '@termlnk/sync';
 import { BehaviorSubject, debounceTime, distinctUntilChanged, filter, interval, merge, Subject, Subscription } from 'rxjs';
 
 const CLIENT_ID_FIELD = 'clientId';
@@ -80,9 +79,9 @@ export class SyncService extends Disposable implements ISyncService {
     @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
     @ISyncTransportService private readonly _transportService: ISyncTransportService,
     @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
-    @Inject(SyncCursorRepository) private readonly _cursors: SyncCursorRepository,
-    @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
-    @Inject(SyncRowMetaRepository) private readonly _rowMetaRepo: SyncRowMetaRepository,
+    @ISyncCursorRepository private readonly _cursors: ISyncCursorRepository,
+    @ISyncConfigRepository private readonly _configRepo: ISyncConfigRepository,
+    @ISyncRowMetaRepository private readonly _rowMetaRepo: ISyncRowMetaRepository,
     @ILogService private readonly _logService: ILogService
   ) {
     super();

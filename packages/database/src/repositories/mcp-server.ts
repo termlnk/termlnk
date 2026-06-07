@@ -14,6 +14,7 @@
  */
 
 import type { IMcpServerChangeEvent, McpConnectionStatus } from '@termlnk/agent';
+import type { IMcpServerSyncRepository } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { IMcpServerEntity, IMcpServerEntityInsert } from '../entities';
@@ -26,7 +27,7 @@ import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { ISecretCipherService } from '../services/secret-cipher.service';
 import { decryptMcpConfig, encryptMcpConfig } from '../services/secret-cipher/credential-masker';
 
-export class McpServerRepository extends Disposable {
+export class McpServerRepository extends Disposable implements IMcpServerSyncRepository {
   private readonly _changed$ = new Subject<IMcpServerChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 

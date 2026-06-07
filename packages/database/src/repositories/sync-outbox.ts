@@ -13,10 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { SyncResourceId } from '@termlnk/sync';
+import type { ISyncOutboxInsert, ISyncOutboxRepository, ISyncOutboxRow, SyncResourceId } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
-import type { ISyncOutboxEntity, ISyncOutboxEntityInsert } from '../entities/sync-outbox';
+import type { ISyncOutboxEntity } from '../entities/sync-outbox';
+import { Buffer } from 'node:buffer';
 import { Disposable } from '@termlnk/core';
 import { and, asc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import { generateId } from '../entities/base';
@@ -28,9 +29,13 @@ import { IDBAdaptorService } from '../services/db-adaptor.service';
  *
  * Pure CRUD — no business orchestration (no `clientMutId` allocation, no
  * `changed$` notifications, no retry scheduling). Those live in
- * `SyncOutboxService` (`@termlnk/sync-core`).
+ * `SyncOutboxService` (`@termlnk/sync-engine`).
+ *
+ * The contract (`ISyncOutboxRepository`) speaks `Uint8Array`; the Buffer
+ * conversion that `better-sqlite3`'s blob binding needs is confined here so the
+ * platform-agnostic engine never touches `node:buffer`.
  */
-export class SyncOutboxRepository extends Disposable {
+export class SyncOutboxRepository extends Disposable implements ISyncOutboxRepository {
   constructor(
     @IDBAdaptorService private readonly _dbService: IDBAdaptorService
   ) {
@@ -45,11 +50,15 @@ export class SyncOutboxRepository extends Disposable {
    * Persist one mutation. The repository assigns `id` (a business-agnostic
    * PK) when the caller omits it. Returns the row as stored.
    */
-  async insert(record: Omit<ISyncOutboxEntityInsert, 'id'> & { id?: string }): Promise<ISyncOutboxEntity> {
+  async insert(record: ISyncOutboxInsert): Promise<ISyncOutboxRow> {
     const id = record.id ?? generateId();
     const inserted = await this._db
       .insert(syncOutboxEntity)
-      .values({ ...record, id })
+      .values({
+        ...record,
+        id,
+        payload: record.payload === null ? null : Buffer.from(record.payload),
+      })
       .returning();
     return inserted[0];
   }

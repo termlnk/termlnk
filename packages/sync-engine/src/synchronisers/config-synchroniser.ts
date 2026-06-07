@@ -15,9 +15,8 @@
 
 import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { ILogService, Inject, RxDisposable } from '@termlnk/core';
-import { ConfigRepository, SyncFieldMetaRepository } from '@termlnk/database';
-import { ISyncCryptoService, ISyncOutboxService, NON_SYNCABLE_CONFIG_KEYS, SynchroniserStatus } from '@termlnk/sync';
+import { ILogService, RxDisposable } from '@termlnk/core';
+import { ISyncConfigRepository, ISyncCryptoService, ISyncFieldMetaRepository, ISyncOutboxService, NON_SYNCABLE_CONFIG_KEYS, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
 
 const RESOURCE_ID = 'config' as const;
@@ -46,8 +45,8 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
   private _started = false;
 
   constructor(
-    @Inject(ConfigRepository) private readonly _configRepo: ConfigRepository,
-    @Inject(SyncFieldMetaRepository) private readonly _fieldMetaRepo: SyncFieldMetaRepository,
+    @ISyncConfigRepository private readonly _configRepo: ISyncConfigRepository,
+    @ISyncFieldMetaRepository private readonly _fieldMetaRepo: ISyncFieldMetaRepository,
     @ISyncOutboxService private readonly _outboxService: ISyncOutboxService,
     @ISyncCryptoService private readonly _cryptoService: ISyncCryptoService,
     @ILogService private readonly _logService: ILogService

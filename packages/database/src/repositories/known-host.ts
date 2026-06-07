@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IKnownHostSyncRepository } from '@termlnk/sync';
 import type { IKnownHostChangeEvent, KnownHostVerdict } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
@@ -71,7 +72,7 @@ export function classifyKnownHost(
   return { verdict: 'unknown' };
 }
 
-export class KnownHostRepository extends Disposable {
+export class KnownHostRepository extends Disposable implements IKnownHostSyncRepository {
   private readonly _changed$ = new Subject<IKnownHostChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 
