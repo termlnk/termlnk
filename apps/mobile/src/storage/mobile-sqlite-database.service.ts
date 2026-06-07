@@ -39,6 +39,93 @@ CREATE TABLE IF NOT EXISTS hosts (
 CREATE INDEX IF NOT EXISTS idx_hosts_pid ON hosts(pid);
 CREATE INDEX IF NOT EXISTS idx_hosts_sort ON hosts(sort);
 
+CREATE TABLE IF NOT EXISTS identities (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  username TEXT,
+  password_ct TEXT,
+  key_id TEXT,
+  created_at TEXT,
+  updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ssh_keys (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  algorithm TEXT,
+  bits INTEGER,
+  private_key_ct TEXT,
+  public_key TEXT,
+  certificate TEXT,
+  passphrase_ct TEXT,
+  save_passphrase INTEGER NOT NULL DEFAULT 0,
+  source TEXT,
+  public_key_fingerprint TEXT,
+  created_at TEXT,
+  updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS known_hosts (
+  id TEXT PRIMARY KEY,
+  host TEXT NOT NULL,
+  port INTEGER NOT NULL DEFAULT 22,
+  key_type TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  public_key TEXT,
+  last_seen_at TEXT,
+  created_at TEXT,
+  updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_known_hosts_lookup ON known_hosts(host, port);
+
+-- Sync engine bookkeeping tables (mirror @termlnk/database's Drizzle schema). The engine
+-- treats payloads opaquely; secrets in domain rows are encrypted at rest by the repository
+-- layer (MobileSecretCipherService) and re-encrypted under the sync master key for transport.
+CREATE TABLE IF NOT EXISTS sync_outbox (
+  id TEXT PRIMARY KEY,
+  client_mut_id INTEGER NOT NULL,
+  resource TEXT NOT NULL,
+  op TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  payload BLOB,
+  base_version INTEGER,
+  created_at INTEGER NOT NULL,
+  retry_count INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_sync_outbox_resource ON sync_outbox(resource);
+CREATE INDEX IF NOT EXISTS idx_sync_outbox_client_mut_id ON sync_outbox(client_mut_id);
+
+CREATE TABLE IF NOT EXISTS sync_row_meta (
+  resource TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (resource, entity_id)
+);
+
+CREATE TABLE IF NOT EXISTS sync_field_meta (
+  resource TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  field TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (resource, entity_id, field)
+);
+
+CREATE TABLE IF NOT EXISTS sync_cursor (
+  resource TEXT PRIMARY KEY,
+  cursor TEXT NOT NULL,
+  last_pulled_at INTEGER NOT NULL
+);
+
+-- Key-value config store (key + subKey JSON) backing ISyncConfigRepository: the engine
+-- persists clientId / lastClientMutId / userEnabled here.
+CREATE TABLE IF NOT EXISTS config (
+  key TEXT PRIMARY KEY,
+  value_json TEXT NOT NULL,
+  created_at TEXT,
+  updated_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS sync_meta (
   resource TEXT PRIMARY KEY,
   cursor TEXT
