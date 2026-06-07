@@ -120,3 +120,8 @@ minimumReleaseAgeExclude:
   - expo-server@56.0.5
   - expo-symbols@56.0.6
   - expo@56.0.9
+  - app-builder-lib@26.15.1
+  - dmg-builder@26.15.1
+  - electron-builder-squirrel-windows@26.15.1
+  - electron-builder@26.15.1
+  - electron-publish@26.15.1

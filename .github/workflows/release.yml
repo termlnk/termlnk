@@ -158,7 +158,10 @@ jobs:
     needs: [prepare, mac, windows, linux]
     if: >-
       !cancelled() &&
-      needs.prepare.result == 'success'
+      needs.prepare.result == 'success' &&
+      needs.mac.result == 'success' &&
+      needs.windows.result == 'success' &&
+      needs.linux.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write

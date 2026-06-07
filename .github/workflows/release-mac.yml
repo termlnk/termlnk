@@ -60,6 +60,23 @@ jobs:
         run: |
           echo "RELEASE_VERSION=${{ inputs.release-tag }}" | sed 's/=v/=/' >> "$GITHUB_ENV"
 
+      - name: Validate macOS signing secrets
+        env:
+          CSC_LINK: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required macOS signing secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
       - name: Install dependencies
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
@@ -94,6 +111,14 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: pnpm run stage -- --platform darwin --arch ${{ matrix.arch }} && npx electron-builder --mac --${{ matrix.arch }} --publish never
 
+      - name: Prepare macOS update artifacts
+        working-directory: apps/desktop
+        env:
+          TERMLNK_VERIFY_GATEKEEPER: '1'
+        run: |
+          rm -f release/*.zip release/*.zip.blockmap release/latest-mac.yml
+          pnpm exec tsx scripts/prepare-mac-update-artifacts.ts
+
       - name: Upload to R2
         working-directory: apps/desktop/release
         env:
@@ -110,7 +135,7 @@ jobs:
         with:
           name: latest-mac-${{ matrix.arch }}
           path: apps/desktop/release/latest-mac.yml
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Upload to GitHub Release
         env:

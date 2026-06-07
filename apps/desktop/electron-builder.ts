@@ -87,7 +87,9 @@ const config: Configuration = {
   mac: {
     category: 'public.app-category.developer-tools',
     icon: 'resources/icon.icns',
-    target: ['dmg', 'zip'],
+    // The Squirrel.Mac update zip is produced by scripts/prepare-mac-update-artifacts.ts
+    // with ditto so framework symlinks survive extraction and codesign validation.
+    target: ['dmg'],
     // Surfaced by macOS when Termlnk first requests Accessibility. The
     // Dynamic Island uses it to replay user-picks from the notch into
     // the terminal app running an external Claude Code CLI (AskUser-
