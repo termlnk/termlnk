@@ -16,7 +16,22 @@
 import type { Dependency, Injector } from '@termlnk/core';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { InjectSelf, Plugin, registerDependencies } from '@termlnk/core';
+import {
+  IHostSyncRepository,
+  ISyncConfigRepository,
+  ISyncCursorRepository,
+  ISyncFieldMetaRepository,
+  ISyncOutboxRepository,
+  ISyncRowMetaRepository,
+} from '@termlnk/sync';
 import { IRecentSessionsRepository, RecentSessionsRepository } from '../sessions/recent-sessions-repository';
+import {
+  MobileSyncConfigRepository,
+  MobileSyncCursorRepository,
+  MobileSyncFieldMetaRepository,
+  MobileSyncOutboxRepository,
+  MobileSyncRowMetaRepository,
+} from '../sync/mobile-sync-repositories';
 import { IMobileHostRepository, MobileHostRepository } from '../storage/mobile-host-repository';
 import { IMobileSecretCipherService, MobileSecretCipherService } from '../storage/mobile-secret-cipher.service';
 import { IMobileSqliteDatabaseService, MobileSqliteDatabaseService } from '../storage/mobile-sqlite-database.service';
@@ -58,6 +73,16 @@ export class MobilePlatformPlugin extends Plugin {
       [IMobileSqliteDatabaseService, { useClass: MobileSqliteDatabaseService }],
       [IMobileHostRepository, { useClass: MobileHostRepository }],
       [IRecentSessionsRepository, { useClass: RecentSessionsRepository }],
+
+      // Sync engine (@termlnk/sync-engine) repository contracts, expo-sqlite-backed. The
+      // host contract aliases the existing MobileHostRepository instance so the engine's
+      // pull writes flow into the same hosts$ the UI already subscribes to.
+      [ISyncOutboxRepository, { useClass: MobileSyncOutboxRepository }],
+      [ISyncRowMetaRepository, { useClass: MobileSyncRowMetaRepository }],
+      [ISyncFieldMetaRepository, { useClass: MobileSyncFieldMetaRepository }],
+      [ISyncCursorRepository, { useClass: MobileSyncCursorRepository }],
+      [ISyncConfigRepository, { useClass: MobileSyncConfigRepository }],
+      [IHostSyncRepository, { useExisting: IMobileHostRepository }],
     ];
     registerDependencies(this._injector, dependencies);
   }

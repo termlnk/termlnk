@@ -13,11 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IHostSyncRepository, ISyncEntityRow, ISyncHostChangeEvent, ISyncHostTreeNode } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import type { IMobileCredential, IMobileHost, IMobileHostFull, IMobileHostSettings, IMobileHostType, IMobileProxy } from './types';
 import { base64ToBytes, bytesToBase64 } from '@termlnk/auth';
 import { createIdentifier, Disposable, ILogService, Inject } from '@termlnk/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { IMobileSecretCipherService } from './mobile-secret-cipher.service';
 import { IMobileSqliteDatabaseService } from './mobile-sqlite-database.service';
 
@@ -43,7 +44,7 @@ interface ISyncMetaRow {
   cursor: string | null;
 }
 
-export interface IMobileHostRepository {
+export interface IMobileHostRepository extends IHostSyncRepository {
   readonly hosts$: Observable<readonly IMobileHost[]>;
   ready(): Promise<void>;
   upsertFromSync(entity: IMobileHostFull): Promise<void>;
@@ -70,9 +71,14 @@ function rowToHost(row: IHostRow): IMobileHost {
   };
 }
 
-export class MobileHostRepository extends Disposable implements IMobileHostRepository {
+export class MobileHostRepository extends Disposable implements IMobileHostRepository, IHostSyncRepository {
   private readonly _hosts$ = new BehaviorSubject<readonly IMobileHost[]>([]);
   readonly hosts$: Observable<readonly IMobileHost[]> = this._hosts$.asObservable();
+
+  // Drives the sync engine's push path. Emitted only by local CRUD (Phase 3) — never from
+  // syncUpsertRow/delete (those apply server patches and would otherwise echo back).
+  private readonly _changed$ = new Subject<ISyncHostChangeEvent>();
+  readonly changed$: Observable<ISyncHostChangeEvent> = this._changed$.asObservable();
 
   private _readyPromise: Promise<void> | null = null;
 
@@ -97,6 +103,7 @@ export class MobileHostRepository extends Disposable implements IMobileHostRepos
   override dispose(): void {
     super.dispose();
     this._hosts$.complete();
+    this._changed$.complete();
   }
 
   ready(): Promise<void> {
@@ -195,6 +202,66 @@ export class MobileHostRepository extends Disposable implements IMobileHostRepos
       createdAt: row.created_at ?? undefined,
       updatedAt: row.updated_at ?? undefined,
     };
+  }
+
+  // --- IHostSyncRepository (sync engine push/pull path) ---
+
+  async getTree(): Promise<ISyncHostTreeNode[]> {
+    const db = await this._sqlite.ready();
+    const rows = await db.getAllAsync<{ id: string; pid: string }>(
+      'SELECT id, pid FROM hosts ORDER BY sort ASC, id ASC'
+    );
+    const nodes = new Map<string, ISyncHostTreeNode & { children: ISyncHostTreeNode[] }>();
+    for (const r of rows) {
+      nodes.set(r.id, { id: r.id, children: [] });
+    }
+    const roots: ISyncHostTreeNode[] = [];
+    for (const r of rows) {
+      const node = nodes.get(r.id)!;
+      const parent = nodes.get(r.pid);
+      if (parent) {
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+    return roots;
+  }
+
+  // The engine serializes the returned object as the E2EE payload, so it must carry the
+  // desktop `IHostEntity` field shape (credential/proxy inline) for cross-client interop.
+  // `hasCredential` is a mobile-only view flag and is intentionally dropped.
+  async getInfoById(id: string): Promise<ISyncEntityRow | null> {
+    const full = await this.getInfo(id);
+    if (!full) {
+      return null;
+    }
+    return {
+      id: full.id,
+      pid: full.pid,
+      tree: full.tree ?? null,
+      label: full.label,
+      type: full.type,
+      addr: full.addr ?? null,
+      port: full.port ?? null,
+      sort: full.sort ?? 0,
+      credential: full.credential ?? null,
+      proxy: full.proxy ?? null,
+      settings: full.settings ?? null,
+      hostChainIds: full.hostChainIds ?? null,
+      createdAt: full.createdAt ?? null,
+      updatedAt: full.updatedAt ?? null,
+    } as unknown as ISyncEntityRow;
+  }
+
+  // Incoming server patch: the decrypted payload structurally matches IMobileHostFull
+  // (credential/proxy inline); upsertFromSync re-encrypts secrets under the device cipher.
+  async syncUpsertRow(entity: ISyncEntityRow): Promise<void> {
+    await this.upsertFromSync(entity as unknown as IMobileHostFull);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.deleteFromSync(id);
   }
 
   async getCursor(resource: string): Promise<string | null> {
