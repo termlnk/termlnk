@@ -15,17 +15,28 @@
 
 import type { ReactNode } from 'react';
 import type { IBiometricAvailability } from '../../src/platform/biometric.service';
+import { SyncState } from '@termlnk/sync';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useAuthService, useCurrentUser } from '../../src/core/core-context';
+import { useAuthService, useCurrentUser, useObservable, useSyncService } from '../../src/core/core-context';
 import { BiometricService } from '../../src/platform/biometric.service';
 import { ScreenContainer } from '../../src/ui/screen-container';
+
+const SYNC_STATE_LABEL: Record<SyncState, string> = {
+  [SyncState.Disabled]: 'Disabled',
+  [SyncState.Idle]: 'Up to date',
+  [SyncState.Syncing]: 'Syncing…',
+  [SyncState.Offline]: 'Offline',
+  [SyncState.Error]: 'Error',
+};
 
 export default function SettingsTab() {
   const user = useCurrentUser();
   const auth = useAuthService();
+  const sync = useSyncService();
   const router = useRouter();
+  const syncState = useObservable(sync.state$, SyncState.Disabled);
   const [biometric, setBiometric] = useState<IBiometricAvailability | null>(null);
 
   useEffect(() => {
@@ -61,15 +72,17 @@ export default function SettingsTab() {
         </Section>
 
         <Section title="Sync">
-          <Text className="text-[12px] leading-5 text-grey-fg">
-            Pull-only in v1. Edits to host / provider / MCP / skill records happen on
-            the desktop client and propagate here after the next pull.
+          <Row label="Status" value={SYNC_STATE_LABEL[syncState]} />
+          <Text className="mt-2 text-[12px] leading-5 text-grey-fg">
+            Hosts, identities, and keys sync end-to-end encrypted across your devices.
+            Changes you make here are pushed to the cloud vault and pulled by your other
+            clients automatically.
           </Text>
         </Section>
 
         <Section title="About">
           <Row label="Client" value="termlnk-mobile" />
-          <Row label="Version" value="0.0.1" />
+          <Row label="Version" value="0.2.1" />
           <Row label="SSH backend" value="Rust russh 0.54 + russh-sftp 2 (uniffi-bindgen-react-native)" />
         </Section>
 
