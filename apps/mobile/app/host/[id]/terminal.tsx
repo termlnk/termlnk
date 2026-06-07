@@ -20,10 +20,11 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useCoreContext, useRecentSessionsRepository, useSyncService } from '../../../src/core/core-context';
-import { autoConnectArgsFromVault } from '../../../src/ssh/auto-connect-from-vault';
+import { useCoreContext, useIdentityRepository, useRecentSessionsRepository, useSshKeyRepository, useSyncService } from '../../../src/core/core-context';
+import { resolveHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import { buildShellResumptionCommand } from '../../../src/ssh/mobile-shell-resumption';
 import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
+import { TerminalKeyBar } from '../../../src/terminal/terminal-keybar';
 import { buildXtermHtml, xtermBridge } from '../../../src/ssh/xterm-webview-html';
 import { IMobileHostRepository } from '../../../src/storage/mobile-host-repository';
 
@@ -43,6 +44,8 @@ export default function TerminalScreen() {
     () => coreContext.core.getInjector().get(IMobileHostRepository),
     [coreContext]
   );
+  const identityRepo = useIdentityRepository();
+  const keyRepo = useSshKeyRepository();
   const sshClient = useMemo(() => new MobileSshClientService(), []);
   const webviewRef = useRef<WebView>(null);
 
@@ -106,7 +109,7 @@ export default function TerminalScreen() {
         }
         fullHostRef.current = full;
         if (full) {
-          const auto = autoConnectArgsFromVault(full);
+          const auto = await resolveHostConnectArgs(full, identityRepo, keyRepo);
           if (auto) {
             autoConnectedRef.current = true;
             void connect(auto);
@@ -125,7 +128,7 @@ export default function TerminalScreen() {
     return () => {
       cancelled = true;
     };
-  }, [host, hostRepo, id, connect]);
+  }, [host, hostRepo, id, connect, identityRepo, keyRepo]);
 
   useEffect(() => {
     if (!session) {
@@ -257,46 +260,57 @@ export default function TerminalScreen() {
       )}
 
       {state === 'connected' && (
-        <WebView
-          ref={webviewRef}
-          originWhitelist={['*']}
-          source={{ html: xtermHtml }}
-          javaScriptEnabled
-          domStorageEnabled
-          className="flex-1 bg-black"
-          onError={(e) => {
-            const desc = e.nativeEvent.description || 'Unknown WebView error';
-            setError(`WebView failed to load: ${desc}`);
-            setState('error');
-          }}
-          onHttpError={(e) => {
-            const status = e.nativeEvent.statusCode;
-            const url = e.nativeEvent.url;
-            setError(`WebView HTTP ${status} on ${url}`);
-            setState('error');
-          }}
-          onMessage={(event) => {
-            try {
-              const msg = JSON.parse(event.nativeEvent.data) as
-                | { type: 'input'; data: string }
-                | { type: 'size'; cols: number; rows: number }
-                | { type: 'ready' }
-                | { type: 'error'; message: string; source?: string; line?: number; col?: number; stack?: string };
-              if (msg.type === 'size') {
-                onWebViewSize(msg.cols, msg.rows);
-              } else if (msg.type === 'input' && session && shellStartedRef.current) {
-                void session.writeToShell(xtermBridge.fromBase64(msg.data));
-              } else if (msg.type === 'error') {
-                const where = msg.source ? ` (${msg.source}:${msg.line ?? '?'}:${msg.col ?? '?'})` : '';
-                setError(`Terminal viewer error: ${msg.message}${where}`);
-                setState('error');
+        <>
+          <WebView
+            ref={webviewRef}
+            originWhitelist={['*']}
+            source={{ html: xtermHtml }}
+            javaScriptEnabled
+            domStorageEnabled
+            className="flex-1 bg-black"
+            onError={(e) => {
+              const desc = e.nativeEvent.description || 'Unknown WebView error';
+              setError(`WebView failed to load: ${desc}`);
+              setState('error');
+            }}
+            onHttpError={(e) => {
+              const status = e.nativeEvent.statusCode;
+              const url = e.nativeEvent.url;
+              setError(`WebView HTTP ${status} on ${url}`);
+              setState('error');
+            }}
+            onMessage={(event) => {
+              try {
+                const msg = JSON.parse(event.nativeEvent.data) as
+                  | { type: 'input'; data: string }
+                  | { type: 'size'; cols: number; rows: number }
+                  | { type: 'ready' }
+                  | { type: 'error'; message: string; source?: string; line?: number; col?: number; stack?: string };
+                if (msg.type === 'size') {
+                  onWebViewSize(msg.cols, msg.rows);
+                } else if (msg.type === 'input' && session && shellStartedRef.current) {
+                  void session.writeToShell(xtermBridge.fromBase64(msg.data));
+                } else if (msg.type === 'error') {
+                  const where = msg.source ? ` (${msg.source}:${msg.line ?? '?'}:${msg.col ?? '?'})` : '';
+                  setError(`Terminal viewer error: ${msg.message}${where}`);
+                  setState('error');
+                }
+                // type === 'ready' is informational; xterm is alive and waiting for size/data.
+              } catch {
+                // Ignore malformed bridge messages.
               }
-              // type === 'ready' is informational; xterm is alive and waiting for size/data.
-            } catch {
-              // Ignore malformed bridge messages.
-            }
-          }}
-        />
+            }}
+          />
+          {session != null && (
+            <TerminalKeyBar
+              onKey={(seq) => {
+                if (shellStartedRef.current) {
+                  void session.writeToShell(seq).catch(() => {});
+                }
+              }}
+            />
+          )}
+        </>
       )}
     </KeyboardAvoidingView>
   );
