@@ -267,7 +267,7 @@ export interface IMobileSshKeyRepository extends ISshKeySyncRepository {
   readonly keys$: Observable<readonly IMobileSshKey[]>;
   ready(): Promise<void>;
   getInfo(id: string): Promise<IMobileSshKeyFull | null>;
-  importKey(input: { label: string; algorithm: ISshKeyAlgorithm; bits?: number | null; privateKey: string; publicKey?: string | null; certificate?: string | null; passphrase?: string | null; savePassphrase: boolean; fingerprint?: string | null }): Promise<string>;
+  importKey(input: { label: string; algorithm: ISshKeyAlgorithm; bits?: number | null; privateKey: string; publicKey?: string | null; certificate?: string | null; passphrase?: string | null; savePassphrase: boolean; fingerprint?: string | null; source?: ISshKeySource }): Promise<string>;
   updateKey(input: { id: string; label: string; publicKey?: string | null; privateKey: string; certificate?: string | null; passphrase?: string | null; savePassphrase: boolean }): Promise<void>;
   deleteKey(id: string): Promise<void>;
 }
@@ -346,7 +346,7 @@ export class MobileSshKeyRepository extends Disposable implements IMobileSshKeyR
     };
   }
 
-  async importKey(input: { label: string; algorithm: ISshKeyAlgorithm; bits?: number | null; privateKey: string; publicKey?: string | null; certificate?: string | null; passphrase?: string | null; savePassphrase: boolean; fingerprint?: string | null }): Promise<string> {
+  async importKey(input: { label: string; algorithm: ISshKeyAlgorithm; bits?: number | null; privateKey: string; publicKey?: string | null; certificate?: string | null; passphrase?: string | null; savePassphrase: boolean; fingerprint?: string | null; source?: ISshKeySource }): Promise<string> {
     const id = generateRandomId(24);
     await this._persist({
       id,
@@ -358,7 +358,7 @@ export class MobileSshKeyRepository extends Disposable implements IMobileSshKeyR
       certificate: input.certificate ?? null,
       passphrase: input.savePassphrase ? input.passphrase ?? null : null,
       savePassphrase: input.savePassphrase,
-      source: 'imported',
+      source: input.source ?? 'imported',
       publicKeyFingerprint: input.fingerprint ?? null,
       createdAt: nowIso(),
       updatedAt: nowIso(),
