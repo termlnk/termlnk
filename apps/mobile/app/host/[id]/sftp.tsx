@@ -234,6 +234,12 @@ export default function SftpScreen() {
       return;
     }
     const asset = res.assets[0];
+    if (!asset.uri.startsWith('file://')) {
+      // Some Android storage providers hand back a content:// SAF URI even with
+      // copyToCacheDirectory; russh needs a real filesystem path it can open.
+      Alert.alert('Unsupported source', 'Pick the file from on-device storage (Files / Downloads) so it can be read directly.');
+      return;
+    }
     const localPath = decodeURIComponent(asset.uri.replace(/^file:\/\//, ''));
     const remote = joinPath(path, asset.name);
     setTransfer({ label: `↑ ${asset.name}`, pct: 0 });

@@ -33,6 +33,9 @@ export default function IdentityEditRoute() {
   const [password, setPassword] = useState('');
   const [keyId, setKeyId] = useState('');
   const [busy, setBusy] = useState(false);
+  // Guards Save until the edit record has loaded, so a quick tap can't persist an empty
+  // password over the stored one before getInfo resolves.
+  const [loaded, setLoaded] = useState(!isEdit);
 
   useEffect(() => {
     if (!id) {
@@ -40,13 +43,16 @@ export default function IdentityEditRoute() {
     }
     let cancelled = false;
     void identityRepo.getInfo(id).then((info) => {
-      if (cancelled || !info) {
+      if (cancelled) {
         return;
       }
-      setLabel(info.label);
-      setUsername(info.username);
-      setKeyId(info.keyId ?? '');
-      setPassword(info.password ?? '');
+      if (info) {
+        setLabel(info.label);
+        setUsername(info.username);
+        setKeyId(info.keyId ?? '');
+        setPassword(info.password ?? '');
+      }
+      setLoaded(true);
     });
     return () => {
       cancelled = true;
@@ -108,7 +114,7 @@ export default function IdentityEditRoute() {
             )}
           </FormSection>
           <View className="mt-6 gap-3 px-4">
-            <PrimaryButton title={isEdit ? 'Save' : 'Create'} onPress={onSave} busy={busy} />
+            <PrimaryButton title={isEdit ? 'Save' : 'Create'} onPress={onSave} busy={busy} disabled={!loaded} />
             {isEdit && <DangerButton title="Delete" onPress={onDelete} />}
           </View>
         </ScrollView>

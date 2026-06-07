@@ -145,6 +145,14 @@ export function HostEditScreen({ hostId, parentId, kind }: IHostEditScreenProps)
       Alert.alert('Invalid port', 'Port must be between 1 and 65535.');
       return;
     }
+    if (kind === 'host' && credType === 'key' && !keyId) {
+      Alert.alert('Key required', 'Select an SSH key, or pick a different authentication method.');
+      return;
+    }
+    if (kind === 'host' && credType === 'identity' && !identityId) {
+      Alert.alert('Identity required', 'Select an identity, or pick a different authentication method.');
+      return;
+    }
 
     setBusy(true);
     try {

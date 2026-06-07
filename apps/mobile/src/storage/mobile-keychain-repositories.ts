@@ -32,6 +32,10 @@ import type {
 } from './types';
 import { base64ToBytes, bytesToBase64 } from '@termlnk/auth';
 import { createIdentifier, Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core';
+// eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
+import { sha256 } from '@noble/hashes/sha2.js';
+// eslint-disable-next-line penetrating/no-penetrating-import -- @noble/hashes 2.x exports only `.js` subpaths
+import { bytesToHex } from '@noble/hashes/utils.js';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { IMobileSecretCipherService } from './mobile-secret-cipher.service';
 import { IMobileSqliteDatabaseService } from './mobile-sqlite-database.service';
@@ -575,7 +579,11 @@ export class MobileKnownHostRepository extends Disposable implements IMobileKnow
   }
 
   async upsertKnownHost(input: { host: string; port: number; keyType: string; fingerprint: string; publicKey?: string | null }): Promise<string> {
-    const id = `kh_${input.host}_${input.port}_${input.keyType}`.replace(/[^\w]/g, '_');
+    // Deterministic id from the (host, port, keyType) natural key — must match the desktop
+    // scheme (makeKnownHostId: sha256 hex prefix) so both clients' sync streams converge on
+    // a single trust row instead of diverging into duplicates.
+    const digest = bytesToHex(sha256(new TextEncoder().encode(`${input.host}|${input.port}|${input.keyType}`)));
+    const id = `kh_${digest.slice(0, 24)}`;
     await this._persist({
       id,
       host: input.host,

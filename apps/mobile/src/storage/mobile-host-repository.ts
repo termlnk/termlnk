@@ -271,14 +271,38 @@ export class MobileHostRepository extends Disposable implements IMobileHostRepos
 
   // Persist a locally created/edited host or group, then notify the sync engine. Distinct
   // from syncUpsertRow (which applies server patches and must stay silent to avoid echo).
+  // Computes a non-null `tree` path (rooted at "root") and a sibling `sort` so the row
+  // satisfies the desktop schema (host.tree NOT NULL) and stays visible/ordered on desktop,
+  // which builds its tree with `LIKE 'root%'`.
   async saveHost(entity: IMobileHostFull, opts?: { isNew?: boolean }): Promise<void> {
-    await this.upsertFromSync(entity);
+    const tree = entity.tree ?? await this._computeTree(entity.pid, entity.id);
+    const sort = entity.sort ?? (opts?.isNew ? await this._nextSort(entity.pid) : 0);
+    await this.upsertFromSync({ ...entity, tree, sort });
     this._changed$.next({ type: opts?.isNew ? 'add' : 'update', id: entity.id });
   }
 
   async removeHost(id: string): Promise<void> {
     await this.deleteFromSync(id);
     this._changed$.next({ type: 'delete', id });
+  }
+
+  // Path tree mirrors the desktop convention: `<parentTree>_<id>`, with the virtual root
+  // contributing the literal "root" segment. String ids (vs desktop's numeric ones) are
+  // fine — the tree is only ever used as a LIKE-prefix for descendant queries.
+  private async _computeTree(pid: string, id: string): Promise<string> {
+    if (pid === 'root' || pid === '') {
+      return `root_${id}`;
+    }
+    const db = await this._sqlite.ready();
+    const row = await db.getFirstAsync<{ tree: string | null }>('SELECT tree FROM hosts WHERE id = ?', [pid]);
+    const parentTree = row?.tree ?? 'root';
+    return `${parentTree}_${id}`;
+  }
+
+  private async _nextSort(pid: string): Promise<number> {
+    const db = await this._sqlite.ready();
+    const row = await db.getFirstAsync<{ m: number | null }>('SELECT max(sort) AS m FROM hosts WHERE pid = ?', [pid]);
+    return (row?.m ?? -1) + 1;
   }
 
   async getCursor(resource: string): Promise<string | null> {

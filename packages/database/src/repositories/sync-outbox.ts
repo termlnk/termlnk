@@ -60,19 +60,20 @@ export class SyncOutboxRepository extends Disposable implements ISyncOutboxRepos
         payload: record.payload === null ? null : Buffer.from(record.payload),
       })
       .returning();
-    return inserted[0];
+    return toRow(inserted[0]);
   }
 
   /**
    * Read pending mutations FIFO: `createdAt` asc, tie-break by `clientMutId`.
    * Does not delete — rows stay until the server acks them.
    */
-  async selectFifo(limit?: number): Promise<ISyncOutboxEntity[]> {
+  async selectFifo(limit?: number): Promise<ISyncOutboxRow[]> {
     const query = this._db
       .select()
       .from(syncOutboxEntity)
       .orderBy(asc(syncOutboxEntity.createdAt), asc(syncOutboxEntity.clientMutId));
-    return limit && limit > 0 ? query.limit(limit) : query;
+    const rows = await (limit && limit > 0 ? query.limit(limit) : query);
+    return rows.map(toRow);
   }
 
   /** Drop rows acknowledged by the server, by `clientMutId`. */
@@ -175,4 +176,14 @@ export class SyncOutboxRepository extends Disposable implements ISyncOutboxRepos
       .from(syncOutboxEntity);
     return rows[0]?.max ?? 0;
   }
+}
+
+// Map a stored row to the platform-agnostic contract shape. better-sqlite3 returns the BLOB
+// payload as a Node Buffer backed by a shared pool; copy it into a standalone Uint8Array so
+// the engine (which the contract promises never sees Buffer) gets honest, isolated bytes.
+function toRow(entity: ISyncOutboxEntity): ISyncOutboxRow {
+  return {
+    ...entity,
+    payload: entity.payload === null ? null : new Uint8Array(entity.payload),
+  };
 }

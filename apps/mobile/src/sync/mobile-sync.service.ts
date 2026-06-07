@@ -87,8 +87,10 @@ export class MobileSyncService extends Disposable implements IMobileSyncService 
       throw new Error('[MobileSyncService] master key is locked — sign in first');
     }
     if (!this._enabled) {
-      this._enabled = true;
+      // Only latch _enabled after enable() resolves; if it throws (transient reconcile /
+      // transport failure) the next pull() retries enable() instead of stalling on syncNow.
       await this._syncService.enable();
+      this._enabled = true;
       return;
     }
     await this._syncService.syncNow();
