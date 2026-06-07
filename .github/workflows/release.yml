@@ -171,12 +171,24 @@ jobs:
           sparse-checkout: |
             apps/desktop/build/release-notes.md
             apps/desktop/scripts/merge-update-manifests.mjs
+            docs/CHANGELOG.md
           sparse-checkout-cone-mode: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+
+      - name: Generate release notes
+        run: |
+          RELEASE_VERSION="${{ needs.prepare.outputs.release-tag }}"
+          RELEASE_VERSION="${RELEASE_VERSION#v}"
+          npx --yes extract-changelog-release@1.0.2 docs/CHANGELOG.md > apps/desktop/build/release-notes.md
+          notes_version="$(sed -nE '1s/^#+[[:space:]]+\[?([^] (]+)\]?.*/\1/p' apps/desktop/build/release-notes.md)"
+          if [ "$notes_version" != "$RELEASE_VERSION" ]; then
+            echo "::error::Release notes version $notes_version does not match $RELEASE_VERSION"
+            exit 1
+          fi
 
       - name: Update release notes
         env:

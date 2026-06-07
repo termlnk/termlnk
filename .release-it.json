@@ -11,8 +11,8 @@
   },
   "npm": false,
   "hooks": {
-    "after:bump": [
-      "extract-changelog-release docs/CHANGELOG.md > apps/desktop/build/release-notes.md",
+    "after:@release-it/conventional-changelog:beforeRelease": [
+      "node apps/desktop/scripts/extract-release-notes.mjs --version ${version}",
       "git add apps/desktop/build/release-notes.md"
     ]
   },

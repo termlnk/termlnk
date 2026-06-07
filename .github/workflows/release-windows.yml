@@ -65,6 +65,16 @@ jobs:
       - name: Prune pnpm store
         run: pnpm store prune
 
+      - name: Generate release notes
+        shell: bash
+        run: |
+          pnpm exec extract-changelog-release docs/CHANGELOG.md > apps/desktop/build/release-notes.md
+          notes_version="$(sed -nE '1s/^#+[[:space:]]+\[?([^] (]+)\]?.*/\1/p' apps/desktop/build/release-notes.md)"
+          if [ "$notes_version" != "$RELEASE_VERSION" ]; then
+            echo "::error::Release notes version $notes_version does not match $RELEASE_VERSION"
+            exit 1
+          fi
+
       - name: Download desktop dist
         uses: actions/download-artifact@v4
         with:
