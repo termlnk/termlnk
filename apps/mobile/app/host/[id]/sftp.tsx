@@ -21,13 +21,15 @@ import type { ISftpEntry } from '../../../src/sftp/mobile-sftp-client.service';
 import type { IHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.service';
 import type { IMobileHost } from '../../../src/storage/types';
+import * as DocumentPicker from 'expo-document-picker';
+import { Paths } from 'expo-file-system';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { ArrowUp, File as FileIcon, Folder as FolderIcon } from 'lucide-react-native';
+import { ArrowUp, Download, File as FileIcon, Folder as FolderIcon, Upload } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { useCoreContext, useRecentSessionsRepository, useSyncService } from '../../../src/core/core-context';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useCoreContext, useIdentityRepository, useRecentSessionsRepository, useSshKeyRepository, useSyncService } from '../../../src/core/core-context';
 import { MobileSftpClientService } from '../../../src/sftp/mobile-sftp-client.service';
-import { autoConnectArgsFromVault } from '../../../src/ssh/auto-connect-from-vault';
+import { resolveHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
 import { IMobileHostRepository } from '../../../src/storage/mobile-host-repository';
 
@@ -68,12 +70,15 @@ export default function SftpScreen() {
   );
 
   const sshClient = useMemo(() => new MobileSshClientService(), []);
+  const identityRepo = useIdentityRepository();
+  const keyRepo = useSshKeyRepository();
   const [host, setHost] = useState<IMobileHost | null>(null);
   const [stage, setStage] = useState<Stage>('loading-host');
   const [error, setError] = useState<string | null>(null);
   const [manualCreds, setManualCreds] = useState<ManualCredentials>({ username: '', password: '' });
   const [path, setPath] = useState('.');
   const [entries, setEntries] = useState<readonly ISftpEntry[]>([]);
+  const [transfer, setTransfer] = useState<{ label: string; pct: number } | null>(null);
 
   const [session, setSession] = useState<IMobileSshSession | null>(null);
   const [sftp, setSftp] = useState<MobileSftpClientService | null>(null);
@@ -126,7 +131,7 @@ export default function SftpScreen() {
           return;
         }
         if (full) {
-          const auto = autoConnectArgsFromVault(full);
+          const auto = await resolveHostConnectArgs(full, identityRepo, keyRepo);
           if (auto) {
             autoConnectedRef.current = true;
             void connect(auto);
@@ -145,7 +150,7 @@ export default function SftpScreen() {
     return () => {
       cancelled = true;
     };
-  }, [host, hostRepo, id, connect]);
+  }, [host, hostRepo, id, connect, identityRepo, keyRepo]);
 
   useEffect(() => {
     return () => {
@@ -206,6 +211,66 @@ export default function SftpScreen() {
     }
   };
 
+  const refresh = useCallback(async () => {
+    if (!sftp) {
+      return;
+    }
+    try {
+      setEntries(await sftp.list(path));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'List failed');
+    }
+  }, [sftp, path]);
+
+  const pctOf = (done: bigint, total?: bigint): number =>
+    total != null && total > 0n ? Number((done * 100n) / total) : 0;
+
+  const onUpload = useCallback(async () => {
+    if (!sftp) {
+      return;
+    }
+    const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+    if (res.canceled || !res.assets || res.assets.length === 0) {
+      return;
+    }
+    const asset = res.assets[0];
+    const localPath = decodeURIComponent(asset.uri.replace(/^file:\/\//, ''));
+    const remote = joinPath(path, asset.name);
+    setTransfer({ label: `↑ ${asset.name}`, pct: 0 });
+    try {
+      const handle = sftp.upload(localPath, remote, {
+        onProgress: (done, total) => setTransfer({ label: `↑ ${asset.name}`, pct: pctOf(done, total) }),
+      });
+      await handle.done;
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setTransfer(null);
+    }
+  }, [sftp, path, refresh]);
+
+  const onDownload = useCallback(async (entry: ISftpEntry) => {
+    if (!sftp || entry.isDirectory) {
+      return;
+    }
+    const dest = `${Paths.document.uri.replace(/\/+$/, '')}/${entry.filename}`;
+    const localPath = decodeURIComponent(dest.replace(/^file:\/\//, ''));
+    const remote = joinPath(path, entry.filename);
+    setTransfer({ label: `↓ ${entry.filename}`, pct: 0 });
+    try {
+      const handle = sftp.download(remote, localPath, {
+        onProgress: (done, total) => setTransfer({ label: `↓ ${entry.filename}`, pct: pctOf(done, total) }),
+      });
+      await handle.done;
+      Alert.alert('Downloaded', `Saved to the app's documents folder:\n${entry.filename}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setTransfer(null);
+    }
+  }, [sftp, path]);
+
   const submitDisabled = manualCreds.username.length === 0 || manualCreds.password.length === 0;
 
   return (
@@ -213,7 +278,18 @@ export default function SftpScreen() {
       className="flex-1 bg-black"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Stack.Screen options={{ title: host ? `${host.label} • SFTP` : 'SFTP' }} />
+      <Stack.Screen
+        options={{
+          title: host ? `${host.label} • SFTP` : 'SFTP',
+          headerRight: stage === 'ready'
+            ? () => (
+                <Pressable onPress={onUpload} hitSlop={12}>
+                  <Upload size={18} color="#61afef" />
+                </Pressable>
+              )
+            : undefined,
+        }}
+      />
 
       {(stage === 'loading-host' || stage === 'connecting') && (
         <View className="flex-1 items-center justify-center">
@@ -283,14 +359,26 @@ export default function SftpScreen() {
             </Pressable>
           </View>
 
+          {transfer != null && (
+            <View className="border-b border-line bg-one-bg px-4 py-2">
+              <View className="flex-row items-center justify-between">
+                <Text numberOfLines={1} className="flex-1 text-[12px] text-light-grey">{transfer.label}</Text>
+                <Text className="ml-2 text-[12px] text-nord-blue">{transfer.pct}%</Text>
+              </View>
+              <View className="mt-1.5 h-1 overflow-hidden rounded-full bg-one-bg3">
+                <View className="h-1 rounded-full bg-nord-blue" style={{ width: `${transfer.pct}%` }} />
+              </View>
+            </View>
+          )}
+
           <FlatList
             data={entries}
             keyExtractor={(item) => entryKey(path, item)}
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => onEnter(item)}
-                disabled={!item.isDirectory}
-                className={`flex-row items-center border-b border-line px-4 py-3 ${item.isDirectory ? 'active:bg-one-bg' : ''}`}
+                onLongPress={() => onDownload(item)}
+                className="flex-row items-center border-b border-line px-4 py-3 active:bg-one-bg"
               >
                 {item.isDirectory
                   ? <FolderIcon size={18} color="#61afef" />
@@ -300,9 +388,10 @@ export default function SftpScreen() {
                     {item.filename}
                   </Text>
                   <Text className="mt-0.5 text-[12px] text-grey-fg">
-                    {item.isDirectory ? 'Directory' : `${item.size.toString()} B`}
+                    {item.isDirectory ? 'Directory' : `${item.size.toString()} B · long-press to download`}
                   </Text>
                 </View>
+                {!item.isDirectory && <Download size={15} color="#42464e" />}
               </Pressable>
             )}
             ListEmptyComponent={(
