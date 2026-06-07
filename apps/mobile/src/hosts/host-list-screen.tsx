@@ -15,9 +15,9 @@
 
 import type { IMobileHost } from '../storage/types';
 import { useRouter } from 'expo-router';
-import { Search, Server } from 'lucide-react-native';
+import { Plus, Search, Server } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
 import { useSyncService } from '../core/core-context';
 import { EmptyState } from '../ui/empty-state';
 import { HostRow } from '../ui/host-row';
@@ -106,6 +106,14 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
     [router]
   );
 
+  const onNew = useCallback(() => {
+    Alert.alert('New', undefined, [
+      { text: 'New host', onPress: () => router.push({ pathname: '/host/edit', params: { pid: parentId, kind: 'host' } }) },
+      { text: 'New group', onPress: () => router.push({ pathname: '/host/edit', params: { pid: parentId, kind: 'group' } }) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [router, parentId]);
+
   return (
     <ScreenContainer>
       <View className="border-b border-line bg-black px-4 pb-3 pt-3">
@@ -158,11 +166,18 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
               icon={Server}
               title={parentId === 'root' ? 'No hosts yet' : 'Empty group'}
               description={parentId === 'root'
-                ? 'Pull down to sync your hosts from the desktop vault.'
-                : 'This group has no hosts. Add hosts on the desktop and pull again.'}
+                ? 'Tap + to add a host, or pull down to sync from the cloud vault.'
+                : 'This group is empty. Tap + to add a host here.'}
             />
           )}
       />
+
+      <Pressable
+        onPress={onNew}
+        className="absolute bottom-6 right-5 h-14 w-14 items-center justify-center rounded-full bg-nord-blue shadow-lg active:opacity-80"
+      >
+        <Plus size={26} color="#1e222a" />
+      </Pressable>
     </ScreenContainer>
   );
 }

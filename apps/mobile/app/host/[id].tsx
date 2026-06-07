@@ -14,7 +14,7 @@
  */
 
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { FileText, Terminal as TerminalIcon } from 'lucide-react-native';
+import { FileText, Pencil, Terminal as TerminalIcon } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { useHostById } from '../../src/hosts/use-host-tree';
 import { HostAvatar } from '../../src/ui/host-avatar';
@@ -40,7 +40,19 @@ export default function HostDetail() {
 
   return (
     <ScreenContainer>
-      <Stack.Screen options={{ title: host.label }} />
+      <Stack.Screen
+        options={{
+          title: host.label,
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push({ pathname: '/host/edit', params: { id: host.id } })}
+              hitSlop={12}
+            >
+              <Pencil size={18} color="#61afef" />
+            </Pressable>
+          ),
+        }}
+      />
 
       <View className="px-4 pt-6">
         <View className="items-center pb-4">
@@ -88,9 +100,9 @@ export default function HostDetail() {
         </View>
 
         <Text className="mt-5 text-[12px] leading-[18px] text-grey">
-          Credentials sync from your desktop vault end-to-end encrypted and live in
-          this device&apos;s OS keystore. Tap Open terminal / Browse files to connect —
-          no extra entry needed when a credential is on file.
+          Hosts and credentials are end-to-end encrypted and sync across your devices.
+          Edits made here push back to the cloud vault. Tap Open terminal / Browse files
+          to connect — no extra entry needed when a credential is on file.
         </Text>
       </View>
     </ScreenContainer>

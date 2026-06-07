@@ -22,6 +22,8 @@ import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { Quantity } from '@termlnk/core';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { IRecentSessionsRepository } from '../sessions/recent-sessions-repository';
+import { IMobileHostRepository } from '../storage/mobile-host-repository';
+import { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository } from '../storage/mobile-keychain-repositories';
 import { IMobileSyncService as IMobileSyncServiceId } from '../sync/mobile-sync.service';
 import { createMobileCore } from './create-mobile-core';
 
@@ -105,4 +107,29 @@ export function useCurrentUser(): IUserAccount | null {
 export function useRecentSessionsRepository() {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IRecentSessionsRepository), [core]);
+}
+
+export function useHostRepository() {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileHostRepository), [core]);
+}
+
+export function useIdentityRepository() {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileIdentityRepository), [core]);
+}
+
+export function useSshKeyRepository() {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSshKeyRepository), [core]);
+}
+
+export function useKnownHostRepository() {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileKnownHostRepository), [core]);
+}
+
+// Subscribe to an RxJS Observable and re-render on each emission.
+export function useObservable<T>(observable$: Observable<T> | undefined, initial: T): T {
+  return useObservableValue(observable$, initial);
 }
