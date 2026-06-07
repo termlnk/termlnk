@@ -1,7 +1,7 @@
 {
   "name": "@termlnk/web-app-server",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "termlnk-web server entrypoint — Node.js + tRPC standalone HTTP/WS adapter (P7.3)",
   "author": "telan <telanflow@gmail.com>",

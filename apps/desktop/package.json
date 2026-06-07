@@ -1,7 +1,7 @@
 {
   "name": "@termlnk/termlnk-desktop",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Termlnk Desktop App",
   "author": "telan <telanflow@gmail.com>",
