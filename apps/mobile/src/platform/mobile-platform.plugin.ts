@@ -28,6 +28,8 @@ import {
   ISyncRowMetaRepository,
 } from '@termlnk/sync';
 import { IRecentSessionsRepository, RecentSessionsRepository } from '../sessions/recent-sessions-repository';
+import { IMobileAiService, MobileAiService } from '../ai/mobile-ai.service';
+import { IMobilePreferencesService, MobilePreferencesService } from './mobile-preferences.service';
 import {
   MobileSyncConfigRepository,
   MobileSyncCursorRepository,
@@ -103,6 +105,10 @@ export class MobilePlatformPlugin extends Plugin {
       [IIdentitySyncRepository, { useExisting: IMobileIdentityRepository }],
       [ISshKeySyncRepository, { useExisting: IMobileSshKeyRepository }],
       [IKnownHostSyncRepository, { useExisting: IMobileKnownHostRepository }],
+
+      // Device-local app preferences + AI assistant (neither synced).
+      [IMobilePreferencesService, { useClass: MobilePreferencesService }],
+      [IMobileAiService, { useClass: MobileAiService }],
     ];
     registerDependencies(this._injector, dependencies);
   }

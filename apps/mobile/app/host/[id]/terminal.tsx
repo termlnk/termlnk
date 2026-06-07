@@ -20,7 +20,8 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useCoreContext, useIdentityRepository, useRecentSessionsRepository, useSshKeyRepository, useSyncService } from '../../../src/core/core-context';
+import { useCoreContext, useIdentityRepository, useObservable, usePreferencesService, useRecentSessionsRepository, useSshKeyRepository, useSyncService } from '../../../src/core/core-context';
+import { DEFAULT_PREFERENCES } from '../../../src/platform/mobile-preferences.service';
 import { resolveHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import { buildShellResumptionCommand } from '../../../src/ssh/mobile-shell-resumption';
 import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
@@ -46,6 +47,8 @@ export default function TerminalScreen() {
   );
   const identityRepo = useIdentityRepository();
   const keyRepo = useSshKeyRepository();
+  const prefsService = usePreferencesService();
+  const prefs = useObservable(prefsService.prefs$, DEFAULT_PREFERENCES);
   const sshClient = useMemo(() => new MobileSshClientService(), []);
   const webviewRef = useRef<WebView>(null);
 
@@ -64,7 +67,11 @@ export default function TerminalScreen() {
   // once before connecting completes.
   const autoConnectedRef = useRef(false);
 
-  const xtermHtml = useMemo(() => buildXtermHtml(), []);
+  const xtermHtml = useMemo(() => buildXtermHtml(prefs.terminalFontSize), [prefs.terminalFontSize]);
+
+  useEffect(() => {
+    void prefsService.ready();
+  }, [prefsService]);
 
   // Subscribe to the public hosts stream for the row metadata (label, addr, port).
   useEffect(() => {

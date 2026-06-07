@@ -14,7 +14,7 @@
  */
 
 import { Tabs } from 'expo-router';
-import { History, KeyRound, Server, Settings as SettingsIcon } from 'lucide-react-native';
+import { History, KeyRound, Server, Settings as SettingsIcon, Sparkles } from 'lucide-react-native';
 
 // Base46 onedark colors hard-coded here because Tabs.screenOptions accepts
 // only inline styles, not Tailwind class names. Keep these in sync with
@@ -59,6 +59,13 @@ export default function TabsLayout() {
         options={{
           title: 'Recent',
           tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="ai"
+        options={{
+          title: 'Assistant',
+          tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} />,
         }}
       />
       <Tabs.Screen

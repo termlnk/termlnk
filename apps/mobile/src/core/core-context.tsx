@@ -21,6 +21,8 @@ import type { IMobileSyncService } from '../sync/mobile-sync.service';
 import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { Quantity } from '@termlnk/core';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { IMobileAiService } from '../ai/mobile-ai.service';
+import { IMobilePreferencesService } from '../platform/mobile-preferences.service';
 import { IRecentSessionsRepository } from '../sessions/recent-sessions-repository';
 import { IMobileHostRepository } from '../storage/mobile-host-repository';
 import { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository } from '../storage/mobile-keychain-repositories';
@@ -127,6 +129,16 @@ export function useSshKeyRepository() {
 export function useKnownHostRepository() {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobileKnownHostRepository), [core]);
+}
+
+export function usePreferencesService() {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobilePreferencesService), [core]);
+}
+
+export function useAiService() {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileAiService), [core]);
 }
 
 // Subscribe to an RxJS Observable and re-render on each emission.

@@ -43,7 +43,7 @@ function escapeForHtmlInline(source: string): string {
   return source.replace(/<\//g, '<\\/');
 }
 
-export function buildXtermHtml(): string {
+export function buildXtermHtml(fontSize = 13): string {
   const css = escapeForHtmlInline(XTERM_CSS);
   const xtermJs = escapeForHtmlInline(XTERM_JS);
   const addonFitJs = escapeForHtmlInline(XTERM_ADDON_FIT_JS);
@@ -109,7 +109,7 @@ export function buildXtermHtml(): string {
           return;
         }
         var term = new window.Terminal({
-          fontSize: 13,
+          fontSize: ${fontSize},
           fontFamily: 'Menlo, Monaco, monospace',
           theme: { background: '#0a0a0a', foreground: '#e5e7eb' },
           cursorBlink: true,

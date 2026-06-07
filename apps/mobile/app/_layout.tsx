@@ -17,6 +17,7 @@ import { Stack } from 'expo-router';
 
 import { StatusBar } from 'expo-status-bar';
 import { CoreProvider } from '../src/core/core-context';
+import { BiometricGate } from '../src/platform/biometric-gate';
 import '../global.css';
 
 // Base46 onedark palette — mirrors values from tailwind.config.js so the native
@@ -29,16 +30,18 @@ const FG = '#6f737b';
 export default function RootLayout() {
   return (
     <CoreProvider>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: BG },
-          headerTintColor: FG,
-          contentStyle: { backgroundColor: BG },
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
+      <BiometricGate>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: BG },
+            headerTintColor: FG,
+            contentStyle: { backgroundColor: BG },
+          }}
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </BiometricGate>
     </CoreProvider>
   );
 }
