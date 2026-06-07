@@ -31,13 +31,20 @@ export function BiometricGate({ children }: { children: ReactNode }) {
   const bio = useMemo(() => new BiometricService(), []);
   const [locked, setLocked] = useState(false);
   const [authing, setAuthing] = useState(false);
+  // Live hardware/enrollment state. The persisted biometricLock flag can outlive the
+  // hardware (passcode removed, restored onto a device without biometrics); never engage
+  // the lock when biometrics aren't usable, or the app would be impossible to unlock.
+  const [available, setAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
     void prefsService.ready();
-  }, [prefsService]);
+    void bio.getAvailability().then((a) => setAvailable(a.capability === 'available')).catch(() => setAvailable(false));
+  }, [prefsService, bio]);
+
+  const lockEnabled = prefs.biometricLock && available === true;
 
   useEffect(() => {
-    if (!prefs.biometricLock) {
+    if (!lockEnabled) {
       setLocked(false);
       return;
     }
@@ -48,7 +55,7 @@ export function BiometricGate({ children }: { children: ReactNode }) {
       }
     });
     return () => sub.remove();
-  }, [prefs.biometricLock]);
+  }, [lockEnabled]);
 
   const unlock = useCallback(async () => {
     if (authing) {

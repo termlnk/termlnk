@@ -44,6 +44,9 @@ function escapeForHtmlInline(source: string): string {
 }
 
 export function buildXtermHtml(fontSize = 13): string {
+  // Coerce + clamp before interpolating into the inline <script>; a dirty stored value
+  // (NaN / out-of-range / non-numeric) would otherwise emit invalid JS and break xterm init.
+  const safeFontSize = Number.isFinite(fontSize) ? Math.min(22, Math.max(9, Math.round(fontSize))) : 13;
   const css = escapeForHtmlInline(XTERM_CSS);
   const xtermJs = escapeForHtmlInline(XTERM_JS);
   const addonFitJs = escapeForHtmlInline(XTERM_ADDON_FIT_JS);
@@ -109,7 +112,7 @@ export function buildXtermHtml(fontSize = 13): string {
           return;
         }
         var term = new window.Terminal({
-          fontSize: ${fontSize},
+          fontSize: ${safeFontSize},
           fontFamily: 'Menlo, Monaco, monospace',
           theme: { background: '#0a0a0a', foreground: '#e5e7eb' },
           cursorBlink: true,

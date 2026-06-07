@@ -131,9 +131,24 @@ export class MobileAiService extends Disposable implements IMobileAiService {
           messages: history.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
-      const json = (await resp.json()) as IChatResponse;
+      // Read the body as text first: error responses from gateways/proxies are often
+      // non-JSON (HTML 502, plain-text 401), and parsing those before the ok-check would
+      // mask the real status with a confusing JSON-parse error.
+      const raw = await resp.text();
       if (!resp.ok) {
-        throw new Error(json.error?.message ?? `HTTP ${resp.status}`);
+        let message = `HTTP ${resp.status}`;
+        try {
+          message = (JSON.parse(raw) as IChatResponse).error?.message ?? message;
+        } catch {
+          // Non-JSON error body — keep the HTTP status.
+        }
+        throw new Error(message);
+      }
+      let json: IChatResponse;
+      try {
+        json = JSON.parse(raw) as IChatResponse;
+      } catch {
+        throw new Error('Invalid (non-JSON) response from the AI endpoint');
       }
       const content = json.choices?.[0]?.message?.content ?? '(empty response)';
       this._replace(assistantId, { id: assistantId, role: 'assistant', content });
