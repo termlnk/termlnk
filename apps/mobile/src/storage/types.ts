@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-export type IMobileCredentialType = 'password' | 'rsa' | 'always';
+export type IMobileCredentialType = 'password' | 'rsa' | 'always' | 'key' | 'identity';
 
 export interface IMobilePasswordCredential {
   readonly type: 'password';
@@ -32,10 +32,27 @@ export interface IMobileAlwaysCredential {
   readonly username: string;
 }
 
+// References a key in the keychain (ssh_keys table). passphrase overrides the key's own
+// stored passphrase for this host only.
+export interface IMobileKeyCredential {
+  readonly type: 'key';
+  readonly username: string;
+  readonly keyId: string;
+  readonly passphrase?: string;
+}
+
+// References a saved identity; username/password/key are resolved from it at connect time.
+export interface IMobileIdentityCredential {
+  readonly type: 'identity';
+  readonly identityId: string;
+}
+
 export type IMobileCredential =
   | IMobilePasswordCredential
   | IMobileRsaCredential
-  | IMobileAlwaysCredential;
+  | IMobileAlwaysCredential
+  | IMobileKeyCredential
+  | IMobileIdentityCredential;
 
 export interface IMobileProxy {
   readonly enabled?: boolean;
@@ -83,4 +100,50 @@ export interface IMobileHostFull extends IMobileHost {
   readonly hostChainIds?: readonly string[] | null;
   readonly createdAt?: string;
   readonly updatedAt?: string;
+}
+
+export type ISshKeyAlgorithm = 'ed25519' | 'ecdsa' | 'rsa';
+export type ISshKeySource = 'generated' | 'imported';
+
+// SSH key public view (no private material) for keychain list rendering.
+export interface IMobileSshKey {
+  readonly id: string;
+  readonly label: string;
+  readonly algorithm: ISshKeyAlgorithm;
+  readonly bits?: number | null;
+  readonly publicKey?: string | null;
+  readonly certificate?: string | null;
+  readonly savePassphrase: boolean;
+  readonly source: ISshKeySource;
+  readonly publicKeyFingerprint?: string | null;
+  readonly hasPassphrase: boolean;
+}
+
+// SSH key with secret material; only leaves the repository via getKeyInfo(id).
+export interface IMobileSshKeyFull extends IMobileSshKey {
+  readonly privateKey: string;
+  readonly passphrase?: string | null;
+}
+
+// Identity public view; `hasPassword` is a flag, the secret stays in the store.
+export interface IMobileIdentity {
+  readonly id: string;
+  readonly label: string;
+  readonly username: string;
+  readonly keyId?: string | null;
+  readonly hasPassword: boolean;
+}
+
+export interface IMobileIdentityFull extends IMobileIdentity {
+  readonly password?: string | null;
+}
+
+export interface IMobileKnownHost {
+  readonly id: string;
+  readonly host: string;
+  readonly port: number;
+  readonly keyType: string;
+  readonly fingerprint: string;
+  readonly publicKey?: string | null;
+  readonly lastSeenAt?: string | null;
 }

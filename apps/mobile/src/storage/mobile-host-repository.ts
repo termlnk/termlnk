@@ -53,6 +53,9 @@ export interface IMobileHostRepository extends IHostSyncRepository {
   getInfo(id: string): Promise<IMobileHostFull | null>;
   getCursor(resource: string): Promise<string | null>;
   setCursor(resource: string, cursor: string | null): Promise<void>;
+  // Local CRUD: persists and emits changed$ so the sync engine pushes the change upstream.
+  saveHost(entity: IMobileHostFull, opts?: { isNew?: boolean }): Promise<void>;
+  removeHost(id: string): Promise<void>;
 }
 
 export const IMobileHostRepository = createIdentifier<IMobileHostRepository>('mobile.host-repository.service');
@@ -262,6 +265,20 @@ export class MobileHostRepository extends Disposable implements IMobileHostRepos
 
   async delete(id: string): Promise<void> {
     await this.deleteFromSync(id);
+  }
+
+  // --- Local CRUD (emits changed$ → sync engine push) ---
+
+  // Persist a locally created/edited host or group, then notify the sync engine. Distinct
+  // from syncUpsertRow (which applies server patches and must stay silent to avoid echo).
+  async saveHost(entity: IMobileHostFull, opts?: { isNew?: boolean }): Promise<void> {
+    await this.upsertFromSync(entity);
+    this._changed$.next({ type: opts?.isNew ? 'add' : 'update', id: entity.id });
+  }
+
+  async removeHost(id: string): Promise<void> {
+    await this.deleteFromSync(id);
+    this._changed$.next({ type: 'delete', id });
   }
 
   async getCursor(resource: string): Promise<string | null> {

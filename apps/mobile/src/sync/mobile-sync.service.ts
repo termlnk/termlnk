@@ -21,7 +21,7 @@ import type { IMobileHost } from '../storage/types';
 import { IMasterKeyService as IMasterKeyServiceId } from '@termlnk/auth';
 import { createIdentifier, Disposable, ILogService as ILogServiceId, Inject } from '@termlnk/core';
 import { ISyncService as ISyncServiceId } from '@termlnk/sync';
-import { HostSynchroniser } from '@termlnk/sync-engine';
+import { HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 import { IMobileHostRepository } from '../storage/mobile-host-repository';
 
 // Renderer-facing facade over the shared @termlnk/sync-engine coordinator. It registers the
@@ -55,6 +55,9 @@ export class MobileSyncService extends Disposable implements IMobileSyncService 
     @Inject(ISyncServiceId) syncService: ISyncService,
     @Inject(IMobileHostRepository) hostRepo: IMobileHostRepository,
     @Inject(HostSynchroniser) hostSynchroniser: HostSynchroniser,
+    @Inject(IdentitySynchroniser) identitySynchroniser: IdentitySynchroniser,
+    @Inject(SshKeySynchroniser) sshKeySynchroniser: SshKeySynchroniser,
+    @Inject(KnownHostSynchroniser) knownHostSynchroniser: KnownHostSynchroniser,
     @Inject(IMasterKeyServiceId) masterKeyService: IMasterKeyService,
     @Inject(ILogServiceId) logService: ILogService
   ) {
@@ -66,9 +69,12 @@ export class MobileSyncService extends Disposable implements IMobileSyncService 
     this.hosts$ = hostRepo.hosts$;
     this.state$ = syncService.state$;
 
-    // Register the host synchroniser with the engine; the returned disposable unregisters
-    // it on teardown. ssh_key / identity / known_host synchronisers join in Phase 3.
+    // Register every resource synchroniser with the engine; the returned disposables
+    // unregister them on teardown.
     this.disposeWithMe(syncService.register(hostSynchroniser));
+    this.disposeWithMe(syncService.register(identitySynchroniser));
+    this.disposeWithMe(syncService.register(sshKeySynchroniser));
+    this.disposeWithMe(syncService.register(knownHostSynchroniser));
 
     // Surface persisted hosts before the first pull resolves.
     void hostRepo.ready().catch((err) => {

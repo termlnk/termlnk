@@ -22,7 +22,10 @@ import {
   BackupService,
   HostSynchroniser,
   HttpSyncTransportService,
+  IdentitySynchroniser,
+  KnownHostSynchroniser,
   NoopSyncTransportService,
+  SshKeySynchroniser,
   SyncCryptoService,
   SyncOutboxService,
   SyncService,
@@ -74,6 +77,9 @@ export class MobileSyncPlugin extends Plugin {
       [ISyncService, { useClass: SyncService }],
       transportBinding,
       [HostSynchroniser, { useClass: HostSynchroniser }],
+      [IdentitySynchroniser, { useClass: IdentitySynchroniser }],
+      [SshKeySynchroniser, { useClass: SshKeySynchroniser }],
+      [KnownHostSynchroniser, { useClass: KnownHostSynchroniser }],
       [IMobileSyncService, { useClass: MobileSyncService }],
     ];
     registerDependencies(this._injector, dependencies);

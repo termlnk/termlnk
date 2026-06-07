@@ -18,6 +18,9 @@ import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { InjectSelf, Plugin, registerDependencies } from '@termlnk/core';
 import {
   IHostSyncRepository,
+  IIdentitySyncRepository,
+  IKnownHostSyncRepository,
+  ISshKeySyncRepository,
   ISyncConfigRepository,
   ISyncCursorRepository,
   ISyncFieldMetaRepository,
@@ -33,6 +36,14 @@ import {
   MobileSyncRowMetaRepository,
 } from '../sync/mobile-sync-repositories';
 import { IMobileHostRepository, MobileHostRepository } from '../storage/mobile-host-repository';
+import {
+  IMobileIdentityRepository,
+  IMobileKnownHostRepository,
+  IMobileSshKeyRepository,
+  MobileIdentityRepository,
+  MobileKnownHostRepository,
+  MobileSshKeyRepository,
+} from '../storage/mobile-keychain-repositories';
 import { IMobileSecretCipherService, MobileSecretCipherService } from '../storage/mobile-secret-cipher.service';
 import { IMobileSqliteDatabaseService, MobileSqliteDatabaseService } from '../storage/mobile-sqlite-database.service';
 import { ExpoSecureStoreAuthKeyValueStorage } from './expo-secure-store-auth-key-value-storage.service';
@@ -83,6 +94,15 @@ export class MobilePlatformPlugin extends Plugin {
       [ISyncCursorRepository, { useClass: MobileSyncCursorRepository }],
       [ISyncConfigRepository, { useClass: MobileSyncConfigRepository }],
       [IHostSyncRepository, { useExisting: IMobileHostRepository }],
+
+      // Keychain repositories (identity / ssh_key / known_host), each backing both its
+      // mobile CRUD token and the engine's sync contract token via useExisting.
+      [IMobileIdentityRepository, { useClass: MobileIdentityRepository }],
+      [IMobileSshKeyRepository, { useClass: MobileSshKeyRepository }],
+      [IMobileKnownHostRepository, { useClass: MobileKnownHostRepository }],
+      [IIdentitySyncRepository, { useExisting: IMobileIdentityRepository }],
+      [ISshKeySyncRepository, { useExisting: IMobileSshKeyRepository }],
+      [IKnownHostSyncRepository, { useExisting: IMobileKnownHostRepository }],
     ];
     registerDependencies(this._injector, dependencies);
   }
