@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMobileHost } from '../sync/mobile-sync-pull.service';
+import type { IMobileHost } from '../storage/types';
 import { useEffect, useState } from 'react';
-import { useSyncPullService } from '../core/core-context';
+import { useSyncService } from '../core/core-context';
 
 export interface IHostChildren {
   readonly groups: readonly IMobileHost[];
@@ -40,7 +40,7 @@ function compareSort(a: IMobileHost, b: IMobileHost): number {
 // O(1) per render past the initial subscription — fine for the host counts we
 // expect on mobile (low hundreds at most).
 export function useHostChildren(parentId: string): IHostChildren {
-  const pull = useSyncPullService();
+  const pull = useSyncService();
   const [children, setChildren] = useState<IHostChildren>(EMPTY);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export function useHostChildren(parentId: string): IHostChildren {
 // Recursive count for the group label ("12 items" subtitle). Counts all
 // descendants — hosts and nested groups — under `groupId`.
 export function useDescendantCount(groupId: string): number {
-  const pull = useSyncPullService();
+  const pull = useSyncService();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -108,7 +108,7 @@ export function useDescendantCount(groupId: string): number {
 }
 
 export function useHostById(hostId: string): IMobileHost | null {
-  const pull = useSyncPullService();
+  const pull = useSyncService();
   const [host, setHost] = useState<IMobileHost | null>(null);
 
   useEffect(() => {

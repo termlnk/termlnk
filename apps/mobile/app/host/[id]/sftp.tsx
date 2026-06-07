@@ -20,12 +20,12 @@
 import type { ISftpEntry } from '../../../src/sftp/mobile-sftp-client.service';
 import type { IHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.service';
-import type { IMobileHost } from '../../../src/sync/mobile-sync-pull.service';
+import type { IMobileHost } from '../../../src/storage/types';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { ArrowUp, File as FileIcon, Folder as FolderIcon } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { useCoreContext, useRecentSessionsRepository, useSyncPullService } from '../../../src/core/core-context';
+import { useCoreContext, useRecentSessionsRepository, useSyncService } from '../../../src/core/core-context';
 import { MobileSftpClientService } from '../../../src/sftp/mobile-sftp-client.service';
 import { autoConnectArgsFromVault } from '../../../src/ssh/auto-connect-from-vault';
 import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
@@ -59,7 +59,7 @@ function joinPath(base: string, segment: string): string {
 
 export default function SftpScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const pull = useSyncPullService();
+  const pull = useSyncService();
   const coreContext = useCoreContext();
   const recentRepo = useRecentSessionsRepository();
   const hostRepo = useMemo(

@@ -22,6 +22,7 @@ import { ExpoAppStateIdleProbe } from '../platform/expo-app-state-idle-probe.ser
 import { ExpoDeviceNameProvider } from '../platform/expo-device-name-provider.service';
 import { LibsodiumPasswordHasher } from '../platform/libsodium-password-hasher.service';
 import { MobilePlatformPlugin } from '../platform/mobile-platform.plugin';
+import { MobileSyncPlugin } from '../sync/mobile-sync.plugin';
 // `react-native-get-random-values` polyfills the global `crypto.getRandomValues` —
 // @noble/hashes, @noble/ciphers, and secure-remote-password all assume Web Crypto. The
 // import side-effect must run before any auth-core code path that calls randomBytes.
@@ -68,6 +69,10 @@ export function createMobileCore(): Core {
       [IPasswordHasher, { useClass: LibsodiumPasswordHasher }],
     ],
   });
+  // Bidirectional sync via the shared @termlnk/sync-engine. Registered after AuthCorePlugin
+  // so IMasterKeyService / ITokenManager are available, and after MobilePlatformPlugin which
+  // binds the expo-sqlite repository contracts the engine injects.
+  core.registerPlugin(MobileSyncPlugin, { cloudBaseUrl: env.cloudBaseUrl });
 
   core.start();
   return core;

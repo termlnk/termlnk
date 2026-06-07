@@ -14,12 +14,12 @@
  */
 
 import type { IRecentSession } from '../../src/sessions/recent-sessions-repository';
-import type { IMobileHost } from '../../src/sync/mobile-sync-pull.service';
+import type { IMobileHost } from '../../src/storage/types';
 import { useRouter } from 'expo-router';
 import { History } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
-import { useRecentSessionsRepository, useSyncPullService } from '../../src/core/core-context';
+import { useRecentSessionsRepository, useSyncService } from '../../src/core/core-context';
 import { EmptyState } from '../../src/ui/empty-state';
 import { HostRow } from '../../src/ui/host-row';
 import { ScreenContainer } from '../../src/ui/screen-container';
@@ -57,7 +57,7 @@ interface IResolvedSession {
 
 export default function SessionsTab() {
   const router = useRouter();
-  const pull = useSyncPullService();
+  const pull = useSyncService();
   const repo = useRecentSessionsRepository();
 
   const [sessions, setSessions] = useState<readonly IRecentSession[]>([]);

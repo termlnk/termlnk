@@ -15,12 +15,12 @@
 
 import type { IHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
 import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.service';
-import type { IMobileHost, IMobileHostFull } from '../../../src/sync/mobile-sync-pull.service';
+import type { IMobileHost, IMobileHostFull } from '../../../src/storage/types';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useCoreContext, useRecentSessionsRepository, useSyncPullService } from '../../../src/core/core-context';
+import { useCoreContext, useRecentSessionsRepository, useSyncService } from '../../../src/core/core-context';
 import { autoConnectArgsFromVault } from '../../../src/ssh/auto-connect-from-vault';
 import { buildShellResumptionCommand } from '../../../src/ssh/mobile-shell-resumption';
 import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
@@ -36,7 +36,7 @@ interface ManualCredentials {
 
 export default function TerminalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const pull = useSyncPullService();
+  const pull = useSyncService();
   const coreContext = useCoreContext();
   const recentRepo = useRecentSessionsRepository();
   const hostRepo = useMemo(

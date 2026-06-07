@@ -17,25 +17,21 @@ import type { IAuthService, IUserAccount } from '@termlnk/auth';
 import type { Core } from '@termlnk/core';
 import type { ReactNode } from 'react';
 import type { Observable } from 'rxjs';
-import { AuthState, IAuthService as IAuthServiceId, IMasterKeyService as IMasterKeyServiceId, ITokenStorageService as ITokenStorageServiceId } from '@termlnk/auth';
-import { ILogService as ILogServiceId, Quantity } from '@termlnk/core';
-import Constants from 'expo-constants';
+import type { IMobileSyncService } from '../sync/mobile-sync.service';
+import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
+import { Quantity } from '@termlnk/core';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { IRecentSessionsRepository } from '../sessions/recent-sessions-repository';
-import { IMobileHostRepository } from '../storage/mobile-host-repository';
-import { MobileSyncPullService } from '../sync/mobile-sync-pull.service';
+import { IMobileSyncService as IMobileSyncServiceId } from '../sync/mobile-sync.service';
 import { createMobileCore } from './create-mobile-core';
 
 interface ICoreContextValue {
   core: Core;
   authService: IAuthService | null;
-  // Lazy singleton — instantiated on first access from a screen that wants to render
-  // the synced vault. Holds the master key reference and cursor, so callers must NOT
-  // re-create it per screen.
-  getSyncPullService: () => MobileSyncPullService;
+  // The engine-backed sync facade (registered by MobileSyncPlugin). Singleton for the app
+  // lifetime; screens read `.hosts$` and call `.pull()`.
+  getSyncService: () => IMobileSyncService;
 }
-
-const CLIENT_ID = 'mobile-app';
 
 const CoreContext = createContext<ICoreContextValue | null>(null);
 
@@ -55,40 +51,18 @@ export function CoreProvider({ children }: { children: ReactNode }): ReactNode {
     return core.getInjector().get(IAuthServiceId, Quantity.OPTIONAL) ?? null;
   }, [core]);
 
-  // Lazy: built when a screen first asks for the synced hosts, then memoised on the
-  // CoreProvider closure so it survives across screens.
   const value = useMemo<ICoreContextValue>(() => {
-    let syncPull: MobileSyncPullService | null = null;
     return {
       core,
       authService,
-      getSyncPullService: () => {
-        if (!syncPull) {
-          const injector = core.getInjector();
-          const masterKey = injector.get(IMasterKeyServiceId);
-          const tokenStorage = injector.get(ITokenStorageServiceId);
-          const logService = injector.get(ILogServiceId);
-          const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
-          const fromExtra = typeof extra.cloudBaseUrl === 'string' ? extra.cloudBaseUrl : undefined;
-          const cloudBaseUrl = fromExtra ?? process.env.EXPO_PUBLIC_CLOUD_BASE_URL;
-          const hostRepo = injector.get(IMobileHostRepository);
-          syncPull = new MobileSyncPullService(
-            { cloudBaseUrl, clientId: CLIENT_ID },
-            masterKey,
-            tokenStorage,
-            logService,
-            hostRepo
-          );
-        }
-        return syncPull;
-      },
+      getSyncService: () => core.getInjector().get(IMobileSyncServiceId),
     };
   }, [core, authService]);
   return <CoreContext.Provider value={value}>{children}</CoreContext.Provider>;
 }
 
-export function useSyncPullService(): MobileSyncPullService {
-  return useCoreContext().getSyncPullService();
+export function useSyncService(): IMobileSyncService {
+  return useCoreContext().getSyncService();
 }
 
 export function useCoreContext(): ICoreContextValue {

@@ -13,12 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMobileHost } from '../sync/mobile-sync-pull.service';
+import type { IMobileHost } from '../storage/types';
 import { useRouter } from 'expo-router';
 import { Search, Server } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, Text, TextInput, View } from 'react-native';
-import { useSyncPullService } from '../core/core-context';
+import { useSyncService } from '../core/core-context';
 import { EmptyState } from '../ui/empty-state';
 import { HostRow } from '../ui/host-row';
 import { ScreenContainer } from '../ui/screen-container';
@@ -50,7 +50,7 @@ function matches(host: IMobileHost, query: string): boolean {
 
 export function HostListScreen({ parentId }: IHostListScreenProps) {
   const router = useRouter();
-  const pull = useSyncPullService();
+  const pull = useSyncService();
   const { groups, hosts } = useHostChildren(parentId);
 
   const [query, setQuery] = useState('');
