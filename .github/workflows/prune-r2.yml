@@ -1,0 +1,63 @@
+name: Prune R2 Releases
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: 'Number of most-recent stable versions to keep'
+        required: false
+        default: '2'
+        type: string
+      keep-prerelease:
+        description: 'Number of most-recent versions to keep per prerelease channel'
+        required: false
+        default: '2'
+        type: string
+      prefix:
+        description: 'R2 key prefix to prune'
+        required: false
+        default: 'desktop/'
+        type: string
+      dry-run:
+        description: 'Only report what would be deleted (no deletion)'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: prune-r2
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout (sparse — prune script only)
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            apps/desktop/scripts/prune-r2-releases.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install js-yaml
+        run: npm install --no-save --no-package-lock --silent js-yaml@4.1.1
+
+      - name: Prune
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          node apps/desktop/scripts/prune-r2-releases.mjs \
+            --bucket "${{ secrets.R2_BUCKET_NAME }}" \
+            --endpoint "${{ secrets.R2_ENDPOINT }}" \
+            --prefix "${{ inputs.prefix }}" \
+            --keep "${{ inputs.keep }}" \
+            --keep-prerelease "${{ inputs['keep-prerelease'] }}" \
+            ${{ inputs['dry-run'] && '--dry-run' || '' }}
