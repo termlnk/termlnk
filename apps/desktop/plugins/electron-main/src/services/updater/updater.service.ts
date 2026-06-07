@@ -15,11 +15,13 @@
 
 import type { IUpdateError, IUpdateInfo, IUpdateProgress, IUpdaterService } from '@termlnk/core';
 import type { Observable } from 'rxjs';
+import type { WindowManagerService } from '../window-manager/window-manager.service';
 import fs from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { Disposable, ILogService, UpdateStatus } from '@termlnk/core';
+import { IWindowManagerService } from '@termlnk/electron';
 import { app } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { BehaviorSubject, Subject, switchMap, timer } from 'rxjs';
@@ -63,7 +65,8 @@ export class UpdaterService extends Disposable implements IUpdaterService {
   private _inFlightCheck: Promise<IUpdateInfo | null> | null = null;
 
   constructor(
-    @ILogService private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @IWindowManagerService private readonly _windowManagerService: WindowManagerService
   ) {
     super();
 
@@ -132,6 +135,14 @@ export class UpdaterService extends Disposable implements IUpdaterService {
   }
 
   async quitAndInstall(isSilent = false, isForceRunAfter = true): Promise<void> {
+    // Only DOWNLOADED guarantees an installable artifact (mac: squirrelDownloadedUpdate,
+    // win/linux: installerPath); in any other state quitAndInstall leaves the app running,
+    // and a stale markWillQuit() would disable close-to-tray for the session.
+    if (this._status$.getValue() !== UpdateStatus.DOWNLOADED) {
+      this._logService.warn('[UpdaterService] quitAndInstall ignored: update not downloaded');
+      return;
+    }
+    this._windowManagerService.markWillQuit();
     autoUpdater.quitAndInstall(isSilent, isForceRunAfter);
   }
 

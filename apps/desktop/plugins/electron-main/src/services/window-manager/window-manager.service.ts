@@ -40,6 +40,12 @@ export class WindowManagerService extends RxDisposable implements IWindowManager
 
   private _closeInterceptor: ((windowId: number) => boolean) | null = null;
 
+  // Set once a real shutdown begins; the close interceptor reads it to allow
+  // real closes instead of hiding to tray.
+  private _isQuitting = false;
+
+  private readonly _onBeforeQuit = () => this.markWillQuit();
+
   constructor(
     @ILogService private readonly _logService: ILogService
   ) {
@@ -71,6 +77,19 @@ export class WindowManagerService extends RxDisposable implements IWindowManager
         this._closeInterceptor = null;
       }
     });
+  }
+
+  get isQuitting(): boolean {
+    return this._isQuitting;
+  }
+
+  /**
+   * Flag a quit before it begins. Squirrel.Mac closes all windows before
+   * app.quit(), so otherwise the close-to-tray interceptor would hide them
+   * and stall the install.
+   */
+  markWillQuit(): void {
+    this._isQuitting = true;
   }
 
   async getCurrentWindowId(): Promise<number> {
@@ -260,11 +279,13 @@ export class WindowManagerService extends RxDisposable implements IWindowManager
     for (const [event, handler] of Object.entries(appEvents)) {
       app.on(event as any, handler as any);
     }
+    app.on('before-quit', this._onBeforeQuit);
 
     return toDisposable(() => {
       for (const [event, handler] of Object.entries(appEvents)) {
         app.off(event as any, handler as any);
       }
+      app.off('before-quit', this._onBeforeQuit);
     });
   }
 

@@ -14,14 +14,15 @@
  */
 
 import type { MenuItemConstructorOptions } from 'electron';
+import type { WindowManagerService } from '../window-manager/window-manager.service';
 import process from 'node:process';
 import { createIdentifier, Disposable, ILogService, platform, Platform } from '@termlnk/core';
+import { IWindowManagerService } from '@termlnk/electron';
 import { app, BrowserWindow, Menu, nativeImage, Tray } from 'electron';
 import { join } from 'pathe';
 
 export interface ITrayService {
   readonly isActive: boolean;
-  readonly isQuitting: boolean;
   create(): void;
   destroy(): void;
 }
@@ -44,26 +45,16 @@ function getTrayIconPath(): string {
 
 export class TrayService extends Disposable implements ITrayService {
   private _tray: Tray | null = null;
-  private _isQuitting = false;
-
-  private readonly _onBeforeQuit = () => {
-    this._isQuitting = true;
-  };
 
   constructor(
-    @ILogService private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @IWindowManagerService private readonly _windowManagerService: WindowManagerService
   ) {
     super();
-
-    app.on('before-quit', this._onBeforeQuit);
   }
 
   get isActive(): boolean {
     return this._tray !== null && !this._tray.isDestroyed();
-  }
-
-  get isQuitting(): boolean {
-    return this._isQuitting;
   }
 
   create(): void {
@@ -102,7 +93,6 @@ export class TrayService extends Disposable implements ITrayService {
 
   override dispose(): void {
     this.destroy();
-    app.off('before-quit', this._onBeforeQuit);
     super.dispose();
   }
 
@@ -143,7 +133,7 @@ export class TrayService extends Disposable implements ITrayService {
       {
         label: 'Quit',
         click: () => {
-          this._isQuitting = true;
+          this._windowManagerService.markWillQuit();
           app.quit();
         },
       },
