@@ -13,19 +13,20 @@
  * governing permissions and limitations under the License.
  */
 
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { HostEditScreen } from '../../src/hosts/host-edit-screen';
 
 export default function HostEditRoute() {
-  const params = useLocalSearchParams<{ id?: string; pid?: string; kind?: string }>();
+  const params = useLocalSearchParams<{ id?: string; pid?: string; kind?: string; addr?: string; username?: string; port?: string }>();
   const kind = params.kind === 'group' ? 'group' : 'host';
-  const title = params.id
-    ? (kind === 'group' ? 'Edit Group' : 'Edit Host')
-    : (kind === 'group' ? 'New Group' : 'New Host');
   return (
-    <>
-      <Stack.Screen options={{ title, headerShown: true }} />
-      <HostEditScreen hostId={params.id} parentId={params.pid} kind={kind} />
-    </>
+    <HostEditScreen
+      hostId={params.id}
+      parentId={params.pid}
+      kind={kind}
+      prefillAddr={params.addr}
+      prefillUsername={params.username}
+      prefillPort={params.port}
+    />
   );
 }

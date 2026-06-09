@@ -15,23 +15,25 @@
 
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { useThemeColors } from '../theme/theme-provider';
 
-// Shared form primitives for the mobile CRUD surfaces. Termius-style grouped rows on a
-// one-bg card with a line divider, Base46 palette throughout.
+// Shared form primitives for the mobile CRUD surfaces. Termius-style grouped rows
+// on a raised card with hairline dividers, driven by the semantic theme tokens so
+// they adapt to the OS light/dark scheme.
 
 export function FormSection({ title, children, footer }: { title?: string; children: ReactNode; footer?: string }) {
   return (
     <View className="mt-5">
       {title != null && (
-        <Text className="mb-2 px-4 text-[11px] font-semibold uppercase tracking-wider text-grey-fg">
+        <Text className="mb-2 px-4 text-[12px] font-semibold uppercase tracking-wider text-content-tertiary">
           {title}
         </Text>
       )}
-      <View className="mx-4 overflow-hidden rounded-xl border border-line bg-one-bg">
+      <View className="mx-4 overflow-hidden rounded-2xl bg-surface-raised">
         {children}
       </View>
       {footer != null && (
-        <Text className="mt-2 px-4 text-[12px] text-grey-fg">{footer}</Text>
+        <Text className="mt-2 px-4 text-[13px] leading-[18px] text-content-secondary">{footer}</Text>
       )}
     </View>
   );
@@ -39,7 +41,7 @@ export function FormSection({ title, children, footer }: { title?: string; child
 
 export function FieldRow({ children, last }: { children: ReactNode; last?: boolean }) {
   return (
-    <View className={last ? '' : 'border-b border-line'}>
+    <View className={last ? '' : 'border-b border-divider'}>
       {children}
     </View>
   );
@@ -57,24 +59,26 @@ interface ITextFieldProps {
   readonly last?: boolean;
 }
 
+// Stacked label-over-input field (keychain, AI settings, proxy details).
 export function TextField(props: ITextFieldProps) {
+  const colors = useThemeColors();
   return (
     <FieldRow last={props.last}>
       <View className="px-4 py-2.5">
-        <Text className="mb-1 text-[11px] font-medium uppercase tracking-wide text-grey-fg">
+        <Text className="mb-1 text-[12px] font-medium uppercase tracking-wide text-content-tertiary">
           {props.label}
         </Text>
         <TextInput
           value={props.value}
           onChangeText={props.onChangeText}
           placeholder={props.placeholder}
-          placeholderTextColor="#42464e"
+          placeholderTextColor={colors.contentTertiary}
           secureTextEntry={props.secureTextEntry}
           keyboardType={props.keyboardType}
           autoCapitalize={props.autoCapitalize ?? 'none'}
           autoCorrect={false}
           multiline={props.multiline}
-          className={`text-[15px] text-light-grey ${props.multiline ? 'min-h-[88px]' : ''}`}
+          className={`text-[16px] text-content ${props.multiline ? 'min-h-[88px]' : ''}`}
           style={props.multiline ? { textAlignVertical: 'top' } : undefined}
         />
       </View>
@@ -82,16 +86,52 @@ export function TextField(props: ITextFieldProps) {
   );
 }
 
+interface IInlineFieldProps {
+  readonly label?: string;
+  readonly value: string;
+  readonly onChangeText: (v: string) => void;
+  readonly placeholder?: string;
+  readonly secureTextEntry?: boolean;
+  readonly keyboardType?: 'default' | 'numeric' | 'email-address' | 'url';
+  readonly autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  readonly trailing?: ReactNode;
+}
+
+// Single-row field: optional left label, right-aligned input, optional trailing
+// node. Matches the Termius New Host card (Label / IP / Port / Username rows).
+export function InlineField(props: IInlineFieldProps) {
+  const colors = useThemeColors();
+  const hasLabel = props.label != null;
+  return (
+    <View className="flex-row items-center px-4 py-3.5">
+      {hasLabel && <Text className="mr-3 text-[16px] text-content">{props.label}</Text>}
+      <TextInput
+        value={props.value}
+        onChangeText={props.onChangeText}
+        placeholder={props.placeholder}
+        placeholderTextColor={colors.contentTertiary}
+        secureTextEntry={props.secureTextEntry}
+        keyboardType={props.keyboardType}
+        autoCapitalize={props.autoCapitalize ?? 'none'}
+        autoCorrect={false}
+        className={`flex-1 text-[16px] text-content ${hasLabel ? 'text-right' : ''}`}
+      />
+      {props.trailing != null && <View className="ml-3">{props.trailing}</View>}
+    </View>
+  );
+}
+
 export function SwitchField({ label, value, onValueChange, last }: { label: string; value: boolean; onValueChange: (v: boolean) => void; last?: boolean }) {
+  const colors = useThemeColors();
   return (
     <FieldRow last={last}>
       <View className="flex-row items-center justify-between px-4 py-3">
-        <Text className="text-[15px] text-light-grey">{label}</Text>
+        <Text className="text-[16px] text-content">{label}</Text>
         <Switch
           value={value}
           onValueChange={onValueChange}
-          trackColor={{ false: '#353b45', true: '#61afef' }}
-          thumbColor="#6f737b"
+          trackColor={{ false: colors.divider, true: colors.accent }}
+          thumbColor="#ffffff"
         />
       </View>
     </FieldRow>
@@ -109,7 +149,7 @@ export function SegmentedField<T extends string>({ label, value, options, onChan
   return (
     <FieldRow last={last}>
       <View className="px-4 py-2.5">
-        <Text className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-grey-fg">
+        <Text className="mb-1.5 text-[12px] font-medium uppercase tracking-wide text-content-tertiary">
           {label}
         </Text>
         <View className="flex-row flex-wrap gap-1.5">
@@ -119,9 +159,9 @@ export function SegmentedField<T extends string>({ label, value, options, onChan
               <Pressable
                 key={opt.value}
                 onPress={() => onChange(opt.value)}
-                className={`rounded-md px-3 py-1.5 ${active ? 'bg-nord-blue' : 'bg-one-bg2'}`}
+                className={`rounded-lg px-3 py-1.5 ${active ? 'bg-accent' : 'bg-surface-sunken'}`}
               >
-                <Text className={`text-[13px] ${active ? 'font-medium text-black' : 'text-grey-fg2'}`}>
+                <Text className={`text-[14px] ${active ? 'font-medium text-accent-content' : 'text-content-secondary'}`}>
                   {opt.label}
                 </Text>
               </Pressable>
@@ -137,24 +177,25 @@ export function SegmentedField<T extends string>({ label, value, options, onChan
 export function NavField({ label, value, onPress, last }: { label: string; value: string; onPress: () => void; last?: boolean }) {
   return (
     <FieldRow last={last}>
-      <Pressable onPress={onPress} className="flex-row items-center justify-between px-4 py-3 active:bg-one-bg2">
-        <Text className="text-[15px] text-light-grey">{label}</Text>
-        <Text className="ml-2 text-[14px] text-grey-fg2" numberOfLines={1}>{value}</Text>
+      <Pressable onPress={onPress} className="flex-row items-center justify-between px-4 py-3.5 active:bg-surface-sunken">
+        <Text className="text-[16px] text-content">{label}</Text>
+        <Text className="ml-2 text-[15px] text-content-secondary" numberOfLines={1}>{value}</Text>
       </Pressable>
     </FieldRow>
   );
 }
 
 export function PrimaryButton({ title, onPress, disabled, busy }: { title: string; onPress: () => void; disabled?: boolean; busy?: boolean }) {
+  const colors = useThemeColors();
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || busy}
-      className={`flex-row items-center justify-center rounded-xl py-3.5 ${disabled || busy ? 'bg-one-bg2' : 'bg-nord-blue active:opacity-80'}`}
+      className={`flex-row items-center justify-center rounded-2xl py-4 ${disabled || busy ? 'bg-surface-sunken' : 'bg-accent active:opacity-80'}`}
     >
       {busy
-        ? <ActivityIndicator color="#1e222a" />
-        : <Text className={`text-[15px] font-semibold ${disabled ? 'text-grey-fg' : 'text-black'}`}>{title}</Text>}
+        ? <ActivityIndicator color={colors.accentContent} />
+        : <Text className={`text-[16px] font-semibold ${disabled ? 'text-content-tertiary' : 'text-accent-content'}`}>{title}</Text>}
     </Pressable>
   );
 }
@@ -163,9 +204,9 @@ export function DangerButton({ title, onPress }: { title: string; onPress: () =>
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center justify-center rounded-xl border border-line py-3.5 active:bg-one-bg"
+      className="flex-row items-center justify-center rounded-2xl border border-divider py-4 active:bg-surface-sunken"
     >
-      <Text className="text-[15px] font-medium text-red">{title}</Text>
+      <Text className="text-[16px] font-medium text-danger">{title}</Text>
     </Pressable>
   );
 }

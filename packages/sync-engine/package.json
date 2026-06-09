@@ -10,7 +10,11 @@
     "type": "git"
   },
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "react-native": "./lib/cjs/index.js",
+      "default": "./src/index.ts"
+    },
     "./*": "./src/*"
   },
   "main": "./src/index.ts",

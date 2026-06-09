@@ -13,16 +13,19 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IBiometricAvailability } from '../src/platform/biometric.service';
+import type { IBiometricAvailability } from '@termlnk/auth-mobile';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { useAuthService } from '../src/core/core-context';
-import { BiometricService } from '../src/platform/biometric.service';
+import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useAuthService, useBiometricService } from '../src/core/core-context';
+import { useThemeColors } from '../src/theme/theme-provider';
+import { PrimaryButton } from '../src/ui/form';
 
 export default function Login() {
   const auth = useAuthService();
   const router = useRouter();
+  const bio = useBiometricService();
+  const colors = useThemeColors();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,9 +34,8 @@ export default function Login() {
   const [biometric, setBiometric] = useState<IBiometricAvailability | null>(null);
 
   useEffect(() => {
-    const service = new BiometricService();
-    service.getAvailability().then(setBiometric).catch(() => setBiometric(null));
-  }, []);
+    bio.getAvailability().then(setBiometric).catch(() => setBiometric(null));
+  }, [bio]);
 
   const onSubmit = async () => {
     if (!auth || busy) {
@@ -43,7 +45,7 @@ export default function Login() {
     setBusy(true);
     try {
       await auth.login({ email: email.trim(), password });
-      router.replace('/(tabs)/hosts');
+      router.replace('/(tabs)/vaults');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -56,18 +58,18 @@ export default function Login() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 justify-center bg-black px-6"
+      className="flex-1 justify-center bg-surface px-6"
     >
       <Stack.Screen options={{ title: 'Sign in' }} />
-      <View className="rounded-2xl bg-one-bg p-6">
-        <Text className="mb-2 text-[22px] font-semibold text-light-grey">
+      <View className="rounded-2xl bg-surface-raised p-6">
+        <Text className="mb-2 text-[22px] font-semibold text-content">
           Sign in to Termlnk
         </Text>
-        <Text className="mb-5 text-[13px] leading-5 text-grey-fg">
+        <Text className="mb-5 text-[13px] leading-5 text-content-secondary">
           Your master password unlocks the local vault and is never sent in plaintext.
         </Text>
 
-        <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">Email</Text>
+        <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">Email</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -77,11 +79,11 @@ export default function Login() {
           textContentType="emailAddress"
           editable={!busy}
           placeholder="you@example.com"
-          placeholderTextColor="#42464e"
-          className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
+          placeholderTextColor={colors.contentTertiary}
+          className="rounded-xl border border-divider bg-field px-3 py-3 text-[16px] text-content"
         />
 
-        <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">Master password</Text>
+        <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">Master password</Text>
         <TextInput
           value={password}
           onChangeText={setPassword}
@@ -90,38 +92,32 @@ export default function Login() {
           textContentType="password"
           editable={!busy}
           placeholder="••••••••"
-          placeholderTextColor="#42464e"
-          className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
+          placeholderTextColor={colors.contentTertiary}
+          className="rounded-xl border border-divider bg-field px-3 py-3 text-[16px] text-content"
         />
 
         {error != null && (
-          <Text className="mt-3 text-[13px] text-red">{error}</Text>
+          <Text className="mt-3 text-[13px] text-danger">{error}</Text>
         )}
 
         {biometric?.capability === 'available' && (
-          <Text className="mt-3 text-[12px] text-blue">
+          <Text className="mt-3 text-[12px] text-accent">
             {biometric.displayName}
             {' '}
             unlock will be available after first sign-in.
           </Text>
         )}
 
-        <Pressable
-          onPress={onSubmit}
-          disabled={submitDisabled}
-          className={`mt-5 items-center rounded-lg py-3 active:opacity-80 ${submitDisabled ? 'bg-one-bg3 opacity-50' : 'bg-blue'}`}
-        >
-          {busy
-            ? <ActivityIndicator color="#1e222a" />
-            : <Text className="text-[15px] font-semibold text-black">Sign in</Text>}
-        </Pressable>
+        <View className="mt-5">
+          <PrimaryButton title="Sign in" onPress={onSubmit} disabled={submitDisabled} busy={busy} />
+        </View>
 
         <Pressable
           onPress={() => router.push('/register')}
           disabled={busy}
           className="mt-4 items-center"
         >
-          <Text className="text-[13px] text-blue">
+          <Text className="text-[13px] text-accent">
             Don&apos;t have an account? Create one
           </Text>
         </Pressable>

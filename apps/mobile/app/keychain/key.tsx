@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ISshKeyAlgorithm } from '../../src/storage/types';
+import type { ISshKeyAlgorithm } from '@termlnk/database-mobile';
 import { RnRussh } from '@termlnk/react-native-russh';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -142,7 +142,7 @@ export default function KeyEditRoute() {
           {isEdit && existing?.publicKeyFingerprint != null && (
             <FormSection title="Fingerprint">
               <View className="px-4 py-3">
-                <Text className="text-[13px] text-grey-fg2" selectable>{existing.publicKeyFingerprint}</Text>
+                <Text className="text-[13px] text-content-secondary" selectable>{existing.publicKeyFingerprint}</Text>
               </View>
             </FormSection>
           )}

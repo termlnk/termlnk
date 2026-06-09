@@ -17,23 +17,20 @@ import type { IAuthService, IUserAccount } from '@termlnk/auth';
 import type { Core } from '@termlnk/core';
 import type { ReactNode } from 'react';
 import type { Observable } from 'rxjs';
-import type { IMobileSyncService } from '../sync/mobile-sync.service';
+import { IMobileAiService } from '@termlnk/agent-mobile';
 import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
+import { IBiometricService } from '@termlnk/auth-mobile';
 import { Quantity } from '@termlnk/core';
+import { IMobileHostRepository, IMobileIdentityRepository, IMobileKnownHostRepository, IMobilePreferencesService, IMobileSshKeyRepository, IRecentSessionsRepository } from '@termlnk/database-mobile';
+import { IMobileSftpClientFactory } from '@termlnk/sftp-mobile';
+import { IMobileSyncService } from '@termlnk/sync-mobile';
+import { IMobileConnectionService, IMobileSshClientService } from '@termlnk/terminal-mobile';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { IMobileAiService } from '../ai/mobile-ai.service';
-import { IMobilePreferencesService } from '../platform/mobile-preferences.service';
-import { IRecentSessionsRepository } from '../sessions/recent-sessions-repository';
-import { IMobileHostRepository } from '../storage/mobile-host-repository';
-import { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository } from '../storage/mobile-keychain-repositories';
-import { IMobileSyncService as IMobileSyncServiceId } from '../sync/mobile-sync.service';
 import { createMobileCore } from './create-mobile-core';
 
 interface ICoreContextValue {
   core: Core;
   authService: IAuthService | null;
-  // The engine-backed sync facade (registered by MobileSyncPlugin). Singleton for the app
-  // lifetime; screens read `.hosts$` and call `.pull()`.
   getSyncService: () => IMobileSyncService;
 }
 
@@ -59,7 +56,7 @@ export function CoreProvider({ children }: { children: ReactNode }): ReactNode {
     return {
       core,
       authService,
-      getSyncService: () => core.getInjector().get(IMobileSyncServiceId),
+      getSyncService: () => core.getInjector().get(IMobileSyncService),
     };
   }, [core, authService]);
   return <CoreContext.Provider value={value}>{children}</CoreContext.Provider>;
@@ -95,53 +92,81 @@ function useObservableValue<T>(observable$: Observable<T> | undefined, initial: 
 
 export function useAuthState(): AuthState {
   const auth = useAuthService();
-  return useObservableValue(auth?.authState$, AuthState.Unauthenticated);
+  // Restoring is the pre-subscription default: the service starts there too, so the first
+  // render never assumes signed-out while the persisted session is still being rehydrated.
+  return useObservableValue(auth?.authState$, AuthState.Restoring);
 }
 
 export function useCurrentUser(): IUserAccount | null {
   const auth = useAuthService();
   return useObservableValue(auth?.currentUser$, null);
 }
-
 // Resolves the singleton RecentSessionsRepository; `.ready()` is the caller's
 // responsibility (the Recent tab calls it on mount; other screens implicitly open the
 // DB via touch()).
-export function useRecentSessionsRepository() {
+export function useRecentSessionsRepository(): IRecentSessionsRepository {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IRecentSessionsRepository), [core]);
 }
 
-export function useHostRepository() {
+export function useHostRepository(): IMobileHostRepository {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobileHostRepository), [core]);
 }
 
-export function useIdentityRepository() {
+export function useIdentityRepository(): IMobileIdentityRepository {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobileIdentityRepository), [core]);
 }
 
-export function useSshKeyRepository() {
+export function useSshKeyRepository(): IMobileSshKeyRepository {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobileSshKeyRepository), [core]);
 }
 
-export function useKnownHostRepository() {
+export function useKnownHostRepository(): IMobileKnownHostRepository {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobileKnownHostRepository), [core]);
 }
 
-export function usePreferencesService() {
+export function usePreferencesService(): IMobilePreferencesService {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobilePreferencesService), [core]);
 }
 
-export function useAiService() {
+export function useAiService(): IMobileAiService {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobileAiService), [core]);
 }
 
-// Subscribe to an RxJS Observable and re-render on each emission.
-export function useObservable<T>(observable$: Observable<T> | undefined, initial: T): T {
-  return useObservableValue(observable$, initial);
+export function useSshClientService(): IMobileSshClientService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSshClientService), [core]);
+}
+
+export function useConnectionService(): IMobileConnectionService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileConnectionService), [core]);
+}
+
+export function useSftpClientFactory(): IMobileSftpClientFactory {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSftpClientFactory), [core]);
+}
+
+export function useBiometricService(): IBiometricService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IBiometricService), [core]);
+}
+
+export function useObservable<T, TInitial extends T = T>(observable$: Observable<T> | undefined, initial: TInitial): T {
+  const [value, setValue] = useState<T>(initial);
+  useEffect(() => {
+    if (!observable$) {
+      return;
+    }
+    const sub = observable$.subscribe((v) => setValue(v));
+    return () => sub.unsubscribe();
+  }, [observable$]);
+  return value;
 }

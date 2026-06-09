@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMobileHost } from '../storage/types';
+import type { IMobileHost } from '@termlnk/database-mobile';
 import { useEffect, useState } from 'react';
 import { useSyncService } from '../core/core-context';
 

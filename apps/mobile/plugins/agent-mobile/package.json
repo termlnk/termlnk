@@ -1,0 +1,36 @@
+{
+  "name": "@termlnk/agent-mobile",
+  "version": "0.2.1",
+  "private": true,
+  "description": "Mobile AI assistant plugin — OpenAI-compatible chat client backed by expo-secure-store for API keys.",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "peerDependencies": {
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database-mobile": "workspace:*",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database-mobile": "workspace:*",
+    "expo-secure-store": "^56.0.4"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}

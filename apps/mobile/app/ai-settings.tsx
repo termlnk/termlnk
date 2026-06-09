@@ -15,7 +15,7 @@
 
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useAiService, usePreferencesService } from '../src/core/core-context';
 import { DangerButton, FormSection, PrimaryButton, TextField } from '../src/ui/form';
 import { ScreenContainer } from '../src/ui/screen-container';

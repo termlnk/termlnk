@@ -15,8 +15,10 @@
 
 import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useAuthService } from '../src/core/core-context';
+import { useThemeColors } from '../src/theme/theme-provider';
+import { PrimaryButton } from '../src/ui/form';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -25,6 +27,7 @@ type PasswordHint = 'ok' | 'short' | 'mismatch';
 export default function Register() {
   const auth = useAuthService();
   const router = useRouter();
+  const colors = useThemeColors();
 
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -64,7 +67,7 @@ export default function Register() {
         password,
         displayName: trimmedDisplayName.length > 0 ? trimmedDisplayName : undefined,
       });
-      router.replace('/(tabs)/hosts');
+      router.replace('/(tabs)/vaults');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -72,26 +75,28 @@ export default function Register() {
     }
   };
 
+  const inputClass = 'rounded-xl border border-divider bg-field px-3 py-3 text-[16px] text-content';
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 bg-black"
+      className="flex-1 bg-surface"
     >
       <Stack.Screen options={{ title: 'Sign up' }} />
       <ScrollView
         contentContainerClassName="grow justify-center p-6"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="rounded-2xl bg-one-bg p-6">
-          <Text className="mb-2 text-[22px] font-semibold text-light-grey">
+        <View className="rounded-2xl bg-surface-raised p-6">
+          <Text className="mb-2 text-[22px] font-semibold text-content">
             Create your Termlnk account
           </Text>
-          <Text className="mb-5 text-[13px] leading-[18px] text-grey-fg">
+          <Text className="mb-5 text-[13px] leading-[18px] text-content-secondary">
             Your master password locks the local vault. It is never sent in plaintext
             and cannot be recovered — losing it means losing your data.
           </Text>
 
-          <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">Email</Text>
+          <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">Email</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
@@ -101,11 +106,11 @@ export default function Register() {
             textContentType="emailAddress"
             editable={!busy}
             placeholder="you@example.com"
-            placeholderTextColor="#42464e"
-            className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
+            placeholderTextColor={colors.contentTertiary}
+            className={inputClass}
           />
 
-          <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">
+          <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">
             Display name (optional)
           </Text>
           <TextInput
@@ -115,11 +120,11 @@ export default function Register() {
             autoCorrect={false}
             editable={!busy}
             placeholder="How should we address you?"
-            placeholderTextColor="#42464e"
-            className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
+            placeholderTextColor={colors.contentTertiary}
+            className={inputClass}
           />
 
-          <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">Master password</Text>
+          <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">Master password</Text>
           <TextInput
             value={password}
             onChangeText={setPassword}
@@ -128,11 +133,11 @@ export default function Register() {
             textContentType="newPassword"
             editable={!busy}
             placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-            placeholderTextColor="#42464e"
-            className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
+            placeholderTextColor={colors.contentTertiary}
+            className={inputClass}
           />
 
-          <Text className="mb-1.5 mt-3 text-[12px] text-grey-fg">
+          <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">
             Confirm master password
           </Text>
           <TextInput
@@ -143,12 +148,12 @@ export default function Register() {
             textContentType="newPassword"
             editable={!busy}
             placeholder="Re-enter your master password"
-            placeholderTextColor="#42464e"
-            className="rounded-lg bg-one-bg2 px-3 py-2.5 text-[15px] text-light-grey"
+            placeholderTextColor={colors.contentTertiary}
+            className={inputClass}
           />
 
           {hint === 'short' && (
-            <Text className="mt-2.5 text-[12px] text-yellow">
+            <Text className="mt-2.5 text-[12px] text-danger">
               Use at least
               {' '}
               {MIN_PASSWORD_LENGTH}
@@ -157,30 +162,24 @@ export default function Register() {
             </Text>
           )}
           {hint === 'mismatch' && (
-            <Text className="mt-2.5 text-[12px] text-yellow">
+            <Text className="mt-2.5 text-[12px] text-danger">
               Passwords do not match yet.
             </Text>
           )}
           {error != null && (
-            <Text className="mt-3 text-[13px] text-red">{error}</Text>
+            <Text className="mt-3 text-[13px] text-danger">{error}</Text>
           )}
 
-          <Pressable
-            onPress={onSubmit}
-            disabled={!canSubmit}
-            className={`mt-5 items-center rounded-lg py-3 active:opacity-80 ${canSubmit ? 'bg-blue' : 'bg-one-bg3 opacity-50'}`}
-          >
-            {busy
-              ? <ActivityIndicator color="#1e222a" />
-              : <Text className="text-[15px] font-semibold text-black">Sign up</Text>}
-          </Pressable>
+          <View className="mt-5">
+            <PrimaryButton title="Sign up" onPress={onSubmit} disabled={!canSubmit} busy={busy} />
+          </View>
 
           <Pressable
             onPress={() => router.replace('/login')}
             disabled={busy}
             className="mt-4 items-center"
           >
-            <Text className="text-[13px] text-blue">
+            <Text className="text-[13px] text-accent">
               Already have an account? Sign in
             </Text>
           </Pressable>

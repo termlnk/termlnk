@@ -35,4 +35,38 @@
   --color-statusline-bg: #22262e;
   --color-lightbg: #2d313a;
   --color-folder-bg: #61afef;
+
+  /* Semantic chrome tokens. Dark (Base46 onedark) values live here so Tailwind
+     generates dark-safe utilities at compile time; ThemeProvider overrides them
+     at runtime per OS color scheme via VariableContextProvider. The terminal and
+     avatar code keep using the raw Base46 tokens above and are unaffected. */
+  --color-surface: #1e222a;
+  --color-surface-raised: #282c34;
+  --color-surface-sunken: #1b1f27;
+  --color-content: #d7dae0;
+  --color-content-secondary: #9aa0aa;
+  --color-content-tertiary: #6b727f;
+  --color-divider: #31353d;
+  --color-accent: #61afef;
+  --color-accent-content: #1e222a;
+  --color-danger: #e06c75;
+  --color-tabbar: #252931;
+  --color-field: #2d313a;
+}
+
+/* Light defaults (Termius management chrome). These are the runtime fallback
+   before ThemeProvider mounts and the values the provider feeds in light mode. */
+:root {
+  --color-surface: #eceef0;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #e2e4e8;
+  --color-content: #10233f;
+  --color-content-secondary: #5b6573;
+  --color-content-tertiary: #9aa3af;
+  --color-divider: #dfe2e6;
+  --color-accent: #3b7bf6;
+  --color-accent-content: #ffffff;
+  --color-danger: #d7373f;
+  --color-tabbar: #ffffff;
+  --color-field: #ffffff;
 }

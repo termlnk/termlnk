@@ -13,67 +13,81 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
-import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.service';
-import type { IMobileHost, IMobileHostFull } from '../../../src/storage/types';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import type { IMobileHost } from '@termlnk/database-mobile';
+import type { IMobileSshSession } from '@termlnk/terminal-mobile';
+import { buildShellResumptionCommand, buildXtermHtml, xtermBridge } from '@termlnk/terminal-mobile';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useCoreContext, useIdentityRepository, usePreferencesService, useRecentSessionsRepository, useSshKeyRepository, useSyncService } from '../../../src/core/core-context';
-import { resolveHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
-import { buildShellResumptionCommand } from '../../../src/ssh/mobile-shell-resumption';
-import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
-import { TerminalKeyBar } from '../../../src/terminal/terminal-keybar';
-import { buildXtermHtml, xtermBridge } from '../../../src/ssh/xterm-webview-html';
-import { IMobileHostRepository } from '../../../src/storage/mobile-host-repository';
+import { useConnectionService, usePreferencesService, useRecentSessionsRepository, useSyncService } from '../../../src/core/core-context';
+import { TerminalAccessory } from '../../../src/terminal/terminal-accessory';
 
-type ConnectState = 'loading-host' | 'awaiting-credentials' | 'connecting' | 'connected' | 'error';
+type ConnectState = 'connecting' | 'awaiting-credentials' | 'connected' | 'error';
 
-interface ManualCredentials {
+interface IManualCredentials {
   username: string;
   password: string;
 }
 
 export default function TerminalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const pull = useSyncService();
-  const coreContext = useCoreContext();
   const recentRepo = useRecentSessionsRepository();
-  const hostRepo = useMemo(
-    () => coreContext.core.getInjector().get(IMobileHostRepository),
-    [coreContext]
-  );
-  const identityRepo = useIdentityRepository();
-  const keyRepo = useSshKeyRepository();
+  const connectionService = useConnectionService();
   const prefsService = usePreferencesService();
   // Snapshot the font size once for this session. Subscribing reactively would rebuild
   // the WebView `source` on any prefs change and tear down a live terminal mid-session;
   // a new font size instead applies the next time the terminal is opened.
   const [fontSize, setFontSize] = useState<number | null>(null);
-  const sshClient = useMemo(() => new MobileSshClientService(), []);
+  // Live value shown in the theme panel stepper; decoupled from the snapshot above
+  // so adjusting it never rebuilds the WebView mid-session.
+  const [displayFontSize, setDisplayFontSize] = useState(13);
   const webviewRef = useRef<WebView>(null);
+  // Tracks whether the soft keyboard (xterm textarea focus) is currently raised.
+  const keyboardVisibleRef = useRef(true);
 
   const [host, setHost] = useState<IMobileHost | null>(null);
-  const [state, setState] = useState<ConnectState>('loading-host');
+  const [state, setState] = useState<ConnectState>('connecting');
   const [error, setError] = useState<string | null>(null);
-  const [manualCreds, setManualCreds] = useState<ManualCredentials>({ username: '', password: '' });
+  const [manualCreds, setManualCreds] = useState<IManualCredentials>({ username: '', password: '' });
   const [session, setSession] = useState<IMobileSshSession | null>(null);
   // startShell needs the WebView's fit-size up front — the russh wrapper has
   // no window-change, so the first PTY dimensions are also the final ones.
   const shellStartedRef = useRef(false);
-  // Cache the full record (with decrypted credential) for the duration of this screen
-  // so onConnect re-uses the plaintext without another SQLite read.
-  const fullHostRef = useRef<IMobileHostFull | null>(null);
-  // Guard against double-auto-connect when the hosts$ subscription emits more than
-  // once before connecting completes.
-  const autoConnectedRef = useRef(false);
+  // Lands the host in the Recent tab once, on the first connected emission.
+  const touchedRef = useRef(false);
 
   const xtermHtml = useMemo(() => buildXtermHtml(fontSize ?? 13), [fontSize]);
 
   useEffect(() => {
-    void prefsService.ready().then(() => setFontSize(prefsService.get().terminalFontSize));
+    void prefsService.ready().then(() => {
+      const fs = prefsService.get().terminalFontSize;
+      setFontSize(fs);
+      setDisplayFontSize(fs);
+    });
   }, [prefsService]);
+
+  // Font-size changes persist and apply on the next connect (the running session
+  // keeps its snapshot to avoid tearing down the WebView).
+  const onFontDelta = useCallback((delta: number) => {
+    setDisplayFontSize((prev) => {
+      const next = Math.min(22, Math.max(9, prev + delta));
+      void prefsService.update({ terminalFontSize: next });
+      return next;
+    });
+  }, [prefsService]);
+
+  const onToggleKeyboard = useCallback(() => {
+    const focus = !keyboardVisibleRef.current;
+    keyboardVisibleRef.current = focus;
+    webviewRef.current?.injectJavaScript(
+      focus
+        ? 'window.__termlnkTerm && window.__termlnkTerm.focus(); true;'
+        : 'document.activeElement && document.activeElement.blur && document.activeElement.blur(); true;'
+    );
+  }, []);
 
   // Subscribe to the public hosts stream for the row metadata (label, addr, port).
   useEffect(() => {
@@ -83,61 +97,42 @@ export default function TerminalScreen() {
     return () => sub.unsubscribe();
   }, [pull, id]);
 
-  const connect = useCallback(async (args: IHostConnectArgs) => {
-    setState('connecting');
-    setError(null);
-    shellStartedRef.current = false;
-    try {
-      const next = await sshClient.connect({
-        ...args,
-        hostId: id,
-      });
-      setSession(next);
-      setState('connected');
-      // Land in the Recent tab. Best-effort — a failed touch must not break the
-      // session that already succeeded.
-      void recentRepo.touch(id, 'terminal').catch(() => {});
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection failed');
-      setState('error');
-      autoConnectedRef.current = false;
-    }
-  }, [sshClient, id, recentRepo]);
-
-  // Resolve full record with plaintext credential, then auto-connect when possible.
+  // The connection coordinator owns the SSH transport (resolve + connect, deduped with the
+  // list tap). This screen attaches to the live session and drives the shell on top of it.
   useEffect(() => {
-    if (!host || autoConnectedRef.current) {
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const full = await hostRepo.getInfo(id);
-        if (cancelled) {
-          return;
-        }
-        fullHostRef.current = full;
-        if (full) {
-          const auto = await resolveHostConnectArgs(full, identityRepo, keyRepo);
-          if (auto) {
-            autoConnectedRef.current = true;
-            void connect(auto);
-            return;
-          }
-        }
-        setState('awaiting-credentials');
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-        setError(err instanceof Error ? err.message : 'Failed to read host');
-        setState('error');
+    const sub = connectionService.connections$.subscribe((map) => {
+      const conn = map.get(id);
+      if (conn == null) {
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [host, hostRepo, id, connect, identityRepo, keyRepo]);
+      setSession(conn.session);
+      setError(conn.error);
+      switch (conn.status) {
+        case 'connected':
+          setState('connected');
+          if (conn.session && !touchedRef.current) {
+            touchedRef.current = true;
+            void recentRepo.touch(id, 'terminal').catch(() => {});
+          }
+          break;
+        case 'needs-credentials':
+          setState('awaiting-credentials');
+          break;
+        case 'error':
+          setState('error');
+          break;
+        default:
+          setState('connecting');
+      }
+    });
+    void connectionService.connect(id);
+    return () => sub.unsubscribe();
+  }, [connectionService, id, recentRepo]);
+
+  // Tear the shared session down when leaving the terminal.
+  useEffect(() => {
+    return () => connectionService.disconnect(id);
+  }, [connectionService, id]);
 
   useEffect(() => {
     if (!session) {
@@ -150,37 +145,18 @@ export default function TerminalScreen() {
     return () => sub.unsubscribe();
   }, [session]);
 
-  useEffect(() => {
-    return () => {
-      if (session) {
-        session.disconnect();
-      }
-      sshClient.dispose();
-    };
-  }, [session, sshClient]);
-
   const onConnectManual = async () => {
-    if (!host || !host.addr) {
-      setError('Host has no address');
-      setState('error');
-      return;
-    }
     if (!manualCreds.username || !manualCreds.password) {
       setError('Username and password are required');
       setState('error');
       return;
     }
-    await connect({
-      host: host.addr,
-      port: host.port ?? 22,
-      username: manualCreds.username,
-      password: manualCreds.password,
-    });
+    await connectionService.connectManual(id, manualCreds);
   };
 
   const onWebViewSize = useCallback(
     (cols: number, rows: number) => {
-      if (shellStartedRef.current || !session || !host) {
+      if (shellStartedRef.current || !session) {
         return;
       }
       shellStartedRef.current = true;
@@ -188,7 +164,7 @@ export default function TerminalScreen() {
         try {
           await session.startShell({ terminalSize: { cols, rows } });
           await session.writeToShell(
-            `${buildShellResumptionCommand({ hostId: host.id }).command}\r`
+            `${buildShellResumptionCommand({ hostId: id }).command}\r`
           );
         } catch (err) {
           shellStartedRef.current = false;
@@ -197,7 +173,7 @@ export default function TerminalScreen() {
         }
       })();
     },
-    [host, session]
+    [session, id]
   );
 
   const submitDisabled = manualCreds.username.length === 0 || manualCreds.password.length === 0;
@@ -207,14 +183,13 @@ export default function TerminalScreen() {
       className="flex-1 bg-black"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Stack.Screen options={{ title: host ? `${host.label} • Terminal` : 'Terminal' }} />
-
-      {state === 'loading-host' && (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#61afef" />
-          <Text className="mt-3 text-[13px] text-grey-fg">Loading host…</Text>
-        </View>
-      )}
+      <Stack.Screen
+        options={{
+          title: host ? `${host.label} • Terminal` : 'Terminal',
+          headerStyle: { backgroundColor: '#161a23' },
+          headerTintColor: '#c8ccd4',
+        }}
+      />
 
       {state === 'connecting' && (
         <View className="flex-1 items-center justify-center">
@@ -311,12 +286,19 @@ export default function TerminalScreen() {
             }}
           />
           {session != null && (
-            <TerminalKeyBar
+            <TerminalAccessory
+              hostLabel={host?.label ?? 'host'}
               onKey={(seq) => {
                 if (shellStartedRef.current) {
                   void session.writeToShell(seq).catch(() => {});
                 }
               }}
+              onBack={() => {
+                router.back();
+              }}
+              onToggleKeyboard={onToggleKeyboard}
+              fontSize={displayFontSize}
+              onFontDelta={onFontDelta}
             />
           )}
         </>

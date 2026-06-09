@@ -15,6 +15,7 @@
 
 import type { LucideIcon } from 'lucide-react-native';
 import { Text, View } from 'react-native';
+import { useThemeColors } from '../theme/theme-provider';
 
 interface IEmptyStateProps {
   readonly icon?: LucideIcon;
@@ -23,18 +24,19 @@ interface IEmptyStateProps {
 }
 
 export function EmptyState({ icon: Icon, title, description }: IEmptyStateProps) {
+  const colors = useThemeColors();
   return (
     <View className="flex-1 items-center justify-center px-8 py-16">
       {Icon != null && (
-        <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-one-bg">
-          <Icon size={28} color="#565c64" />
+        <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-surface-raised">
+          <Icon size={28} color={colors.contentTertiary} />
         </View>
       )}
-      <Text className="text-center text-[16px] font-medium text-light-grey">
+      <Text className="text-center text-[17px] font-semibold text-content">
         {title}
       </Text>
       {description != null && (
-        <Text className="mt-2 text-center text-[13px] leading-5 text-grey-fg">
+        <Text className="mt-2 text-center text-[14px] leading-5 text-content-secondary">
           {description}
         </Text>
       )}

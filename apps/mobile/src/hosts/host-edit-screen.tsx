@@ -13,19 +13,29 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMobileCredential, IMobileCredentialType, IMobileHostFull, IMobileProxy } from '../storage/types';
+import type { IMobileCredential, IMobileCredentialType, IMobileHostFull, IMobileHostSettings, IMobileProxy } from '@termlnk/database-mobile';
 import { generateRandomId } from '@termlnk/core';
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
-import { useHostRepository, useIdentityRepository, useObservable, useSshKeyRepository } from '../core/core-context';
-import { DangerButton, FormSection, PrimaryButton, SegmentedField, SwitchField, TextField } from '../ui/form';
+import { DEFAULT_PREFERENCES } from '@termlnk/database-mobile';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Sparkles, X } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { useHostRepository, useIdentityRepository, useObservable, usePreferencesService, useSshKeyRepository } from '../core/core-context';
+import { useThemeColors } from '../theme/theme-provider';
+import { Card } from '../ui/card';
+import { DangerButton, FormSection, InlineField, SegmentedField, SwitchField, TextField } from '../ui/form';
+import { NavRow, SwitchRow } from '../ui/rows';
 import { ScreenContainer } from '../ui/screen-container';
+import { ScreenHeader } from '../ui/screen-header';
+import { takePendingGroupSelection } from './group-selection';
 
 interface IHostEditScreenProps {
   readonly hostId?: string;
   readonly parentId?: string;
   readonly kind: 'host' | 'group';
+  readonly prefillAddr?: string;
+  readonly prefillUsername?: string;
+  readonly prefillPort?: string;
 }
 
 const CRED_OPTIONS: { label: string; value: IMobileCredentialType }[] = [
@@ -41,49 +51,61 @@ const PROXY_OPTIONS = [
   { label: 'HTTP', value: 'http' as const },
 ];
 
-// Create / edit form for a host or a group. Persists through MobileHostRepository.saveHost,
-// which queues the change for the sync engine to push upstream.
-export function HostEditScreen({ hostId, parentId, kind }: IHostEditScreenProps) {
+// Create / edit form for a host or a group, laid out as a Termius modal. Persists
+// through MobileHostRepository.saveHost, which queues the change for the sync engine.
+export function HostEditScreen({ hostId, parentId, kind, prefillAddr, prefillUsername, prefillPort }: IHostEditScreenProps) {
   const router = useRouter();
+  const colors = useThemeColors();
   const hostRepo = useHostRepository();
   const keyRepo = useSshKeyRepository();
   const identityRepo = useIdentityRepository();
+  const prefsService = usePreferencesService();
   const keys = useObservable(keyRepo.keys$, []);
   const identities = useObservable(identityRepo.identities$, []);
+  const hosts = useObservable(hostRepo.hosts$, []);
+  const prefs = useObservable(prefsService.prefs$, DEFAULT_PREFERENCES);
 
   const isEdit = hostId != null;
 
   const [label, setLabel] = useState('');
-  const [addr, setAddr] = useState('');
-  const [port, setPort] = useState('22');
+  const [addr, setAddr] = useState(prefillAddr ?? '');
+  const [port, setPort] = useState(prefillPort != null && prefillPort.length > 0 ? prefillPort : '22');
+  const [parentPid, setParentPid] = useState(parentId ?? 'root');
   const [credType, setCredType] = useState<IMobileCredentialType>('password');
-  const [username, setUsername] = useState('root');
+  const [username, setUsername] = useState(prefillUsername != null && prefillUsername.length > 0 ? prefillUsername : 'root');
   const [password, setPassword] = useState('');
   const [privateKey, setPrivateKey] = useState('');
   const [keyId, setKeyId] = useState('');
   const [identityId, setIdentityId] = useState('');
+
+  const [useSsh, setUseSsh] = useState(true);
+  const [useMosh, setUseMosh] = useState(false);
+  const [useTelnet, setUseTelnet] = useState(false);
+  const [backspaceAsCtrlH, setBackspaceAsCtrlH] = useState(false);
 
   const [proxyEnabled, setProxyEnabled] = useState(false);
   const [proxyType, setProxyType] = useState<'socks5' | 'http'>('socks5');
   const [proxyHost, setProxyHost] = useState('');
   const [proxyPort, setProxyPort] = useState('1080');
 
+  const [loadedSettings, setLoadedSettings] = useState<IMobileHostSettings | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!hostId) {
+    if (hostId == null) {
       return;
     }
     let cancelled = false;
     void hostRepo.getInfo(hostId).then((full) => {
-      if (cancelled || !full) {
+      if (cancelled || full == null) {
         return;
       }
       setLabel(full.label);
       setAddr(full.addr ?? '');
       setPort(String(full.port ?? 22));
+      setParentPid(full.pid);
       const cred = full.credential;
-      if (cred) {
+      if (cred != null) {
         setCredType(cred.type);
         if (cred.type !== 'identity') {
           setUsername(cred.username);
@@ -107,14 +129,33 @@ export function HostEditScreen({ hostId, parentId, kind }: IHostEditScreenProps)
         setProxyHost(full.proxy.host ?? '');
         setProxyPort(String(full.proxy.port ?? 1080));
       }
+      const settings = full.settings ?? null;
+      setLoadedSettings(settings);
+      setUseSsh(settings?.useSsh ?? true);
+      setUseMosh(settings?.useMosh ?? false);
+      setUseTelnet(settings?.useTelnet ?? false);
+      setBackspaceAsCtrlH(settings?.backspaceAsCtrlH ?? false);
     });
     return () => {
       cancelled = true;
     };
   }, [hostId, hostRepo]);
 
+  // Pick up a Parent Group chosen on the picker screen when we regain focus.
+  useFocusEffect(
+    useCallback(() => {
+      const selection = takePendingGroupSelection();
+      if (selection != null) {
+        setParentPid(selection.pid);
+      }
+    }, [])
+  );
+
   const keyOptions = useMemo(() => keys.map((k) => ({ label: k.label, value: k.id })), [keys]);
   const identityOptions = useMemo(() => identities.map((i) => ({ label: i.label, value: i.id })), [identities]);
+  const parentLabel = parentPid === 'root' ? 'None' : hosts.find((h) => h.id === parentPid)?.label ?? 'None';
+
+  const confirmDisabled = kind === 'host' ? addr.trim().length === 0 : label.trim().length === 0;
 
   function buildCredential(): IMobileCredential | null {
     switch (credType) {
@@ -132,12 +173,13 @@ export function HostEditScreen({ hostId, parentId, kind }: IHostEditScreenProps)
   }
 
   async function onSave() {
-    if (!label.trim()) {
-      Alert.alert('Name required', 'Please enter a name.');
+    const finalLabel = label.trim().length > 0 ? label.trim() : (kind === 'host' ? addr.trim() : '');
+    if (kind === 'group' && finalLabel.length === 0) {
+      Alert.alert('Name required', 'Please enter a group name.');
       return;
     }
-    if (kind === 'host' && !addr.trim()) {
-      Alert.alert('Address required', 'Please enter a host address.');
+    if (kind === 'host' && addr.trim().length === 0) {
+      Alert.alert('Address required', 'Please enter an IP or hostname.');
       return;
     }
     const portNum = Number.parseInt(port, 10);
@@ -158,28 +200,34 @@ export function HostEditScreen({ hostId, parentId, kind }: IHostEditScreenProps)
     try {
       const id = hostId ?? generateRandomId(24);
       if (kind === 'group') {
+        const settings: IMobileHostSettings = { ...loadedSettings, useSsh, useTelnet };
         await hostRepo.saveHost({
           id,
-          pid: parentId ?? 'root',
-          label: label.trim(),
+          pid: parentPid,
+          label: finalLabel,
           type: 'group',
           hasCredential: false,
+          credential: null,
+          proxy: null,
+          settings,
         }, { isNew: !isEdit });
       } else {
         const credential = buildCredential();
         const proxy: IMobileProxy | null = proxyEnabled
           ? { enabled: true, type: proxyType, host: proxyHost.trim(), port: Number.parseInt(proxyPort, 10) || 1080 }
           : null;
+        const settings: IMobileHostSettings = { ...loadedSettings, useSsh, useMosh, backspaceAsCtrlH };
         const full: IMobileHostFull = {
           id,
-          pid: parentId ?? 'root',
-          label: label.trim(),
+          pid: parentPid,
+          label: finalLabel,
           type: 'host',
           addr: addr.trim(),
           port: portNum,
           hasCredential: credential != null && credential.type !== 'always',
           credential,
           proxy,
+          settings,
         };
         await hostRepo.saveHost(full, { isNew: !isEdit });
       }
@@ -192,7 +240,7 @@ export function HostEditScreen({ hostId, parentId, kind }: IHostEditScreenProps)
   }
 
   function onDelete() {
-    if (!hostId) {
+    if (hostId == null) {
       return;
     }
     Alert.alert('Delete', `Delete "${label}"?`, [
@@ -207,64 +255,135 @@ export function HostEditScreen({ hostId, parentId, kind }: IHostEditScreenProps)
     ]);
   }
 
+  const openParentPicker = () => {
+    router.push({
+      pathname: '/group-picker',
+      params: { selectedPid: parentPid, ...(kind === 'group' && hostId != null ? { excludeId: hostId } : {}) },
+    });
+  };
+
+  const title = isEdit
+    ? (kind === 'group' ? 'Edit Group' : 'Edit Host')
+    : (kind === 'group' ? 'New Group' : 'New Host');
+
   return (
     <ScreenContainer>
+      <ScreenHeader
+        variant="modal"
+        title={title}
+        onClose={() => router.back()}
+        onConfirm={() => void onSave()}
+        confirmDisabled={confirmDisabled || busy}
+      />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-          <FormSection title="General">
-            <TextField label="Name" value={label} onChangeText={setLabel} placeholder={kind === 'group' ? 'Group name' : 'My server'} autoCapitalize="words" last={kind === 'group'} />
-            {kind === 'host' && (
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+          {kind === 'host'
+            ? (
               <>
-                <TextField label="Address" value={addr} onChangeText={setAddr} placeholder="example.com or 10.0.0.1" keyboardType="url" />
-                <TextField label="Port" value={port} onChangeText={setPort} placeholder="22" keyboardType="numeric" last />
-              </>
-            )}
-          </FormSection>
+                <Card dividerInset={16}>
+                  <InlineField value={label} onChangeText={setLabel} placeholder="Label" autoCapitalize="words" />
+                  <InlineField label="IP or Hostname" value={addr} onChangeText={setAddr} placeholder="Required" keyboardType="url" />
+                  <NavRow title="Parent Group" value={parentLabel} chevronTone="accent" onPress={openParentPicker} />
+                  <NavRow title="Tags" value="None" chevronTone="accent" onPress={() => Alert.alert('Tags', 'Tagging is coming soon.')} />
+                  <SwitchRow title="Backspace as CTRL+H" value={backspaceAsCtrlH} onValueChange={setBackspaceAsCtrlH} />
+                </Card>
 
-          {kind === 'host' && (
-            <>
-              <FormSection title="Authentication">
-                <SegmentedField label="Method" value={credType} options={CRED_OPTIONS} onChange={setCredType} />
-                {credType !== 'identity' && (
-                  <TextField label="Username" value={username} onChangeText={setUsername} placeholder="root" last={credType === 'always'} />
-                )}
-                {credType === 'password' && (
-                  <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry last />
-                )}
-                {credType === 'rsa' && (
-                  <TextField label="Private key (PEM)" value={privateKey} onChangeText={setPrivateKey} multiline last />
-                )}
-                {credType === 'key' && (
-                  keyOptions.length > 0
-                    ? <SegmentedField label="Key" value={keyId} options={keyOptions} onChange={setKeyId} last />
-                    : <TextField label="Key" value="" onChangeText={() => {}} placeholder="No keys — add one in Keychain" last />
-                )}
-                {credType === 'identity' && (
-                  identityOptions.length > 0
-                    ? <SegmentedField label="Identity" value={identityId} options={identityOptions} onChange={setIdentityId} last />
-                    : <TextField label="Identity" value="" onChangeText={() => {}} placeholder="No identities — add one in Keychain" last />
-                )}
-              </FormSection>
-
-              <FormSection title="Proxy">
-                <SwitchField label="Use proxy" value={proxyEnabled} onValueChange={setProxyEnabled} last={!proxyEnabled} />
-                {proxyEnabled && (
+                {!prefs.aiAgentCardDismissed && (
                   <>
-                    <SegmentedField label="Type" value={proxyType} options={PROXY_OPTIONS} onChange={setProxyType} />
-                    <TextField label="Host" value={proxyHost} onChangeText={setProxyHost} placeholder="proxy.example.com" keyboardType="url" />
-                    <TextField label="Port" value={proxyPort} onChangeText={setProxyPort} keyboardType="numeric" last />
+                    <SectionLabel title="AI Agent" />
+                    <Card>
+                      <Pressable onPress={() => router.push('/ai')} className="flex-row items-start p-4 active:bg-surface-sunken">
+                        <View className="mr-3 mt-0.5"><Sparkles size={20} color={colors.accent} /></View>
+                        <View className="flex-1">
+                          <Text className="text-[16px] font-semibold text-content">Set up this host for AI code assistants</Text>
+                          <Text className="mt-1 text-[14px] text-content-secondary">Claude Code, Gemini, OpenCode, etc.</Text>
+                        </View>
+                        <Pressable onPress={() => void prefsService.update({ aiAgentCardDismissed: true })} hitSlop={10} className="ml-2 active:opacity-60">
+                          <X size={18} color={colors.contentTertiary} />
+                        </Pressable>
+                      </Pressable>
+                    </Card>
                   </>
                 )}
-              </FormSection>
-            </>
-          )}
 
-          <View className="mt-6 gap-3 px-4">
-            <PrimaryButton title={isEdit ? 'Save' : 'Create'} onPress={onSave} busy={busy} />
-            {isEdit && <DangerButton title="Delete" onPress={onDelete} />}
-          </View>
+                <SectionLabel title="SSH / MOSH" />
+                <Card dividerInset={16}>
+                  <SwitchRow title="Use SSH" value={useSsh} onValueChange={setUseSsh} />
+                  <SwitchRow title="Use Mosh" value={useMosh} onValueChange={setUseMosh} />
+                  <InlineField label="Port" value={port} onChangeText={setPort} placeholder="22 Default" keyboardType="numeric" />
+                </Card>
+
+                <FormSection title="Credentials">
+                  <SegmentedField label="Method" value={credType} options={CRED_OPTIONS} onChange={setCredType} />
+                  {credType !== 'identity' && (
+                    <TextField label="Username" value={username} onChangeText={setUsername} placeholder="root" last={credType === 'always'} />
+                  )}
+                  {credType === 'password' && (
+                    <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry last />
+                  )}
+                  {credType === 'rsa' && (
+                    <TextField label="Private key (PEM)" value={privateKey} onChangeText={setPrivateKey} multiline last />
+                  )}
+                  {credType === 'key' && (
+                    keyOptions.length > 0
+                      ? <SegmentedField label="Key" value={keyId} options={keyOptions} onChange={setKeyId} last />
+                      : <TextField label="Key" value="" onChangeText={() => {}} placeholder="No keys — add one in Keychain" last />
+                  )}
+                  {credType === 'identity' && (
+                    identityOptions.length > 0
+                      ? <SegmentedField label="Identity" value={identityId} options={identityOptions} onChange={setIdentityId} last />
+                      : <TextField label="Identity" value="" onChangeText={() => {}} placeholder="No identities — add one in Keychain" last />
+                  )}
+                </FormSection>
+
+                <FormSection title="Proxy">
+                  <SwitchField label="Use proxy" value={proxyEnabled} onValueChange={setProxyEnabled} last={!proxyEnabled} />
+                  {proxyEnabled && (
+                    <>
+                      <SegmentedField label="Type" value={proxyType} options={PROXY_OPTIONS} onChange={setProxyType} />
+                      <TextField label="Host" value={proxyHost} onChangeText={setProxyHost} placeholder="proxy.example.com" keyboardType="url" />
+                      <TextField label="Port" value={proxyPort} onChangeText={setProxyPort} keyboardType="numeric" last />
+                    </>
+                  )}
+                </FormSection>
+              </>
+            )
+            : (
+              <>
+                <Card dividerInset={16}>
+                  <InlineField value={label} onChangeText={setLabel} placeholder="Name" autoCapitalize="words" />
+                  <NavRow title="Parent Group" value={parentLabel} chevronTone="accent" onPress={openParentPicker} />
+                </Card>
+
+                <SectionLabel title="SSH / MOSH" />
+                <Card>
+                  <SwitchRow title="Use SSH" value={useSsh} onValueChange={setUseSsh} />
+                </Card>
+
+                <SectionLabel title="Telnet" />
+                <Card>
+                  <SwitchRow title="Use Telnet" value={useTelnet} onValueChange={setUseTelnet} />
+                </Card>
+
+                <Text className="mt-3 px-4 text-[13px] leading-[18px] text-content-secondary">
+                  Explicitly added parameters above are applied to all hosts and subgroups that belong to that group. If necessary, a parameter value can be altered by changing it inside a subgroup or a child host.
+                </Text>
+              </>
+            )}
+
+          {isEdit && (
+            <View className="mt-6">
+              <DangerButton title="Delete" onPress={onDelete} />
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>
+  );
+}
+
+function SectionLabel({ title }: { title: string }) {
+  return (
+    <Text className="px-4 pb-2 pt-5 text-[12px] font-semibold uppercase tracking-wider text-content-tertiary">{title}</Text>
   );
 }

@@ -14,22 +14,23 @@
  */
 
 import { AuthState } from '@termlnk/auth';
-import { Redirect, Stack } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useAuthService, useAuthState } from '../src/core/core-context';
+import { useThemeColors } from '../src/theme/theme-provider';
 
 export default function Index() {
   const authService = useAuthService();
   const state = useAuthState();
+  const colors = useThemeColors();
 
   if (!authService) {
     return (
-      <View className="flex-1 items-center justify-center bg-black px-6">
-        <Stack.Screen options={{ title: 'Termlnk' }} />
-        <Text className="mb-3 text-[28px] font-semibold text-light-grey">
+      <View className="flex-1 items-center justify-center bg-surface px-6">
+        <Text className="mb-3 text-[28px] font-semibold text-content">
           Termlnk
         </Text>
-        <Text className="mt-2 text-center text-[14px] leading-5 text-grey-fg">
+        <Text className="mt-2 text-center text-[14px] leading-5 text-content-secondary">
           Cloud sync is not configured. Set EXPO_PUBLIC_CLOUD_BASE_URL or
           app.json `extra.cloudBaseUrl` to point at a termlnk-server deployment.
         </Text>
@@ -38,14 +39,20 @@ export default function Index() {
   }
 
   if (state === AuthState.Authenticated) {
-    return <Redirect href="/(tabs)/hosts" />;
+    return <Redirect href="/(tabs)/vaults" />;
   }
 
-  if (state === AuthState.Authenticating) {
+  // Restoring: the persisted session is still being rehydrated (token refresh + /auth/me),
+  // so it is not yet known whether the user is signed in. Show a splash instead of bouncing
+  // to /login — otherwise a valid session flashes the login screen on every cold start and
+  // restore()'s later Authenticated emission lands after we've already left this route.
+  if (state === AuthState.Restoring || state === AuthState.Authenticating) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <ActivityIndicator color="#61afef" />
-        <Text className="mt-3 text-[14px] text-grey-fg">Signing in…</Text>
+      <View className="flex-1 items-center justify-center bg-surface">
+        <ActivityIndicator color={colors.accent} />
+        {state === AuthState.Authenticating && (
+          <Text className="mt-3 text-[14px] text-content-secondary">Signing in…</Text>
+        )}
       </View>
     );
   }

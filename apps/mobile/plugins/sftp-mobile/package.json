@@ -1,0 +1,37 @@
+{
+  "name": "@termlnk/sftp-mobile",
+  "version": "0.2.1",
+  "private": true,
+  "description": "Mobile SFTP plugin — per-session SFTP client factory backed by russh SFTP subsystem.",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "peerDependencies": {
+    "@termlnk/core": "workspace:*",
+    "@termlnk/react-native-russh": "workspace:*",
+    "@termlnk/terminal-mobile": "workspace:*",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@termlnk/core": "workspace:*",
+    "@termlnk/react-native-russh": "workspace:*",
+    "@termlnk/terminal-mobile": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}

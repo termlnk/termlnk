@@ -1,0 +1,41 @@
+{
+  "name": "@termlnk/sync-mobile",
+  "version": "0.2.1",
+  "private": true,
+  "description": "Mobile sync plugin — assembles @termlnk/sync-engine against expo-sqlite-backed repositories from @termlnk/database-mobile.",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "peerDependencies": {
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database-mobile": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "@termlnk/sync-engine": "workspace:*",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database-mobile": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "@termlnk/sync-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}
