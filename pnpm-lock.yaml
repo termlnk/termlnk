@@ -11,6 +11,7 @@ overrides:
   react-dom: ^19.2.6
   '@termlnk/mobile-app>react': 19.2.3
   '@termlnk/mobile-app>react-dom': 19.2.3
+  hermes-compiler: 0.15.0
   electron: 41.7.1
   rolldown: 1.0.1
   tar: ^7.5.13
@@ -11016,8 +11017,8 @@ packages:
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
 
-  hermes-compiler@250829098.0.10:
-    resolution: {integrity: sha512-TcRlZ0/TlyfJqquRFAWoyElVNnkdYRi/sEp4/Qy8/GYxjg8j2cS9D4MjuaQ+qimkmLN7AmO+44IznRf06mAr0w==}
+  hermes-compiler@0.15.0:
+    resolution: {integrity: sha512-Nd1+ktGvauZ8PVWwQMUfi1bP4hQiq0jhuavkrTpbkknDAlCKDRicYeK1tjELKfx3jdI0cL3FKJvGMmoIjizRZQ==}
 
   hermes-estree@0.25.1:
     resolution: {integrity: sha512-0wUoCcLp+5Ev5pDW2OriHC2MJCbwLwuRx+gAqMTOkGKJJiBCLjtrvy4PWUGn6MIVefecRpzoOZ/UV6iGdOr+Cw==}
@@ -25825,7 +25826,7 @@ snapshots:
       property-information: 7.1.0
       space-separated-tokens: 2.0.2
 
-  hermes-compiler@250829098.0.10: {}
+  hermes-compiler@0.15.0: {}
 
   hermes-estree@0.25.1: {}
 
@@ -28912,7 +28913,7 @@ snapshots:
       base64-js: 1.5.1
       commander: 12.1.0
       flow-enums-runtime: 0.0.6
-      hermes-compiler: 250829098.0.10
+      hermes-compiler: 0.15.0
       invariant: 2.2.4
       memoize-one: 5.2.1
       metro-runtime: 0.84.4
@@ -28957,7 +28958,7 @@ snapshots:
       base64-js: 1.5.1
       commander: 12.1.0
       flow-enums-runtime: 0.0.6
-      hermes-compiler: 250829098.0.10
+      hermes-compiler: 0.15.0
       invariant: 2.2.4
       memoize-one: 5.2.1
       metro-runtime: 0.84.4

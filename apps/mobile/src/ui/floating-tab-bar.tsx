@@ -19,7 +19,9 @@ import type { ComponentProps } from 'react';
 import { CircleUser, SquareTerminal, Vault } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCurrentUser } from '../core/core-context';
 import { useThemeColors } from '../theme/theme-provider';
+import { UserAvatar } from './user-avatar';
 
 // Derive the exact tab-bar callback prop type from expo-router's Tabs so we stay
 // in sync without deep-importing react-navigation internals.
@@ -44,6 +46,7 @@ const TAB_LABELS: Record<string, string> = {
 export function FloatingTabBar({ state, navigation }: ITabBarProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
+  const user = useCurrentUser();
   return (
     <View
       pointerEvents="box-none"
@@ -64,6 +67,7 @@ export function FloatingTabBar({ state, navigation }: ITabBarProps) {
           const focused = state.index === index;
           const Icon = TAB_ICONS[route.name] ?? Vault;
           const label = TAB_LABELS[route.name] ?? route.name;
+          const showUserAvatar = route.name === 'profile' && user != null;
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!focused && !event.defaultPrevented) {
@@ -78,7 +82,9 @@ export function FloatingTabBar({ state, navigation }: ITabBarProps) {
               accessibilityState={{ selected: focused }}
               className={`items-center rounded-full px-7 py-1.5 ${focused ? 'bg-surface-sunken' : ''}`}
             >
-              <Icon size={24} color={focused ? colors.content : colors.contentTertiary} />
+              {showUserAvatar
+                ? <UserAvatar user={user} size={24} radius={12} />
+                : <Icon size={24} color={focused ? colors.content : colors.contentTertiary} />}
               <Text className={`mt-1 text-[11px] ${focused ? 'font-semibold text-content' : 'text-content-tertiary'}`}>
                 {label}
               </Text>

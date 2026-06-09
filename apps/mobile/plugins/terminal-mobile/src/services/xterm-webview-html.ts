@@ -13,20 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-// xterm.js renders inside a react-native-webview. The WebView-side logic lives in
-// webview/xterm-webview-entry.ts (a real TypeScript module) and is bundled by
-// scripts/build-xterm-webview.mjs (esbuild) into a single IIFE, inlined here together
-// with the matching CSS so the runtime never depends on a CDN reachable from the device.
-//
-// Bridge protocol between RN and the WebView:
-//   Native → WebView : injectJavaScript("__termlnkTerm.write(<base64>)")
-//   WebView → Native : window.ReactNativeWebView.postMessage(JSON.stringify({
-//                          type: 'input' | 'size' | 'error' | 'ready',
-//                          ...payload
-//                      }))
-//
-// Base64 framing keeps multi-byte UTF-8 sequences intact through string-only postMessage.
-
 import { XTERM_ADDON_FIT_VERSION, XTERM_CSS, XTERM_VERSION, XTERM_WEBVIEW_BUNDLE_JS } from './webview/xterm-webview-bundle.generated';
 
 // Defensive escape for content embedded inside <script> / <style>. The bundle and CSS

@@ -16,6 +16,7 @@
 import { Folder } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Text, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { getAvatarInitial, getAvatarPalette } from '../theme/host-avatar-color';
 import { useThemeColors } from '../theme/theme-provider';
 
@@ -44,7 +45,7 @@ export function HostAvatar({ id, label, type, size = 36, connecting = false }: I
           </View>
         )
         : <HostInitial id={id} label={label} size={size} dimension={dimension} />}
-      {connecting && <ConnectingRing size={size} color={colors.accent} />}
+      {connecting && <ConnectingRing size={size} />}
     </View>
   );
 }
@@ -66,44 +67,92 @@ function HostInitial({ id, label, size, dimension }: { id: string; label: string
   );
 }
 
-// A rounded-square outline with two adjacent accent borders, spun continuously so the lit
-// corner sweeps around the avatar — the "connecting" cue from the Termius host list.
-function ConnectingRing({ size, color }: { size: number; color: string }) {
-  const rotate = useRef(new Animated.Value(0)).current;
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+// A rounded-square gradient stroke segment that advances along the avatar outline.
+function ConnectingRing({ size }: { size: number }) {
+  const dashOffset = useRef(new Animated.Value(0)).current;
+  const gradientId = useRef(`hostConnectingRing${Math.random().toString(36).slice(2)}`).current;
 
   useEffect(() => {
     const loop = Animated.loop(
-      Animated.timing(rotate, {
+      Animated.timing(dashOffset, {
         toValue: 1,
-        duration: 900,
+        duration: 1100,
         easing: Easing.linear,
-        useNativeDriver: true,
+        useNativeDriver: false,
       })
     );
     loop.start();
     return () => loop.stop();
-  }, [rotate]);
+  }, [dashOffset]);
 
-  const spin = rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const ringSize = size + 8;
+  const strokeWidth = 4;
+  const inset = strokeWidth / 2;
+  const rectSize = ringSize - strokeWidth;
+  const radius = Math.round(size * 0.34) + 4;
+  const straightLength = Math.max(0, rectSize - radius * 2);
+  const perimeter = straightLength * 4 + 2 * Math.PI * radius;
+  const dashLength = perimeter * 0.38;
+  const gapLength = perimeter - dashLength;
+  const movingOffset = dashOffset.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -perimeter],
+  });
 
   return (
-    <Animated.View
+    <View
       pointerEvents="none"
       style={{
         position: 'absolute',
-        // Ring is 8px larger than the avatar; offset by half that to centre it over the icon.
         top: -4,
         left: -4,
         width: ringSize,
         height: ringSize,
-        borderRadius: 14,
-        borderWidth: 2,
-        borderColor: 'transparent',
-        borderTopColor: color,
-        borderRightColor: color,
-        transform: [{ rotate: spin }],
       }}
-    />
+    >
+      <Svg
+        width={ringSize}
+        height={ringSize}
+        viewBox={`0 0 ${ringSize} ${ringSize}`}
+      >
+        <Defs>
+          <LinearGradient id={gradientId} x1="0" y1="0" x2={ringSize} y2={ringSize}>
+            <Stop offset="0" stopColor="#1d4ed8" stopOpacity="0.2" />
+            <Stop offset="0.22" stopColor="#2563eb" stopOpacity="1" />
+            <Stop offset="0.58" stopColor="#06b6d4" stopOpacity="1" />
+            <Stop offset="0.9" stopColor="#8b5cf6" stopOpacity="0.95" />
+            <Stop offset="1" stopColor="#8b5cf6" stopOpacity="0.25" />
+          </LinearGradient>
+        </Defs>
+        <Rect
+          x={inset}
+          y={inset}
+          width={rectSize}
+          height={rectSize}
+          rx={radius}
+          ry={radius}
+          fill="none"
+          stroke="#bfdbfe"
+          strokeWidth={2.5}
+          strokeOpacity={0.85}
+        />
+        <AnimatedRect
+          x={inset}
+          y={inset}
+          width={rectSize}
+          height={rectSize}
+          rx={radius}
+          ry={radius}
+          fill="none"
+          stroke={`url(#${gradientId})`}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={[dashLength, gapLength]}
+          strokeDashoffset={movingOffset}
+        />
+      </Svg>
+    </View>
   );
 }

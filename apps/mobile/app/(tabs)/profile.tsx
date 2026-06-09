@@ -26,11 +26,7 @@ import { IconTile } from '../../src/ui/icon-tile';
 import { NavRow } from '../../src/ui/rows';
 import { ScreenContainer } from '../../src/ui/screen-container';
 import { ScreenHeader } from '../../src/ui/screen-header';
-
-function initial(email: string | undefined): string {
-  const trimmed = (email ?? '').trim();
-  return trimmed.length > 0 ? trimmed[0]!.toUpperCase() : '?';
-}
+import { UserAvatar } from '../../src/ui/user-avatar';
 
 export default function ProfileTab() {
   const router = useRouter();
@@ -44,9 +40,7 @@ export default function ProfileTab() {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 24 }}>
         <Card>
           <Pressable onPress={() => router.push('/settings')} className="flex-row items-center px-4 py-4 active:bg-surface-sunken">
-            <View className="h-12 w-12 items-center justify-center rounded-2xl" style={{ backgroundColor: '#2f9e8f' }}>
-              <Text className="text-[20px] font-bold text-white">{initial(user?.email)}</Text>
-            </View>
+            <UserAvatar user={user} size={48} radius={16} />
             <View className="ml-3 flex-1">
               <Text className="text-[17px] font-semibold text-content" numberOfLines={1}>
                 {user?.email ?? 'Not signed in'}

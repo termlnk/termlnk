@@ -13,18 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-// Build-time-only entry: this module is NEVER imported by the React Native runtime
-// graph. scripts/build-xterm-webview.mjs (esbuild) bundles it into a single IIFE that
-// is inlined into the WebView HTML (see ../xterm-webview-html.ts). Authoring the
-// WebView side as a real TypeScript module — instead of a hand-written string — gives
-// type-checking against the xterm API and lets the addon set grow cleanly.
-//
-// Bridge protocol (must stay in sync with ../xterm-webview-html.ts and the terminal
-// screen at apps/mobile/app/host/[id]/terminal.tsx):
-//   Native  → WebView : window.__termlnkTerm.write(<base64>)
-//   WebView → Native  : window.ReactNativeWebView.postMessage(JSON.stringify({ type, ... }))
-// Base64 framing keeps multi-byte UTF-8 sequences intact through the string-only channel.
-
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 
@@ -36,7 +24,11 @@ interface BridgeMessage {
 declare global {
   interface Window {
     ReactNativeWebView?: { postMessage: (message: string) => void };
-    __termlnkTerm?: { write: (base64: string) => void };
+    __termlnkTerm?: {
+      write: (base64: string) => void;
+      focus: () => void;
+      blur: () => void;
+    };
     __termlnkReport?: (payload: BridgeMessage) => void;
     __TERMLNK_CONFIG__?: { fontSize?: number };
   }
@@ -147,6 +139,8 @@ function start(): void {
         term.write('\r\n[termlnk-webview decode error]\r\n');
       }
     },
+    focus: (): void => term.focus(),
+    blur: (): void => term.blur(),
   };
 
   // Forward user input as base64 so high-bit bytes survive the postMessage round-trip.

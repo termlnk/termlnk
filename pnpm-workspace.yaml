@@ -55,6 +55,7 @@ overrides:
   # Scoped so desktop/web stay on 19.2.6; only the mobile subtree drops to 19.2.3.
   '@termlnk/mobile-app>react': 19.2.3
   '@termlnk/mobile-app>react-dom': 19.2.3
+  hermes-compiler: 0.15.0
   # electron pinned to 41.x: better-sqlite3 ships no Electron 42 prebuild and
   # fails to build against V8 14.x (v8::External::New signature changed)
   electron: 41.7.1

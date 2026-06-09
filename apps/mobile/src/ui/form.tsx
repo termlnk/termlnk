@@ -114,7 +114,8 @@ export function InlineField(props: IInlineFieldProps) {
         keyboardType={props.keyboardType}
         autoCapitalize={props.autoCapitalize ?? 'none'}
         autoCorrect={false}
-        className={`flex-1 text-[16px] text-content ${hasLabel ? 'text-right' : ''}`}
+        className="flex-1 text-[16px] text-content"
+        style={hasLabel ? { textAlign: 'right' } : undefined}
       />
       {props.trailing != null && <View className="ml-3">{props.trailing}</View>}
     </View>

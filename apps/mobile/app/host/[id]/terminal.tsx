@@ -85,7 +85,7 @@ export default function TerminalScreen() {
     webviewRef.current?.injectJavaScript(
       focus
         ? 'window.__termlnkTerm && window.__termlnkTerm.focus(); true;'
-        : 'document.activeElement && document.activeElement.blur && document.activeElement.blur(); true;'
+        : 'window.__termlnkTerm && window.__termlnkTerm.blur(); true;'
     );
   }, []);
 
@@ -251,6 +251,7 @@ export default function TerminalScreen() {
             source={{ html: xtermHtml }}
             javaScriptEnabled
             domStorageEnabled
+            keyboardDisplayRequiresUserAction={false}
             className="flex-1 bg-black"
             onError={(e) => {
               const desc = e.nativeEvent.description || 'Unknown WebView error';
