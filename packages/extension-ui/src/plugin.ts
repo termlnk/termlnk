@@ -13,13 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Dependency, DependencyOverride } from '@termlnk/core';
-import { DependentOn, Inject, Injector, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import type { Dependency } from '@termlnk/core';
+import type { IExtensionUIConfig } from './controllers/config.schema';
+import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ExtensionPlugin, IContributionRegistry, IExtensionHostService, IExtensionService } from '@termlnk/extension';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { UIPlugin } from '@termlnk/ui';
 import { ContributionRegistry } from './contributions/contribution-registry';
 import { ExtensionThemeRegistry, IExtensionThemeRegistry } from './contributions/points';
+import { defaultPluginConfig, EXTENSION_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { ExtensionUIController } from './controllers/extension-ui.controller';
 import { ExtensionHostService } from './services/extension-host.service';
 import { ExtensionService } from './services/extension.service';
@@ -28,19 +30,23 @@ import { IToolRegistryService, ToolRegistryService } from './services/tool-regis
 
 export const EXTENSION_UI_PLUGIN_NAME = 'EXTENSION_UI_PLUGIN';
 
-export interface IExtensionUIConfig {
-  override?: DependencyOverride;
-}
-
 @DependentOn(UIPlugin, RPCClientPlugin, ExtensionPlugin)
 export class ExtensionUIPlugin extends Plugin {
   static override pluginName = EXTENSION_UI_PLUGIN_NAME;
 
   constructor(
-    private readonly _config: IExtensionUIConfig = {},
-    @Inject(Injector) protected readonly _injector: Injector
+    private readonly _config: IExtensionUIConfig = defaultPluginConfig,
+    @Inject(Injector) protected readonly _injector: Injector,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
+
+    const config = merge(
+      {},
+      defaultPluginConfig,
+      this._config
+    );
+    this._configService.setConfig(EXTENSION_UI_PLUGIN_CONFIG_KEY, config);
   }
 
   override onStarting(): void {
