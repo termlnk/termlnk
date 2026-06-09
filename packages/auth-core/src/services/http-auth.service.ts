@@ -212,7 +212,10 @@ export class HttpAuthService extends Disposable implements IAuthService {
   private readonly _currentUser$ = new BehaviorSubject<IUserAccount | null>(null);
   readonly currentUser$: Observable<IUserAccount | null> = this._currentUser$.asObservable();
 
-  private readonly _authState$ = new BehaviorSubject<AuthState>(AuthState.Unauthenticated);
+  // Restoring until restore() resolves the persisted session into a terminal state; never
+  // Unauthenticated at construction, or a UI gating on this would bounce to login before
+  // the cold-start rehydrate even runs.
+  private readonly _authState$ = new BehaviorSubject<AuthState>(AuthState.Restoring);
   readonly authState$: Observable<AuthState> = this._authState$.asObservable();
 
   private readonly _lastError$ = new BehaviorSubject<IAuthError | null>(null);
