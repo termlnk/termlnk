@@ -13,12 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
+import { AuthState } from '@termlnk/auth';
+import { SyncState } from '@termlnk/sync';
 import { useRouter } from 'expo-router';
-import { ArrowLeftRight, Braces, ChevronDown, KeyRound, ScrollText, Server, ShieldCheck, Vault } from 'lucide-react-native';
+import { ArrowLeftRight, Braces, ChevronDown, Cloud, CloudOff, KeyRound, ScrollText, Server, ShieldCheck } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHostRepository, useKnownHostRepository, useObservable, useRecentSessionsRepository } from '../../src/core/core-context';
+import { useAuthState, useHostRepository, useKnownHostRepository, useObservable, useRecentSessionsRepository, useSyncService } from '../../src/core/core-context';
 import { useThemeColors } from '../../src/theme/theme-provider';
 import { Card } from '../../src/ui/card';
 import { TAB_BAR_HEIGHT } from '../../src/ui/floating-tab-bar';
@@ -32,10 +34,13 @@ export default function VaultsTab() {
   const hostRepo = useHostRepository();
   const knownHostRepo = useKnownHostRepository();
   const recentRepo = useRecentSessionsRepository();
+  const syncService = useSyncService();
+  const authState = useAuthState();
 
   const hosts = useObservable(hostRepo.hosts$, []);
   const knownHosts = useObservable(knownHostRepo.knownHosts$, []);
   const sessions = useObservable(recentRepo.sessions$, []);
+  const syncState = useObservable(syncService.state$, SyncState.Disabled);
 
   useEffect(() => {
     void hostRepo.ready();
@@ -44,15 +49,34 @@ export default function VaultsTab() {
   }, [hostRepo, knownHostRepo, recentRepo]);
 
   const hostCount = hosts.filter((h) => h.type === 'host').length;
+  const isAuthenticated = authState === AuthState.Authenticated;
+  const cloudColor = isAuthenticated ? colors.contentSecondary : colors.contentTertiary;
+  const CloudIcon = isAuthenticated ? Cloud : CloudOff;
+  const chevronLabel = isAuthenticated
+    ? (syncState === SyncState.Syncing ? 'Syncing' : 'Cloud sync')
+    : 'Sign in';
+
+  function onVaultMenuPress() {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    void syncService.pull();
+  }
 
   return (
     <ScreenContainer>
       <View style={{ paddingTop: insets.top + 10 }} className="flex-row items-center justify-center pb-3">
-        <Vault size={20} color={colors.content} />
-        <Text className="ml-2 text-[18px] font-semibold text-content">All Vaults</Text>
-        <View className="ml-2 h-6 w-6 items-center justify-center rounded-full bg-surface-sunken">
+        <CloudIcon size={22} color={cloudColor} strokeWidth={2.4} />
+        <Text className="ml-3 text-[18px] font-semibold text-content">Personal Vault</Text>
+        <Pressable
+          accessibilityLabel={chevronLabel}
+          hitSlop={10}
+          onPress={onVaultMenuPress}
+          className="ml-2 h-7 w-7 items-center justify-center rounded-full bg-surface-sunken active:opacity-75"
+        >
           <ChevronDown size={16} color={colors.contentSecondary} />
-        </View>
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 24 }}>

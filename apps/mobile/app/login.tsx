@@ -17,7 +17,7 @@ import type { IBiometricAvailability } from '@termlnk/auth-mobile';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { useAuthService, useBiometricService } from '../src/core/core-context';
+import { useAuthService, useBiometricService, useSyncService } from '../src/core/core-context';
 import { useThemeColors } from '../src/theme/theme-provider';
 import { PrimaryButton } from '../src/ui/form';
 
@@ -25,6 +25,7 @@ export default function Login() {
   const auth = useAuthService();
   const router = useRouter();
   const bio = useBiometricService();
+  const syncService = useSyncService();
   const colors = useThemeColors();
 
   const [email, setEmail] = useState('');
@@ -45,6 +46,7 @@ export default function Login() {
     setBusy(true);
     try {
       await auth.login({ email: email.trim(), password });
+      void syncService.pull().catch(() => {});
       router.replace('/(tabs)/vaults');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
