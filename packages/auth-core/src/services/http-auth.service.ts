@@ -440,8 +440,8 @@ export class HttpAuthService extends Disposable implements IAuthService {
       if (cachedUser) {
         await this._userStorage.clear();
         this._currentUser$.next(null);
-        this._authState$.next(AuthState.Unauthenticated);
       }
+      this._authState$.next(AuthState.Unauthenticated);
       this._vaultState$.next(VaultState.Empty);
       return;
     }
