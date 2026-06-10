@@ -15,10 +15,11 @@
 
 import type { IMobileHost } from '@termlnk/database-mobile';
 import type { IMobileSshSession } from '@termlnk/terminal-mobile';
-import { buildShellResumptionCommand, buildXtermHtml, xtermBridge } from '@termlnk/terminal-mobile';
+import { buildXtermHtml, xtermBridge } from '@termlnk/terminal-mobile';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useConnectionService, usePreferencesService, useRecentSessionsRepository, useSyncService } from '../../../src/core/core-context';
 import { TerminalAccessory } from '../../../src/terminal/terminal-accessory';
@@ -30,9 +31,12 @@ interface IManualCredentials {
   password: string;
 }
 
+const TERMINAL_BACKGROUND = '#0a0a0a';
+
 export default function TerminalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const pull = useSyncService();
   const recentRepo = useRecentSessionsRepository();
   const connectionService = useConnectionService();
@@ -47,6 +51,7 @@ export default function TerminalScreen() {
   const webviewRef = useRef<WebView>(null);
   // Tracks whether the soft keyboard (xterm textarea focus) is currently raised.
   const keyboardVisibleRef = useRef(true);
+  const terminalReadyRef = useRef(false);
 
   const [host, setHost] = useState<IMobileHost | null>(null);
   const [state, setState] = useState<ConnectState>('connecting');
@@ -89,6 +94,19 @@ export default function TerminalScreen() {
     );
   }, []);
 
+  const onCloseSession = useCallback(() => {
+    connectionService.disconnect(id);
+    router.back();
+  }, [connectionService, id, router]);
+
+  const writeToTerminal = useCallback((output: string) => {
+    if (!terminalReadyRef.current) {
+      return;
+    }
+    const b64 = xtermBridge.toBase64(output);
+    webviewRef.current?.injectJavaScript(`window.__termlnkTerm.write(${JSON.stringify(b64)}); true;`);
+  }, []);
+
   // Subscribe to the public hosts stream for the row metadata (label, addr, port).
   useEffect(() => {
     const sub = pull.hosts$.subscribe((hosts) => {
@@ -129,21 +147,19 @@ export default function TerminalScreen() {
     return () => sub.unsubscribe();
   }, [connectionService, id, recentRepo]);
 
-  // Tear the shared session down when leaving the terminal.
-  useEffect(() => {
-    return () => connectionService.disconnect(id);
-  }, [connectionService, id]);
-
   useEffect(() => {
     if (!session) {
       return;
     }
     const sub = session.shellOutput$.subscribe((chunk) => {
-      const b64 = xtermBridge.toBase64(chunk);
-      webviewRef.current?.injectJavaScript(`window.__termlnkTerm.write(${JSON.stringify(b64)}); true;`);
+      writeToTerminal(chunk);
     });
     return () => sub.unsubscribe();
-  }, [session]);
+  }, [session, writeToTerminal]);
+
+  useEffect(() => {
+    terminalReadyRef.current = false;
+  }, [xtermHtml]);
 
   const onConnectManual = async () => {
     if (!manualCreds.username || !manualCreds.password) {
@@ -163,9 +179,6 @@ export default function TerminalScreen() {
       void (async () => {
         try {
           await session.startShell({ terminalSize: { cols, rows } });
-          await session.writeToShell(
-            `${buildShellResumptionCommand({ hostId: id }).command}\r`
-          );
         } catch (err) {
           shellStartedRef.current = false;
           setError(err instanceof Error ? err.message : 'Failed to start shell');
@@ -180,16 +193,16 @@ export default function TerminalScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-black"
+      className="flex-1"
+      style={{ backgroundColor: TERMINAL_BACKGROUND }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Stack.Screen
         options={{
-          title: host ? `${host.label} • Terminal` : 'Terminal',
-          headerStyle: { backgroundColor: '#161a23' },
-          headerTintColor: '#c8ccd4',
+          headerShown: false,
         }}
       />
+      <View style={{ height: insets.top, backgroundColor: TERMINAL_BACKGROUND }} />
 
       {state === 'connecting' && (
         <View className="flex-1 items-center justify-center">
@@ -252,7 +265,8 @@ export default function TerminalScreen() {
             javaScriptEnabled
             domStorageEnabled
             keyboardDisplayRequiresUserAction={false}
-            className="flex-1 bg-black"
+            className="flex-1"
+            style={{ backgroundColor: TERMINAL_BACKGROUND }}
             onError={(e) => {
               const desc = e.nativeEvent.description || 'Unknown WebView error';
               setError(`WebView failed to load: ${desc}`);
@@ -271,7 +285,12 @@ export default function TerminalScreen() {
                   | { type: 'size'; cols: number; rows: number }
                   | { type: 'ready' }
                   | { type: 'error'; message: string; source?: string; line?: number; col?: number; stack?: string };
-                if (msg.type === 'size') {
+                if (msg.type === 'ready') {
+                  terminalReadyRef.current = true;
+                  if (session?.shellTranscript) {
+                    writeToTerminal(session.shellTranscript);
+                  }
+                } else if (msg.type === 'size') {
                   onWebViewSize(msg.cols, msg.rows);
                 } else if (msg.type === 'input' && session && shellStartedRef.current) {
                   void session.writeToShell(xtermBridge.fromBase64(msg.data));
@@ -280,7 +299,6 @@ export default function TerminalScreen() {
                   setError(`Terminal viewer error: ${msg.message}${where}`);
                   setState('error');
                 }
-                // type === 'ready' is informational; xterm is alive and waiting for size/data.
               } catch {
                 // Ignore malformed bridge messages.
               }
@@ -297,6 +315,7 @@ export default function TerminalScreen() {
               onBack={() => {
                 router.back();
               }}
+              onClose={onCloseSession}
               onToggleKeyboard={onToggleKeyboard}
               fontSize={displayFontSize}
               onFontDelta={onFontDelta}

@@ -112,8 +112,8 @@ eas submit --profile production --platform android  # uploads to Play Console
 ## 9. Pre-submission smoke checklist
 
 - [ ] Real-device smoke on iOS (physical) and Android (physical or BlueStacks):
-  vault pull → host list → SSH terminal connect → tmux resumption →
-  background ≥ 30s → reconnect succeeds.
+  vault pull → host list → SSH terminal connect → back hides the terminal without
+  disconnecting → close terminates the SSH connection.
 - [ ] EAS prebuild `apps/mobile` succeeds on macOS runners.
 - [ ] All EAS secrets present (run `eas secret:list`).
 - [ ] Privacy policy live at the public URL.

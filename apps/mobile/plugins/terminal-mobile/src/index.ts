@@ -20,8 +20,6 @@ export { autoConnectArgsFromVault, resolveHostConnectArgs } from './services/aut
 export type { IHostConnectArgs } from './services/auto-connect-from-vault';
 export { IMobileConnectionService, MobileConnectionService } from './services/mobile-connection.service';
 export type { HostConnectionStatus, IHostConnectionState, IMobileManualCredentials } from './services/mobile-connection.service';
-export { buildShellResumptionCommand } from './services/mobile-shell-resumption';
-export type { IShellResumptionCommand, IShellResumptionOptions, IShellResumptionState, ShellResumptionKind } from './services/mobile-shell-resumption';
 export { IMobileSshClientService, MobileSshClientService } from './services/mobile-ssh-client.service';
 export type { IMobileSshConnectOptions, IMobileSshSession, IShellStartOptions, SshConnectionState } from './services/mobile-ssh-client.service';
 export { MobileSshSessionManager } from './services/mobile-ssh-session-manager';

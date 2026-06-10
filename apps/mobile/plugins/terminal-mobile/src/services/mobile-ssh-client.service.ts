@@ -46,6 +46,7 @@ export interface IMobileSshSession {
   readonly state: SshConnectionState;
   readonly state$: Observable<SshConnectionState>;
   readonly shellOutput$: Observable<string>;
+  readonly shellTranscript: string;
 
   exec: (command: string) => Promise<string>;
   startShell: (opts?: IShellStartOptions) => Promise<void>;
@@ -57,6 +58,7 @@ export interface IMobileSshSession {
 
 const utf8Decoder = new TextDecoder('utf-8');
 const utf8Encoder = new TextEncoder();
+const MAX_TRANSCRIPT_CHARS = 200_000;
 
 class MobileSshSession extends Disposable implements IMobileSshSession {
   private readonly _state$ = new BehaviorSubject<SshConnectionState>('connected');
@@ -64,6 +66,8 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
 
   private readonly _shellOutput$ = new Subject<string>();
   readonly shellOutput$: Observable<string> = this._shellOutput$.asObservable();
+
+  private _shellTranscript = '';
 
   private _shell: ISshShell | null = null;
   private _listenerId: bigint | null = null;
@@ -84,6 +88,10 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
 
   get state(): SshConnectionState {
     return this._state$.getValue();
+  }
+
+  get shellTranscript(): string {
+    return this._shellTranscript;
   }
 
   async exec(_command: string): Promise<string> {
@@ -164,12 +172,20 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
       // Dropped notice — surface as control message in the output stream so
       // the UI can render a "lost N..M bytes" banner if it wants. v1 just
       // forwards the seq range as text.
-      this._shellOutput$.next(`\r\n[termlnk] dropped seq ${ev.fromSeq}..${ev.toSeq}\r\n`);
+      this._emitShellOutput(`\r\n[termlnk] dropped seq ${ev.fromSeq}..${ev.toSeq}\r\n`);
       return;
     }
     const chunk = ev as ITerminalChunk;
-    this._shellOutput$.next(utf8Decoder.decode(new Uint8Array(chunk.bytes), { stream: true }));
+    this._emitShellOutput(utf8Decoder.decode(new Uint8Array(chunk.bytes), { stream: true }));
   };
+
+  private _emitShellOutput(output: string): void {
+    this._shellTranscript += output;
+    if (this._shellTranscript.length > MAX_TRANSCRIPT_CHARS) {
+      this._shellTranscript = this._shellTranscript.slice(-MAX_TRANSCRIPT_CHARS);
+    }
+    this._shellOutput$.next(output);
+  }
 }
 
 export interface IMobileSshClientService {

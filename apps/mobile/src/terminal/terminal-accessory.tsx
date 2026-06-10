@@ -55,6 +55,7 @@ interface ITerminalAccessoryProps {
   readonly onKey: (seq: string) => void;
   readonly hostLabel: string;
   readonly onBack: () => void;
+  readonly onClose: () => void;
   readonly onToggleKeyboard: () => void;
   readonly fontSize: number;
   readonly onFontDelta: (delta: number) => void;
@@ -75,6 +76,7 @@ export function TerminalAccessory(props: ITerminalAccessoryProps) {
       <HostBar
         hostLabel={props.hostLabel}
         onBack={props.onBack}
+        onClose={props.onClose}
         onToggleKeyboard={props.onToggleKeyboard}
       />
 
@@ -90,7 +92,7 @@ export function TerminalAccessory(props: ITerminalAccessoryProps) {
   );
 }
 
-function HostBar({ hostLabel, onBack, onToggleKeyboard }: { hostLabel: string; onBack: () => void; onToggleKeyboard: () => void }) {
+function HostBar({ hostLabel, onBack, onClose, onToggleKeyboard }: { hostLabel: string; onBack: () => void; onClose: () => void; onToggleKeyboard: () => void }) {
   return (
     <View className="flex-row items-center px-3 py-2">
       <ToolButton icon={ChevronLeft} onPress={onBack} />
@@ -100,7 +102,7 @@ function HostBar({ hostLabel, onBack, onToggleKeyboard }: { hostLabel: string; o
       >
         <TerminalSquare size={18} color={TERM.green} />
         <Text className="ml-2 flex-1 text-[15px] font-medium" style={{ color: TERM.green }} numberOfLines={1}>{hostLabel}</Text>
-        <Pressable onPress={onBack} hitSlop={8} className="active:opacity-60">
+        <Pressable onPress={onClose} hitSlop={8} className="active:opacity-60">
           <CircleX size={18} color={TERM.green} />
         </Pressable>
       </View>
