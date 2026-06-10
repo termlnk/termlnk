@@ -66,7 +66,8 @@ export function HostActionMenu({ anchor, items, onClose }: IHostActionMenuProps)
   // flashes at the wrong spot before we can flip it above the anchor when needed.
   const [cardHeight, setCardHeight] = useState(0);
 
-  const left = clamp(anchor.x, SCREEN_MARGIN, winW - CARD_WIDTH - SCREEN_MARGIN);
+  const centeredLeft = anchor.x + (anchor.width - CARD_WIDTH) / 2;
+  const left = clamp(centeredLeft, SCREEN_MARGIN, winW - CARD_WIDTH - SCREEN_MARGIN);
   const belowTop = anchor.y + anchor.height + ANCHOR_GAP;
   const aboveTop = anchor.y - cardHeight - ANCHOR_GAP;
   const bottomLimit = winH - insets.bottom - SCREEN_MARGIN;

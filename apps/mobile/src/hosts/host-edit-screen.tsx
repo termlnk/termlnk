@@ -307,13 +307,31 @@ export function HostEditScreen({ hostId, parentId, kind, prefillAddr, prefillUse
                 )}
 
                 <SectionLabel title="SSH / MOSH" />
-                <Card dividerInset={16}>
+                <View
+                  className="mx-4 overflow-hidden rounded-2xl bg-surface-raised"
+                  style={{
+                    shadowColor: '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 3 },
+                  }}
+                >
                   <SwitchRow title="Use SSH" value={useSsh} onValueChange={setUseSsh} />
+                  <GroupedDivider />
                   <SwitchRow title="Use Mosh" value={useMosh} onValueChange={setUseMosh} />
-                  <InlineField label="Port" value={port} onChangeText={setPort} placeholder="22 Default" keyboardType="numeric" />
-                </Card>
-
-                <FormSection title="Credentials">
+                  <GroupedDivider />
+                  <InlineField
+                    label="Port"
+                    value={port}
+                    onChangeText={setPort}
+                    placeholder="22"
+                    keyboardType="numeric"
+                    trailing={<Text className="text-[13px] text-content-secondary">Default</Text>}
+                  />
+                  <View className="h-3 bg-surface" />
+                  <View className="px-4 pb-2 pt-4">
+                    <Text className="text-[20px] font-semibold text-content">Credentials</Text>
+                  </View>
                   <SegmentedField label="Method" value={credType} options={CRED_OPTIONS} onChange={setCredType} />
                   {credType !== 'identity' && (
                     <TextField label="Username" value={username} onChangeText={setUsername} placeholder="root" last={credType === 'always'} />
@@ -334,7 +352,7 @@ export function HostEditScreen({ hostId, parentId, kind, prefillAddr, prefillUse
                       ? <SegmentedField label="Identity" value={identityId} options={identityOptions} onChange={setIdentityId} last />
                       : <TextField label="Identity" value="" onChangeText={() => {}} placeholder="No identities — add one in Keychain" last />
                   )}
-                </FormSection>
+                </View>
 
                 <FormSection title="Proxy">
                   <SwitchField label="Use proxy" value={proxyEnabled} onValueChange={setProxyEnabled} last={!proxyEnabled} />
@@ -386,4 +404,8 @@ function SectionLabel({ title }: { title: string }) {
   return (
     <Text className="px-4 pb-2 pt-5 text-[12px] font-semibold uppercase tracking-wider text-content-tertiary">{title}</Text>
   );
+}
+
+function GroupedDivider() {
+  return <View className="ml-4 h-px bg-divider" />;
 }
