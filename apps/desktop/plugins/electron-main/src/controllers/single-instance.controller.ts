@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { Disposable, ILogService } from '@termlnk/core';
+import { Disposable, ILogService, platform, Platform } from '@termlnk/core';
 import { IWindowManagerService } from '@termlnk/electron';
 import { app } from 'electron';
 import { fromEvent, take } from 'rxjs';
@@ -38,17 +38,36 @@ export class SingleInstanceController extends Disposable {
       })
     );
 
+    // Both events ask us to surface the already-running instance's main window:
+    // `second-instance` fires when the single-instance lock rejects a relaunch;
+    // `activate` fires when macOS reopens the app (e.g. clicking the Dock icon).
+    // Without the `activate` handler the Dock icon click is a no-op once the
+    // window has been closed to tray, since close-to-tray also hides the Dock.
     this.disposeWithMe(
-      fromEvent(app, 'second-instance').subscribe(() => this._focusMainWindow())
+      fromEvent(app, 'second-instance').subscribe(() => this._revealMainWindow())
+    );
+    this.disposeWithMe(
+      fromEvent(app, 'activate').subscribe(() => this._revealMainWindow())
     );
   }
 
-  private _focusMainWindow(): void {
-    if (this._mainWindowId === null) {
+  private _revealMainWindow(): void {
+    const id = this._mainWindowId;
+    if (id === null) {
       return;
     }
-    void this._windowManagerService.focusWindow(this._mainWindowId).catch((err: any) => {
-      this._logService.error(`[SingleInstanceController] Failed to focus main window: ${err.message}`);
+    void this._raiseMainWindow(id).catch((err: any) => {
+      this._logService.error(`[SingleInstanceController] Failed to reveal main window: ${err.message}`);
     });
+  }
+
+  private async _raiseMainWindow(id: number): Promise<void> {
+    // Close-to-tray drops the app into Accessory mode via app.dock.hide().
+    // dock.show() runs an async setActivationPolicy(Regular); await it so the
+    // app is back in Regular mode before focusWindow raises the hidden window.
+    if (platform === Platform.Mac) {
+      await app.dock?.show();
+    }
+    await this._windowManagerService.focusWindow(id);
   }
 }
