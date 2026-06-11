@@ -13,8 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
+import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
-
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -62,9 +62,29 @@ export default function RootLayout() {
               <Stack.Screen name="vault/logs" options={{ headerShown: false }} />
               <Stack.Screen name="vault/port-forwarding" options={{ headerShown: false }} />
               <Stack.Screen name="vault/snippets" options={{ headerShown: false }} />
-              <Stack.Screen name="host/edit" options={{ headerShown: false, presentation: 'modal' }} />
-              <Stack.Screen name="group-picker" options={{ headerShown: false, presentation: 'modal' }} />
+              <Stack.Screen
+                name="host/edit"
+                options={{
+                  presentation: 'formSheet',
+                  headerShown: true,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.5, 0.95] as number[],
+                  sheetCornerRadius: 28,
+                  contentStyle: { flex: 1 },
+                }}
+              />
+              <Stack.Screen
+                name="group-picker"
+                options={{
+                  presentation: 'formSheet',
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.6, 0.95] as number[],
+                  sheetCornerRadius: 20,
+                  contentStyle: { flex: 1 },
+                }}
+              />
             </Stack>
+            <PortalHost />
           </BiometricGate>
         </ThemeProvider>
       </CoreProvider>

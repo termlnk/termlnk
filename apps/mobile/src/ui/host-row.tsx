@@ -13,9 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IMenuAnchor } from './host-action-menu';
+import type { MenuAction } from '@react-native-menu/menu';
+import type { IMenuAction, IMenuItem } from './menu-types';
+import { MenuView } from '@react-native-menu/menu';
 import { ChevronRight, MoreHorizontal } from 'lucide-react-native';
-import { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
 import { HostAvatar } from './host-avatar';
@@ -24,51 +25,72 @@ interface IHostRowProps {
   readonly id: string;
   readonly label: string;
   readonly type: 'host' | 'group' | 'unknown';
-  readonly subtitle?: string; // e.g. "addr:port" for hosts, "5 items" for groups
-  readonly trailing?: string; // e.g. "2m ago" for recent sessions
+  readonly subtitle?: string;
+  readonly trailing?: string;
   readonly onPress: () => void;
-  // When provided, long-pressing the row (and tapping the host "…" button) requests the
-  // action menu, anchored to the measured row rect.
-  readonly onRequestMenu?: (anchor: IMenuAnchor) => void;
-  // Swaps the subtitle for "Connecting…" and spins the avatar ring while connecting.
+  readonly menuItems?: readonly IMenuItem[];
   readonly connecting?: boolean;
+  // MenuView can intercept short taps on navigable group rows, so callers opt in
+  // only where the native context menu does not block the primary action.
+  readonly useNativeMenu?: boolean;
 }
 
-export function HostRow(props: IHostRowProps) {
-  const colors = useThemeColors();
-  const rowRef = useRef<View>(null);
+function isAction(item: IMenuItem): item is IMenuAction {
+  return !('divider' in item);
+}
 
-  const requestMenu = () => {
-    const node = rowRef.current;
-    if (props.onRequestMenu == null || node == null) {
-      return;
+function toNativeActions(items: readonly IMenuItem[]): MenuAction[] {
+  const groups: IMenuAction[][] = [];
+  let current: IMenuAction[] = [];
+  for (const item of items) {
+    if ('divider' in item) {
+      if (current.length > 0) {
+        groups.push(current);
+        current = [];
+      }
+    } else {
+      current.push(item);
     }
-    node.measureInWindow((x, y, width, height) => props.onRequestMenu?.({ x, y, width, height }));
-  };
+  }
+  if (current.length > 0) {
+    groups.push(current);
+  }
 
+  if (groups.length <= 1) {
+    return groups.flatMap((g) => g.map(toAction));
+  }
+
+  return groups.map((group, i) => ({
+    id: `__group_${i}`,
+    title: '',
+    displayInline: true,
+    subactions: group.map(toAction),
+  }));
+}
+
+function toAction(item: IMenuAction): MenuAction {
+  return {
+    id: item.key,
+    title: item.label,
+    image: item.sfSymbol,
+    attributes: {
+      destructive: item.destructive,
+    },
+  };
+}
+
+function HostRowContent(props: IHostRowProps) {
   const subtitle = props.connecting ? 'Connecting…' : props.subtitle;
-  const showMenuButton = props.onRequestMenu != null && props.type !== 'group';
 
   return (
-    <Pressable
-      ref={rowRef}
-      onPress={props.onPress}
-      onLongPress={props.onRequestMenu != null ? requestMenu : undefined}
-      className="flex-row items-center px-4 py-3 active:bg-surface-sunken"
-    >
+    <>
       <HostAvatar id={props.id} label={props.label} type={props.type} connecting={props.connecting} />
       <View className="ml-3 flex-1">
-        <Text
-          numberOfLines={1}
-          className="text-[16px] font-medium text-content"
-        >
+        <Text numberOfLines={1} className="text-[16px] font-medium text-content">
           {props.label}
         </Text>
         {subtitle != null && (
-          <Text
-            numberOfLines={1}
-            className="mt-0.5 text-[13px] text-content-secondary"
-          >
+          <Text numberOfLines={1} className="mt-0.5 text-[13px] text-content-secondary">
             {subtitle}
           </Text>
         )}
@@ -76,13 +98,84 @@ export function HostRow(props: IHostRowProps) {
       {props.trailing != null && (
         <Text className="ml-2 text-[12px] text-content-tertiary">{props.trailing}</Text>
       )}
-      {showMenuButton
-        ? (
-          <Pressable onPress={requestMenu} hitSlop={10} className="ml-1 p-1 active:opacity-60">
-            <MoreHorizontal size={20} color={colors.contentSecondary} />
-          </Pressable>
-        )
-        : <ChevronRight size={18} color={colors.contentTertiary} />}
-    </Pressable>
+    </>
+  );
+}
+
+function NativeMenuButton({ items }: { readonly items: readonly IMenuItem[] }) {
+  const colors = useThemeColors();
+  const actionLookup = new Map(
+    items.filter(isAction).map((item) => [item.key, item])
+  );
+
+  return (
+    <MenuView
+      actions={toNativeActions(items)}
+      onPressAction={({ nativeEvent }) => {
+        const action = actionLookup.get(nativeEvent.event);
+        if (action != null) {
+          action.onPress();
+        }
+      }}
+    >
+      <View className="mr-2 h-9 w-9 items-center justify-center rounded-full">
+        <MoreHorizontal size={22} color={colors.contentTertiary} />
+      </View>
+    </MenuView>
+  );
+}
+
+export function HostRow(props: IHostRowProps) {
+  const colors = useThemeColors();
+  const hasMenu = props.useNativeMenu === true
+    && props.menuItems != null
+    && props.menuItems.filter(isAction).length > 0;
+  const hasInlineMenu = props.useNativeMenu !== true
+    && props.menuItems != null
+    && props.menuItems.filter(isAction).length > 0;
+
+  if (!hasMenu) {
+    return (
+      <View className="flex-row items-center">
+        <Pressable
+          onPress={props.onPress}
+          className="flex-1 active:bg-surface-sunken"
+        >
+          <View className="flex-row items-center px-4 py-3">
+            <HostRowContent {...props} />
+            {!hasInlineMenu && <ChevronRight size={18} color={colors.contentTertiary} />}
+          </View>
+        </Pressable>
+        {hasInlineMenu && <NativeMenuButton items={props.menuItems!} />}
+      </View>
+    );
+  }
+
+  const actionLookup = new Map(
+    props.menuItems!.filter(isAction).map((item) => [item.key, item])
+  );
+
+  return (
+    <MenuView
+      actions={toNativeActions(props.menuItems!)}
+      shouldOpenOnLongPress
+      onPressAction={({ nativeEvent }) => {
+        const action = actionLookup.get(nativeEvent.event);
+        if (action != null) {
+          action.onPress();
+        }
+      }}
+    >
+      <Pressable
+        onPress={props.onPress}
+        delayLongPress={400}
+        className="active:bg-surface-sunken"
+      >
+        <View className="flex-row items-center px-4 py-3">
+          <HostRowContent {...props} />
+          <ChevronRight size={18} color={colors.contentTertiary} />
+        </View>
+      </Pressable>
+    </MenuView>
   );
 }

@@ -15,7 +15,8 @@
 
 import type { IMobileHost } from '@termlnk/database-mobile';
 import type { IHostConnectionState } from '@termlnk/terminal-mobile';
-import type { IMenuAnchor, IMenuItem } from '../ui/host-action-menu';
+import type { IMenuItem } from '../ui/menu-types';
+import { MenuView } from '@react-native-menu/menu';
 import { generateRandomId } from '@termlnk/core';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Copy, FolderInput, FolderOpen, Pencil, Plug, Plus, Server, Trash2 } from 'lucide-react-native';
@@ -27,7 +28,6 @@ import { useThemeColors } from '../theme/theme-provider';
 import { Card } from '../ui/card';
 import { CreateHostEmptyState } from '../ui/create-host-empty-state';
 import { EmptyState } from '../ui/empty-state';
-import { HostActionMenu } from '../ui/host-action-menu';
 import { HostRow } from '../ui/host-row';
 import { RoundButton } from '../ui/round-button';
 import { ScreenContainer } from '../ui/screen-container';
@@ -78,7 +78,6 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [menu, setMenu] = useState<{ items: IMenuItem[]; anchor: IMenuAnchor } | null>(null);
   // Records which host a "Move to group" flow is acting on so the group-picker hand-off
   // (consumed on focus return) knows what to reparent.
   const movingHostIdRef = useRef<string | null>(null);
@@ -130,12 +129,12 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
     }, [hostRepo])
   );
 
-  const onNew = useCallback(() => {
-    Alert.alert('New', undefined, [
-      { text: 'New host', onPress: () => router.push({ pathname: '/host/edit', params: { pid: parentId, kind: 'host' } }) },
-      { text: 'New group', onPress: () => router.push({ pathname: '/host/edit', params: { pid: parentId, kind: 'group' } }) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  const onNewHost = useCallback(() => {
+    router.push({ pathname: '/host/edit', params: { pid: parentId, kind: 'host' } });
+  }, [router, parentId]);
+
+  const onNewGroup = useCallback(() => {
+    router.push({ pathname: '/host/edit', params: { pid: parentId, kind: 'group' } });
   }, [router, parentId]);
 
   // Open the SSH transport (drives the row's connecting animation via connections$), then
@@ -158,7 +157,7 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
   }, [router, onConnect]);
 
   const onEdit = useCallback((host: IMobileHost) => {
-    router.push({ pathname: '/host/edit', params: { id: host.id } });
+    router.push({ pathname: '/host/edit', params: { id: host.id, kind: host.type === 'group' ? 'group' : 'host' } });
   }, [router]);
 
   const onDelete = useCallback((host: IMobileHost) => {
@@ -185,26 +184,26 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
     router.push({ pathname: '/group-picker', params: { selectedPid: host.pid } });
   }, [router]);
 
-  const openMenu = useCallback((host: IMobileHost, anchor: IMenuAnchor) => {
-    const items: IMenuItem[] = host.type === 'group'
-      ? [
-        { key: 'edit', label: 'Edit', icon: Pencil, onPress: () => onEdit(host) },
-        { key: 'move', label: 'Move to group', icon: FolderInput, onPress: () => onMoveToGroup(host) },
+  const getMenuItems = useCallback((host: IMobileHost): IMenuItem[] => {
+    if (host.type === 'group') {
+      return [
+        { key: 'edit', label: 'Edit', icon: Pencil, sfSymbol: 'pencil', onPress: () => onEdit(host) },
+        { key: 'move', label: 'Move to group', icon: FolderInput, sfSymbol: 'folder.badge.plus', onPress: () => onMoveToGroup(host) },
         { key: 'sep', divider: true },
-        { key: 'delete', label: 'Delete', icon: Trash2, destructive: true, onPress: () => onDelete(host) },
-      ]
-      : [
-        { key: 'connect', label: 'Connect', icon: Plug, onPress: () => void onConnect(host, 'terminal') },
-        { key: 'sftp', label: 'Connect via SFTP', icon: FolderOpen, onPress: () => void onConnect(host, 'sftp') },
-        { key: 'sep1', divider: true },
-        { key: 'duplicate', label: 'Duplicate', icon: Copy, onPress: () => void onDuplicate(host) },
-        { key: 'move', label: 'Move to group', icon: FolderInput, onPress: () => onMoveToGroup(host) },
-        { key: 'sep2', divider: true },
-        { key: 'edit', label: 'Edit', icon: Pencil, onPress: () => onEdit(host) },
-        { key: 'sep3', divider: true },
-        { key: 'delete', label: 'Delete', icon: Trash2, destructive: true, onPress: () => onDelete(host) },
+        { key: 'delete', label: 'Delete', icon: Trash2, sfSymbol: 'trash', destructive: true, onPress: () => onDelete(host) },
       ];
-    setMenu({ items, anchor });
+    }
+    return [
+      { key: 'connect', label: 'Connect', icon: Plug, sfSymbol: 'bolt.fill', onPress: () => void onConnect(host, 'terminal') },
+      { key: 'sftp', label: 'Connect via SFTP', icon: FolderOpen, sfSymbol: 'folder.fill', onPress: () => void onConnect(host, 'sftp') },
+      { key: 'sep1', divider: true },
+      { key: 'duplicate', label: 'Duplicate', icon: Copy, sfSymbol: 'doc.on.doc', onPress: () => void onDuplicate(host) },
+      { key: 'move', label: 'Move to group', icon: FolderInput, sfSymbol: 'folder.badge.plus', onPress: () => onMoveToGroup(host) },
+      { key: 'sep2', divider: true },
+      { key: 'edit', label: 'Edit', icon: Pencil, sfSymbol: 'pencil', onPress: () => onEdit(host) },
+      { key: 'sep3', divider: true },
+      { key: 'delete', label: 'Delete', icon: Trash2, sfSymbol: 'trash', destructive: true, onPress: () => onDelete(host) },
+    ];
   }, [onConnect, onDuplicate, onMoveToGroup, onEdit, onDelete]);
 
   const isConnecting = useCallback((hostId: string): boolean => {
@@ -224,7 +223,23 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
         title={title}
         subtitle={subtitle}
         onBack={() => router.back()}
-        right={<RoundButton icon={Plus} onPress={onNew} accessibilityLabel="New host" />}
+        right={(
+          <MenuView
+            actions={[
+              { id: 'new-host', title: 'New Host', image: 'server.rack' },
+              { id: 'new-group', title: 'New Group', image: 'folder.badge.plus' },
+            ]}
+            onPressAction={({ nativeEvent }) => {
+              if (nativeEvent.event === 'new-host') {
+                onNewHost();
+              } else if (nativeEvent.event === 'new-group') {
+                onNewGroup();
+              }
+            }}
+          >
+            <RoundButton icon={Plus} onPress={onNewHost} accessibilityLabel="New host" />
+          </MenuView>
+        )}
       />
       <View className="px-4 pb-2">
         <SearchField value={query} onChangeText={setQuery} placeholder="Search" />
@@ -258,7 +273,7 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
                     type={g.type}
                     subtitle={hostSubtitle(g)}
                     onPress={() => onPressItem(g)}
-                    onRequestMenu={(anchor) => openMenu(g, anchor)}
+                    menuItems={getMenuItems(g)}
                   />
                 </Card>
               </View>
@@ -277,7 +292,8 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
                     subtitle={hostSubtitle(h)}
                     connecting={isConnecting(h.id)}
                     onPress={() => onPressItem(h)}
-                    onRequestMenu={(anchor) => openMenu(h, anchor)}
+                    menuItems={getMenuItems(h)}
+                    useNativeMenu
                   />
                 </Card>
               </View>
@@ -294,13 +310,6 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
           </ScrollView>
         )}
 
-      {menu != null && (
-        <HostActionMenu
-          anchor={menu.anchor}
-          items={menu.items}
-          onClose={() => setMenu(null)}
-        />
-      )}
     </ScreenContainer>
   );
 }

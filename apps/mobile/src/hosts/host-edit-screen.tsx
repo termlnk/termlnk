@@ -16,17 +16,17 @@
 import type { IMobileCredential, IMobileCredentialType, IMobileHostFull, IMobileHostSettings, IMobileProxy } from '@termlnk/database-mobile';
 import { generateRandomId } from '@termlnk/core';
 import { DEFAULT_PREFERENCES } from '@termlnk/database-mobile';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Sparkles, X } from 'lucide-react-native';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Check, Sparkles, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useHostRepository, useIdentityRepository, useObservable, usePreferencesService, useSshKeyRepository } from '../core/core-context';
 import { useThemeColors } from '../theme/theme-provider';
 import { Card } from '../ui/card';
 import { DangerButton, FormSection, InlineField, SegmentedField, SwitchField, TextField } from '../ui/form';
+import { ModalHeaderButton } from '../ui/modal-header-button';
 import { NavRow, SwitchRow } from '../ui/rows';
 import { ScreenContainer } from '../ui/screen-container';
-import { ScreenHeader } from '../ui/screen-header';
 import { takePendingGroupSelection } from './group-selection';
 
 interface IHostEditScreenProps {
@@ -268,133 +268,141 @@ export function HostEditScreen({ hostId, parentId, kind, prefillAddr, prefillUse
 
   return (
     <ScreenContainer>
-      <ScreenHeader
-        variant="modal"
-        title={title}
-        onClose={() => router.back()}
-        onConfirm={() => void onSave()}
-        confirmDisabled={confirmDisabled || busy}
+      <Stack.Screen
+        options={{
+          title,
+          headerLeft: () => (
+            <ModalHeaderButton
+              icon={X}
+              onPress={() => router.back()}
+              accessibilityLabel="Close"
+            />
+          ),
+          headerRight: () => (
+            <ModalHeaderButton
+              icon={Check}
+              variant="accent"
+              onPress={() => void onSave()}
+              disabled={confirmDisabled}
+              loading={busy}
+              accessibilityLabel="Save"
+            />
+          ),
+        }}
       />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-          {kind === 'host'
-            ? (
-              <>
-                <Card dividerInset={16}>
-                  <InlineField value={label} onChangeText={setLabel} placeholder="Label" autoCapitalize="words" />
-                  <InlineField label="IP or Hostname" value={addr} onChangeText={setAddr} placeholder="Required" keyboardType="url" />
-                  <NavRow title="Parent Group" value={parentLabel} chevronTone="accent" onPress={openParentPicker} />
-                  <NavRow title="Tags" value="None" chevronTone="accent" onPress={() => Alert.alert('Tags', 'Tagging is coming soon.')} />
-                  <SwitchRow title="Backspace as CTRL+H" value={backspaceAsCtrlH} onValueChange={setBackspaceAsCtrlH} />
-                </Card>
+        {kind === 'host'
+          ? (
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 48 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Card dividerInset={16}>
+                <InlineField value={label} onChangeText={setLabel} placeholder="Label" autoCapitalize="words" />
+                <InlineField label="IP or Hostname" value={addr} onChangeText={setAddr} placeholder="Required" keyboardType="url" />
+                <NavRow title="Parent Group" value={parentLabel} chevronTone="accent" onPress={openParentPicker} />
+                <NavRow title="Tags" value="None" chevronTone="accent" onPress={() => Alert.alert('Tags', 'Tagging is coming soon.')} />
+                <SwitchRow title="Backspace as CTRL+H" value={backspaceAsCtrlH} onValueChange={setBackspaceAsCtrlH} />
+              </Card>
 
-                {!prefs.aiAgentCardDismissed && (
-                  <>
-                    <SectionLabel title="AI Agent" />
-                    <Card>
-                      <Pressable onPress={() => router.push('/ai')} className="flex-row items-start p-4 active:bg-surface-sunken">
-                        <View className="mr-3 mt-0.5"><Sparkles size={20} color={colors.accent} /></View>
-                        <View className="flex-1">
-                          <Text className="text-[16px] font-semibold text-content">Set up this host for AI code assistants</Text>
-                          <Text className="mt-1 text-[14px] text-content-secondary">Claude Code, Gemini, OpenCode, etc.</Text>
-                        </View>
-                        <Pressable onPress={() => void prefsService.update({ aiAgentCardDismissed: true })} hitSlop={10} className="ml-2 active:opacity-60">
-                          <X size={18} color={colors.contentTertiary} />
-                        </Pressable>
+              {!prefs.aiAgentCardDismissed && (
+                <>
+                  <SectionLabel title="AI Agent" />
+                  <Card>
+                    <Pressable onPress={() => router.push('/ai')} className="flex-row items-start p-4 active:bg-surface-sunken">
+                      <View className="mr-3 mt-0.5"><Sparkles size={20} color={colors.accent} /></View>
+                      <View className="flex-1">
+                        <Text className="text-[16px] font-semibold text-content">Set up this host for AI code assistants</Text>
+                        <Text className="mt-1 text-[14px] text-content-secondary">Claude Code, Gemini, OpenCode, etc.</Text>
+                      </View>
+                      <Pressable onPress={() => void prefsService.update({ aiAgentCardDismissed: true })} hitSlop={10} className="ml-2 active:opacity-60">
+                        <X size={18} color={colors.contentTertiary} />
                       </Pressable>
-                    </Card>
+                    </Pressable>
+                  </Card>
+                </>
+              )}
+
+              <SectionLabel title="SSH / MOSH" />
+              <View
+                className="mx-4 overflow-hidden rounded-2xl bg-surface-raised"
+                style={{
+                  shadowColor: '#000',
+                  shadowOpacity: 0.05,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 3 },
+                }}
+              >
+                <SwitchRow title="Use SSH" value={useSsh} onValueChange={setUseSsh} />
+                <GroupedDivider />
+                <SwitchRow title="Use Mosh" value={useMosh} onValueChange={setUseMosh} />
+                <GroupedDivider />
+                <InlineField
+                  label="Port"
+                  value={port}
+                  onChangeText={setPort}
+                  placeholder="22"
+                  keyboardType="numeric"
+                  trailing={<Text className="text-[13px] text-content-secondary">Default</Text>}
+                />
+                <View className="h-3 bg-surface" />
+                <View className="px-4 pb-2 pt-4">
+                  <Text className="text-[20px] font-semibold text-content">Credentials</Text>
+                </View>
+                <SegmentedField label="Method" value={credType} options={CRED_OPTIONS} onChange={setCredType} />
+                {credType !== 'identity' && (
+                  <TextField label="Username" value={username} onChangeText={setUsername} placeholder="root" last={credType === 'always'} />
+                )}
+                {credType === 'password' && (
+                  <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry last />
+                )}
+                {credType === 'rsa' && (
+                  <TextField label="Private key (PEM)" value={privateKey} onChangeText={setPrivateKey} multiline last />
+                )}
+                {credType === 'key' && (
+                  keyOptions.length > 0
+                    ? <SegmentedField label="Key" value={keyId} options={keyOptions} onChange={setKeyId} last />
+                    : <TextField label="Key" value="" onChangeText={() => {}} placeholder="No keys — add one in Keychain" last />
+                )}
+                {credType === 'identity' && (
+                  identityOptions.length > 0
+                    ? <SegmentedField label="Identity" value={identityId} options={identityOptions} onChange={setIdentityId} last />
+                    : <TextField label="Identity" value="" onChangeText={() => {}} placeholder="No identities — add one in Keychain" last />
+                )}
+              </View>
+
+              <FormSection title="Proxy">
+                <SwitchField label="Use proxy" value={proxyEnabled} onValueChange={setProxyEnabled} last={!proxyEnabled} />
+                {proxyEnabled && (
+                  <>
+                    <SegmentedField label="Type" value={proxyType} options={PROXY_OPTIONS} onChange={setProxyType} />
+                    <TextField label="Host" value={proxyHost} onChangeText={setProxyHost} placeholder="proxy.example.com" keyboardType="url" />
+                    <TextField label="Port" value={proxyPort} onChangeText={setProxyPort} keyboardType="numeric" last />
                   </>
                 )}
+              </FormSection>
 
-                <SectionLabel title="SSH / MOSH" />
-                <View
-                  className="mx-4 overflow-hidden rounded-2xl bg-surface-raised"
-                  style={{
-                    shadowColor: '#000',
-                    shadowOpacity: 0.05,
-                    shadowRadius: 10,
-                    shadowOffset: { width: 0, height: 3 },
-                  }}
-                >
-                  <SwitchRow title="Use SSH" value={useSsh} onValueChange={setUseSsh} />
-                  <GroupedDivider />
-                  <SwitchRow title="Use Mosh" value={useMosh} onValueChange={setUseMosh} />
-                  <GroupedDivider />
-                  <InlineField
-                    label="Port"
-                    value={port}
-                    onChangeText={setPort}
-                    placeholder="22"
-                    keyboardType="numeric"
-                    trailing={<Text className="text-[13px] text-content-secondary">Default</Text>}
-                  />
-                  <View className="h-3 bg-surface" />
-                  <View className="px-4 pb-2 pt-4">
-                    <Text className="text-[20px] font-semibold text-content">Credentials</Text>
-                  </View>
-                  <SegmentedField label="Method" value={credType} options={CRED_OPTIONS} onChange={setCredType} />
-                  {credType !== 'identity' && (
-                    <TextField label="Username" value={username} onChangeText={setUsername} placeholder="root" last={credType === 'always'} />
-                  )}
-                  {credType === 'password' && (
-                    <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry last />
-                  )}
-                  {credType === 'rsa' && (
-                    <TextField label="Private key (PEM)" value={privateKey} onChangeText={setPrivateKey} multiline last />
-                  )}
-                  {credType === 'key' && (
-                    keyOptions.length > 0
-                      ? <SegmentedField label="Key" value={keyId} options={keyOptions} onChange={setKeyId} last />
-                      : <TextField label="Key" value="" onChangeText={() => {}} placeholder="No keys — add one in Keychain" last />
-                  )}
-                  {credType === 'identity' && (
-                    identityOptions.length > 0
-                      ? <SegmentedField label="Identity" value={identityId} options={identityOptions} onChange={setIdentityId} last />
-                      : <TextField label="Identity" value="" onChangeText={() => {}} placeholder="No identities — add one in Keychain" last />
-                  )}
+              {isEdit && (
+                <View className="mt-6">
+                  <DangerButton title="Delete" onPress={onDelete} />
                 </View>
-
-                <FormSection title="Proxy">
-                  <SwitchField label="Use proxy" value={proxyEnabled} onValueChange={setProxyEnabled} last={!proxyEnabled} />
-                  {proxyEnabled && (
-                    <>
-                      <SegmentedField label="Type" value={proxyType} options={PROXY_OPTIONS} onChange={setProxyType} />
-                      <TextField label="Host" value={proxyHost} onChangeText={setProxyHost} placeholder="proxy.example.com" keyboardType="url" />
-                      <TextField label="Port" value={proxyPort} onChangeText={setProxyPort} keyboardType="numeric" last />
-                    </>
-                  )}
-                </FormSection>
-              </>
-            )
-            : (
-              <>
-                <Card dividerInset={16}>
-                  <InlineField value={label} onChangeText={setLabel} placeholder="Name" autoCapitalize="words" />
-                  <NavRow title="Parent Group" value={parentLabel} chevronTone="accent" onPress={openParentPicker} />
-                </Card>
-
-                <SectionLabel title="SSH / MOSH" />
-                <Card>
-                  <SwitchRow title="Use SSH" value={useSsh} onValueChange={setUseSsh} />
-                </Card>
-
-                <SectionLabel title="Telnet" />
-                <Card>
-                  <SwitchRow title="Use Telnet" value={useTelnet} onValueChange={setUseTelnet} />
-                </Card>
-
-                <Text className="mt-3 px-4 text-[13px] leading-[18px] text-content-secondary">
-                  Explicitly added parameters above are applied to all hosts and subgroups that belong to that group. If necessary, a parameter value can be altered by changing it inside a subgroup or a child host.
-                </Text>
-              </>
-            )}
-
-          {isEdit && (
-            <View className="mt-6">
-              <DangerButton title="Delete" onPress={onDelete} />
+              )}
+            </ScrollView>
+          )
+          : (
+            <View className="flex-1 px-4 pt-24">
+              <Card dividerInset={16}>
+                <TextField label="Name" value={label} onChangeText={setLabel} placeholder="Name" autoCapitalize="words" />
+                <NavRow title="Parent Group" value={parentLabel} chevronTone="accent" onPress={openParentPicker} />
+              </Card>
+              {isEdit && (
+                <View className="mt-6">
+                  <DangerButton title="Delete" onPress={onDelete} />
+                </View>
+              )}
             </View>
           )}
-        </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>
   );

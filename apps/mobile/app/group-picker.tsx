@@ -14,7 +14,7 @@
  */
 
 import type { IMobileHost } from '@termlnk/database-mobile';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -25,8 +25,6 @@ import { useThemeColors } from '../src/theme/theme-provider';
 import { Card } from '../src/ui/card';
 import { HostAvatar } from '../src/ui/host-avatar';
 import { NavRow } from '../src/ui/rows';
-import { ScreenContainer } from '../src/ui/screen-container';
-import { ScreenHeader } from '../src/ui/screen-header';
 
 // Collect a group and all its descendants so a group cannot be reparented under
 // itself (which would create a cycle in the tree).
@@ -79,9 +77,14 @@ export default function GroupPickerScreen() {
   const selectedPid = params.selectedPid ?? 'root';
 
   return (
-    <ScreenContainer>
-      <ScreenHeader variant="nav" title="Parent Group" onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}>
+    <>
+      <Stack.Screen options={{ title: 'Parent Group' }} />
+      <ScrollView
+        className="flex-1 bg-surface"
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 96, paddingBottom: insets.bottom + 32 }}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+      >
         <Card dividerInset={64}>
           <NavRow
             leading={<View className="h-9 w-9 items-center justify-center rounded-xl bg-surface-sunken" />}
@@ -107,6 +110,6 @@ export default function GroupPickerScreen() {
           </Text>
         )}
       </ScrollView>
-    </ScreenContainer>
+    </>
   );
 }
