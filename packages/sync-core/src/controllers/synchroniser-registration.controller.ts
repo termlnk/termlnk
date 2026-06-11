@@ -16,7 +16,7 @@
 import type { IResourceSynchroniser, ISyncPluginConfig, SyncResourceId } from '@termlnk/sync';
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { ISyncService, SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
-import { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, ProviderSynchroniser, SkillSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
+import { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SnippetSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 
 // Registers synchronisers at onReady (plugin onStarting is too early — dependencies
 // are not yet constructed). Synchroniser construction is side-effect free; start()
@@ -34,7 +34,9 @@ export class SynchroniserRegistrationController extends Disposable {
     @Inject(SkillSynchroniser) private readonly _skill: SkillSynchroniser,
     @Inject(SshKeySynchroniser) private readonly _sshKey: SshKeySynchroniser,
     @Inject(IdentitySynchroniser) private readonly _identity: IdentitySynchroniser,
-    @Inject(KnownHostSynchroniser) private readonly _knownHost: KnownHostSynchroniser
+    @Inject(KnownHostSynchroniser) private readonly _knownHost: KnownHostSynchroniser,
+    @Inject(SnippetSynchroniser) private readonly _snippet: SnippetSynchroniser,
+    @Inject(PortForwardingRuleSynchroniser) private readonly _portForwarding: PortForwardingRuleSynchroniser
   ) {
     super();
 
@@ -48,6 +50,8 @@ export class SynchroniserRegistrationController extends Disposable {
       ['ssh_key', this._sshKey],
       ['identity', this._identity],
       ['known_host', this._knownHost],
+      ['snippet', this._snippet],
+      ['port_forwarding_rule', this._portForwarding],
     ];
 
     for (const [resourceId, synchroniser] of candidates) {
