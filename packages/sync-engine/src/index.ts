@@ -29,6 +29,8 @@ export { HostSynchroniser } from './synchronisers/host-synchroniser';
 export { IdentitySynchroniser } from './synchronisers/identity-synchroniser';
 export { KnownHostSynchroniser } from './synchronisers/known-host-synchroniser';
 export { McpSynchroniser } from './synchronisers/mcp-synchroniser';
+export { PortForwardingRuleSynchroniser } from './synchronisers/port-forwarding-rule-synchroniser';
 export { ProviderSynchroniser } from './synchronisers/provider-synchroniser';
 export { SkillSynchroniser } from './synchronisers/skill-synchroniser';
+export { SnippetSynchroniser } from './synchronisers/snippet-synchroniser';
 export { SshKeySynchroniser } from './synchronisers/ssh-key-synchroniser';

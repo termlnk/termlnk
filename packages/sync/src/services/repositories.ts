@@ -218,6 +218,31 @@ export interface IKnownHostSyncRepository {
 }
 export const IKnownHostSyncRepository = createIdentifier<IKnownHostSyncRepository>('sync.known-host-repository');
 
+// Snippets are reusable command templates. Row-level LWW like identity/ssh_key: the engine
+// round-trips the whole row through encrypt/decrypt and never inspects business fields, so
+// the server stays zero-knowledge. Execution (writing the command to a PTY) is a runtime
+// concern that never touches sync.
+export interface ISnippetSyncRepository {
+  readonly changed$: Observable<ISyncRowChangeEvent>;
+  getList(): Promise<ISyncEntityRow[]>;
+  getById(id: string): Promise<ISyncEntityRow | null | undefined>;
+  syncUpsertRow(entity: ISyncEntityRow): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+export const ISnippetSyncRepository = createIdentifier<ISnippetSyncRepository>('sync.snippet-repository');
+
+// Port-forwarding rules are pure configuration — only the rule definition syncs, never the
+// runtime tunnel state (tunnels live and die with the SSH session and are never persisted).
+// Row-level LWW, same opaque-blob treatment as the other row resources.
+export interface IPortForwardingRuleSyncRepository {
+  readonly changed$: Observable<ISyncRowChangeEvent>;
+  getList(): Promise<ISyncEntityRow[]>;
+  getById(id: string): Promise<ISyncEntityRow | null | undefined>;
+  syncUpsertRow(entity: ISyncEntityRow): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+export const IPortForwardingRuleSyncRepository = createIdentifier<IPortForwardingRuleSyncRepository>('sync.port-forwarding-rule-repository');
+
 export interface IMcpServerSyncRepository {
   readonly changed$: Observable<ISyncRowChangeEvent>;
   getAll(): Promise<ISyncEntityRow[]>;
