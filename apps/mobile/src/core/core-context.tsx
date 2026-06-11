@@ -21,7 +21,7 @@ import { IMobileAiService } from '@termlnk/agent-mobile';
 import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { IBiometricService } from '@termlnk/auth-mobile';
 import { Quantity } from '@termlnk/core';
-import { IMobileHostRepository, IMobileIdentityRepository, IMobileKnownHostRepository, IMobilePreferencesService, IMobileSshKeyRepository, IRecentSessionsRepository } from '@termlnk/database-mobile';
+import { IMobileHostRepository, IMobileIdentityRepository, IMobileKnownHostRepository, IMobilePortForwardingRuleRepository, IMobilePreferencesService, IMobileSnippetRepository, IMobileSshKeyRepository, IRecentSessionsRepository } from '@termlnk/database-mobile';
 import { IMobileSftpClientFactory } from '@termlnk/sftp-mobile';
 import { IMobileSyncService } from '@termlnk/sync-mobile';
 import { IMobileConnectionService, IMobileSshClientService } from '@termlnk/terminal-mobile';
@@ -127,6 +127,16 @@ export function useSshKeyRepository(): IMobileSshKeyRepository {
 export function useKnownHostRepository(): IMobileKnownHostRepository {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobileKnownHostRepository), [core]);
+}
+
+export function useSnippetRepository(): IMobileSnippetRepository {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSnippetRepository), [core]);
+}
+
+export function usePortForwardingRuleRepository(): IMobilePortForwardingRuleRepository {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobilePortForwardingRuleRepository), [core]);
 }
 
 export function usePreferencesService(): IMobilePreferencesService {

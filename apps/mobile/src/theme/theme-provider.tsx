@@ -42,6 +42,12 @@ export const LIGHT_VARS: IThemeVars = {
   '--color-accent': '#3b7bf6',
   '--color-accent-content': '#ffffff',
   '--color-danger': '#d7373f',
+  '--color-success': '#50a14f',
+  '--color-warning': '#c18401',
+  '--color-info': '#0184bc',
+  '--color-info-muted': '#4078f2',
+  '--color-runtime-starting': '#0184bc',
+  '--color-locked': '#b85e2c',
   '--color-tabbar': '#ffffff',
   '--color-field': '#ffffff',
 };
@@ -57,6 +63,12 @@ export const DARK_VARS: IThemeVars = {
   '--color-accent': '#61afef',
   '--color-accent-content': '#1e222a',
   '--color-danger': '#e06c75',
+  '--color-success': '#98c379',
+  '--color-warning': '#e7c787',
+  '--color-info': '#56b6c2',
+  '--color-info-muted': '#61afef',
+  '--color-runtime-starting': '#56b6c2',
+  '--color-locked': '#fca2aa',
   '--color-tabbar': '#252931',
   '--color-field': '#2d313a',
 };
@@ -108,6 +120,12 @@ export interface IThemeColors {
   readonly accent: string;
   readonly accentContent: string;
   readonly danger: string;
+  readonly success: string;
+  readonly warning: string;
+  readonly info: string;
+  readonly infoMuted: string;
+  readonly runtimeStarting: string;
+  readonly locked: string;
   readonly tabbar: string;
   readonly field: string;
 }
@@ -124,6 +142,12 @@ function toColors(vars: IThemeVars): IThemeColors {
     accent: vars['--color-accent'],
     accentContent: vars['--color-accent-content'],
     danger: vars['--color-danger'],
+    success: vars['--color-success'],
+    warning: vars['--color-warning'],
+    info: vars['--color-info'],
+    infoMuted: vars['--color-info-muted'],
+    runtimeStarting: vars['--color-runtime-starting'],
+    locked: vars['--color-locked'],
     tabbar: vars['--color-tabbar'],
     field: vars['--color-field'],
   };

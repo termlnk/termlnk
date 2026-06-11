@@ -13,27 +13,20 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { createIdentifier, Disposable, ILogService, Inject } from '@termlnk/core';
+import type { DatabaseMobile } from './database-mobile-adaptor.service';
+import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { migrate } from 'drizzle-orm/expo-sqlite/migrator';
 import { openDatabaseAsync } from 'expo-sqlite';
 import * as entities from '../entities';
 import migrations from '../migrations/index.generated';
+import { IDatabaseMobileAdaptorService } from './database-mobile-adaptor.service';
 
 const DB_NAME = 'termlnk-mobile.db';
 
-export type DatabaseMobile = ExpoSQLiteDatabase<typeof entities>;
-
-export interface IDatabaseMobileAdaptorService {
-  ready(): Promise<DatabaseMobile>;
-  close(): Promise<void>;
-}
-
-export const IDatabaseMobileAdaptorService = createIdentifier<IDatabaseMobileAdaptorService>(
-  'database-mobile.adaptor.service'
-);
+export { IDatabaseMobileAdaptorService };
+export type { DatabaseMobile };
 
 export class ExpoSqliteAdaptor extends Disposable implements IDatabaseMobileAdaptorService {
   private _sqlite: SQLiteDatabase | null = null;

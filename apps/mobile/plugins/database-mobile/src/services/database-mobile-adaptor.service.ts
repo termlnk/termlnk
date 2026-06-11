@@ -13,15 +13,17 @@
  * governing permissions and limitations under the License.
  */
 
-export * from './config-kv';
-export * from './host';
-export * from './identity';
-export * from './known-host';
-export * from './port-forwarding-rule';
-export * from './recent-session';
-export * from './snippet';
-export * from './ssh-key';
-export * from './sync-cursor';
-export * from './sync-field-meta';
-export * from './sync-outbox';
-export * from './sync-row-meta';
+import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
+import type * as entities from '../entities';
+import { createIdentifier } from '@termlnk/core';
+
+export type DatabaseMobile = ExpoSQLiteDatabase<typeof entities>;
+
+export interface IDatabaseMobileAdaptorService {
+  ready(): Promise<DatabaseMobile>;
+  close(): Promise<void>;
+}
+
+export const IDatabaseMobileAdaptorService = createIdentifier<IDatabaseMobileAdaptorService>(
+  'database-mobile.adaptor.service'
+);

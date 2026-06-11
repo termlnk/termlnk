@@ -26,6 +26,8 @@ export default defineConfig({
     './src/entities/identity.ts',
     './src/entities/ssh-key.ts',
     './src/entities/known-host.ts',
+    './src/entities/snippet.ts',
+    './src/entities/port-forwarding-rule.ts',
     './src/entities/recent-session.ts',
     './src/entities/config-kv.ts',
     './src/entities/sync-outbox.ts',

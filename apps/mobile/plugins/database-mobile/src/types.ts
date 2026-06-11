@@ -154,3 +154,32 @@ export interface IMobileKnownHost {
   readonly publicKey?: string | null;
   readonly lastSeenAt?: string | null;
 }
+
+export type IMobileSnippetRunMode = 'insert' | 'insert-run';
+
+export interface IMobileSnippet {
+  readonly id: string;
+  readonly name: string;
+  readonly command: string;
+  readonly description?: string | null;
+  readonly groupId?: string | null;
+  readonly runMode: IMobileSnippetRunMode;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export type IMobilePortForwardingRuleType = 'local' | 'remote' | 'dynamic';
+
+export interface IMobilePortForwardingRule {
+  readonly id: string;
+  readonly name?: string | null;
+  readonly type: IMobilePortForwardingRuleType;
+  readonly hostId: string;
+  readonly bindAddress: string;
+  readonly bindPort: number;
+  readonly destHost?: string | null;
+  readonly destPort?: number | null;
+  readonly autoStart: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
