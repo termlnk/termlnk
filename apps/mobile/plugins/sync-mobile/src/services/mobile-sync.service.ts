@@ -79,7 +79,8 @@ export class MobileSyncService extends Disposable implements IMobileSyncService 
 
   async pull(): Promise<void> {
     if (!this._masterKeyService.getCurrent()) {
-      throw new Error('[MobileSyncService] master key is locked — sign in first');
+      this._logService.debug('[MobileSyncService] pull skipped — master key not available');
+      return;
     }
     if (!this._enabled) {
       // Only latch _enabled after enable() resolves; if it throws (transient reconcile /
