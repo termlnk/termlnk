@@ -25,8 +25,10 @@ import {
   IIdentitySyncRepository,
   IKnownHostSyncRepository,
   IMcpServerSyncRepository,
+  IPortForwardingRuleSyncRepository,
   IProviderSyncRepository,
   ISkillSyncRepository,
+  ISnippetSyncRepository,
   ISshKeySyncRepository,
   ISyncConfigRepository,
   ISyncCursorRepository,
@@ -47,8 +49,10 @@ import { IdentityRepository } from './repositories/identity';
 import { KnownHostRepository } from './repositories/known-host';
 import { McpOAuthTokenRepository } from './repositories/mcp-oauth-token';
 import { McpServerRepository } from './repositories/mcp-server';
+import { PortForwardingRuleRepository } from './repositories/port-forwarding-rule';
 import { ProviderRepository } from './repositories/provider';
 import { SkillRepository } from './repositories/skill';
+import { SnippetRepository } from './repositories/snippet';
 import { SshKeyRepository } from './repositories/ssh-key';
 import { SyncCursorRepository } from './repositories/sync-cursor';
 import { SyncFieldMetaRepository } from './repositories/sync-field-meta';
@@ -118,8 +122,10 @@ export class DatabasePlugin extends Plugin {
       [KnownHostRepository, { useClass: KnownHostRepository }],
       [McpServerRepository, { useClass: McpServerRepository }],
       [McpOAuthTokenRepository, { useClass: McpOAuthTokenRepository }],
+      [PortForwardingRuleRepository, { useClass: PortForwardingRuleRepository }],
       [ProviderRepository, { useClass: ProviderRepository }],
       [SkillRepository, { useClass: SkillRepository }],
+      [SnippetRepository, { useClass: SnippetRepository }],
       [SshKeyRepository, { useClass: SshKeyRepository }],
       [SyncCursorRepository, { useClass: SyncCursorRepository }],
       [SyncFieldMetaRepository, { useClass: SyncFieldMetaRepository }],
@@ -136,8 +142,10 @@ export class DatabasePlugin extends Plugin {
       [IIdentitySyncRepository, { useExisting: IdentityRepository }],
       [IKnownHostSyncRepository, { useExisting: KnownHostRepository }],
       [IMcpServerSyncRepository, { useExisting: McpServerRepository }],
+      [IPortForwardingRuleSyncRepository, { useExisting: PortForwardingRuleRepository }],
       [IProviderSyncRepository, { useExisting: ProviderRepository }],
       [ISkillSyncRepository, { useExisting: SkillRepository }],
+      [ISnippetSyncRepository, { useExisting: SnippetRepository }],
       [ISshKeySyncRepository, { useExisting: SshKeyRepository }],
       [ISyncCursorRepository, { useExisting: SyncCursorRepository }],
       [ISyncFieldMetaRepository, { useExisting: SyncFieldMetaRepository }],
