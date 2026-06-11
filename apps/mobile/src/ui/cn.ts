@@ -13,19 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ReactNode } from 'react';
-import { View } from 'react-native';
-import { cn } from './cn';
+import type { ClassValue } from 'clsx';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-interface IScreenContainerProps {
-  readonly children: ReactNode;
-  readonly className?: string;
-}
-
-export function ScreenContainer({ children, className }: IScreenContainerProps) {
-  return (
-    <View className={cn('flex-1 bg-surface', className)}>
-      {children}
-    </View>
-  );
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
 }

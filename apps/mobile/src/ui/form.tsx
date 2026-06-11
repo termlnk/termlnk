@@ -14,12 +14,12 @@
  */
 
 import type { ReactNode } from 'react';
+import type { VariantProps } from 'class-variance-authority';
+import { cva } from 'class-variance-authority';
 import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
-
-// Shared form primitives for the mobile CRUD surfaces. Termius-style grouped rows
-// on a raised card with hairline dividers, driven by the semantic theme tokens so
-// they adapt to the OS light/dark scheme.
+import { cn } from './cn';
+import { hapticError, hapticLight, hapticSelection } from './haptics';
 
 export function FormSection({ title, children, footer }: { title?: string; children: ReactNode; footer?: string }) {
   return (
@@ -41,7 +41,7 @@ export function FormSection({ title, children, footer }: { title?: string; child
 
 export function FieldRow({ children, last }: { children: ReactNode; last?: boolean }) {
   return (
-    <View className={last ? '' : 'border-b border-divider'}>
+    <View className={cn({ 'border-b border-divider': !last })}>
       {children}
     </View>
   );
@@ -59,7 +59,6 @@ interface ITextFieldProps {
   readonly last?: boolean;
 }
 
-// Stacked label-over-input field (keychain, AI settings, proxy details).
 export function TextField(props: ITextFieldProps) {
   const colors = useThemeColors();
   return (
@@ -78,7 +77,7 @@ export function TextField(props: ITextFieldProps) {
           autoCapitalize={props.autoCapitalize ?? 'none'}
           autoCorrect={false}
           multiline={props.multiline}
-          className={`text-[16px] text-content ${props.multiline ? 'min-h-[88px]' : ''}`}
+          className={cn('text-[16px] text-content', { 'min-h-[88px]': props.multiline })}
           style={props.multiline ? { textAlignVertical: 'top' } : undefined}
         />
       </View>
@@ -97,8 +96,6 @@ interface IInlineFieldProps {
   readonly trailing?: ReactNode;
 }
 
-// Single-row field: optional left label, right-aligned input, optional trailing
-// node. Matches the Termius New Host card (Label / IP / Port / Username rows).
 export function InlineField(props: IInlineFieldProps) {
   const colors = useThemeColors();
   const hasLabel = props.label != null;
@@ -124,13 +121,17 @@ export function InlineField(props: IInlineFieldProps) {
 
 export function SwitchField({ label, value, onValueChange, last }: { label: string; value: boolean; onValueChange: (v: boolean) => void; last?: boolean }) {
   const colors = useThemeColors();
+  const handleChange = (next: boolean) => {
+    hapticLight();
+    onValueChange(next);
+  };
   return (
     <FieldRow last={last}>
       <View className="flex-row items-center justify-between px-4 py-3">
         <Text className="text-[16px] text-content">{label}</Text>
         <Switch
           value={value}
-          onValueChange={onValueChange}
+          onValueChange={handleChange}
           trackColor={{ false: colors.divider, true: colors.accent }}
           thumbColor="#ffffff"
         />
@@ -144,9 +145,11 @@ export interface ISelectOption<T extends string> {
   readonly value: T;
 }
 
-// Segmented selector — compact inline option pills, fine for small option sets (auth type,
-// algorithm, proxy type). Larger lists should use a dedicated picker screen.
 export function SegmentedField<T extends string>({ label, value, options, onChange, last }: { label: string; value: T; options: readonly ISelectOption<T>[]; onChange: (v: T) => void; last?: boolean }) {
+  const handleChange = (v: T) => {
+    hapticSelection();
+    onChange(v);
+  };
   return (
     <FieldRow last={last}>
       <View className="px-4 py-2.5">
@@ -159,10 +162,16 @@ export function SegmentedField<T extends string>({ label, value, options, onChan
             return (
               <Pressable
                 key={opt.value}
-                onPress={() => onChange(opt.value)}
-                className={`rounded-lg px-3 py-1.5 ${active ? 'bg-accent' : 'bg-surface-sunken'}`}
+                onPress={() => handleChange(opt.value)}
+                className={cn('rounded-lg px-3 py-1.5', {
+                  'bg-accent': active,
+                  'bg-surface-sunken': !active,
+                })}
               >
-                <Text className={`text-[14px] ${active ? 'font-medium text-accent-content' : 'text-content-secondary'}`}>
+                <Text className={cn('text-[14px]', {
+                  'font-medium text-accent-content': active,
+                  'text-content-secondary': !active,
+                })}>
                   {opt.label}
                 </Text>
               </Pressable>
@@ -174,7 +183,6 @@ export function SegmentedField<T extends string>({ label, value, options, onChan
   );
 }
 
-// Tappable row that navigates to a picker / sub-screen, showing the current selection.
 export function NavField({ label, value, onPress, last }: { label: string; value: string; onPress: () => void; last?: boolean }) {
   return (
     <FieldRow last={last}>
@@ -186,26 +194,62 @@ export function NavField({ label, value, onPress, last }: { label: string; value
   );
 }
 
-export function PrimaryButton({ title, onPress, disabled, busy }: { title: string; onPress: () => void; disabled?: boolean; busy?: boolean }) {
+const primaryButtonVariants = cva(
+  'flex-row items-center justify-center rounded-2xl py-4',
+  {
+    variants: {
+      state: {
+        enabled: 'bg-accent active:opacity-80',
+        disabled: 'bg-surface-sunken',
+      },
+    },
+    defaultVariants: { state: 'enabled' },
+  },
+);
+
+interface IPrimaryButtonProps extends VariantProps<typeof primaryButtonVariants> {
+  readonly title: string;
+  readonly onPress: () => void;
+  readonly disabled?: boolean;
+  readonly busy?: boolean;
+  readonly className?: string;
+}
+
+export function PrimaryButton({ title, onPress, disabled, busy, className }: IPrimaryButtonProps) {
   const colors = useThemeColors();
+  const isDisabled = disabled || busy;
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled || busy}
-      className={`flex-row items-center justify-center rounded-2xl py-4 ${disabled || busy ? 'bg-surface-sunken' : 'bg-accent active:opacity-80'}`}
+      disabled={isDisabled}
+      className={cn(
+        primaryButtonVariants({ state: isDisabled ? 'disabled' : 'enabled' }),
+        className,
+      )}
     >
       {busy
         ? <ActivityIndicator color={colors.accentContent} />
-        : <Text className={`text-[16px] font-semibold ${disabled ? 'text-content-tertiary' : 'text-accent-content'}`}>{title}</Text>}
+        : (
+          <Text className={cn('text-[16px] font-semibold', {
+            'text-content-tertiary': isDisabled,
+            'text-accent-content': !isDisabled,
+          })}>
+            {title}
+          </Text>
+        )}
     </Pressable>
   );
 }
 
-export function DangerButton({ title, onPress }: { title: string; onPress: () => void }) {
+export function DangerButton({ title, onPress, className }: { title: string; onPress: () => void; className?: string }) {
+  const handlePress = () => {
+    hapticError();
+    onPress();
+  };
   return (
     <Pressable
-      onPress={onPress}
-      className="flex-row items-center justify-center rounded-2xl border border-divider py-4 active:bg-surface-sunken"
+      onPress={handlePress}
+      className={cn('flex-row items-center justify-center rounded-2xl border border-divider py-4 active:bg-surface-sunken', className)}
     >
       <Text className="text-[16px] font-medium text-danger">{title}</Text>
     </Pressable>

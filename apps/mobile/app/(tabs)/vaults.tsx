@@ -16,7 +16,7 @@
 import { AuthState } from '@termlnk/auth';
 import { SyncState } from '@termlnk/sync';
 import { useRouter } from 'expo-router';
-import { ArrowLeftRight, Braces, ChevronDown, Cloud, CloudOff, KeyRound, ScrollText, Server, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeftRight, Braces, ChevronDown, Cloud, CloudOff, FingerprintPattern, KeyRound, ScrollText, Server } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -103,7 +103,7 @@ export default function VaultsTab() {
             onPress={() => router.push('/vault/snippets')}
           />
           <NavRow
-            leading={<ShieldCheck size={24} color={colors.content} />}
+            leading={<FingerprintPattern size={24} color={colors.content} />}
             title="Known Hosts"
             value={String(knownHosts.length)}
             onPress={() => router.push('/vault/known-hosts')}

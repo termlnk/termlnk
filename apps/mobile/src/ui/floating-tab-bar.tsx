@@ -17,19 +17,27 @@ import type { Tabs } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
 import type { ComponentProps } from 'react';
 import { CircleUser, SquareTerminal, Vault } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCurrentUser } from '../core/core-context';
 import { useThemeColors } from '../theme/theme-provider';
+import { cn } from './cn';
+import { hapticLight } from './haptics';
 import { UserAvatar } from './user-avatar';
 
-// Derive the exact tab-bar callback prop type from expo-router's Tabs so we stay
-// in sync without deep-importing react-navigation internals.
 type ITabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
-// Approximate rendered height of the floating pill; screens add this (plus the
-// bottom inset) as scroll-content padding so nothing hides behind the bar.
 export const TAB_BAR_HEIGHT = 64;
+
+// SF Symbol names for iOS native rendering; Android falls back to lucide.
+const SF_SYMBOLS: Record<string, string> = {
+  vaults: 'lock.shield.fill',
+  connections: 'terminal.fill',
+  profile: 'person.crop.circle.fill',
+};
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const SymbolView = Platform.OS === 'ios' ? require('expo-symbols').SymbolView : null;
 
 const TAB_ICONS: Record<string, LucideIcon> = {
   vaults: Vault,
@@ -42,6 +50,26 @@ const TAB_LABELS: Record<string, string> = {
   connections: 'Connections',
   profile: 'Profile',
 };
+
+function TabIcon({ routeName, focused, color, size }: {
+  readonly routeName: string;
+  readonly focused: boolean;
+  readonly color: string;
+  readonly size: number;
+}) {
+  if (Platform.OS === 'ios' && SymbolView != null && SF_SYMBOLS[routeName] != null) {
+    return (
+      <SymbolView
+        name={SF_SYMBOLS[routeName]}
+        tintColor={color}
+        style={{ width: size, height: size }}
+        weight={focused ? 'semibold' : 'regular'}
+      />
+    );
+  }
+  const Icon = TAB_ICONS[routeName] ?? Vault;
+  return <Icon size={size} color={color} />;
+}
 
 export function FloatingTabBar({ state, navigation }: ITabBarProps) {
   const insets = useSafeAreaInsets();
@@ -65,12 +93,13 @@ export function FloatingTabBar({ state, navigation }: ITabBarProps) {
       >
         {state.routes.map((route, index) => {
           const focused = state.index === index;
-          const Icon = TAB_ICONS[route.name] ?? Vault;
           const label = TAB_LABELS[route.name] ?? route.name;
           const showUserAvatar = route.name === 'profile' && user != null;
+          const iconColor = focused ? colors.content : colors.contentTertiary;
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!focused && !event.defaultPrevented) {
+              hapticLight();
               navigation.navigate(route.name);
             }
           };
@@ -80,12 +109,15 @@ export function FloatingTabBar({ state, navigation }: ITabBarProps) {
               onPress={onPress}
               accessibilityRole="button"
               accessibilityState={{ selected: focused }}
-              className={`items-center rounded-full px-7 py-1.5 ${focused ? 'bg-surface-sunken' : ''}`}
+              className={cn('items-center rounded-full px-7 py-1.5', { 'bg-surface-sunken': focused })}
             >
               {showUserAvatar
                 ? <UserAvatar user={user} size={24} radius={12} />
-                : <Icon size={24} color={focused ? colors.content : colors.contentTertiary} />}
-              <Text className={`mt-1 text-[11px] ${focused ? 'font-semibold text-content' : 'text-content-tertiary'}`}>
+                : <TabIcon routeName={route.name} focused={focused} color={iconColor} size={24} />}
+              <Text className={cn('mt-1 text-[11px]', {
+                'font-semibold text-content': focused,
+                'text-content-tertiary': !focused,
+              })}>
                 {label}
               </Text>
             </Pressable>

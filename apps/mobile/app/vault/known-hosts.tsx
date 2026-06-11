@@ -14,7 +14,7 @@
  */
 
 import { useRouter } from 'expo-router';
-import { ShieldCheck } from 'lucide-react-native';
+import { FingerprintPattern } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,7 +51,7 @@ export default function KnownHostsScreen() {
           ? (
             <View className="pt-16">
               <EmptyState
-                icon={ShieldCheck}
+                icon={FingerprintPattern}
                 title="No known hosts"
                 description="Server fingerprints you trust on first connect are stored here."
               />
@@ -62,7 +62,7 @@ export default function KnownHostsScreen() {
               {knownHosts.map((kh) => (
                 <NavRow
                   key={kh.id}
-                  leading={<IconTile icon={ShieldCheck} tone="known" />}
+                  leading={<IconTile icon={FingerprintPattern} tone="known" />}
                   title={`${kh.host}:${kh.port}`}
                   subtitle={`${kh.keyType} · ${kh.fingerprint.slice(0, 24)}…`}
                   showChevron={false}

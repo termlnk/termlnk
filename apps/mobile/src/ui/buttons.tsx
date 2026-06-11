@@ -14,20 +14,21 @@
  */
 
 import { Pressable, Text } from 'react-native';
+import { cn } from './cn';
 
 interface ITextLinkButtonProps {
   readonly title: string;
   readonly onPress: () => void;
   readonly disabled?: boolean;
+  readonly className?: string;
 }
 
-// Centered accent-text action (e.g. "Discover local devices", "Create snippet").
-export function TextLinkButton({ title, onPress, disabled }: ITextLinkButtonProps) {
+export function TextLinkButton({ title, onPress, disabled, className }: ITextLinkButtonProps) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className={`items-center py-3 active:opacity-60 ${disabled ? 'opacity-40' : ''}`}
+      className={cn('items-center py-3 active:opacity-60', { 'opacity-40': disabled }, className)}
     >
       <Text className="text-[16px] font-semibold text-accent">{title}</Text>
     </Pressable>

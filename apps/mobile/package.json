@@ -25,6 +25,11 @@
   "dependencies": {
     "@noble/ciphers": "^2.2.0",
     "@noble/hashes": "^2.2.0",
+    "@react-native-menu/menu": "^2.0.0",
+    "@rn-primitives/dropdown-menu": "^1.4.0",
+    "@rn-primitives/portal": "^1.4.0",
+    "@rn-primitives/slot": "^1.4.0",
+    "@shopify/flash-list": "^2.3.2",
     "@termlnk/agent-mobile": "workspace:*",
     "@termlnk/auth": "workspace:*",
     "@termlnk/auth-core": "workspace:*",
@@ -40,6 +45,8 @@
     "@wendellhu/redi": "1.1.1",
     "@xterm/addon-fit": "^0.12.0-beta.276",
     "@xterm/xterm": "^6.1.0-beta.276",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "expo": "^56.0.9",
     "expo-build-properties": "^56.0.17",
     "expo-constants": "^56.0.17",
@@ -47,6 +54,7 @@
     "expo-device": "^56.0.4",
     "expo-document-picker": "^56.0.4",
     "expo-file-system": "^56.0.7",
+    "expo-haptics": "^56.0.3",
     "expo-linking": "^56.0.13",
     "expo-local-authentication": "^56.0.4",
     "expo-notifications": "^56.0.16",
@@ -55,6 +63,7 @@
     "expo-splash-screen": "^56.0.10",
     "expo-sqlite": "^56.0.4",
     "expo-status-bar": "^56.0.4",
+    "expo-symbols": "^56.0.6",
     "hash-wasm": "^4.12.0",
     "lucide-react-native": "^1.17.0",
     "nativewind": "5.0.0-preview.3",
@@ -72,7 +81,8 @@
     "react-native-webview": "^13.16.1",
     "react-native-worklets": "0.8.3",
     "rxjs": "^7.8.2",
-    "secure-remote-password": "^0.3.1"
+    "secure-remote-password": "^0.3.1",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",

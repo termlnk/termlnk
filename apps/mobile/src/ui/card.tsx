@@ -16,24 +16,20 @@
 import type { ReactElement, ReactNode } from 'react';
 import { Children, Fragment } from 'react';
 import { View } from 'react-native';
+import { cn } from './cn';
 
 interface ICardProps {
   readonly children: ReactNode;
   readonly className?: string;
-  // Left inset of the inter-row hairline. Icon-tile lists push it past the tile.
   readonly dividerInset?: number;
 }
 
-// The grouped white card behind every Termius settings/form/vault list. Renders
-// a hairline divider between each direct child so callers just drop rows in.
 export function Card({ children, className, dividerInset = 16 }: ICardProps) {
-  // toArray assigns stable keys and lets us interleave hairline dividers between
-  // the row children without callers tracking first/last themselves.
   // eslint-disable-next-line react/no-children-to-array
   const items = Children.toArray(children).filter(Boolean) as ReactElement[];
   return (
     <View
-      className={`overflow-hidden rounded-2xl bg-surface-raised ${className ?? ''}`}
+      className={cn('overflow-hidden rounded-2xl bg-surface-raised', className)}
       style={{
         shadowColor: '#000',
         shadowOpacity: 0.05,

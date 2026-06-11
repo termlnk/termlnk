@@ -14,27 +14,38 @@
  */
 
 import type { LucideIcon } from 'lucide-react-native';
+import type { VariantProps } from 'class-variance-authority';
+import { cva } from 'class-variance-authority';
 import { Pressable } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
+import { cn } from './cn';
 
-interface IRoundButtonProps {
+const roundButtonVariants = cva(
+  'h-11 w-11 items-center justify-center rounded-full active:opacity-80',
+  {
+    variants: {
+      variant: {
+        plain: 'bg-surface-raised',
+        accent: 'bg-accent',
+      },
+    },
+    defaultVariants: { variant: 'plain' },
+  },
+);
+
+interface IRoundButtonProps extends VariantProps<typeof roundButtonVariants> {
   readonly icon: LucideIcon;
   readonly onPress: () => void;
-  // 'plain' = surface chip (back / X / +), 'accent' = filled blue (confirm).
-  readonly variant?: 'plain' | 'accent';
   readonly disabled?: boolean;
   readonly accessibilityLabel?: string;
+  readonly className?: string;
 }
 
-// The circular header chips Termius floats over the content (back, close, add,
-// confirm). 44pt hit target, soft shadow.
-export function RoundButton({ icon: Icon, onPress, variant = 'plain', disabled, accessibilityLabel }: IRoundButtonProps) {
+export function RoundButton({ icon: Icon, onPress, variant = 'plain', disabled, accessibilityLabel, className }: IRoundButtonProps) {
   const colors = useThemeColors();
-  const accent = variant === 'accent';
-  const bg = disabled ? 'bg-surface-sunken' : accent ? 'bg-accent' : 'bg-surface-raised';
   const iconColor = disabled
     ? colors.contentTertiary
-    : accent
+    : variant === 'accent'
       ? colors.accentContent
       : colors.content;
   return (
@@ -43,7 +54,11 @@ export function RoundButton({ icon: Icon, onPress, variant = 'plain', disabled, 
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      className={`h-11 w-11 items-center justify-center rounded-full ${bg} active:opacity-80`}
+      className={cn(
+        roundButtonVariants({ variant }),
+        { 'bg-surface-sunken': disabled },
+        className,
+      )}
       style={{
         shadowColor: '#000',
         shadowOpacity: 0.12,

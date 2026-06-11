@@ -17,21 +17,18 @@ import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react-native';
 import { Pressable, Switch, Text, View } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
-
-// Shared grouped-list rows used inside `Card`. `leading` is an arbitrary node so
-// callers pass an IconTile, a bare icon, or a HostAvatar as the row dictates.
+import { cn } from './cn';
+import { hapticLight } from './haptics';
 
 interface INavRowProps {
   readonly title: string;
   readonly subtitle?: string;
   readonly value?: string;
   readonly leading?: ReactNode;
-  // Custom trailing node; takes precedence over `value`/chevron when set.
   readonly trailing?: ReactNode;
   readonly onPress: () => void;
   readonly showChevron?: boolean;
   readonly chevronTone?: 'muted' | 'accent';
-  // Placeholder rows for not-yet-backed features: dimmed and inert.
   readonly disabled?: boolean;
 }
 
@@ -43,7 +40,7 @@ export function NavRow(props: INavRowProps) {
     <Pressable
       onPress={props.disabled ? undefined : props.onPress}
       disabled={props.disabled}
-      className={`flex-row items-center px-4 py-3.5 active:bg-surface-sunken ${props.disabled ? 'opacity-40' : ''}`}
+      className={cn('flex-row items-center px-4 py-3.5 active:bg-surface-sunken', { 'opacity-40': props.disabled })}
     >
       {props.leading != null && <View className="mr-3">{props.leading}</View>}
       <View className="flex-1">
@@ -77,6 +74,10 @@ interface ISwitchRowProps {
 
 export function SwitchRow(props: ISwitchRowProps) {
   const colors = useThemeColors();
+  const handleChange = (next: boolean) => {
+    hapticLight();
+    props.onValueChange(next);
+  };
   return (
     <View className="flex-row items-center px-4 py-3">
       {props.leading != null && <View className="mr-3">{props.leading}</View>}
@@ -88,7 +89,7 @@ export function SwitchRow(props: ISwitchRowProps) {
       </View>
       <Switch
         value={props.value}
-        onValueChange={props.onValueChange}
+        onValueChange={handleChange}
         disabled={props.disabled}
         trackColor={{ false: colors.divider, true: colors.accent }}
         thumbColor="#ffffff"
