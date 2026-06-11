@@ -32,11 +32,11 @@ export function EmptyState({ icon: Icon, title, description }: IEmptyStateProps)
           <Icon size={28} color={colors.contentTertiary} />
         </View>
       )}
-      <Text className="text-center text-[17px] font-semibold text-content">
+      <Text className="text-center text-[16px] font-semibold leading-5 text-content">
         {title}
       </Text>
       {description != null && (
-        <Text className="mt-2 text-center text-[14px] leading-5 text-content-secondary">
+        <Text className="mt-2 text-center text-[13px] leading-[18px] text-content-secondary">
           {description}
         </Text>
       )}

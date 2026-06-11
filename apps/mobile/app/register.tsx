@@ -13,26 +13,49 @@
  * governing permissions and limitations under the License.
  */
 
+import type { LucideIcon } from 'lucide-react-native';
+import type { ReactNode } from 'react';
 import { Stack, useRouter } from 'expo-router';
+import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthService } from '../src/core/core-context';
 import { useThemeColors } from '../src/theme/theme-provider';
+import { cn } from '../src/ui/cn';
 import { PrimaryButton } from '../src/ui/form';
+import { LogoMark } from '../src/ui/logo-mark';
 
 const MIN_PASSWORD_LENGTH = 8;
 
 type PasswordHint = 'ok' | 'short' | 'mismatch';
 
+interface IRegisterFieldProps {
+  readonly label: string;
+  readonly value: string;
+  readonly onChangeText: (value: string) => void;
+  readonly placeholder: string;
+  readonly icon: LucideIcon;
+  readonly editable: boolean;
+  readonly secureTextEntry?: boolean;
+  readonly trailing?: ReactNode;
+  readonly keyboardType?: 'default' | 'email-address';
+  readonly autoCapitalize?: 'none' | 'words';
+  readonly textContentType?: 'emailAddress' | 'newPassword' | 'name';
+}
+
 export default function Register() {
   const auth = useAuthService();
   const router = useRouter();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,116 +98,205 @@ export default function Register() {
     }
   };
 
-  const inputClass = 'rounded-xl border border-divider bg-field px-3 py-3 text-[16px] text-content';
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       className="flex-1 bg-surface"
     >
-      <Stack.Screen options={{ title: 'Sign up' }} />
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
-        contentContainerClassName="grow justify-center p-6"
+        contentContainerClassName="grow"
+        contentContainerStyle={{
+          paddingTop: insets.top + 10,
+          paddingBottom: insets.bottom + 24,
+          paddingHorizontal: 20,
+        }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View className="rounded-2xl bg-surface-raised p-6">
-          <Text className="mb-2 text-[22px] font-semibold text-content">
-            Create your Termlnk account
-          </Text>
-          <Text className="mb-5 text-[13px] leading-[18px] text-content-secondary">
-            Your master password locks the local vault. It is never sent in plaintext
-            and cannot be recovered — losing it means losing your data.
-          </Text>
+        <View className="flex-row items-center justify-between">
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            className="h-10 w-10 items-center justify-center rounded-full bg-surface-raised active:opacity-80"
+            style={{
+              shadowColor: '#000',
+              shadowOpacity: 0.08,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 2,
+            }}
+          >
+            <ArrowLeft size={21} color={colors.content} />
+          </Pressable>
+          <Text className="text-[15px] font-semibold text-content-secondary">Sign up</Text>
+          <View className="h-10 w-10" />
+        </View>
 
-          <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">Email</Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            editable={!busy}
-            placeholder="you@example.com"
-            placeholderTextColor={colors.contentTertiary}
-            className={inputClass}
-          />
-
-          <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">
-            Display name (optional)
-          </Text>
-          <TextInput
-            value={displayName}
-            onChangeText={setDisplayName}
-            autoCapitalize="words"
-            autoCorrect={false}
-            editable={!busy}
-            placeholder="How should we address you?"
-            placeholderTextColor={colors.contentTertiary}
-            className={inputClass}
-          />
-
-          <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">Master password</Text>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            textContentType="newPassword"
-            editable={!busy}
-            placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-            placeholderTextColor={colors.contentTertiary}
-            className={inputClass}
-          />
-
-          <Text className="mb-1.5 mt-3 text-[12px] text-content-secondary">
-            Confirm master password
-          </Text>
-          <TextInput
-            value={confirm}
-            onChangeText={setConfirm}
-            secureTextEntry
-            autoCapitalize="none"
-            textContentType="newPassword"
-            editable={!busy}
-            placeholder="Re-enter your master password"
-            placeholderTextColor={colors.contentTertiary}
-            className={inputClass}
-          />
-
-          {hint === 'short' && (
-            <Text className="mt-2.5 text-[12px] text-danger">
-              Use at least
-              {' '}
-              {MIN_PASSWORD_LENGTH}
-              {' '}
-              characters. A passphrase of 4+ words works best.
+        <View className="flex-1 justify-center py-6">
+          <View className="mb-7 items-center">
+            <LogoMark size={76} />
+            <Text className="mt-5 text-center text-[30px] font-bold leading-[34px] text-content">
+              Create account
             </Text>
-          )}
-          {hint === 'mismatch' && (
-            <Text className="mt-2.5 text-[12px] text-danger">
-              Passwords do not match yet.
+            <Text className="mt-2 text-center text-[15px] leading-5 text-content-secondary">
+              Protect your local vault.
             </Text>
-          )}
-          {error != null && (
-            <Text className="mt-3 text-[13px] text-danger">{error}</Text>
-          )}
-
-          <View className="mt-5">
-            <PrimaryButton title="Sign up" onPress={onSubmit} disabled={!canSubmit} busy={busy} />
           </View>
 
-          <Pressable
-            onPress={() => router.replace('/login')}
-            disabled={busy}
-            className="mt-4 items-center"
+          <View
+            className="rounded-[24px] bg-surface-raised p-5"
+            style={{
+              shadowColor: '#000',
+              shadowOpacity: 0.08,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 3,
+            }}
           >
-            <Text className="text-[13px] text-accent">
-              Already have an account? Sign in
-            </Text>
-          </Pressable>
+            <RegisterField
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              editable={!busy}
+              placeholder="you@example.com"
+              icon={Mail}
+            />
+
+            <View className="mt-3">
+              <RegisterField
+                label="Display name"
+                value={displayName}
+                onChangeText={setDisplayName}
+                autoCapitalize="words"
+                textContentType="name"
+                editable={!busy}
+                placeholder="Optional"
+                icon={UserRound}
+              />
+            </View>
+
+            <View className="mt-3">
+              <RegisterField
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                textContentType="newPassword"
+                editable={!busy}
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                icon={LockKeyhole}
+                trailing={(
+                  <Pressable
+                    onPress={() => setShowPassword((next) => !next)}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                    hitSlop={10}
+                    className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-sunken"
+                  >
+                    {showPassword
+                      ? <EyeOff size={19} color={colors.contentSecondary} />
+                      : <Eye size={19} color={colors.contentSecondary} />}
+                  </Pressable>
+                )}
+              />
+            </View>
+
+            <View className="mt-3">
+              <RegisterField
+                label="Confirm password"
+                value={confirm}
+                onChangeText={setConfirm}
+                secureTextEntry={!showConfirm}
+                textContentType="newPassword"
+                editable={!busy}
+                placeholder="Re-enter your password"
+                icon={LockKeyhole}
+                trailing={(
+                  <Pressable
+                    onPress={() => setShowConfirm((next) => !next)}
+                    accessibilityRole="button"
+                    accessibilityLabel={showConfirm ? 'Hide confirmation password' : 'Show confirmation password'}
+                    hitSlop={10}
+                    className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-sunken"
+                  >
+                    {showConfirm
+                      ? <EyeOff size={19} color={colors.contentSecondary} />
+                      : <Eye size={19} color={colors.contentSecondary} />}
+                  </Pressable>
+                )}
+              />
+            </View>
+
+            {hint !== 'ok' && (
+              <View className="mt-4 rounded-2xl bg-surface-sunken px-4 py-3">
+                <Text className="text-[13px] leading-[18px] text-danger">
+                  {hint === 'short'
+                    ? `Use at least ${MIN_PASSWORD_LENGTH} characters. A passphrase of 4+ words works best.`
+                    : 'Passwords do not match yet.'}
+                </Text>
+              </View>
+            )}
+            {error != null && (
+              <View className="mt-4 rounded-2xl bg-surface-sunken px-4 py-3">
+                <Text className="text-[13px] leading-[18px] text-danger">{error}</Text>
+              </View>
+            )}
+
+            <View className="mt-5">
+              <PrimaryButton title="Sign up" onPress={onSubmit} disabled={!canSubmit} busy={busy} />
+            </View>
+
+            <Pressable
+              onPress={() => router.replace('/login')}
+              disabled={busy}
+              className={cn('mt-4 items-center py-2 active:opacity-60', { 'opacity-40': busy })}
+            >
+              <Text className="text-[14px] font-semibold text-accent">
+                Already have an account? Sign in
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text className="mt-5 text-center text-[12px] leading-[18px] text-content-tertiary">
+            Your master password cannot be recovered if it is lost.
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+function RegisterField(props: IRegisterFieldProps) {
+  const colors = useThemeColors();
+  const Icon = props.icon;
+  return (
+    <View className="rounded-2xl border border-divider bg-field px-4 py-3.5">
+      <View className="mb-2 flex-row items-center">
+        <Icon size={17} color={colors.contentSecondary} />
+        <Text className="ml-2 text-[13px] font-semibold text-content-secondary">
+          {props.label}
+        </Text>
+      </View>
+      <View className="flex-row items-center">
+        <TextInput
+          value={props.value}
+          onChangeText={props.onChangeText}
+          autoCapitalize={props.autoCapitalize ?? 'none'}
+          autoCorrect={false}
+          keyboardType={props.keyboardType}
+          textContentType={props.textContentType}
+          editable={props.editable}
+          secureTextEntry={props.secureTextEntry}
+          placeholder={props.placeholder}
+          placeholderTextColor={colors.contentTertiary}
+          className="min-h-[28px] flex-1 p-0 text-[17px] font-medium text-content"
+        />
+        {props.trailing != null && <View className="ml-2">{props.trailing}</View>}
+      </View>
+    </View>
   );
 }

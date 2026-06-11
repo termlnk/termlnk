@@ -52,7 +52,7 @@ export function SearchField(props: ISearchFieldProps) {
         autoFocus={props.autoFocus}
         onSubmitEditing={props.onSubmitEditing}
         returnKeyType={props.onSubmitEditing != null ? 'go' : 'search'}
-        className="ml-2 flex-1 py-3 text-[16px] text-content"
+        className="ml-2 flex-1 py-3 text-[15px] leading-[20px] text-content"
       />
       {props.trailing}
     </View>

@@ -52,7 +52,7 @@ export function ScreenHeader(props: IScreenHeaderProps) {
     return (
       <View style={{ paddingTop: insets.top + 8 }} className="px-5 pb-3">
         <View className="flex-row items-center justify-between">
-          <Text className="text-[32px] font-bold text-content">{props.title}</Text>
+          <Text className="text-[28px] font-bold leading-[34px] text-content">{props.title}</Text>
           {props.right}
         </View>
       </View>
@@ -110,9 +110,9 @@ export function ScreenHeader(props: IScreenHeaderProps) {
       <View className="h-11 flex-row items-center justify-between">
         {left}
         <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
-          <Text className="text-[17px] font-semibold text-content">{props.title}</Text>
+          <Text className="text-[16px] font-semibold leading-5 text-content">{props.title}</Text>
           {props.subtitle != null && (
-            <Text className="text-[13px] text-content-secondary">{props.subtitle}</Text>
+            <Text className="text-[12px] leading-4 text-content-secondary">{props.subtitle}</Text>
           )}
         </View>
         {right}

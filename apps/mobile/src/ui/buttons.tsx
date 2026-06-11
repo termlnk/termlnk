@@ -30,7 +30,7 @@ export function TextLinkButton({ title, onPress, disabled, className }: ITextLin
       disabled={disabled}
       className={cn('items-center py-3 active:opacity-60', { 'opacity-40': disabled }, className)}
     >
-      <Text className="text-[16px] font-semibold text-accent">{title}</Text>
+      <Text className="text-[15px] font-semibold leading-[20px] text-accent">{title}</Text>
     </Pressable>
   );
 }

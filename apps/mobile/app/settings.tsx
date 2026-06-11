@@ -21,10 +21,9 @@ import { Activity, Cpu, FlaskConical, Gauge, Hash, Keyboard, Languages, MapPin, 
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthService, useBiometricService, useObservable, usePreferencesService, useSyncService } from '../src/core/core-context';
+import { useBiometricService, useObservable, usePreferencesService, useSyncService } from '../src/core/core-context';
 import { useThemeColors } from '../src/theme/theme-provider';
 import { Card } from '../src/ui/card';
-import { DangerButton } from '../src/ui/form';
 import { IconTile } from '../src/ui/icon-tile';
 import { NavRow, SwitchRow, ValueRow } from '../src/ui/rows';
 import { ScreenContainer } from '../src/ui/screen-container';
@@ -45,7 +44,6 @@ const SOON = (title: string) => () => Alert.alert(title, 'This setting is coming
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const auth = useAuthService();
   const sync = useSyncService();
   const prefsService = usePreferencesService();
   const bio = useBiometricService();
@@ -59,14 +57,6 @@ export default function SettingsScreen() {
   }, [prefsService, bio]);
 
   const biometricUsable = biometric?.capability === 'available';
-
-  const onSignOut = useCallback(async () => {
-    if (auth == null) {
-      return;
-    }
-    await auth.logout();
-    router.replace('/login');
-  }, [auth, router]);
 
   const setFontSize = useCallback((delta: number) => {
     const next = Math.min(FONT_MAX, Math.max(FONT_MIN, prefs.terminalFontSize + delta));
@@ -168,10 +158,6 @@ export default function SettingsScreen() {
         <Text className="mt-2 px-4 text-[13px] leading-[18px] text-content-secondary">
           Hosts, identities, and keys sync end-to-end encrypted across your devices.
         </Text>
-
-        <View className="mt-6">
-          <DangerButton title="Sign out" onPress={onSignOut} />
-        </View>
       </ScrollView>
     </ScreenContainer>
   );

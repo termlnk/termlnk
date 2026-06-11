@@ -44,9 +44,9 @@ export function NavRow(props: INavRowProps) {
     >
       {props.leading != null && <View className="mr-3">{props.leading}</View>}
       <View className="flex-1">
-        <Text className="text-[16px] text-content" numberOfLines={1}>{props.title}</Text>
+        <Text className="text-[15px] leading-[20px] text-content" numberOfLines={1}>{props.title}</Text>
         {props.subtitle != null && (
-          <Text className="mt-0.5 text-[13px] text-content-secondary" numberOfLines={1}>{props.subtitle}</Text>
+          <Text className="mt-0.5 text-[12px] leading-4 text-content-secondary" numberOfLines={1}>{props.subtitle}</Text>
         )}
       </View>
       {props.trailing != null
@@ -54,7 +54,7 @@ export function NavRow(props: INavRowProps) {
         : (
           <>
             {props.value != null && (
-              <Text className="ml-2 text-[15px] text-content-secondary" numberOfLines={1}>{props.value}</Text>
+              <Text className="ml-2 text-[14px] leading-[18px] text-content-secondary" numberOfLines={1}>{props.value}</Text>
             )}
             {showChevron && <ChevronRight size={20} color={chevronColor} />}
           </>
@@ -82,9 +82,9 @@ export function SwitchRow(props: ISwitchRowProps) {
     <View className="flex-row items-center px-4 py-3">
       {props.leading != null && <View className="mr-3">{props.leading}</View>}
       <View className="mr-3 flex-1">
-        <Text className="text-[16px] text-content">{props.title}</Text>
+        <Text className="text-[15px] leading-[20px] text-content">{props.title}</Text>
         {props.description != null && (
-          <Text className="mt-0.5 text-[13px] leading-[18px] text-content-secondary">{props.description}</Text>
+          <Text className="mt-0.5 text-[12px] leading-4 text-content-secondary">{props.description}</Text>
         )}
       </View>
       <Switch
@@ -108,8 +108,8 @@ export function ValueRow(props: IValueRowProps) {
   return (
     <View className="flex-row items-center px-4 py-3.5">
       {props.leading != null && <View className="mr-3">{props.leading}</View>}
-      <Text className="flex-1 text-[16px] text-content">{props.title}</Text>
-      <Text className="ml-2 text-[15px] text-content-secondary" numberOfLines={1}>{props.value}</Text>
+      <Text className="flex-1 text-[15px] leading-[20px] text-content">{props.title}</Text>
+      <Text className="ml-2 text-[14px] leading-[18px] text-content-secondary" numberOfLines={1}>{props.value}</Text>
     </View>
   );
 }

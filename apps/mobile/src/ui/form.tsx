@@ -13,8 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ReactNode } from 'react';
 import type { VariantProps } from 'class-variance-authority';
+import type { ReactNode } from 'react';
 import { cva } from 'class-variance-authority';
 import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
@@ -33,7 +33,7 @@ export function FormSection({ title, children, footer }: { title?: string; child
         {children}
       </View>
       {footer != null && (
-        <Text className="mt-2 px-4 text-[13px] leading-[18px] text-content-secondary">{footer}</Text>
+        <Text className="mt-2 px-4 text-[12px] leading-4 text-content-secondary">{footer}</Text>
       )}
     </View>
   );
@@ -77,7 +77,7 @@ export function TextField(props: ITextFieldProps) {
           autoCapitalize={props.autoCapitalize ?? 'none'}
           autoCorrect={false}
           multiline={props.multiline}
-          className={cn('text-[16px] text-content', { 'min-h-[88px]': props.multiline })}
+          className={cn('text-[15px] leading-[20px] text-content', { 'min-h-[88px]': props.multiline })}
           style={props.multiline ? { textAlignVertical: 'top' } : undefined}
         />
       </View>
@@ -101,7 +101,7 @@ export function InlineField(props: IInlineFieldProps) {
   const hasLabel = props.label != null;
   return (
     <View className="flex-row items-center px-4 py-3.5">
-      {hasLabel && <Text className="mr-3 text-[16px] text-content">{props.label}</Text>}
+      {hasLabel && <Text className="mr-3 text-[15px] leading-[20px] text-content">{props.label}</Text>}
       <TextInput
         value={props.value}
         onChangeText={props.onChangeText}
@@ -111,7 +111,7 @@ export function InlineField(props: IInlineFieldProps) {
         keyboardType={props.keyboardType}
         autoCapitalize={props.autoCapitalize ?? 'none'}
         autoCorrect={false}
-        className="flex-1 text-[16px] text-content"
+        className="flex-1 text-[15px] leading-[20px] text-content"
         style={hasLabel ? { textAlign: 'right' } : undefined}
       />
       {props.trailing != null && <View className="ml-3">{props.trailing}</View>}
@@ -128,7 +128,7 @@ export function SwitchField({ label, value, onValueChange, last }: { label: stri
   return (
     <FieldRow last={last}>
       <View className="flex-row items-center justify-between px-4 py-3">
-        <Text className="text-[16px] text-content">{label}</Text>
+        <Text className="text-[15px] leading-[20px] text-content">{label}</Text>
         <Switch
           value={value}
           onValueChange={handleChange}
@@ -168,10 +168,12 @@ export function SegmentedField<T extends string>({ label, value, options, onChan
                   'bg-surface-sunken': !active,
                 })}
               >
-                <Text className={cn('text-[14px]', {
-                  'font-medium text-accent-content': active,
-                  'text-content-secondary': !active,
-                })}>
+                <Text
+                  className={cn('text-[13px] leading-[18px]', {
+                    'font-medium text-accent-content': active,
+                    'text-content-secondary': !active,
+                  })}
+                >
                   {opt.label}
                 </Text>
               </Pressable>
@@ -187,15 +189,15 @@ export function NavField({ label, value, onPress, last }: { label: string; value
   return (
     <FieldRow last={last}>
       <Pressable onPress={onPress} className="flex-row items-center justify-between px-4 py-3.5 active:bg-surface-sunken">
-        <Text className="text-[16px] text-content">{label}</Text>
-        <Text className="ml-2 text-[15px] text-content-secondary" numberOfLines={1}>{value}</Text>
+        <Text className="text-[15px] leading-[20px] text-content">{label}</Text>
+        <Text className="ml-2 text-[14px] leading-[18px] text-content-secondary" numberOfLines={1}>{value}</Text>
       </Pressable>
     </FieldRow>
   );
 }
 
 const primaryButtonVariants = cva(
-  'flex-row items-center justify-center rounded-2xl py-4',
+  'flex-row items-center justify-center rounded-2xl py-3.5',
   {
     variants: {
       state: {
@@ -204,7 +206,7 @@ const primaryButtonVariants = cva(
       },
     },
     defaultVariants: { state: 'enabled' },
-  },
+  }
 );
 
 interface IPrimaryButtonProps extends VariantProps<typeof primaryButtonVariants> {
@@ -224,16 +226,18 @@ export function PrimaryButton({ title, onPress, disabled, busy, className }: IPr
       disabled={isDisabled}
       className={cn(
         primaryButtonVariants({ state: isDisabled ? 'disabled' : 'enabled' }),
-        className,
+        className
       )}
     >
       {busy
         ? <ActivityIndicator color={colors.accentContent} />
         : (
-          <Text className={cn('text-[16px] font-semibold', {
-            'text-content-tertiary': isDisabled,
-            'text-accent-content': !isDisabled,
-          })}>
+          <Text
+            className={cn('text-[15px] font-semibold leading-[20px]', {
+              'text-content-tertiary': isDisabled,
+              'text-accent-content': !isDisabled,
+            })}
+          >
             {title}
           </Text>
         )}
@@ -249,9 +253,9 @@ export function DangerButton({ title, onPress, className }: { title: string; onP
   return (
     <Pressable
       onPress={handlePress}
-      className={cn('flex-row items-center justify-center rounded-2xl border border-divider py-4 active:bg-surface-sunken', className)}
+      className={cn('flex-row items-center justify-center rounded-2xl border border-divider py-3.5 active:bg-surface-sunken', className)}
     >
-      <Text className="text-[16px] font-medium text-danger">{title}</Text>
+      <Text className="text-[15px] font-medium leading-[20px] text-danger">{title}</Text>
     </Pressable>
   );
 }

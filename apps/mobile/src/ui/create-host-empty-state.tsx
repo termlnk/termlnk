@@ -36,8 +36,8 @@ export function CreateHostEmptyState({ onContinue, onDiscover }: ICreateHostEmpt
       <View className="h-20 w-20 items-center justify-center rounded-3xl bg-surface-raised">
         <Server size={36} color={colors.content} />
       </View>
-      <Text className="mt-6 text-[24px] font-bold text-content">Create Host</Text>
-      <Text className="mt-2 px-6 text-center text-[15px] leading-[21px] text-content-secondary">
+      <Text className="mt-6 text-[22px] font-bold leading-[28px] text-content">Create Host</Text>
+      <Text className="mt-2 px-6 text-center text-[14px] leading-5 text-content-secondary">
         Save your connection details as hosts to connect in one click.
       </Text>
 
@@ -50,7 +50,7 @@ export function CreateHostEmptyState({ onContinue, onDiscover }: ICreateHostEmpt
         autoCorrect={false}
         keyboardType="url"
         onSubmitEditing={() => trimmed.length > 0 && onContinue(trimmed)}
-        className="mt-9 w-full rounded-2xl border border-divider px-4 py-3.5 text-[16px] text-content"
+        className="mt-9 w-full rounded-2xl border border-divider px-4 py-3.5 text-[15px] leading-[20px] text-content"
       />
 
       <View className="mt-4 w-full">

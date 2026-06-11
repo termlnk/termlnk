@@ -55,6 +55,8 @@ export default function RootLayout() {
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="hosts" options={{ headerShown: false }} />
               <Stack.Screen name="ai" options={{ headerShown: false }} />
+              <Stack.Screen name="account" options={{ headerShown: false }} />
+              <Stack.Screen name="devices" options={{ headerShown: false }} />
               <Stack.Screen name="settings" options={{ headerShown: false }} />
               <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="vault/keychain" options={{ headerShown: false }} />

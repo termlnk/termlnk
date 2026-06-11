@@ -14,14 +14,13 @@
  */
 
 import { useRouter } from 'expo-router';
-import { ChevronRight, HelpCircle, MessageCircle, ScanFace, Settings as SettingsIcon, Sparkles } from 'lucide-react-native';
+import { ChevronRight, HelpCircle, LogIn, Settings as SettingsIcon, Sparkles, UserPlus } from 'lucide-react-native';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCurrentUser } from '../../src/core/core-context';
 import { useThemeColors } from '../../src/theme/theme-provider';
 import { Card } from '../../src/ui/card';
 import { TAB_BAR_HEIGHT } from '../../src/ui/floating-tab-bar';
-import { PrimaryButton } from '../../src/ui/form';
 import { IconTile } from '../../src/ui/icon-tile';
 import { NavRow } from '../../src/ui/rows';
 import { ScreenContainer } from '../../src/ui/screen-container';
@@ -38,28 +37,35 @@ export default function ProfileTab() {
     <ScreenContainer>
       <ScreenHeader variant="large" title="Profile" />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 24 }}>
-        <Card>
-          <Pressable onPress={() => router.push('/settings')} className="flex-row items-center px-4 py-4 active:bg-surface-sunken">
-            <UserAvatar user={user} size={48} radius={16} />
-            <View className="ml-3 flex-1">
-              <Text className="text-[17px] font-semibold text-content" numberOfLines={1}>
-                {user?.email ?? 'Not signed in'}
-              </Text>
-              <Text className="mt-0.5 text-[14px] text-content-secondary">Security, Cloud, and Subscription</Text>
-            </View>
-            <ChevronRight size={20} color={colors.contentTertiary} />
-          </Pressable>
-        </Card>
-
-        <View className="mt-4">
-          <Card dividerInset={64}>
-            <NavRow
-              leading={<IconTile icon={ScanFace} tone="sshid" />}
-              title="SSH ID"
-              onPress={() => Alert.alert('SSH ID', 'SSH ID is coming soon.')}
-            />
-          </Card>
-        </View>
+        {user == null
+          ? (
+            <Card dividerInset={64}>
+              <NavRow
+                leading={<IconTile icon={UserPlus} tone="known" />}
+                title="Create account"
+                onPress={() => router.push('/register')}
+              />
+              <NavRow
+                leading={<IconTile icon={LogIn} tone="sessions" />}
+                title="Log in"
+                onPress={() => router.push('/login')}
+              />
+            </Card>
+          )
+          : (
+            <Card>
+              <Pressable onPress={() => router.push('/account')} className="flex-row items-center px-4 py-4 active:bg-surface-sunken">
+                <UserAvatar user={user} size={48} radius={16} />
+                <View className="ml-3 flex-1">
+                  <Text className="text-[16px] font-semibold leading-5 text-content" numberOfLines={1}>
+                    {user.email}
+                  </Text>
+                  <Text className="mt-0.5 text-[13px] leading-[18px] text-content-secondary">Security, Cloud, and Subscription</Text>
+                </View>
+                <ChevronRight size={20} color={colors.contentTertiary} />
+              </Pressable>
+            </Card>
+          )}
 
         <View className="mt-4">
           <Card dividerInset={64}>
@@ -78,23 +84,6 @@ export default function ProfileTab() {
               title="Help & Feedback"
               onPress={() => Alert.alert('Help & Feedback', 'Reach us through the in-app channels — coming soon.')}
             />
-          </Card>
-        </View>
-
-        <View className="mt-5">
-          <Card>
-            <View className="p-4">
-              <View className="flex-row items-center">
-                <IconTile icon={MessageCircle} tone="discord" />
-                <Text className="ml-3 text-[17px] font-semibold text-content">Join our Discord</Text>
-              </View>
-              <Text className="mt-3 text-[14px] leading-5 text-content-secondary">
-                Share your feedback on the new Termlnk app and find the latest news in our Discord community.
-              </Text>
-              <View className="mt-4">
-                <PrimaryButton title="Share your feedback" onPress={() => Alert.alert('Discord', 'Community link is coming soon.')} />
-              </View>
-            </View>
           </Card>
         </View>
       </ScrollView>

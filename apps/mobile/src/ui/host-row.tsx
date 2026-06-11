@@ -86,17 +86,17 @@ function HostRowContent(props: IHostRowProps) {
     <>
       <HostAvatar id={props.id} label={props.label} type={props.type} connecting={props.connecting} />
       <View className="ml-3 flex-1">
-        <Text numberOfLines={1} className="text-[16px] font-medium text-content">
+        <Text numberOfLines={1} className="text-[15px] font-medium leading-[20px] text-content">
           {props.label}
         </Text>
         {subtitle != null && (
-          <Text numberOfLines={1} className="mt-0.5 text-[13px] text-content-secondary">
+          <Text numberOfLines={1} className="mt-0.5 text-[12px] leading-4 text-content-secondary">
             {subtitle}
           </Text>
         )}
       </View>
       {props.trailing != null && (
-        <Text className="ml-2 text-[12px] text-content-tertiary">{props.trailing}</Text>
+        <Text className="ml-2 text-[11px] leading-[14px] text-content-tertiary">{props.trailing}</Text>
       )}
     </>
   );
