@@ -15,11 +15,13 @@
 
 import type { Dependency, Injector } from '@termlnk/core';
 import type { IAuthMobileConfig } from './controllers/config.schema';
-import { IAuthKeyValueStorage } from '@termlnk/auth';
+import { IAuthKeyValueStorage, IPasswordHasher } from '@termlnk/auth';
 import { IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
 import { AUTH_MOBILE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { BiometricService, IBiometricService } from './services/biometric.service';
 import { ExpoSecureStoreAuthKeyValueStorage } from './services/expo-secure-store-auth-key-value-storage.service';
+import { LibsodiumPasswordHasher } from './services/libsodium-password-hasher.service';
+import { IPinStoreService, PinStoreService } from './services/pin-store.service';
 
 export const AUTH_MOBILE_PLUGIN_NAME = 'AUTH_MOBILE_PLUGIN';
 
@@ -40,7 +42,9 @@ export class AuthMobilePlugin extends Plugin {
   override onStarting(): void {
     const dependencies: Dependency[] = [
       [IAuthKeyValueStorage, { useClass: ExpoSecureStoreAuthKeyValueStorage }],
+      [IPasswordHasher, { useClass: LibsodiumPasswordHasher }],
       [IBiometricService, { useClass: BiometricService }],
+      [IPinStoreService, { useClass: PinStoreService }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }

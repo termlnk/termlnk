@@ -29,4 +29,6 @@ export type { IManagedSshSession, ManagedSessionState } from './services/mobile-
 export { evaluateServerKey, forgetServerKey, loadStoredServerKey, recordServerKey } from './services/server-key-tofu';
 export type { IStoredServerKey, TofuDecision } from './services/server-key-tofu';
 export { TerminalKeyBar } from './services/terminal-keybar';
+export { listTerminalThemes, mapBase46ToXterm } from './services/terminal-theme-mapping';
+export type { IBase46Theme, ITerminalThemeOption, ITerminalThemePreview, IXtermTheme } from './services/terminal-theme-mapping';
 export { buildXtermHtml, xtermBridge } from './services/xterm-webview-html';

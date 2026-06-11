@@ -22,3 +22,4 @@ export { ExpoAppStateIdleProbe } from './services/expo-app-state-idle-probe.serv
 export { ExpoDeviceNameProvider } from './services/expo-device-name-provider.service';
 export { ExpoSecureStoreAuthKeyValueStorage } from './services/expo-secure-store-auth-key-value-storage.service';
 export { LibsodiumPasswordHasher } from './services/libsodium-password-hasher.service';
+export { IPinStoreService, PinStoreService } from './services/pin-store.service';

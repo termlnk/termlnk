@@ -28,6 +28,16 @@ import { IDatabaseMobileAdaptorService } from './expo-sqlite-adaptor.service';
 // relaunches; `_load` merges over DEFAULT_PREFERENCES so older rows stay valid.
 export interface IMobilePreferences {
   readonly terminalFontSize: number;
+  readonly terminalFontFamily: string;
+  readonly terminalThemeId: string;
+  readonly keepAliveSeconds: number;
+  readonly backBufferLines: number;
+  readonly emulationType: string;
+  readonly brightBold: boolean;
+  readonly autocomplete: boolean;
+  readonly audioHapticFeedback: boolean;
+  readonly preventSleeping: boolean;
+  readonly pinEnabled: boolean;
   readonly autoLockMinutes: number;
   readonly biometricLock: boolean;
   readonly aiBaseUrl: string;
@@ -45,6 +55,16 @@ export interface IMobilePreferences {
 
 export const DEFAULT_PREFERENCES: IMobilePreferences = {
   terminalFontSize: 13,
+  terminalFontFamily: 'Source Code Pro',
+  terminalThemeId: 'onedark',
+  keepAliveSeconds: 60,
+  backBufferLines: 1000,
+  emulationType: 'xterm-256color',
+  brightBold: true,
+  autocomplete: false,
+  audioHapticFeedback: true,
+  preventSleeping: false,
+  pinEnabled: false,
   autoLockMinutes: 5,
   biometricLock: false,
   aiBaseUrl: 'https://api.openai.com/v1',

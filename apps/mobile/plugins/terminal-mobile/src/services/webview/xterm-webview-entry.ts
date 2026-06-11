@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 
@@ -28,6 +29,9 @@ declare global {
       write: (base64: string) => void;
       focus: () => void;
       blur: () => void;
+      setTheme: (theme: ITheme) => void;
+      setFontFamily: (family: string) => void;
+      setFontSize: (size: number) => void;
     };
     __termlnkReport?: (payload: BridgeMessage) => void;
     __TERMLNK_CONFIG__?: { fontSize?: number };
@@ -141,6 +145,21 @@ function start(): void {
     },
     focus: (): void => term.focus(),
     blur: (): void => term.blur(),
+    setTheme: (theme: ITheme): void => {
+      term.options.theme = theme;
+      scheduleFit();
+    },
+    setFontFamily: (family: string): void => {
+      if (!family.trim()) {
+        return;
+      }
+      term.options.fontFamily = family;
+      scheduleFit();
+    },
+    setFontSize: (size: number): void => {
+      term.options.fontSize = clampFontSize(size);
+      scheduleFit();
+    },
   };
 
   // Forward user input as base64 so high-bit bytes survive the postMessage round-trip.
