@@ -54,16 +54,16 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/sync": "workspace:*",
+    "@termlnk/sync-engine": "workspace:*",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@noble/ciphers": "^2.2.0",
-    "@noble/hashes": "^2.2.0",
     "@termlnk/auth": "workspace:*",
     "@termlnk/auth-core": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
-    "@termlnk/sync": "workspace:*"
+    "@termlnk/sync": "workspace:*",
+    "@termlnk/sync-engine": "workspace:*"
   },
   "devDependencies": {
     "@termlnk/auth-core": "workspace:*",

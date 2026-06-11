@@ -13,10 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { SyncResourceId } from '@termlnk/sync';
+import type { ISyncOutboxInsert, ISyncOutboxRepository, ISyncOutboxRow, SyncResourceId } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
-import type { ISyncOutboxEntity, ISyncOutboxEntityInsert } from '../entities/sync-outbox';
+import type { ISyncOutboxEntity } from '../entities/sync-outbox';
+import { Buffer } from 'node:buffer';
 import { Disposable } from '@termlnk/core';
 import { and, asc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import { generateId } from '../entities/base';
@@ -28,9 +29,13 @@ import { IDBAdaptorService } from '../services/db-adaptor.service';
  *
  * Pure CRUD — no business orchestration (no `clientMutId` allocation, no
  * `changed$` notifications, no retry scheduling). Those live in
- * `SyncOutboxService` (`@termlnk/sync-core`).
+ * `SyncOutboxService` (`@termlnk/sync-engine`).
+ *
+ * The contract (`ISyncOutboxRepository`) speaks `Uint8Array`; the Buffer
+ * conversion that `better-sqlite3`'s blob binding needs is confined here so the
+ * platform-agnostic engine never touches `node:buffer`.
  */
-export class SyncOutboxRepository extends Disposable {
+export class SyncOutboxRepository extends Disposable implements ISyncOutboxRepository {
   constructor(
     @IDBAdaptorService private readonly _dbService: IDBAdaptorService
   ) {
@@ -45,25 +50,30 @@ export class SyncOutboxRepository extends Disposable {
    * Persist one mutation. The repository assigns `id` (a business-agnostic
    * PK) when the caller omits it. Returns the row as stored.
    */
-  async insert(record: Omit<ISyncOutboxEntityInsert, 'id'> & { id?: string }): Promise<ISyncOutboxEntity> {
+  async insert(record: ISyncOutboxInsert): Promise<ISyncOutboxRow> {
     const id = record.id ?? generateId();
     const inserted = await this._db
       .insert(syncOutboxEntity)
-      .values({ ...record, id })
+      .values({
+        ...record,
+        id,
+        payload: record.payload === null ? null : Buffer.from(record.payload),
+      })
       .returning();
-    return inserted[0];
+    return toRow(inserted[0]);
   }
 
   /**
    * Read pending mutations FIFO: `createdAt` asc, tie-break by `clientMutId`.
    * Does not delete — rows stay until the server acks them.
    */
-  async selectFifo(limit?: number): Promise<ISyncOutboxEntity[]> {
+  async selectFifo(limit?: number): Promise<ISyncOutboxRow[]> {
     const query = this._db
       .select()
       .from(syncOutboxEntity)
       .orderBy(asc(syncOutboxEntity.createdAt), asc(syncOutboxEntity.clientMutId));
-    return limit && limit > 0 ? query.limit(limit) : query;
+    const rows = await (limit && limit > 0 ? query.limit(limit) : query);
+    return rows.map(toRow);
   }
 
   /** Drop rows acknowledged by the server, by `clientMutId`. */
@@ -166,4 +176,14 @@ export class SyncOutboxRepository extends Disposable {
       .from(syncOutboxEntity);
     return rows[0]?.max ?? 0;
   }
+}
+
+// Map a stored row to the platform-agnostic contract shape. better-sqlite3 returns the BLOB
+// payload as a Node Buffer backed by a shared pool; copy it into a standalone Uint8Array so
+// the engine (which the contract promises never sees Buffer) gets honest, isolated bytes.
+function toRow(entity: ISyncOutboxEntity): ISyncOutboxRow {
+  return {
+    ...entity,
+    payload: entity.payload === null ? null : new Uint8Array(entity.payload),
+  };
 }

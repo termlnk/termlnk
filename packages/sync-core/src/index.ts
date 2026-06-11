@@ -16,15 +16,19 @@
 export type { ISyncCorePluginConfig } from './controllers/config.schema';
 export { SYNC_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export { SYNC_CORE_PLUGIN_NAME, SyncCorePlugin } from './plugin';
-export { BackupService } from './services/backup.service';
-export { SyncCryptoService } from './services/crypto.service';
-export { HttpSyncTransportService } from './services/http-transport.service';
-export type { IHttpSyncTransportConfig } from './services/http-transport.service';
-export { NoopSyncTransportService } from './services/noop-transport.service';
-export { SyncOutboxService } from './services/outbox.service';
-export { SyncService } from './services/sync.service';
-export { ConfigSynchroniser } from './synchronisers/config-synchroniser';
-export { HostSynchroniser } from './synchronisers/host-synchroniser';
-export { McpSynchroniser } from './synchronisers/mcp-synchroniser';
-export { ProviderSynchroniser } from './synchronisers/provider-synchroniser';
-export { SkillSynchroniser } from './synchronisers/skill-synchroniser';
+// The engine implementations now live in @termlnk/sync-engine (platform-agnostic); re-export
+// them here so existing importers of @termlnk/sync-core keep their public surface.
+export {
+  BackupService,
+  ConfigSynchroniser,
+  HostSynchroniser,
+  HttpSyncTransportService,
+  McpSynchroniser,
+  NoopSyncTransportService,
+  ProviderSynchroniser,
+  SkillSynchroniser,
+  SyncCryptoService,
+  SyncOutboxService,
+  SyncService,
+} from '@termlnk/sync-engine';
+export type { IHttpSyncTransportConfig } from '@termlnk/sync-engine';

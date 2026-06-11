@@ -63,7 +63,9 @@ export class AuthCorePlugin extends Plugin {
 
     const authService = this._injector.get(IAuthService, Quantity.OPTIONAL);
     if (authService) {
-      void authService.restore();
+      void authService.restore().catch((err) => {
+        this._injector.get(ILogService).error('[AuthCorePlugin] auth restore failed:', err);
+      });
     }
   }
 

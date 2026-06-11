@@ -13,55 +13,99 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IHostConnectArgs } from '../../../src/ssh/auto-connect-from-vault';
-import type { IMobileSshSession } from '../../../src/ssh/mobile-ssh-client.service';
-import type { IMobileHost, IMobileHostFull } from '../../../src/sync/mobile-sync-pull.service';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import type { IMobileHost } from '@termlnk/database-mobile';
+import type { IMobileSshSession } from '@termlnk/terminal-mobile';
+import { buildXtermHtml, xtermBridge } from '@termlnk/terminal-mobile';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { useCoreContext, useRecentSessionsRepository, useSyncPullService } from '../../../src/core/core-context';
-import { autoConnectArgsFromVault } from '../../../src/ssh/auto-connect-from-vault';
-import { buildShellResumptionCommand } from '../../../src/ssh/mobile-shell-resumption';
-import { MobileSshClientService } from '../../../src/ssh/mobile-ssh-client.service';
-import { buildXtermHtml, xtermBridge } from '../../../src/ssh/xterm-webview-html';
-import { IMobileHostRepository } from '../../../src/storage/mobile-host-repository';
+import { useConnectionService, usePreferencesService, useRecentSessionsRepository, useSyncService } from '../../../src/core/core-context';
+import { TerminalAccessory } from '../../../src/terminal/terminal-accessory';
 
-type ConnectState = 'loading-host' | 'awaiting-credentials' | 'connecting' | 'connected' | 'error';
+type ConnectState = 'connecting' | 'awaiting-credentials' | 'connected' | 'error';
 
-interface ManualCredentials {
+interface IManualCredentials {
   username: string;
   password: string;
 }
 
+const TERMINAL_BACKGROUND = '#0a0a0a';
+
 export default function TerminalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const pull = useSyncPullService();
-  const coreContext = useCoreContext();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const pull = useSyncService();
   const recentRepo = useRecentSessionsRepository();
-  const hostRepo = useMemo(
-    () => coreContext.core.getInjector().get(IMobileHostRepository),
-    [coreContext]
-  );
-  const sshClient = useMemo(() => new MobileSshClientService(), []);
+  const connectionService = useConnectionService();
+  const prefsService = usePreferencesService();
+  // Snapshot the font size once for this session. Subscribing reactively would rebuild
+  // the WebView `source` on any prefs change and tear down a live terminal mid-session;
+  // a new font size instead applies the next time the terminal is opened.
+  const [fontSize, setFontSize] = useState<number | null>(null);
+  // Live value shown in the theme panel stepper; decoupled from the snapshot above
+  // so adjusting it never rebuilds the WebView mid-session.
+  const [displayFontSize, setDisplayFontSize] = useState(13);
   const webviewRef = useRef<WebView>(null);
+  // Tracks whether the soft keyboard (xterm textarea focus) is currently raised.
+  const keyboardVisibleRef = useRef(true);
+  const terminalReadyRef = useRef(false);
 
   const [host, setHost] = useState<IMobileHost | null>(null);
-  const [state, setState] = useState<ConnectState>('loading-host');
+  const [state, setState] = useState<ConnectState>('connecting');
   const [error, setError] = useState<string | null>(null);
-  const [manualCreds, setManualCreds] = useState<ManualCredentials>({ username: '', password: '' });
+  const [manualCreds, setManualCreds] = useState<IManualCredentials>({ username: '', password: '' });
   const [session, setSession] = useState<IMobileSshSession | null>(null);
   // startShell needs the WebView's fit-size up front — the russh wrapper has
   // no window-change, so the first PTY dimensions are also the final ones.
   const shellStartedRef = useRef(false);
-  // Cache the full record (with decrypted credential) for the duration of this screen
-  // so onConnect re-uses the plaintext without another SQLite read.
-  const fullHostRef = useRef<IMobileHostFull | null>(null);
-  // Guard against double-auto-connect when the hosts$ subscription emits more than
-  // once before connecting completes.
-  const autoConnectedRef = useRef(false);
+  // Lands the host in the Recent tab once, on the first connected emission.
+  const touchedRef = useRef(false);
 
-  const xtermHtml = useMemo(() => buildXtermHtml(), []);
+  const xtermHtml = useMemo(() => buildXtermHtml(fontSize ?? 13), [fontSize]);
+
+  useEffect(() => {
+    void prefsService.ready().then(() => {
+      const fs = prefsService.get().terminalFontSize;
+      setFontSize(fs);
+      setDisplayFontSize(fs);
+    });
+  }, [prefsService]);
+
+  // Font-size changes persist and apply on the next connect (the running session
+  // keeps its snapshot to avoid tearing down the WebView).
+  const onFontDelta = useCallback((delta: number) => {
+    setDisplayFontSize((prev) => {
+      const next = Math.min(22, Math.max(9, prev + delta));
+      void prefsService.update({ terminalFontSize: next });
+      return next;
+    });
+  }, [prefsService]);
+
+  const onToggleKeyboard = useCallback(() => {
+    const focus = !keyboardVisibleRef.current;
+    keyboardVisibleRef.current = focus;
+    webviewRef.current?.injectJavaScript(
+      focus
+        ? 'window.__termlnkTerm && window.__termlnkTerm.focus(); true;'
+        : 'window.__termlnkTerm && window.__termlnkTerm.blur(); true;'
+    );
+  }, []);
+
+  const onCloseSession = useCallback(() => {
+    connectionService.disconnect(id);
+    router.back();
+  }, [connectionService, id, router]);
+
+  const writeToTerminal = useCallback((output: string) => {
+    if (!terminalReadyRef.current) {
+      return;
+    }
+    const b64 = xtermBridge.toBase64(output);
+    webviewRef.current?.injectJavaScript(`window.__termlnkTerm.write(${JSON.stringify(b64)}); true;`);
+  }, []);
 
   // Subscribe to the public hosts stream for the row metadata (label, addr, port).
   useEffect(() => {
@@ -71,113 +115,70 @@ export default function TerminalScreen() {
     return () => sub.unsubscribe();
   }, [pull, id]);
 
-  const connect = useCallback(async (args: IHostConnectArgs) => {
-    setState('connecting');
-    setError(null);
-    shellStartedRef.current = false;
-    try {
-      const next = await sshClient.connect({
-        ...args,
-        hostId: id,
-      });
-      setSession(next);
-      setState('connected');
-      // Land in the Recent tab. Best-effort — a failed touch must not break the
-      // session that already succeeded.
-      void recentRepo.touch(id, 'terminal').catch(() => {});
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Connection failed');
-      setState('error');
-      autoConnectedRef.current = false;
-    }
-  }, [sshClient, id, recentRepo]);
-
-  // Resolve full record with plaintext credential, then auto-connect when possible.
+  // The connection coordinator owns the SSH transport (resolve + connect, deduped with the
+  // list tap). This screen attaches to the live session and drives the shell on top of it.
   useEffect(() => {
-    if (!host || autoConnectedRef.current) {
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const full = await hostRepo.getInfo(id);
-        if (cancelled) {
-          return;
-        }
-        fullHostRef.current = full;
-        if (full) {
-          const auto = autoConnectArgsFromVault(full);
-          if (auto) {
-            autoConnectedRef.current = true;
-            void connect(auto);
-            return;
-          }
-        }
-        setState('awaiting-credentials');
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-        setError(err instanceof Error ? err.message : 'Failed to read host');
-        setState('error');
+    const sub = connectionService.connections$.subscribe((map) => {
+      const conn = map.get(id);
+      if (conn == null) {
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [host, hostRepo, id, connect]);
+      setSession(conn.session);
+      setError(conn.error);
+      switch (conn.status) {
+        case 'connected':
+          setState('connected');
+          if (conn.session && !touchedRef.current) {
+            touchedRef.current = true;
+            void recentRepo.touch(id, 'terminal').catch(() => {});
+          }
+          break;
+        case 'needs-credentials':
+          setState('awaiting-credentials');
+          break;
+        case 'error':
+          setState('error');
+          break;
+        default:
+          setState('connecting');
+      }
+    });
+    void connectionService.connect(id);
+    return () => sub.unsubscribe();
+  }, [connectionService, id, recentRepo]);
 
   useEffect(() => {
     if (!session) {
       return;
     }
     const sub = session.shellOutput$.subscribe((chunk) => {
-      const b64 = xtermBridge.toBase64(chunk);
-      webviewRef.current?.injectJavaScript(`window.__termlnkTerm.write(${JSON.stringify(b64)}); true;`);
+      writeToTerminal(chunk);
     });
     return () => sub.unsubscribe();
-  }, [session]);
+  }, [session, writeToTerminal]);
 
   useEffect(() => {
-    return () => {
-      if (session) {
-        session.disconnect();
-      }
-      sshClient.dispose();
-    };
-  }, [session, sshClient]);
+    terminalReadyRef.current = false;
+  }, [xtermHtml]);
 
   const onConnectManual = async () => {
-    if (!host || !host.addr) {
-      setError('Host has no address');
-      setState('error');
-      return;
-    }
     if (!manualCreds.username || !manualCreds.password) {
       setError('Username and password are required');
       setState('error');
       return;
     }
-    await connect({
-      host: host.addr,
-      port: host.port ?? 22,
-      username: manualCreds.username,
-      password: manualCreds.password,
-    });
+    await connectionService.connectManual(id, manualCreds);
   };
 
   const onWebViewSize = useCallback(
     (cols: number, rows: number) => {
-      if (shellStartedRef.current || !session || !host) {
+      if (shellStartedRef.current || !session) {
         return;
       }
       shellStartedRef.current = true;
       void (async () => {
         try {
           await session.startShell({ terminalSize: { cols, rows } });
-          await session.writeToShell(
-            `${buildShellResumptionCommand({ hostId: host.id }).command}\r`
-          );
         } catch (err) {
           shellStartedRef.current = false;
           setError(err instanceof Error ? err.message : 'Failed to start shell');
@@ -185,24 +186,23 @@ export default function TerminalScreen() {
         }
       })();
     },
-    [host, session]
+    [session, id]
   );
 
   const submitDisabled = manualCreds.username.length === 0 || manualCreds.password.length === 0;
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-black"
+      className="flex-1"
+      style={{ backgroundColor: TERMINAL_BACKGROUND }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Stack.Screen options={{ title: host ? `${host.label} • Terminal` : 'Terminal' }} />
-
-      {state === 'loading-host' && (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#61afef" />
-          <Text className="mt-3 text-[13px] text-grey-fg">Loading host…</Text>
-        </View>
-      )}
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
+      <View style={{ height: insets.top, backgroundColor: TERMINAL_BACKGROUND }} />
 
       {state === 'connecting' && (
         <View className="flex-1 items-center justify-center">
@@ -257,46 +257,71 @@ export default function TerminalScreen() {
       )}
 
       {state === 'connected' && (
-        <WebView
-          ref={webviewRef}
-          originWhitelist={['*']}
-          source={{ html: xtermHtml }}
-          javaScriptEnabled
-          domStorageEnabled
-          className="flex-1 bg-black"
-          onError={(e) => {
-            const desc = e.nativeEvent.description || 'Unknown WebView error';
-            setError(`WebView failed to load: ${desc}`);
-            setState('error');
-          }}
-          onHttpError={(e) => {
-            const status = e.nativeEvent.statusCode;
-            const url = e.nativeEvent.url;
-            setError(`WebView HTTP ${status} on ${url}`);
-            setState('error');
-          }}
-          onMessage={(event) => {
-            try {
-              const msg = JSON.parse(event.nativeEvent.data) as
-                | { type: 'input'; data: string }
-                | { type: 'size'; cols: number; rows: number }
-                | { type: 'ready' }
-                | { type: 'error'; message: string; source?: string; line?: number; col?: number; stack?: string };
-              if (msg.type === 'size') {
-                onWebViewSize(msg.cols, msg.rows);
-              } else if (msg.type === 'input' && session && shellStartedRef.current) {
-                void session.writeToShell(xtermBridge.fromBase64(msg.data));
-              } else if (msg.type === 'error') {
-                const where = msg.source ? ` (${msg.source}:${msg.line ?? '?'}:${msg.col ?? '?'})` : '';
-                setError(`Terminal viewer error: ${msg.message}${where}`);
-                setState('error');
+        <>
+          <WebView
+            ref={webviewRef}
+            originWhitelist={['*']}
+            source={{ html: xtermHtml }}
+            javaScriptEnabled
+            domStorageEnabled
+            keyboardDisplayRequiresUserAction={false}
+            className="flex-1"
+            style={{ backgroundColor: TERMINAL_BACKGROUND }}
+            onError={(e) => {
+              const desc = e.nativeEvent.description || 'Unknown WebView error';
+              setError(`WebView failed to load: ${desc}`);
+              setState('error');
+            }}
+            onHttpError={(e) => {
+              const status = e.nativeEvent.statusCode;
+              const url = e.nativeEvent.url;
+              setError(`WebView HTTP ${status} on ${url}`);
+              setState('error');
+            }}
+            onMessage={(event) => {
+              try {
+                const msg = JSON.parse(event.nativeEvent.data) as
+                  | { type: 'input'; data: string }
+                  | { type: 'size'; cols: number; rows: number }
+                  | { type: 'ready' }
+                  | { type: 'error'; message: string; source?: string; line?: number; col?: number; stack?: string };
+                if (msg.type === 'ready') {
+                  terminalReadyRef.current = true;
+                  if (session?.shellTranscript) {
+                    writeToTerminal(session.shellTranscript);
+                  }
+                } else if (msg.type === 'size') {
+                  onWebViewSize(msg.cols, msg.rows);
+                } else if (msg.type === 'input' && session && shellStartedRef.current) {
+                  void session.writeToShell(xtermBridge.fromBase64(msg.data));
+                } else if (msg.type === 'error') {
+                  const where = msg.source ? ` (${msg.source}:${msg.line ?? '?'}:${msg.col ?? '?'})` : '';
+                  setError(`Terminal viewer error: ${msg.message}${where}`);
+                  setState('error');
+                }
+              } catch {
+                // Ignore malformed bridge messages.
               }
-              // type === 'ready' is informational; xterm is alive and waiting for size/data.
-            } catch {
-              // Ignore malformed bridge messages.
-            }
-          }}
-        />
+            }}
+          />
+          {session != null && (
+            <TerminalAccessory
+              hostLabel={host?.label ?? 'host'}
+              onKey={(seq) => {
+                if (shellStartedRef.current) {
+                  void session.writeToShell(seq).catch(() => {});
+                }
+              }}
+              onBack={() => {
+                router.back();
+              }}
+              onClose={onCloseSession}
+              onToggleKeyboard={onToggleKeyboard}
+              fontSize={displayFontSize}
+              onFontDelta={onFontDelta}
+            />
+          )}
+        </>
       )}
     </KeyboardAvoidingView>
   );

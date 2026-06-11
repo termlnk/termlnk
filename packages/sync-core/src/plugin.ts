@@ -20,23 +20,10 @@ import { AuthCorePlugin } from '@termlnk/auth-core';
 import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService, SyncPlugin } from '@termlnk/sync';
+import { BackupService, ConfigSynchroniser, HostSynchroniser, HttpSyncTransportService, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, NoopSyncTransportService, ProviderSynchroniser, SkillSynchroniser, SshKeySynchroniser, SyncCryptoService, SyncOutboxService, SyncService } from '@termlnk/sync-engine';
 import { AuthSyncBridgeController } from './controllers/auth-sync-bridge.controller';
 import { defaultPluginConfig, SYNC_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { SynchroniserRegistrationController } from './controllers/synchroniser-registration.controller';
-import { BackupService } from './services/backup.service';
-import { SyncCryptoService } from './services/crypto.service';
-import { HttpSyncTransportService } from './services/http-transport.service';
-import { NoopSyncTransportService } from './services/noop-transport.service';
-import { SyncOutboxService } from './services/outbox.service';
-import { SyncService } from './services/sync.service';
-import { ConfigSynchroniser } from './synchronisers/config-synchroniser';
-import { HostSynchroniser } from './synchronisers/host-synchroniser';
-import { IdentitySynchroniser } from './synchronisers/identity-synchroniser';
-import { KnownHostSynchroniser } from './synchronisers/known-host-synchroniser';
-import { McpSynchroniser } from './synchronisers/mcp-synchroniser';
-import { ProviderSynchroniser } from './synchronisers/provider-synchroniser';
-import { SkillSynchroniser } from './synchronisers/skill-synchroniser';
-import { SshKeySynchroniser } from './synchronisers/ssh-key-synchroniser';
 
 export const SYNC_CORE_PLUGIN_NAME = 'SYNC_CORE_PLUGIN';
 

@@ -1,0 +1,70 @@
+diff --git a/build/configs/typescript.js b/build/configs/typescript.js
+index 99e53a8cf1f91e0591e959ec017deee249315ce2..ae12ca93c752e5abea26d2c91bd0d5e8593ceb0b 100644
+--- a/build/configs/typescript.js
++++ b/build/configs/typescript.js
+@@ -7,32 +7,45 @@ function isTypeScriptSource(fileName) {
+ function isTSXSource(fileName) {
+     return !!fileName && fileName.endsWith('.tsx');
+ }
++// Termlnk patch: only OUR app sources (outside node_modules) opt out of usage-based
++// import elision via `onlyRemoveTypeImports`. node_modules keeps Babel's default elision.
++//
++// Why app code needs it: `babel-plugin-typescript-decorators` lets a decorated constructor
++// parameter ALSO be a TS parameter property (`@Inject() private readonly _x: T`, the desktop
++// DI style). It relocates the decorator's references into a synthesized sequence the elision
++// pass cannot see, so the value import backing the decorator (e.g. `Inject` from @termlnk/core)
++// would be dropped -> runtime `ReferenceError: Property 'Inject' doesn't exist`. The project
++// enforces `import type` for type-only imports (@antfu consistent-type-imports), so disabling
++// usage-based elision for app code is safe.
++//
++// Why node_modules MUST keep default elision: some shipped TS sources (e.g.
++// react-native-screens) use value-syntax imports for type-only modules
++// (`import { X } from 'react-native-screens/types'`) and rely on elision dropping them;
++// keeping those would turn them into unresolvable runtime requires and break bundling.
++function isAppSource(fileName) {
++    return !!fileName && !fileName.includes('node_modules');
++}
+ function getConfig() {
++    const transformTypeScript = require('@babel/plugin-transform-typescript');
+     return {
+         overrides: [
++            // App sources: disable usage-based elision so decorator value imports survive.
++            {
++                test: (f) => isTypeScriptSource(f) && isAppSource(f),
++                plugins: [[transformTypeScript, { isTSX: false, allowNamespaces: true, onlyRemoveTypeImports: true }]],
++            },
++            {
++                test: (f) => isTSXSource(f) && isAppSource(f),
++                plugins: [[transformTypeScript, { isTSX: true, allowNamespaces: true, onlyRemoveTypeImports: true }]],
++            },
++            // node_modules: keep upstream default behavior (usage-based elision on).
+             {
+-                test: isTypeScriptSource,
+-                plugins: [
+-                    [
+-                        require('@babel/plugin-transform-typescript'),
+-                        {
+-                            isTSX: false,
+-                            allowNamespaces: true,
+-                        },
+-                    ],
+-                ],
++                test: (f) => isTypeScriptSource(f) && !isAppSource(f),
++                plugins: [[transformTypeScript, { isTSX: false, allowNamespaces: true }]],
+             },
+             {
+-                test: isTSXSource,
+-                plugins: [
+-                    [
+-                        require('@babel/plugin-transform-typescript'),
+-                        {
+-                            isTSX: true,
+-                            allowNamespaces: true,
+-                        },
+-                    ],
+-                ],
++                test: (f) => isTSXSource(f) && !isAppSource(f),
++                plugins: [[transformTypeScript, { isTSX: true, allowNamespaces: true }]],
+             },
+         ],
+     };

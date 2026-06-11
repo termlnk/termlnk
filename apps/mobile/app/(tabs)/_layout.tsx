@@ -14,53 +14,20 @@
  */
 
 import { Tabs } from 'expo-router';
-import { History, Server, Settings as SettingsIcon } from 'lucide-react-native';
+import { FloatingTabBar } from '../../src/ui/floating-tab-bar';
 
-// Base46 onedark colors hard-coded here because Tabs.screenOptions accepts
-// only inline styles, not Tailwind class names. Keep these in sync with
-// tailwind.config.js if the palette ever shifts.
-const BG = '#1e222a';
-const BORDER = '#31353d';
-const ACTIVE = '#61afef';
-const INACTIVE = '#565c64';
-
+// Termius-style three-tab shell. The default native tab bar is replaced with a
+// floating pill (FloatingTabBar); screens render their own headers since the
+// stack runs headerShown:false.
 export default function TabsLayout() {
   return (
     <Tabs
-      screenOptions={{
-        headerStyle: { backgroundColor: BG },
-        headerTintColor: '#6f737b',
-        headerShadowVisible: false,
-        tabBarStyle: {
-          backgroundColor: BG,
-          borderTopColor: BORDER,
-        },
-        tabBarActiveTintColor: ACTIVE,
-        tabBarInactiveTintColor: INACTIVE,
-        sceneStyle: { backgroundColor: BG },
-      }}
+      tabBar={(props) => <FloatingTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen
-        name="hosts"
-        options={{
-          title: 'Hosts',
-          tabBarIcon: ({ color, size }) => <Server color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="sessions"
-        options={{
-          title: 'Recent',
-          tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => <SettingsIcon color={color} size={size} />,
-        }}
-      />
+      <Tabs.Screen name="vaults" options={{ title: 'Vaults' }} />
+      <Tabs.Screen name="connections" options={{ title: 'Connections' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );
 }

@@ -36,7 +36,18 @@
       "expo-document-picker",
       "expo-file-system",
       "expo-notifications",
-      "react-native-libsodium"
+      "react-native-libsodium",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4",
+            "buildReactNativeFromSource": true,
+            "useHermesV1": false
+          }
+        }
+      ],
+      "./config-plugins/with-ios-hermes-v1-env.cjs"
     ],
     "autolinking": {
       "searchPaths": [

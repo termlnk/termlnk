@@ -17,7 +17,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-interface ParsedInvite {
+interface IParsedInvite {
   readonly inviteId: string;
   // ephSecretB64 + capability are never surfaced in the UI. The secret lives in this
   // screen's memory for the attempt window and is dropped on unmount.
@@ -31,7 +31,7 @@ interface ParsedInvite {
 // Expo Linking strips the hash fragment from useLocalSearchParams, so we accept the
 // fragment as `?frag=...` (rewritten by router middleware) and fall back to a hint when
 // the launch path stripped it.
-function parseInvite(rawId: string | string[] | undefined, frag: string | undefined): ParsedInvite | null {
+function parseInvite(rawId: string | string[] | undefined, frag: string | undefined): IParsedInvite | null {
   if (!rawId || Array.isArray(rawId) || rawId.length === 0) {
     return null;
   }
@@ -44,69 +44,69 @@ function parseInvite(rawId: string | string[] | undefined, frag: string | undefi
 export default function InviteScreen() {
   const params = useLocalSearchParams<{ id?: string; frag?: string }>();
   const router = useRouter();
-  const [invite, setInvite] = useState<ParsedInvite | null>(null);
+  const [invite, setInvite] = useState<IParsedInvite | null>(null);
 
   useEffect(() => {
     setInvite(parseInvite(params.id, params.frag));
   }, [params.id, params.frag]);
 
   return (
-    <View className="flex-1 justify-center bg-black px-4">
+    <View className="flex-1 justify-center bg-surface px-4">
       <Stack.Screen options={{ title: 'Invitation' }} />
 
       {!invite && (
-        <View className="rounded-xl bg-one-bg p-5">
-          <Text className="mb-3 text-[20px] font-semibold text-light-grey">
+        <View className="rounded-2xl bg-surface-raised p-5">
+          <Text className="mb-3 text-[20px] font-semibold text-content">
             Invalid invitation
           </Text>
-          <Text className="text-[14px] leading-5 text-grey-fg">
+          <Text className="text-[14px] leading-5 text-content-secondary">
             This screen expects an invitation URL of the form
             {' '}
-            <Text className="text-blue">termlnk://invite/&lt;id&gt;#&lt;key&gt;</Text>
+            <Text className="text-accent">termlnk://invite/&lt;id&gt;#&lt;key&gt;</Text>
             .
             {' '}
             The link you opened did not carry a valid session identifier.
           </Text>
           <Pressable
-            onPress={() => router.replace('/(tabs)/hosts')}
-            className="mt-5 items-center rounded-lg bg-one-bg2 py-3 active:bg-one-bg3"
+            onPress={() => router.replace('/(tabs)/vaults')}
+            className="mt-5 items-center rounded-xl bg-surface-sunken py-3 active:opacity-70"
           >
-            <Text className="text-[14px] font-medium text-light-grey">Go back</Text>
+            <Text className="text-[14px] font-medium text-content">Go back</Text>
           </Pressable>
         </View>
       )}
 
       {invite && (
-        <View className="rounded-xl bg-one-bg p-5">
-          <Text className="mb-3 text-[20px] font-semibold text-light-grey">
+        <View className="rounded-2xl bg-surface-raised p-5">
+          <Text className="mb-3 text-[20px] font-semibold text-content">
             Collaborative session
           </Text>
-          <Text className="text-[14px] leading-5 text-grey-fg">
+          <Text className="text-[14px] leading-5 text-content-secondary">
             You have been invited to join session
             {' '}
-            <Text className="text-blue">
+            <Text className="text-accent">
               {invite.inviteId.slice(0, 8)}
               …
             </Text>
             {' '}
             as a peer of the inviter&apos;s terminal.
           </Text>
-          <Text className="mt-3.5 text-[12px] leading-[18px] text-grey">
+          <Text className="mt-3.5 text-[12px] leading-[18px] text-content-tertiary">
             The mobile client cannot accept collab invitations yet. Use the desktop or
             termlnk-web client to join via the shared-terminal-core relay endpoint.
           </Text>
           {!invite.hasFragment && (
-            <Text className="mt-3 text-[12px] leading-[18px] text-yellow">
+            <Text className="mt-3 text-[12px] leading-[18px] text-danger">
               Note: the secret fragment was stripped from this deep link. iOS / Android
               URL handlers drop the `#` portion in some launch paths — open the link
               from a browser that preserves the fragment to keep it E2EE.
             </Text>
           )}
           <Pressable
-            onPress={() => router.replace('/(tabs)/hosts')}
-            className="mt-5 items-center rounded-lg bg-one-bg2 py-3 active:bg-one-bg3"
+            onPress={() => router.replace('/(tabs)/vaults')}
+            className="mt-5 items-center rounded-xl bg-surface-sunken py-3 active:opacity-70"
           >
-            <Text className="text-[14px] font-medium text-light-grey">Back to hosts</Text>
+            <Text className="text-[14px] font-medium text-content">Back to vaults</Text>
           </Pressable>
         </View>
       )}

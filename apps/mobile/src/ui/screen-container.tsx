@@ -15,17 +15,16 @@
 
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
+import { cn } from './cn';
 
 interface IScreenContainerProps {
   readonly children: ReactNode;
-  // Pass-through for screens that need to override the default `bg-black`
-  // (e.g. terminal needs a slightly darker xterm-friendly background).
   readonly className?: string;
 }
 
 export function ScreenContainer({ children, className }: IScreenContainerProps) {
   return (
-    <View className={`flex-1 bg-black ${className ?? ''}`}>
+    <View className={cn('flex-1 bg-surface', className)}>
       {children}
     </View>
   );

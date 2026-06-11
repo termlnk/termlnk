@@ -13,19 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { HostListScreen } from '../../src/hosts/host-list-screen';
-import { useHostById } from '../../src/hosts/use-host-tree';
 
 export default function GroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const group = useHostById(id);
-  const title = group?.label ?? 'Group';
-
-  return (
-    <>
-      <Stack.Screen options={{ title }} />
-      <HostListScreen parentId={id} />
-    </>
-  );
+  // HostListScreen renders its own header (group label, back); no native header.
+  return <HostListScreen parentId={id} />;
 }

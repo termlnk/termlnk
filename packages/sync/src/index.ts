@@ -26,6 +26,37 @@ export type { BackupImportMode, IBackupExportFileResult, IBackupExportSummary, I
 export { ISyncCryptoService } from './services/crypto.service';
 export { ISyncOutboxService } from './services/outbox.service';
 export type { IResourceSynchroniser, IResourceSynchroniserFactory } from './services/resource-synchroniser';
+export {
+  IBackupRepository,
+  IHostSyncRepository,
+  IIdentitySyncRepository,
+  IMcpServerSyncRepository,
+  IProviderSyncRepository,
+  ISkillSyncRepository,
+  ISshKeySyncRepository,
+  ISyncConfigRepository,
+  ISyncCursorRepository,
+  ISyncFieldMetaRepository,
+  ISyncOutboxRepository,
+  ISyncRowMetaRepository,
+  IKnownHostSyncRepository,
+} from './services/repositories';
+export type {
+  IBackupSnapshot,
+  IConfigChangeEvent,
+  IConfigEntry,
+  IProviderChangeEvent,
+  ISyncCursorRow,
+  ISyncEntityRow,
+  ISyncHostChangeEvent,
+  ISyncHostTreeNode,
+  ISyncOutboxInsert,
+  ISyncOutboxRow,
+  ISyncRowChangeEvent,
+  ISyncRowMeta,
+  ISyncSkillRow,
+  ISyncWritableRow,
+} from './services/repositories';
 export { ISyncService } from './services/sync.service';
 export { ISyncTransportService } from './services/transport.service';
 export type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse } from './services/transport.service';

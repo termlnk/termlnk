@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { SyncResourceId } from '@termlnk/sync';
+import type { ISyncCursorRepository, SyncResourceId } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { ISyncCursorEntity } from '../entities/sync-cursor';
@@ -23,7 +23,7 @@ import { syncCursorEntity } from '../entities/sync-cursor';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 
 /** Opaque server pull cursor — one row per resource type. */
-export class SyncCursorRepository extends Disposable {
+export class SyncCursorRepository extends Disposable implements ISyncCursorRepository {
   constructor(
     @IDBAdaptorService private readonly _dbService: IDBAdaptorService
   ) {

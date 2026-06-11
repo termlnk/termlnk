@@ -15,15 +15,8 @@
 
 import type { IConfigOptions, IConfigService, IDisposable, ILogService, LogLevel } from '@termlnk/core';
 import type { IResourceSynchroniser, ISyncMutation, ISyncPatchItem, SyncResourceId } from '@termlnk/sync';
+import type { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, ProviderSynchroniser, SkillSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 import type { Observable } from 'rxjs';
-import type { ConfigSynchroniser } from '../synchronisers/config-synchroniser';
-import type { HostSynchroniser } from '../synchronisers/host-synchroniser';
-import type { IdentitySynchroniser } from '../synchronisers/identity-synchroniser';
-import type { KnownHostSynchroniser } from '../synchronisers/known-host-synchroniser';
-import type { McpSynchroniser } from '../synchronisers/mcp-synchroniser';
-import type { ProviderSynchroniser } from '../synchronisers/provider-synchroniser';
-import type { SkillSynchroniser } from '../synchronisers/skill-synchroniser';
-import type { SshKeySynchroniser } from '../synchronisers/ssh-key-synchroniser';
 import { SYNC_PLUGIN_CONFIG_KEY, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject, EMPTY } from 'rxjs';
 import { describe, expect, it } from 'vitest';
@@ -111,7 +104,7 @@ function createBed(excluded: SyncResourceId[] | undefined): ITestBed {
   }
   const fakeSync = new FakeSyncService();
   const controller = new SynchroniserRegistrationController(
-    fakeSync as unknown as InstanceType<typeof import('../services/sync.service').SyncService>,
+    fakeSync as unknown as InstanceType<typeof import('@termlnk/sync-engine').SyncService>,
     config,
     new NoopLogService(),
     new StubSynchroniser('host') as unknown as HostSynchroniser,

@@ -1,0 +1,11 @@
+{
+  "extends": "@termlnk/shared/tsconfig/base",
+  "compilerOptions": {
+    "jsx": "react-native",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node", "react", "react-native", "react-native-css/types"],
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src/**/*"]
+}

@@ -738,11 +738,16 @@ describe('HttpAuthService — restore', () => {
       new NoopLogService()
     );
 
+    const stateEmissions: AuthState[] = [];
+    const stateSub = auth.authState$.subscribe((s) => stateEmissions.push(s));
+
     await auth.restore();
 
     expect(calls).toHaveLength(0);
     expect(auth.getCurrentUser()).toBeNull();
     expect(bed.userStorage.data).toBeNull();
+    expect(stateEmissions).toEqual([AuthState.Restoring, AuthState.Unauthenticated]);
+    stateSub.unsubscribe();
     auth.dispose();
   });
 });

@@ -31,7 +31,9 @@ export class AuthService extends Disposable implements IAuthService {
   private readonly _currentUser$ = new BehaviorSubject<IUserAccount | null>(null);
   readonly currentUser$: Observable<IUserAccount | null> = this._currentUser$.asObservable();
 
-  private readonly _authState$ = new BehaviorSubject<AuthState>(AuthState.Unauthenticated);
+  // Mirror the main process's Restoring default until the subscription delivers its first
+  // push, so the renderer doesn't momentarily report signed-out during cold start.
+  private readonly _authState$ = new BehaviorSubject<AuthState>(AuthState.Restoring);
   readonly authState$: Observable<AuthState> = this._authState$.asObservable();
 
   private readonly _lastError$ = new BehaviorSubject<IAuthError | null>(null);

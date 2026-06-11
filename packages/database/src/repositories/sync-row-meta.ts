@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { SyncResourceId } from '@termlnk/sync';
+import type { ISyncRowMetaRepository, SyncResourceId } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { ISyncRowMetaEntity } from '../entities/sync-row-meta';
@@ -29,7 +29,7 @@ import { IDBAdaptorService } from '../services/db-adaptor.service';
  * applying a patch") belongs to the synchronisers; this repository just
  * exposes read / upsert / delete.
  */
-export class SyncRowMetaRepository extends Disposable {
+export class SyncRowMetaRepository extends Disposable implements ISyncRowMetaRepository {
   constructor(
     @IDBAdaptorService private readonly _dbService: IDBAdaptorService
   ) {

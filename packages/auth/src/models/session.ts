@@ -14,6 +14,11 @@
  */
 
 export enum AuthState {
+  // Startup default: a persisted session is being rehydrated (token refresh + /auth/me).
+  // We do not yet know whether the user is signed in, so auth-gated UIs must show a
+  // loading state rather than treating this as signed-out — otherwise a valid session
+  // flashes the login screen on every cold start before restore() resolves.
+  Restoring = 'restoring',
   Unauthenticated = 'unauthenticated',
   Authenticating = 'authenticating',
   Authenticated = 'authenticated',

@@ -23,11 +23,11 @@ interface ISectionLabelProps {
 export function SectionLabel({ title, count }: ISectionLabelProps) {
   return (
     <View className="flex-row items-baseline px-4 pb-2 pt-5">
-      <Text className="text-[11px] font-semibold uppercase tracking-wider text-grey-fg">
+      <Text className="text-[12px] font-semibold uppercase tracking-wider text-content-tertiary">
         {title}
       </Text>
       {count != null && (
-        <Text className="ml-2 text-[11px] text-grey">{count}</Text>
+        <Text className="ml-2 text-[12px] text-content-tertiary">{count}</Text>
       )}
     </View>
   );

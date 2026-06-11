@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ISyncConfigRepository } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type * as schema from '../entities';
 import type { IConfigChangeEvent, IConfigEntry } from '../models/config';
@@ -22,7 +23,7 @@ import { Subject } from 'rxjs';
 import { configEntity } from '../entities/config';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 
-export class ConfigRepository extends Disposable {
+export class ConfigRepository extends Disposable implements ISyncConfigRepository {
   private readonly _changed$ = new Subject<IConfigChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
 

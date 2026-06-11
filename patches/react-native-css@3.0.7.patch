@@ -1,0 +1,13 @@
+diff --git a/src/native/styles/index.ts b/src/native/styles/index.ts
+index 9ac5cc4d7c532cd9f6686d4b9d5909d5a76e8aab..934870c1bd26ed847fddde03e572291c2e2b8ea1 100644
+--- a/src/native/styles/index.ts
++++ b/src/native/styles/index.ts
+@@ -504,7 +504,7 @@ function nativeStyleMapping(
+     }
+ 
+     let target = props;
+-    const tokens = path.split(".");
++    const tokens = (typeof path === "string" ? path : key).split(".");
+     const lastToken = tokens.pop();
+     for (const token of tokens) {
+       target[token] ??= {};

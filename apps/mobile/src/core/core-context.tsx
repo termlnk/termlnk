@@ -17,25 +17,22 @@ import type { IAuthService, IUserAccount } from '@termlnk/auth';
 import type { Core } from '@termlnk/core';
 import type { ReactNode } from 'react';
 import type { Observable } from 'rxjs';
-import { AuthState, IAuthService as IAuthServiceId, IMasterKeyService as IMasterKeyServiceId, ITokenStorageService as ITokenStorageServiceId } from '@termlnk/auth';
-import { ILogService as ILogServiceId, Quantity } from '@termlnk/core';
-import Constants from 'expo-constants';
+import { IMobileAiService } from '@termlnk/agent-mobile';
+import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
+import { IBiometricService } from '@termlnk/auth-mobile';
+import { Quantity } from '@termlnk/core';
+import { IMobileHostRepository, IMobileIdentityRepository, IMobileKnownHostRepository, IMobilePreferencesService, IMobileSshKeyRepository, IRecentSessionsRepository } from '@termlnk/database-mobile';
+import { IMobileSftpClientFactory } from '@termlnk/sftp-mobile';
+import { IMobileSyncService } from '@termlnk/sync-mobile';
+import { IMobileConnectionService, IMobileSshClientService } from '@termlnk/terminal-mobile';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { IRecentSessionsRepository } from '../sessions/recent-sessions-repository';
-import { IMobileHostRepository } from '../storage/mobile-host-repository';
-import { MobileSyncPullService } from '../sync/mobile-sync-pull.service';
 import { createMobileCore } from './create-mobile-core';
 
 interface ICoreContextValue {
   core: Core;
   authService: IAuthService | null;
-  // Lazy singleton — instantiated on first access from a screen that wants to render
-  // the synced vault. Holds the master key reference and cursor, so callers must NOT
-  // re-create it per screen.
-  getSyncPullService: () => MobileSyncPullService;
+  getSyncService: () => IMobileSyncService;
 }
-
-const CLIENT_ID = 'mobile-app';
 
 const CoreContext = createContext<ICoreContextValue | null>(null);
 
@@ -55,40 +52,18 @@ export function CoreProvider({ children }: { children: ReactNode }): ReactNode {
     return core.getInjector().get(IAuthServiceId, Quantity.OPTIONAL) ?? null;
   }, [core]);
 
-  // Lazy: built when a screen first asks for the synced hosts, then memoised on the
-  // CoreProvider closure so it survives across screens.
   const value = useMemo<ICoreContextValue>(() => {
-    let syncPull: MobileSyncPullService | null = null;
     return {
       core,
       authService,
-      getSyncPullService: () => {
-        if (!syncPull) {
-          const injector = core.getInjector();
-          const masterKey = injector.get(IMasterKeyServiceId);
-          const tokenStorage = injector.get(ITokenStorageServiceId);
-          const logService = injector.get(ILogServiceId);
-          const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
-          const fromExtra = typeof extra.cloudBaseUrl === 'string' ? extra.cloudBaseUrl : undefined;
-          const cloudBaseUrl = fromExtra ?? process.env.EXPO_PUBLIC_CLOUD_BASE_URL;
-          const hostRepo = injector.get(IMobileHostRepository);
-          syncPull = new MobileSyncPullService(
-            { cloudBaseUrl, clientId: CLIENT_ID },
-            masterKey,
-            tokenStorage,
-            logService,
-            hostRepo
-          );
-        }
-        return syncPull;
-      },
+      getSyncService: () => core.getInjector().get(IMobileSyncService),
     };
   }, [core, authService]);
   return <CoreContext.Provider value={value}>{children}</CoreContext.Provider>;
 }
 
-export function useSyncPullService(): MobileSyncPullService {
-  return useCoreContext().getSyncPullService();
+export function useSyncService(): IMobileSyncService {
+  return useCoreContext().getSyncService();
 }
 
 export function useCoreContext(): ICoreContextValue {
@@ -117,18 +92,81 @@ function useObservableValue<T>(observable$: Observable<T> | undefined, initial: 
 
 export function useAuthState(): AuthState {
   const auth = useAuthService();
-  return useObservableValue(auth?.authState$, AuthState.Unauthenticated);
+  // Restoring is the pre-subscription default: the service starts there too, so the first
+  // render never assumes signed-out while the persisted session is still being rehydrated.
+  return useObservableValue(auth?.authState$, AuthState.Restoring);
 }
 
 export function useCurrentUser(): IUserAccount | null {
   const auth = useAuthService();
   return useObservableValue(auth?.currentUser$, null);
 }
-
 // Resolves the singleton RecentSessionsRepository; `.ready()` is the caller's
 // responsibility (the Recent tab calls it on mount; other screens implicitly open the
 // DB via touch()).
-export function useRecentSessionsRepository() {
+export function useRecentSessionsRepository(): IRecentSessionsRepository {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IRecentSessionsRepository), [core]);
+}
+
+export function useHostRepository(): IMobileHostRepository {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileHostRepository), [core]);
+}
+
+export function useIdentityRepository(): IMobileIdentityRepository {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileIdentityRepository), [core]);
+}
+
+export function useSshKeyRepository(): IMobileSshKeyRepository {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSshKeyRepository), [core]);
+}
+
+export function useKnownHostRepository(): IMobileKnownHostRepository {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileKnownHostRepository), [core]);
+}
+
+export function usePreferencesService(): IMobilePreferencesService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobilePreferencesService), [core]);
+}
+
+export function useAiService(): IMobileAiService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileAiService), [core]);
+}
+
+export function useSshClientService(): IMobileSshClientService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSshClientService), [core]);
+}
+
+export function useConnectionService(): IMobileConnectionService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileConnectionService), [core]);
+}
+
+export function useSftpClientFactory(): IMobileSftpClientFactory {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSftpClientFactory), [core]);
+}
+
+export function useBiometricService(): IBiometricService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IBiometricService), [core]);
+}
+
+export function useObservable<T, TInitial extends T = T>(observable$: Observable<T> | undefined, initial: TInitial): T {
+  const [value, setValue] = useState<T>(initial);
+  useEffect(() => {
+    if (!observable$) {
+      return;
+    }
+    const sub = observable$.subscribe((v) => setValue(v));
+    return () => sub.unsubscribe();
+  }, [observable$]);
+  return value;
 }

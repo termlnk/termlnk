@@ -1,0 +1,79 @@
+{
+  "name": "@termlnk/sync-engine",
+  "version": "0.2.1",
+  "private": false,
+  "description": "Platform-agnostic sync engine for termlnk - E2EE crypto (XChaCha20-Poly1305), outbox queue, HTTP/WS transport, and per-resource synchronisers; shared by the desktop (Drizzle) and mobile (expo-sqlite) repository implementations",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "react-native": "./lib/cjs/index.js",
+      "default": "./src/index.ts"
+    },
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "types": "./lib/types/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "main": "./lib/es/index.js",
+    "module": "./lib/es/index.js",
+    "exports": {
+      ".": {
+        "import": "./lib/es/index.js",
+        "require": "./lib/cjs/index.js",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./*": {
+        "import": "./lib/es/*",
+        "require": "./lib/cjs/*",
+        "types": "./lib/types/index.d.ts"
+      },
+      "./lib/*": "./lib/*"
+    }
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "build": "termlnk-cli build"
+  },
+  "peerDependencies": {
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/sync": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk/agent": "workspace:*",
+    "@termlnk/auth-core": "workspace:*",
+    "@termlnk/database": "workspace:*",
+    "@termlnk/shared": "workspace:*",
+    "@termlnk/terminal": "workspace:*",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
+  }
+}

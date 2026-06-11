@@ -46,10 +46,16 @@ allowBuilds:
   ssh2: false
 
 overrides:
-  '@types/react': ^19.2.15
+  '@types/react': ^19.2.17
   '@types/react-dom': ^19.2.3
   react: ^19.2.6
   react-dom: ^19.2.6
+  # apps/mobile must pin react to the exact version react-native 0.85.3's bundled
+  # renderer asserts: ReactNativeRenderer hardcodes `if ("19.2.3" !== React.version) throw`.
+  # Scoped so desktop/web stay on 19.2.6; only the mobile subtree drops to 19.2.3.
+  '@termlnk/mobile-app>react': 19.2.3
+  '@termlnk/mobile-app>react-dom': 19.2.3
+  hermes-compiler: 0.15.0
   # electron pinned to 41.x: better-sqlite3 ships no Electron 42 prebuild and
   # fails to build against V8 14.x (v8::External::New signature changed)
   electron: 41.7.1
@@ -125,3 +131,8 @@ minimumReleaseAgeExclude:
   - electron-builder-squirrel-windows@26.15.1
   - electron-builder@26.15.1
   - electron-publish@26.15.1
+
+patchedDependencies:
+  '@wendellhu/redi': patches/@wendellhu__redi.patch
+  babel-preset-expo@56.0.14: patches/babel-preset-expo@56.0.14.patch
+  react-native-css@3.0.7: patches/react-native-css@3.0.7.patch

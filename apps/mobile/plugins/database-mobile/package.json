@@ -1,0 +1,49 @@
+{
+  "name": "@termlnk/database-mobile",
+  "version": "0.2.1",
+  "private": true,
+  "description": "Mobile database plugin (drizzle-orm + expo-sqlite). Hosts, identities, ssh keys, known hosts, recent sessions, preferences, sync bookkeeping.",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "drizzle:generate": "drizzle-kit generate --config=drizzle.config.ts && node scripts/build-migrations.mjs",
+    "drizzle:check": "drizzle-kit check --config=drizzle.config.ts"
+  },
+  "peerDependencies": {
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "drizzle-orm": ">=1.0.0-rc.3",
+    "expo-secure-store": ">=56.0.0",
+    "expo-sqlite": ">=56.0.0",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "@termlnk/auth": "workspace:*",
+    "@termlnk/core": "workspace:*",
+    "@termlnk/sync": "workspace:*",
+    "drizzle-orm": "1.0.0-rc.3",
+    "expo-secure-store": "^56.0.4",
+    "expo-sqlite": "^56.0.4",
+    "nanoid": "^5.1.11"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "drizzle-kit": "1.0.0-rc.3",
+    "typescript": "^6.0.3"
+  }
+}
