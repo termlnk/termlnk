@@ -14,9 +14,10 @@
  */
 
 import { useRouter } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 import { Send, Settings2, Sparkles } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAiService, useObservable } from '../src/core/core-context';
 import { useThemeColors } from '../src/theme/theme-provider';
@@ -61,10 +62,10 @@ export default function AiScreen() {
         onBack={() => router.back()}
         right={<RoundButton icon={Settings2} onPress={() => router.push('/ai-settings')} accessibilityLabel="AI settings" />}
       />
-      <FlatList
+      <FlashList
         data={messages}
         keyExtractor={(m) => m.id}
-        contentContainerStyle={{ padding: 12, flexGrow: 1 }}
+        contentContainerStyle={{ padding: 12 }}
         renderItem={({ item }) => (
           <View className={`mb-2 max-w-[85%] rounded-2xl px-3.5 py-2.5 ${item.role === 'user' ? 'self-end bg-accent' : 'self-start bg-surface-raised'}`}>
             {item.pending

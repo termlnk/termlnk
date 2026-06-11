@@ -23,9 +23,10 @@ import type { IMobileSshSession } from '@termlnk/terminal-mobile';
 import * as DocumentPicker from 'expo-document-picker';
 import { Paths } from 'expo-file-system';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 import { ArrowUp, Download, File as FileIcon, Folder as FolderIcon, Upload } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { useConnectionService, useRecentSessionsRepository, useSftpClientFactory, useSyncService } from '../../../src/core/core-context';
 import { useThemeColors } from '../../../src/theme/theme-provider';
 import { PrimaryButton } from '../../../src/ui/form';
@@ -347,7 +348,7 @@ export default function SftpScreen() {
             </View>
           )}
 
-          <FlatList
+          <FlashList
             data={entries}
             keyExtractor={(item) => entryKey(path, item)}
             renderItem={({ item }) => (
