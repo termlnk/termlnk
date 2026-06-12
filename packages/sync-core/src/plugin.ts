@@ -20,7 +20,7 @@ import { AuthCorePlugin } from '@termlnk/auth-core';
 import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService, SyncPlugin } from '@termlnk/sync';
-import { BackupService, ConfigSynchroniser, HostSynchroniser, HttpSyncTransportService, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, NoopSyncTransportService, ProviderSynchroniser, SkillSynchroniser, SshKeySynchroniser, SyncCryptoService, SyncOutboxService, SyncService } from '@termlnk/sync-engine';
+import { BackupService, ConfigSynchroniser, HostSynchroniser, HttpSyncTransportService, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, NoopSyncTransportService, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SshKeySynchroniser, SyncCryptoService, SyncOutboxService, SyncService } from '@termlnk/sync-engine';
 import { AuthSyncBridgeController } from './controllers/auth-sync-bridge.controller';
 import { defaultPluginConfig, SYNC_CORE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { SynchroniserRegistrationController } from './controllers/synchroniser-registration.controller';
@@ -62,6 +62,7 @@ export class SyncCorePlugin extends Plugin {
       [SshKeySynchroniser, { useClass: SshKeySynchroniser }],
       [IdentitySynchroniser, { useClass: IdentitySynchroniser }],
       [KnownHostSynchroniser, { useClass: KnownHostSynchroniser }],
+      [PortForwardingRuleSynchroniser, { useClass: PortForwardingRuleSynchroniser }],
 
       [SynchroniserRegistrationController],
       [AuthSyncBridgeController],
