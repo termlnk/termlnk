@@ -18,7 +18,7 @@ import type { IRPCServerConfig } from './controllers/config.schema';
 import { ITerminalSessionEnvService, ITerminalSuggestService } from '@termlnk/agent';
 import { DependentOn, IConfigService, Inject, Injector, LocaleService, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ConfigRepository, DatabasePlugin } from '@termlnk/database';
-import { IFileTransferService, INotifyService, ISSHSessionService, ISSHToolService, ITerminalSessionNotifyService } from '@termlnk/rpc';
+import { IFileTransferService, INotifyService, IPortForwardingService, ISSHSessionService, ISSHToolService, ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { IInviteService, ISharedSessionService } from '@termlnk/shared-terminal';
 import { IPTYSessionService } from '@termlnk/terminal';
 import { defaultPluginConfig, RPC_SERVER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
@@ -27,8 +27,9 @@ import { TerminalSessionPromptController } from './controllers/terminal-session-
 import { DeepLinkRouterService, IDeepLinkRouterService } from './services/deep-link/deep-link-router.service';
 import { IFileDialogService, NoopFileDialogService } from './services/file-transfer/file-dialog.service';
 import { FileTransferService } from './services/file-transfer/file-transfer.service';
-import { NotifyService } from './services/notify/notify.service';
 import { ISshKeygenService, SshKeygenService } from './services/keychain/ssh-keygen.service';
+import { NotifyService } from './services/notify/notify.service';
+import { PortForwardingService } from './services/port-forwarding/port-forwarding.service';
 import { IProxySocketService, ProxySocketService } from './services/proxy/proxy-socket.service';
 import { PTYSessionService } from './services/pty/pty-session.service';
 import { ISFTPSessionService, SFTPSessionService } from './services/sftp/sftp-session.service';
@@ -81,6 +82,7 @@ export class RPCServerPlugin extends Plugin {
       [ITerminalSessionNotifyService, { useClass: TerminalSessionNotifyService }],
       [ISSHToolService, { useClass: SSHToolService }],
       [ISshKeygenService, { useClass: SshKeygenService }],
+      [IPortForwardingService, { useClass: PortForwardingService }],
       [ICommandBlockService, { useClass: CommandBlockService }],
       [ITerminalSessionEnvService, { useClass: TerminalSessionEnvService }],
       [IPTYSessionService, { useClass: PTYSessionService }],

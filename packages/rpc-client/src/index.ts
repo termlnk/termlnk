@@ -29,6 +29,7 @@ export { McpRegistryService } from './services/mcp/mcp-registry.service';
 export { McpService } from './services/mcp/mcp.service';
 export { NotifyService } from './services/notify/notify.service';
 export { AgentToolPermissionService, IAgentToolPermissionService } from './services/permission/permission-client.service';
+export { PortForwardingClientService } from './services/port-forwarding/port-forwarding.service';
 export { IProxyService, ProxyClientService } from './services/proxy/proxy.service';
 export type { IProxyTestInput, IProxyTestResult } from './services/proxy/proxy.service';
 export { PTYService } from './services/pty/pty.service';

@@ -30,6 +30,7 @@ import { mcpRouter } from './routers/mcp';
 import { mcpRegistryRouter } from './routers/mcp-registry';
 import { notifyRouter } from './routers/notify';
 import { permissionRouter } from './routers/permission';
+import { portForwardingRouter } from './routers/port-forwarding';
 import { proxyRouter } from './routers/proxy';
 import { ptyRouter } from './routers/pty';
 import { remoteSessionRouter } from './routers/remote-session';
@@ -56,6 +57,7 @@ export const appRouter = router({
   mcpRegistry: mcpRegistryRouter,
   notify: notifyRouter,
   permission: permissionRouter,
+  portForwarding: portForwardingRouter,
   proxy: proxyRouter,
   remoteSession: remoteSessionRouter,
   sharedSession: sharedSessionRouter,

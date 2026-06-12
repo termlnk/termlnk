@@ -20,6 +20,8 @@ export { RPC_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IRPCConfig } from './controllers/config.schema';
 export { FileTransferEventType } from './models/file-transfer';
 export type { FileTransferDirection, FileTransferEvent, FileTransferProtocol, IFileTransferCancelledEvent, IFileTransferCompleteEvent, IFileTransferErrorEvent, IFileTransferProgressEvent, IFileTransferStartedEvent } from './models/file-transfer';
+export { PortForwardingTunnelStatus, PortForwardingType } from './models/port-forwarding';
+export type { IPortForwardingRule, IPortForwardingRuleCreateInput, IPortForwardingRuleUpdateInput, IPortForwardingRuntimeState, PortForwardingAuthEvent, PortForwardingHostKeyAction } from './models/port-forwarding';
 export { ProxySocketStatus } from './models/proxy';
 export { SFTPSessionStatus, TransferDirection, TransferStatus } from './models/sftp';
 export type { ISFTPFileAttrs, ISFTPFileEntry, ISFTPTransferTask, SFTPSessionEvent } from './models/sftp';
@@ -29,6 +31,7 @@ export type { ITerminalSessionClosedEvent, ITerminalSessionCreatedEvent, ITermin
 export { RPC_PLUGIN_NAME, RPCPlugin } from './plugin';
 export { IFileTransferService } from './services/file-transfer/file-transfer.service';
 export { INotifyService } from './services/notify.service';
+export { IPortForwardingService } from './services/port-forwarding/port-forwarding.service';
 export { ISSHSessionService } from './services/ssh-session';
 export { ISSHToolService } from './services/ssh-tool.service';
 export type { IToolHostInfo, IToolSessionInfo } from './services/ssh-tool.service';

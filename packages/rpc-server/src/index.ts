@@ -24,6 +24,7 @@ export { FileTransferService } from './services/file-transfer/file-transfer.serv
 export { connectHttpProxy, connectSocks5Proxy, createProxySocket } from './services/proxy/proxy-socket';
 export type { IProxyConnectOptions, IProxyErrorEvent, IProxySocket } from './services/proxy/proxy-socket';
 export { IProxySocketService, ProxySocketService } from './services/proxy/proxy-socket.service';
+export { PortForwardingService } from './services/port-forwarding/port-forwarding.service';
 export { PTYSessionService } from './services/pty/pty-session.service';
 export { SFTPSession } from './services/sftp/sftp-session';
 export type { ISFTPFileAttrs, ISFTPFileEntry } from './services/sftp/sftp-session';
@@ -58,6 +59,8 @@ export { keychainRouter } from './trpc/routers/keychain';
 export type { KeychainRouter } from './trpc/routers/keychain';
 export { localFsRouter } from './trpc/routers/local-fs';
 export type { LocalFsRouter } from './trpc/routers/local-fs';
+export { portForwardingRouter } from './trpc/routers/port-forwarding';
+export type { PortForwardingRouter } from './trpc/routers/port-forwarding';
 export { proxyRouter } from './trpc/routers/proxy';
 export type { ProxyRouter } from './trpc/routers/proxy';
 export { ptyRouter } from './trpc/routers/pty';

@@ -18,7 +18,7 @@ import type { IRPCClientConfig } from './controllers/config.schema';
 import { IMcpRegistryService, IMcpService, ISkillService } from '@termlnk/agent';
 import { IAuthService } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
-import { IFileTransferService, INotifyService, RPCPlugin } from '@termlnk/rpc';
+import { IFileTransferService, INotifyService, IPortForwardingService, RPCPlugin } from '@termlnk/rpc';
 import { IDevicePairingService, IInviteService, IRemoteSessionService, ISharedSessionService } from '@termlnk/shared-terminal';
 import { IBackupClientService, ISyncService } from '@termlnk/sync';
 import { IPTYService } from '@termlnk/terminal';
@@ -38,6 +38,7 @@ import { McpRegistryService } from './services/mcp/mcp-registry.service';
 import { McpService } from './services/mcp/mcp.service';
 import { NotifyService } from './services/notify/notify.service';
 import { AgentToolPermissionService, IAgentToolPermissionService } from './services/permission/permission-client.service';
+import { PortForwardingClientService } from './services/port-forwarding/port-forwarding.service';
 import { IProxyService, ProxyClientService } from './services/proxy/proxy.service';
 import { PTYService } from './services/pty/pty.service';
 import { RemoteSessionService } from './services/remote-session/remote-session.service';
@@ -97,6 +98,7 @@ export class RPCClientPlugin extends Plugin {
       [IMcpRegistryService, { useClass: McpRegistryService }],
       [INotifyService, { useClass: NotifyService }],
       [IAgentToolPermissionService, { useClass: AgentToolPermissionService }],
+      [IPortForwardingService, { useClass: PortForwardingClientService }],
       [IProxyService, { useClass: ProxyClientService }],
       [IPTYService, { useClass: PTYService }],
       [IRemoteSessionService, { useClass: RemoteSessionService }],
