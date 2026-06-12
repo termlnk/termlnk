@@ -63,7 +63,7 @@
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@lobehub/icons": "^5.8.0",
-    "@wendellhu/redi": "^1.1.1",
+    "@wendellhu/redi": "^1.1.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

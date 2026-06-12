@@ -47,7 +47,7 @@ export default {
   '@wendellhu/redi': {
     global: '@wendellhu/redi',
     name: '@wendellhu/redi',
-    version: '1.1.1',
+    version: '1.1.2',
   },
   '@wendellhu/redi/react-bindings': {
     global: '@wendellhu/redi/react-bindings',

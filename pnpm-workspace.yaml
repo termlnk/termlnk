@@ -131,8 +131,8 @@ minimumReleaseAgeExclude:
   - electron-builder-squirrel-windows@26.15.1
   - electron-builder@26.15.1
   - electron-publish@26.15.1
+  - '@wendellhu/redi@1.1.2'
 
 patchedDependencies:
-  '@wendellhu/redi': patches/@wendellhu__redi.patch
   babel-preset-expo@56.0.14: patches/babel-preset-expo@56.0.14.patch
   react-native-css@3.0.7: patches/react-native-css@3.0.7.patch

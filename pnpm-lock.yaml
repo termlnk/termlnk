@@ -43,7 +43,6 @@ overrides:
   uuid@>=13.0.0 <13.0.1: ^13.0.1
 
 patchedDependencies:
-  '@wendellhu/redi': 69c69fc2ebb2147fa0880954a5118e3962f877acb86e5840ac57ace1f1b6e54e
   babel-preset-expo@56.0.14: a70d904fc88d2825521e042b3b13ae736290f2855328edecbbb841ffc90abc12
   react-native-css@3.0.7: 24efbd946998c404b2a6e0cafac9523dc78ae7a6330a854dfc4a91fcab04dced
 
@@ -733,8 +732,8 @@ importers:
         specifier: workspace:*
         version: link:plugins/terminal-mobile
       '@wendellhu/redi':
-        specifier: 1.1.1
-        version: 1.1.1(patch_hash=69c69fc2ebb2147fa0880954a5118e3962f877acb86e5840ac57ace1f1b6e54e)(react@19.2.3)
+        specifier: 1.1.2
+        version: 1.1.2(react@19.2.3)
       '@xterm/addon-fit':
         specifier: ^0.12.0-beta.276
         version: 0.12.0-beta.276(@xterm/xterm@6.1.0-beta.276)
@@ -1739,8 +1738,8 @@ importers:
   packages/core:
     dependencies:
       '@wendellhu/redi':
-        specifier: ^1.1.1
-        version: 1.1.1(patch_hash=69c69fc2ebb2147fa0880954a5118e3962f877acb86e5840ac57ace1f1b6e54e)(react@19.2.6)
+        specifier: ^1.1.2
+        version: 1.1.2(react@19.2.6)
       async-lock:
         specifier: ^1.4.1
         version: 1.4.1
@@ -1852,8 +1851,8 @@ importers:
         specifier: ^5.8.0
         version: 5.8.0(@lobehub/ui@5.6.2)(@types/react@19.2.17)(antd@6.3.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@wendellhu/redi':
-        specifier: ^1.1.1
-        version: 1.1.1(patch_hash=69c69fc2ebb2147fa0880954a5118e3962f877acb86e5840ac57ace1f1b6e54e)(react@19.2.6)
+        specifier: ^1.1.2
+        version: 1.1.2(react@19.2.6)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2018,8 +2017,8 @@ importers:
         specifier: workspace:*
         version: link:../ui
       '@wendellhu/redi':
-        specifier: 1.1.1
-        version: 1.1.1(patch_hash=69c69fc2ebb2147fa0880954a5118e3962f877acb86e5840ac57ace1f1b6e54e)(react@19.2.6)
+        specifier: 1.1.2
+        version: 1.1.2(react@19.2.6)
       lucide-react:
         specifier: ^1.17.0
         version: 1.17.0(react@19.2.6)
@@ -2079,15 +2078,15 @@ importers:
       '@termlnk/design':
         specifier: workspace:*
         version: link:../design
+      '@termlnk/rpc':
+        specifier: workspace:*
+        version: link:../rpc
       '@termlnk/rpc-client':
         specifier: workspace:*
         version: link:../rpc-client
       '@termlnk/terminal':
         specifier: workspace:*
         version: link:../terminal
-      '@termlnk/terminal-ui':
-        specifier: workspace:*
-        version: link:../terminal-ui
       '@termlnk/ui':
         specifier: workspace:*
         version: link:../ui
@@ -2098,9 +2097,6 @@ importers:
         specifier: ^19.2.6
         version: 19.2.6
     devDependencies:
-      '@termlnk/rpc':
-        specifier: workspace:*
-        version: link:../rpc
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared
@@ -8099,8 +8095,8 @@ packages:
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
 
-  '@wendellhu/redi@1.1.1':
-    resolution: {integrity: sha512-y2fuAgHJ2n8sI8Pe/1QtAuPQ6ZbZ9/Dn3uVQI8cctVqLZzp/0OpLM7DSMOU6vmGYXNsIQwsquR91WcxZ4jrRvA==}
+  '@wendellhu/redi@1.1.2':
+    resolution: {integrity: sha512-RLcCzJNIPP14RePbxXulvH4o/XI3Lw5IT3d3rzwR1UDD8ry1UMhr+YNAiqv8EzkihWanmoLkHAjV4LC9Z8amLQ==}
     peerDependencies:
       react: ^19.2.6
     peerDependenciesMeta:
@@ -22209,11 +22205,11 @@ snapshots:
       '@xtuc/long': 4.2.2
     optional: true
 
-  '@wendellhu/redi@1.1.1(patch_hash=69c69fc2ebb2147fa0880954a5118e3962f877acb86e5840ac57ace1f1b6e54e)(react@19.2.3)':
+  '@wendellhu/redi@1.1.2(react@19.2.3)':
     optionalDependencies:
       react: 19.2.3
 
-  '@wendellhu/redi@1.1.1(patch_hash=69c69fc2ebb2147fa0880954a5118e3962f877acb86e5840ac57ace1f1b6e54e)(react@19.2.6)':
+  '@wendellhu/redi@1.1.2(react@19.2.6)':
     optionalDependencies:
       react: 19.2.6
 
