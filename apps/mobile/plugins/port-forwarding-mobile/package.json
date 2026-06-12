@@ -1,0 +1,40 @@
+{
+  "name": "@termlnk/port-forwarding-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mobile port forwarding plugin — rule CRUD, tunnel lifecycle (Local/Remote/Dynamic), and SSH connection pooling.",
+  "author": "telan <telanflow@gmail.com>",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "url": "https://github.com/termlnk/termlnk",
+    "type": "git"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "peerDependencies": {
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database-mobile": "workspace:*",
+    "@termlnk/react-native-russh": "workspace:*",
+    "react": "^19.2.6",
+    "react-native": "^0.85.3",
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@termlnk/core": "workspace:*",
+    "@termlnk/database-mobile": "workspace:*",
+    "@termlnk/react-native-russh": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk/shared": "workspace:*",
+    "@types/react": "^19.2.17",
+    "typescript": "^6.0.3"
+  }
+}
