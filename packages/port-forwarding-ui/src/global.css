@@ -1,0 +1,278 @@
+@import 'tailwindcss/utilities' prefix(tm);
+@import '@termlnk/shared/tailwind/theme.css';
+
+[data-port-forwarding-diagram] {
+  --pf-accent: var(--tm-blue);
+  --pf-accent-soft: color-mix(in srgb, var(--pf-accent) 10%, transparent);
+  --pf-accent-mid: color-mix(in srgb, var(--pf-accent) 42%, transparent);
+  --pf-node: color-mix(in srgb, var(--tm-one-bg3) 62%, var(--tm-one-bg));
+  --pf-node-border: color-mix(in srgb, var(--tm-light-grey) 13%, transparent);
+  --pf-line: color-mix(in srgb, var(--tm-light-grey) 58%, transparent);
+  --pf-firewall: var(--tm-red);
+}
+
+[data-port-forwarding-diagram][data-type="remote"] {
+  --pf-accent: var(--tm-orange);
+}
+
+[data-port-forwarding-diagram][data-type="dynamic"] {
+  --pf-accent: var(--tm-teal);
+}
+
+[data-port-forwarding-diagram] [data-diagram-aura] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 45%, var(--pf-accent-soft), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--tm-one-bg2) 24%, transparent), transparent 64%);
+}
+
+[data-port-forwarding-diagram] [data-diagram-canvas] {
+  position: relative;
+  z-index: 1;
+  height: 150px;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node] {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+}
+
+[data-port-forwarding-diagram] [data-diagram-node-shell] {
+  position: relative;
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border: 1px solid var(--pf-node-border);
+  border-radius: 16px;
+  background: var(--pf-node);
+  color: var(--tm-light-grey);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--tm-white) 8%, transparent),
+    0 12px 24px color-mix(in srgb, var(--tm-darker-black) 24%, transparent);
+}
+
+[data-port-forwarding-diagram] [data-diagram-node-label] {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--tm-grey-fg);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node-shell]::after {
+  display: none;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node-shell="firewall"] {
+  width: 44px;
+  height: 69px;
+  border: 0;
+  border-radius: 10px;
+  background-color: var(--pf-firewall);
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 40%, rgba(0,0,0,0.1) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='24'%3E%3Crect x='0' y='10' width='22' height='2' fill='rgba(0%2C0%2C0%2C0.3)'/%3E%3Crect x='0' y='22' width='22' height='2' fill='rgba(0%2C0%2C0%2C0.3)'/%3E%3Crect x='20' y='0' width='2' height='10' fill='rgba(0%2C0%2C0%2C0.3)'/%3E%3Crect x='9' y='12' width='2' height='10' fill='rgba(0%2C0%2C0%2C0.3)'/%3E%3C/svg%3E");
+  color: var(--tm-sun);
+  box-shadow: 0 12px 22px color-mix(in srgb, var(--tm-red) 16%, transparent);
+}
+
+[data-port-forwarding-diagram] [data-diagram-node-shell="firewall"]::after {
+  display: none;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node-shell="firewall"] svg {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--tm-darker-black) 42%, transparent));
+}
+
+[data-port-forwarding-diagram] [data-diagram-svg] {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+[data-port-forwarding-diagram] [data-diagram-blocked] {
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+  animation: blocked-sequence 1.2s ease-out forwards;
+}
+
+[data-port-forwarding-diagram] [data-diagram-rail] {
+  animation: draw-rail 0.6s ease-out forwards;
+}
+
+[data-port-forwarding-diagram] [data-diagram-rail-dashed] {
+  opacity: 0;
+  animation: fade-in-rail 0.6s ease-out forwards;
+}
+
+[data-port-forwarding-diagram] [data-diagram-data-flow] {
+  opacity: 0;
+  stroke: var(--tm-blue);
+  stroke-width: 2;
+  stroke-linecap: round;
+  fill: none;
+  filter:
+    drop-shadow(0 0 4px var(--tm-blue))
+    drop-shadow(0 0 10px color-mix(in srgb, var(--tm-blue) 40%, transparent));
+  animation-name: flow-appear, data-flow;
+  animation-timing-function: ease-out, linear;
+  animation-fill-mode: forwards, none;
+  animation-iteration-count: 1, infinite;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node="client"] {
+  left: 21%;
+  top: 28%;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node="firewall"] {
+  left: 50%;
+  top: 28%;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node="host"] {
+  left: 50%;
+  top: 78%;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node="target"] {
+  left: 79%;
+  top: 28%;
+}
+
+[data-port-forwarding-diagram] [data-diagram-node="targetAlt"] {
+  display: none;
+}
+
+[data-port-forwarding-diagram][data-type="dynamic"] [data-diagram-node="host"] {
+  left: 50%;
+}
+
+[data-port-forwarding-diagram][data-type="dynamic"] [data-diagram-node="target"] {
+  left: 77%;
+}
+
+[data-port-forwarding-diagram][data-type="dynamic"] [data-diagram-node="targetAlt"] {
+  display: block;
+  left: 77%;
+  top: 78%;
+}
+
+@keyframes blocked-sequence {
+  0% {
+    stroke-dashoffset: 1;
+    stroke: var(--pf-line);
+    opacity: 1;
+    filter: none;
+  }
+
+  40% {
+    stroke-dashoffset: 0;
+    stroke: var(--pf-line);
+    opacity: 1;
+    filter: none;
+  }
+
+  55% {
+    stroke-dashoffset: 0;
+    stroke: var(--tm-red);
+    opacity: 1;
+    filter: drop-shadow(0 0 8px var(--tm-red));
+  }
+
+  75% {
+    stroke-dashoffset: 0;
+    stroke: var(--tm-red);
+    opacity: 0.9;
+    filter: drop-shadow(0 0 4px var(--tm-red));
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+    stroke: var(--tm-red);
+    opacity: 0;
+    filter: none;
+  }
+}
+
+@keyframes draw-rail {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fade-in-rail {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes flow-appear {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes data-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+@keyframes port-forwarding-beacon {
+  0%,
+  100% {
+    opacity: 0.48;
+    transform: scale(0.88);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-port-forwarding-diagram] [data-diagram-blocked],
+  [data-port-forwarding-diagram] [data-diagram-rail],
+  [data-port-forwarding-diagram] [data-diagram-rail-dashed],
+  [data-port-forwarding-diagram] [data-diagram-data-flow],
+  [data-port-forwarding-diagram] [data-diagram-node-shell]::after {
+    animation: none;
+  }
+
+  [data-port-forwarding-diagram] [data-diagram-blocked] {
+    opacity: 0;
+  }
+
+  [data-port-forwarding-diagram] [data-diagram-rail] {
+    stroke-dashoffset: 0;
+  }
+
+  [data-port-forwarding-diagram] [data-diagram-rail-dashed] {
+    opacity: 1;
+  }
+
+  [data-port-forwarding-diagram] [data-diagram-data-flow] {
+    opacity: 0;
+  }
+}

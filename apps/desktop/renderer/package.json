@@ -25,6 +25,7 @@
     "@termlnk/extension-ui": "workspace:*",
     "@termlnk/island": "workspace:*",
     "@termlnk/island-ui": "workspace:*",
+    "@termlnk/port-forwarding-ui": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
     "@termlnk/settings-ui": "workspace:*",

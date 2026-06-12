@@ -45,6 +45,11 @@ import islanduijaJP from '@termlnk/island-ui/locale/ja-JP';
 import islanduikoKR from '@termlnk/island-ui/locale/ko-KR';
 import islanduizhCN from '@termlnk/island-ui/locale/zh-CN';
 import islanduizhTW from '@termlnk/island-ui/locale/zh-TW';
+import portforwardinguienUS from '@termlnk/port-forwarding-ui/locale/en-US';
+import portforwardinguijaJP from '@termlnk/port-forwarding-ui/locale/ja-JP';
+import portforwardinguikoKR from '@termlnk/port-forwarding-ui/locale/ko-KR';
+import portforwardinguizhCN from '@termlnk/port-forwarding-ui/locale/zh-CN';
+import portforwardinguizhTW from '@termlnk/port-forwarding-ui/locale/zh-TW';
 import settingsuienUS from '@termlnk/settings-ui/locale/en-US';
 import settingsuijaJP from '@termlnk/settings-ui/locale/ja-JP';
 import settingsuikoKR from '@termlnk/settings-ui/locale/ko-KR';
@@ -84,6 +89,7 @@ export const enUS = merge(
   electronrendererenUS,
   extensionuienUS,
   islanduienUS,
+  portforwardinguienUS,
   settingsuienUS,
   sftpuienUS,
   sharedterminaluienUS,
@@ -99,6 +105,7 @@ export const zhCN = merge(
   electronrendererzhCN,
   extensionuizhCN,
   islanduizhCN,
+  portforwardinguizhCN,
   settingsuizhCN,
   sftpuizhCN,
   sharedterminaluizhCN,
@@ -114,6 +121,7 @@ export const jaJP = merge(
   electronrendererjaJP,
   extensionuijaJP,
   islanduijaJP,
+  portforwardinguijaJP,
   settingsuijaJP,
   sftpuijaJP,
   sharedterminaluijaJP,
@@ -129,6 +137,7 @@ export const koKR = merge(
   electronrendererkoKR,
   extensionuikoKR,
   islanduikoKR,
+  portforwardinguikoKR,
   settingsuikoKR,
   sftpuikoKR,
   sharedterminaluikoKR,
@@ -144,6 +153,7 @@ export const zhTW = merge(
   electronrendererzhTW,
   extensionuizhTW,
   islanduizhTW,
+  portforwardinguizhTW,
   settingsuizhTW,
   sftpuizhTW,
   sharedterminaluizhTW,

@@ -599,6 +599,9 @@ importers:
       '@termlnk/island-ui':
         specifier: workspace:*
         version: link:../plugins/island-ui
+      '@termlnk/port-forwarding-ui':
+        specifier: workspace:*
+        version: link:../../../packages/port-forwarding-ui
       '@termlnk/rpc':
         specifier: workspace:*
         version: link:../../../packages/rpc
@@ -2058,6 +2061,58 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.1)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.8(@types/node@25.9.1)(@vitest/coverage-istanbul@4.1.8)(happy-dom@20.9.0)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.46.1)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/port-forwarding-ui:
+    dependencies:
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../core
+      '@termlnk/design':
+        specifier: workspace:*
+        version: link:../design
+      '@termlnk/rpc-client':
+        specifier: workspace:*
+        version: link:../rpc-client
+      '@termlnk/terminal':
+        specifier: workspace:*
+        version: link:../terminal
+      '@termlnk/terminal-ui':
+        specifier: workspace:*
+        version: link:../terminal-ui
+      '@termlnk/ui':
+        specifier: workspace:*
+        version: link:../ui
+      lucide-react:
+        specifier: ^1.17.0
+        version: 1.17.0(react@19.2.6)
+      react:
+        specifier: ^19.2.6
+        version: 19.2.6
+    devDependencies:
+      '@termlnk/rpc':
+        specifier: workspace:*
+        version: link:../rpc
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      tailwindcss:
+        specifier: ^4.3.0
+        version: 4.3.0
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@4.3.0)
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
