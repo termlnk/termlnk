@@ -19,6 +19,7 @@ export { DATABASE_MOBILE_PLUGIN_NAME, DatabaseMobilePlugin } from './plugin';
 export { ExpoSqliteAdaptor, IDatabaseMobileAdaptorService } from './services/expo-sqlite-adaptor.service';
 export type { DatabaseMobile } from './services/expo-sqlite-adaptor.service';
 export { IMobileHostRepository, MobileHostRepository } from './services/mobile-host-repository';
+export { IMobilePortForwardingRuleRepository, MobilePortForwardingRuleRepository } from './services/mobile-port-forwarding-rule-repository';
 export { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository, MobileIdentityRepository, MobileKnownHostRepository, MobileSshKeyRepository } from './services/mobile-keychain-repositories';
 export { DEFAULT_PREFERENCES, IMobilePreferencesService, MobilePreferencesService } from './services/mobile-preferences.service';
 export type { IMobilePreferences } from './services/mobile-preferences.service';
@@ -26,3 +27,4 @@ export { IMobileSecretCipherService, MobileSecretCipherService } from './service
 export { IRecentSessionsRepository, RecentSessionsRepository } from './services/recent-sessions-repository';
 export type { IRecentSession, IRecentSessionKind } from './services/recent-sessions-repository';
 export type { IMobileCredential, IMobileCredentialType, IMobileHost, IMobileHostFull, IMobileHostSettings, IMobileHostType, IMobileIdentity, IMobileIdentityFull, IMobileKnownHost, IMobileProxy, IMobileSshKey, IMobileSshKeyFull, ISshKeyAlgorithm, ISshKeySource } from './types';
+export type { IPortForwardingRuleEntity, IPortForwardingRuleEntityInsert, PortForwardingType } from './entities/port-forwarding-rule';

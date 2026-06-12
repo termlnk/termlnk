@@ -22,4 +22,5 @@ export * from './ssh-key';
 export * from './sync-cursor';
 export * from './sync-field-meta';
 export * from './sync-outbox';
+export * from './port-forwarding-rule';
 export * from './sync-row-meta';
