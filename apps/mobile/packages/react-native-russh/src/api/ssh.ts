@@ -14,6 +14,7 @@
  */
 
 import type { ISftpSession } from './sftp';
+import type { IDynamicForwardConfig, IForwardHandle, IForwardTunnelCallback, ILocalForwardConfig, IRemoteForwardConfig } from './port-forward';
 import type { IBufferReadResult, IBufferStats, IConnectOptions, IRusshError, IServerPublicKeyInfo, IShellListenerOptions, IStartShellOptions, ITerminalChunk, ShellCursor, ShellListenerEvent, SshConnectionProgress, StreamKind, TerminalType } from './types';
 import * as GeneratedRussh from '../index';
 import { callRusshAsync, callRusshSync, toRusshError } from './errors';
@@ -98,6 +99,9 @@ export interface ISshConnection {
   readonly connectedAtMs: number;
   startShell: (opts: IStartShellOptions) => Promise<ISshShell>;
   startSftp: () => Promise<ISftpSession>;
+  startLocalForward: (config: ILocalForwardConfig, callback: IForwardTunnelCallback) => Promise<IForwardHandle>;
+  startRemoteForward: (config: IRemoteForwardConfig, callback: IForwardTunnelCallback) => Promise<IForwardHandle>;
+  startDynamicForward: (config: IDynamicForwardConfig, callback: IForwardTunnelCallback) => Promise<IForwardHandle>;
   disconnect: (opts?: { signal?: AbortSignal }) => Promise<void>;
 }
 
@@ -165,6 +169,52 @@ function wrapShellSession(shell: GeneratedRussh.ShellSessionLike): ISshShell {
   };
 }
 
+function wrapForwardCallback(cb: IForwardTunnelCallback): GeneratedRussh.ForwardTunnelCallback {
+  return {
+    onStatusChange: (status: GeneratedRussh.ForwardTunnelStatus) => {
+      cb.onStatusChange(mapForwardStatus(status));
+    },
+    onStatsUpdate: (stats: GeneratedRussh.ForwardTunnelStats) => {
+      cb.onStatsUpdate({
+        status: mapForwardStatus(stats.status),
+        activeConnections: stats.activeConnections,
+        totalConnections: Number(stats.totalConnections),
+        bytesIn: Number(stats.bytesIn),
+        bytesOut: Number(stats.bytesOut),
+      });
+    },
+  };
+}
+
+function mapForwardStatus(s: GeneratedRussh.ForwardTunnelStatus): import('./port-forward').ForwardTunnelStatus {
+  if (s instanceof GeneratedRussh.ForwardTunnelStatus.Starting) {
+    return { kind: 'starting' };
+  }
+  if (s instanceof GeneratedRussh.ForwardTunnelStatus.Active) {
+    return { kind: 'active', effectiveBindPort: s.inner.effectiveBindPort };
+  }
+  if (s instanceof GeneratedRussh.ForwardTunnelStatus.Failed) {
+    return { kind: 'failed', error: s.inner.error };
+  }
+  return { kind: 'stopped' };
+}
+
+function wrapForwardHandle(handle: GeneratedRussh.ForwardHandleLike): IForwardHandle {
+  return {
+    stop: () => callRusshAsync(() => handle.stop()),
+    getStats: () => {
+      const s = callRusshSync(() => handle.getStats());
+      return {
+        status: mapForwardStatus(s.status),
+        activeConnections: s.activeConnections,
+        totalConnections: Number(s.totalConnections),
+        bytesIn: Number(s.bytesIn),
+        bytesOut: Number(s.bytesOut),
+      };
+    },
+  };
+}
+
 function wrapConnection(conn: GeneratedRussh.SshConnectionLike): ISshConnection {
   const info = callRusshSync(() => conn.getInfo());
   return {
@@ -203,6 +253,40 @@ function wrapConnection(conn: GeneratedRussh.SshConnectionLike): ISshConnection 
       callRusshAsync(async () => {
         const sftp = await conn.startSftp();
         return wrapSftpSession(sftp);
+      }),
+    startLocalForward: (config, callback) =>
+      callRusshAsync(async () => {
+        const handle = await conn.startLocalForward(
+          {
+            bindAddress: config.bindAddress,
+            bindPort: config.bindPort,
+            destinationAddress: config.destinationAddress,
+            destinationPort: config.destinationPort,
+          },
+          wrapForwardCallback(callback)
+        );
+        return wrapForwardHandle(handle);
+      }),
+    startRemoteForward: (config, callback) =>
+      callRusshAsync(async () => {
+        const handle = await conn.startRemoteForward(
+          {
+            bindAddress: config.bindAddress,
+            bindPort: config.bindPort,
+            destinationAddress: config.destinationAddress,
+            destinationPort: config.destinationPort,
+          },
+          wrapForwardCallback(callback)
+        );
+        return wrapForwardHandle(handle);
+      }),
+    startDynamicForward: (config, callback) =>
+      callRusshAsync(async () => {
+        const handle = await conn.startDynamicForward(
+          { bindAddress: config.bindAddress, bindPort: config.bindPort },
+          wrapForwardCallback(callback)
+        );
+        return wrapForwardHandle(handle);
       }),
     disconnect: (o) =>
       callRusshAsync(() =>

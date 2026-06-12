@@ -35,6 +35,15 @@ export type {
 } from './types';
 export type { ISshConnection, ISshShell } from './ssh';
 export type { ISftpSession } from './sftp';
+export type {
+  ForwardTunnelStatus,
+  IDynamicForwardConfig,
+  IForwardHandle,
+  IForwardTunnelCallback,
+  IForwardTunnelStats,
+  ILocalForwardConfig,
+  IRemoteForwardConfig,
+} from './port-forward';
 
 import {
   connect,
