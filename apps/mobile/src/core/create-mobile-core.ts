@@ -19,6 +19,7 @@ import { AuthCorePlugin } from '@termlnk/auth-core';
 import { AuthMobilePlugin, ExpoAppStateIdleProbe, ExpoDeviceNameProvider, LibsodiumPasswordHasher } from '@termlnk/auth-mobile';
 import { Core, LocaleType, LogLevel } from '@termlnk/core';
 import { DatabaseMobilePlugin } from '@termlnk/database-mobile';
+import { PortForwardingMobilePlugin } from '@termlnk/port-forwarding-mobile';
 import { SftpMobilePlugin } from '@termlnk/sftp-mobile';
 import { SyncMobilePlugin } from '@termlnk/sync-mobile';
 import { TerminalMobilePlugin } from '@termlnk/terminal-mobile';
@@ -48,6 +49,7 @@ export function createMobileCore(): Core {
   core.registerPlugin(AgentMobilePlugin);
   core.registerPlugin(TerminalMobilePlugin);
   core.registerPlugin(SftpMobilePlugin);
+  core.registerPlugin(PortForwardingMobilePlugin);
   core.start();
   return core;
 }

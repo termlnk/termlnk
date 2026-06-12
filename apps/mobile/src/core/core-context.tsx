@@ -25,6 +25,7 @@ import { IMobileHostRepository, IMobileIdentityRepository, IMobileKnownHostRepos
 import { IMobileSftpClientFactory } from '@termlnk/sftp-mobile';
 import { IMobileSyncService } from '@termlnk/sync-mobile';
 import { IMobileConnectionService, IMobileSshClientService } from '@termlnk/terminal-mobile';
+import { IMobilePortForwardingService } from '@termlnk/port-forwarding-mobile';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createMobileCore } from './create-mobile-core';
 
@@ -157,6 +158,11 @@ export function useSftpClientFactory(): IMobileSftpClientFactory {
 export function useBiometricService(): IBiometricService {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IBiometricService), [core]);
+}
+
+export function usePortForwardingService(): IMobilePortForwardingService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobilePortForwardingService), [core]);
 }
 
 export function useObservable<T, TInitial extends T = T>(observable$: Observable<T> | undefined, initial: TInitial): T {

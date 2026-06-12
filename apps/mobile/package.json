@@ -37,6 +37,7 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/database-mobile": "workspace:*",
     "@termlnk/react-native-russh": "workspace:*",
+    "@termlnk/port-forwarding-mobile": "workspace:*",
     "@termlnk/sftp-mobile": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/sync-engine": "workspace:*",
