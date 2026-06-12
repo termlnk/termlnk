@@ -25,38 +25,9 @@ export { BACKUP_PAYLOAD_PREFIX, BACKUP_PAYLOAD_VERSION, IBackupClientService, IB
 export type { BackupImportMode, IBackupExportFileResult, IBackupExportSummary, IBackupImportFileResult, IBackupImportSummary } from './services/backup.service';
 export { ISyncCryptoService } from './services/crypto.service';
 export { ISyncOutboxService } from './services/outbox.service';
+export { IBackupRepository, IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IMcpServerSyncRepository, IPortForwardingRuleSyncRepository, IProviderSyncRepository, ISkillSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from './services/repositories';
+export type { IBackupSnapshot, IConfigChangeEvent, IConfigEntry, IProviderChangeEvent, ISyncCursorRow, ISyncEntityRow, ISyncHostChangeEvent, ISyncHostTreeNode, ISyncOutboxInsert, ISyncOutboxRow, ISyncRowChangeEvent, ISyncRowMeta, ISyncSkillRow, ISyncWritableRow } from './services/repositories';
 export type { IResourceSynchroniser, IResourceSynchroniserFactory } from './services/resource-synchroniser';
-export {
-  IBackupRepository,
-  IHostSyncRepository,
-  IIdentitySyncRepository,
-  IMcpServerSyncRepository,
-  IProviderSyncRepository,
-  ISkillSyncRepository,
-  ISshKeySyncRepository,
-  ISyncConfigRepository,
-  ISyncCursorRepository,
-  ISyncFieldMetaRepository,
-  ISyncOutboxRepository,
-  ISyncRowMetaRepository,
-  IKnownHostSyncRepository,
-} from './services/repositories';
-export type {
-  IBackupSnapshot,
-  IConfigChangeEvent,
-  IConfigEntry,
-  IProviderChangeEvent,
-  ISyncCursorRow,
-  ISyncEntityRow,
-  ISyncHostChangeEvent,
-  ISyncHostTreeNode,
-  ISyncOutboxInsert,
-  ISyncOutboxRow,
-  ISyncRowChangeEvent,
-  ISyncRowMeta,
-  ISyncSkillRow,
-  ISyncWritableRow,
-} from './services/repositories';
 export { ISyncService } from './services/sync.service';
 export { ISyncTransportService } from './services/transport.service';
 export type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse } from './services/transport.service';

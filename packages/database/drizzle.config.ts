@@ -34,6 +34,7 @@ export default defineConfig({
     './src/entities/known-host.ts',
     './src/entities/mcp-oauth-token.ts',
     './src/entities/mcp-server.ts',
+    './src/entities/port-forwarding-rule.ts',
     './src/entities/provider.ts',
     './src/entities/skill.ts',
     './src/entities/ssh-key.ts',

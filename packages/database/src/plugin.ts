@@ -19,21 +19,7 @@ import type { IDatabaseConfig } from './controllers/config.schema';
 import type * as entities from './entities';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
-import {
-  IBackupRepository,
-  IHostSyncRepository,
-  IIdentitySyncRepository,
-  IKnownHostSyncRepository,
-  IMcpServerSyncRepository,
-  IProviderSyncRepository,
-  ISkillSyncRepository,
-  ISshKeySyncRepository,
-  ISyncConfigRepository,
-  ISyncCursorRepository,
-  ISyncFieldMetaRepository,
-  ISyncOutboxRepository,
-  ISyncRowMetaRepository,
-} from '@termlnk/sync';
+import { IBackupRepository, IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IMcpServerSyncRepository, IPortForwardingRuleSyncRepository, IProviderSyncRepository, ISkillSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from '@termlnk/sync';
 import { DEFAULT_DB_ADAPTOR } from './config/config';
 import { DATABASE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
@@ -47,6 +33,7 @@ import { IdentityRepository } from './repositories/identity';
 import { KnownHostRepository } from './repositories/known-host';
 import { McpOAuthTokenRepository } from './repositories/mcp-oauth-token';
 import { McpServerRepository } from './repositories/mcp-server';
+import { PortForwardingRuleRepository } from './repositories/port-forwarding-rule';
 import { ProviderRepository } from './repositories/provider';
 import { SkillRepository } from './repositories/skill';
 import { SshKeyRepository } from './repositories/ssh-key';
@@ -118,6 +105,7 @@ export class DatabasePlugin extends Plugin {
       [KnownHostRepository, { useClass: KnownHostRepository }],
       [McpServerRepository, { useClass: McpServerRepository }],
       [McpOAuthTokenRepository, { useClass: McpOAuthTokenRepository }],
+      [PortForwardingRuleRepository, { useClass: PortForwardingRuleRepository }],
       [ProviderRepository, { useClass: ProviderRepository }],
       [SkillRepository, { useClass: SkillRepository }],
       [SshKeyRepository, { useClass: SshKeyRepository }],
@@ -136,6 +124,7 @@ export class DatabasePlugin extends Plugin {
       [IIdentitySyncRepository, { useExisting: IdentityRepository }],
       [IKnownHostSyncRepository, { useExisting: KnownHostRepository }],
       [IMcpServerSyncRepository, { useExisting: McpServerRepository }],
+      [IPortForwardingRuleSyncRepository, { useExisting: PortForwardingRuleRepository }],
       [IProviderSyncRepository, { useExisting: ProviderRepository }],
       [ISkillSyncRepository, { useExisting: SkillRepository }],
       [ISshKeySyncRepository, { useExisting: SshKeyRepository }],

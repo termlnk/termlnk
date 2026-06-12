@@ -218,6 +218,15 @@ export interface IKnownHostSyncRepository {
 }
 export const IKnownHostSyncRepository = createIdentifier<IKnownHostSyncRepository>('sync.known-host-repository');
 
+export interface IPortForwardingRuleSyncRepository {
+  readonly changed$: Observable<ISyncRowChangeEvent>;
+  getList(): Promise<ISyncEntityRow[]>;
+  getById(id: string): Promise<ISyncEntityRow | null | undefined>;
+  syncUpsertRow(entity: ISyncEntityRow): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+export const IPortForwardingRuleSyncRepository = createIdentifier<IPortForwardingRuleSyncRepository>('sync.port-forwarding-rule-repository');
+
 export interface IMcpServerSyncRepository {
   readonly changed$: Observable<ISyncRowChangeEvent>;
   getAll(): Promise<ISyncEntityRow[]>;

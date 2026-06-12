@@ -21,6 +21,7 @@ export * from './identity';
 export * from './known-host';
 export * from './mcp-oauth-token';
 export * from './mcp-server';
+export * from './port-forwarding-rule';
 export * from './provider';
 export * from './skill';
 export * from './ssh-key';

@@ -25,6 +25,7 @@ export const SYNC_RESOURCES = [
   'ssh_key',
   'identity',
   'known_host',
+  'port_forwarding_rule',
 ] as const;
 export type SyncResourceId = (typeof SYNC_RESOURCES)[number];
 
