@@ -31,6 +31,11 @@ export default mergeConfig(baseConfig, {
     alias: {
       'node:diagnostics_channel': resolve(__dirname, './polyfills/diagnostics-channel.ts'),
     },
+    // Mobile pins react to 19.2.3 (RN renderer assertion); under pnpm hoisted mode
+    // the redi(react@19.2.3) variant may get hoisted to the root, causing redi to
+    // require its nested 19.2.3 copy while desktop code uses the root 19.2.6 — two
+    // React instances, null dispatcher, hook crash. Dedupe forces a single copy.
+    dedupe: ['react', 'react-dom'],
   },
   build: {
     outDir: 'dist/renderer',

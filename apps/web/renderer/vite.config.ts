@@ -39,6 +39,13 @@ const rootPkg = JSON.parse(
 // reverse proxies.
 export default defineConfig({
   base: '/',
+  resolve: {
+    // Mobile pins react to 19.2.3 (RN renderer assertion); under pnpm hoisted mode
+    // the redi(react@19.2.3) variant may get hoisted to the root, causing redi to
+    // require its nested 19.2.3 copy while web code uses the root 19.2.6 — two
+    // React instances, null dispatcher, hook crash. Dedupe forces a single copy.
+    dedupe: ['react', 'react-dom'],
+  },
   build: {
     outDir: 'dist',
     target: 'es2022',
