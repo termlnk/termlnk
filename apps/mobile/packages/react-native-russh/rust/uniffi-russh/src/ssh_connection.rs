@@ -6,7 +6,7 @@ use tokio::sync::{broadcast, Mutex as AsyncMutex};
 use russh::client::{AuthResult, Config, Handle as ClientHandle};
 use russh::keys::HashAlg;
 use russh::keys::PrivateKeyWithHashAlg;
-use russh::{self, client, ChannelMsg, Disconnect};
+use russh::{self, client, Channel, ChannelMsg, Disconnect};
 
 use crate::private_key::normalize_openssh_ed25519_seed_key;
 use crate::ssh_shell::{
@@ -122,12 +122,18 @@ pub struct SshConnectionInfo {
     pub progress_timings: SshConnectionInfoProgressTimings,
 }
 
-/// Minimal client::Handler with optional server key callback.
+/// Incoming forwarded-tcpip channel from sshd (remote port forwarding).
+pub(crate) struct ForwardedTcpipInfo {
+    pub channel: Channel<russh::client::Msg>,
+}
+
+/// SSH client handler with TOFU host-key gate and forwarded-tcpip routing.
 pub(crate) struct NoopHandler {
     pub on_server_key_callback: Arc<dyn ServerKeyCallback>,
     pub host: String,
     pub port: u16,
     pub remote_ip: Option<String>,
+    pub forwarded_routes: Arc<std::sync::Mutex<HashMap<u32, tokio::sync::mpsc::UnboundedSender<ForwardedTcpipInfo>>>>,
 }
 impl client::Handler for NoopHandler {
     type Error = SshError;
@@ -149,6 +155,23 @@ impl client::Handler for NoopHandler {
             Ok(accept)
         }
     }
+
+    fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: Channel<russh::client::Msg>,
+        _connected_address: &str,
+        connected_port: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        _session: &mut russh::client::Session,
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
+        let info = ForwardedTcpipInfo { channel };
+        let routes = self.forwarded_routes.lock().unwrap();
+        if let Some(tx) = routes.get(&connected_port) {
+            let _ = tx.send(info);
+        }
+        async { Ok(()) }
+    }
 }
 
 #[derive(uniffi::Object)]
@@ -160,12 +183,14 @@ pub struct SshConnection {
 
     pub(crate) shells: AsyncMutex<HashMap<u32, Arc<ShellSession>>>,
 
-    // SFTP sessions keyed by session_id. Closed during disconnect().
     pub(crate) sftps: AsyncMutex<HashMap<String, Arc<crate::ssh_sftp::SftpSession>>>,
     pub(crate) next_sftp_id: std::sync::atomic::AtomicU64,
 
-    // Weak self for child sessions to refer back without cycles.
     pub(crate) self_weak: AsyncMutex<Weak<SshConnection>>,
+
+    pub(crate) forwards: AsyncMutex<Vec<Arc<crate::port_forward::ForwardHandle>>>,
+
+    pub(crate) forwarded_routes: Arc<std::sync::Mutex<HashMap<u32, tokio::sync::mpsc::UnboundedSender<ForwardedTcpipInfo>>>>,
 }
 
 impl fmt::Debug for SshConnection {
@@ -466,6 +491,16 @@ impl SshConnection {
     }
 
     pub async fn disconnect(&self) -> Result<(), SshError> {
+        // Stop port-forwarding tunnels first — they hold channel handles and
+        // TcpListeners that should be torn down cleanly before the transport.
+        let forwards: Vec<Arc<crate::port_forward::ForwardHandle>> = {
+            let vec = self.forwards.lock().await;
+            vec.iter().cloned().collect()
+        };
+        for f in forwards {
+            let _ = f.stop().await;
+        }
+
         // Close shells first, then SFTP sessions, then the transport — order
         // matters because each layer holds a channel against the underlying
         // ClientHandle, and we want a clean per-channel close path before the
@@ -522,6 +557,9 @@ pub async fn connect(options: ConnectOptions) -> Result<Arc<SshConnection>, SshE
     }
     let cfg = Arc::new(Config::default());
     let remote_ip = socket.peer_addr().ok().map(|a| a.ip().to_string());
+    let forwarded_routes = Arc::new(std::sync::Mutex::new(
+        HashMap::<u32, tokio::sync::mpsc::UnboundedSender<ForwardedTcpipInfo>>::new(),
+    ));
     let mut handle: ClientHandle<NoopHandler> = russh::client::connect_stream(
         cfg,
         socket,
@@ -530,6 +568,7 @@ pub async fn connect(options: ConnectOptions) -> Result<Arc<SshConnection>, SshE
             host: options.connection_details.host.clone(),
             port: options.connection_details.port,
             remote_ip,
+            forwarded_routes: forwarded_routes.clone(),
         },
     )
     .await?;
@@ -574,6 +613,8 @@ pub async fn connect(options: ConnectOptions) -> Result<Arc<SshConnection>, SshE
         sftps: AsyncMutex::new(HashMap::new()),
         next_sftp_id: std::sync::atomic::AtomicU64::new(1),
         self_weak: AsyncMutex::new(Weak::new()),
+        forwards: AsyncMutex::new(Vec::new()),
+        forwarded_routes,
         on_disconnected_callback: options.on_disconnected_callback.clone(),
     });
     // Initialize weak self reference.

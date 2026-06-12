@@ -5,6 +5,7 @@
 //! - https://jhugman.github.io/uniffi-bindgen-react-native/idioms/callback-interfaces.html
 //! - https://jhugman.github.io/uniffi-bindgen-react-native/idioms/async-callbacks.html
 
+pub mod port_forward;
 pub mod private_key;
 pub mod ssh_connection;
 pub mod ssh_sftp;

@@ -43,7 +43,7 @@
     "react-native": "^0.85.3"
   },
   "dependencies": {
-    "uniffi-bindgen-react-native": "github:jhugman/uniffi-bindgen-react-native#62c91bcce60ca9bbee7269820cc79a9680cb908b"
+    "uniffi-bindgen-react-native": "0.31.0-3"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",

@@ -12,7 +12,7 @@ import {
   type UniffiGcObject,
   type UniffiRustFutureContinuationCallback as RuntimeUniffiRustFutureContinuationCallback,
   type UniffiResult,
-} from "uniffi-bindgen-react-native";
+} from "@ubjs/core";
 
 interface NativeModuleInterface {
   ubrn_uniffi_internal_fn_func_ffi__string_to_byte_length(
@@ -180,6 +180,22 @@ interface NativeModuleInterface {
     ptr: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): void;
+  ubrn_uniffi_uniffi_russh_fn_clone_forwardhandle(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_uniffi_russh_fn_free_forwardhandle(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): void;
+  ubrn_uniffi_uniffi_russh_fn_clone_forwardtunnelcallback(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): bigint;
+  ubrn_uniffi_uniffi_russh_fn_free_forwardtunnelcallback(
+    ptr: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): void;
   ubrn_uniffi_uniffi_russh_fn_clone_serverkeycallback(
     ptr: bigint,
     uniffi_out_err: UniffiRustCallStatus,
@@ -242,6 +258,9 @@ interface NativeModuleInterface {
   ubrn_uniffi_uniffi_russh_fn_init_callback_vtable_connectiondisconnectedcallback(
     vtable: UniffiVTableCallbackInterfaceUniffiRusshConnectionDisconnectedCallback,
   ): void;
+  ubrn_uniffi_uniffi_russh_fn_init_callback_vtable_forwardtunnelcallback(
+    vtable: UniffiVTableCallbackInterfaceUniffiRusshForwardTunnelCallback,
+  ): void;
   ubrn_uniffi_uniffi_russh_fn_init_callback_vtable_serverkeycallback(
     vtable: UniffiVTableCallbackInterfaceUniffiRusshServerKeyCallback,
   ): void;
@@ -271,6 +290,23 @@ interface NativeModuleInterface {
   ubrn_uniffi_uniffi_russh_fn_method_connectiondisconnectedcallback_on_change(
     uniffiSelf: bigint,
     connectionId: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): void;
+  ubrn_uniffi_uniffi_russh_fn_method_forwardhandle_get_stats(
+    uniffiSelf: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): Uint8Array;
+  ubrn_uniffi_uniffi_russh_fn_method_forwardhandle_stop(
+    uniffiSelf: bigint,
+  ): bigint;
+  ubrn_uniffi_uniffi_russh_fn_method_forwardtunnelcallback_on_status_change(
+    uniffiSelf: bigint,
+    status: Uint8Array,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): void;
+  ubrn_uniffi_uniffi_russh_fn_method_forwardtunnelcallback_on_stats_update(
+    uniffiSelf: bigint,
+    stats: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): void;
   ubrn_uniffi_uniffi_russh_fn_method_serverkeycallback_on_change(
@@ -400,6 +436,21 @@ interface NativeModuleInterface {
     uniffiSelf: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
+  ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_dynamic_forward(
+    uniffiSelf: bigint,
+    config: Uint8Array,
+    callback: bigint,
+  ): bigint;
+  ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_local_forward(
+    uniffiSelf: bigint,
+    config: Uint8Array,
+    callback: bigint,
+  ): bigint;
+  ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_remote_forward(
+    uniffiSelf: bigint,
+    config: Uint8Array,
+    callback: bigint,
+  ): bigint;
   ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_sftp(
     uniffiSelf: bigint,
   ): bigint;
@@ -413,6 +464,10 @@ interface NativeModuleInterface {
   ubrn_uniffi_uniffi_russh_checksum_func_validate_private_key(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_connectprogresscallback_on_change(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_connectiondisconnectedcallback_on_change(): number;
+  ubrn_uniffi_uniffi_russh_checksum_method_forwardhandle_get_stats(): number;
+  ubrn_uniffi_uniffi_russh_checksum_method_forwardhandle_stop(): number;
+  ubrn_uniffi_uniffi_russh_checksum_method_forwardtunnelcallback_on_status_change(): number;
+  ubrn_uniffi_uniffi_russh_checksum_method_forwardtunnelcallback_on_stats_update(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_serverkeycallback_on_change(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_sftpprogresscallback_on_progress(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_sftpsession_cancel_transfer(): number;
@@ -440,6 +495,9 @@ interface NativeModuleInterface {
   ubrn_uniffi_uniffi_russh_checksum_method_shellsession_send_data(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_disconnect(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_get_info(): number;
+  ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_dynamic_forward(): number;
+  ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_local_forward(): number;
+  ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_remote_forward(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp(): number;
   ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_shell(): number;
   ubrn_uniffi_internal_fn_method_connectprogresscallback_ffi__bless_pointer(
@@ -455,6 +513,14 @@ interface NativeModuleInterface {
     uniffi_out_err: UniffiRustCallStatus,
   ): UniffiGcObject;
   ubrn_uniffi_internal_fn_method_shellclosedcallback_ffi__bless_pointer(
+    pointer: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): UniffiGcObject;
+  ubrn_uniffi_internal_fn_method_forwardhandle_ffi__bless_pointer(
+    pointer: bigint,
+    uniffi_out_err: UniffiRustCallStatus,
+  ): UniffiGcObject;
+  ubrn_uniffi_internal_fn_method_forwardtunnelcallback_ffi__bless_pointer(
     pointer: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): UniffiGcObject;
@@ -478,6 +544,12 @@ interface NativeModuleInterface {
     pointer: bigint,
     uniffi_out_err: UniffiRustCallStatus,
   ): UniffiGcObject;
+  // Codegen call sites use these via `nativeModule().rustbuffer_alloc(...)`
+  // and `nativeModule().rustbuffer_free(...)`. The JSI host object exposes
+  // them as properties; see `props["rustbuffer_alloc"]` / `props["rustbuffer_free"]`
+  // in the C++ wrapper template.
+  rustbuffer_alloc(n: number): Uint8Array;
+  rustbuffer_free(view: Uint8Array): void;
 }
 
 const getter: () => NativeModuleInterface = () =>
@@ -525,6 +597,26 @@ export type UniffiVTableCallbackInterfaceUniffiRusshConnectionDisconnectedCallba
     uniffi_clone: UniffiCallbackInterfaceCloneUniffiRusshConnectionDisconnectedCallback;
     on_change: UniffiCallbackInterfaceUniffiRusshConnectionDisconnectedCallbackMethod0;
   };
+type UniffiCallbackInterfaceUniffiRusshForwardTunnelCallbackMethod0 = (
+  uniffiHandle: bigint,
+  status: Uint8Array,
+) => UniffiResult<void>;
+type UniffiCallbackInterfaceUniffiRusshForwardTunnelCallbackMethod1 = (
+  uniffiHandle: bigint,
+  stats: Uint8Array,
+) => UniffiResult<void>;
+type UniffiCallbackInterfaceCloneUniffiRusshForwardTunnelCallback = (
+  handle: bigint,
+) => UniffiResult<void>;
+type UniffiCallbackInterfaceFreeUniffiRusshForwardTunnelCallback = (
+  handle: bigint,
+) => void;
+export type UniffiVTableCallbackInterfaceUniffiRusshForwardTunnelCallback = {
+  uniffi_free: UniffiCallbackInterfaceFreeUniffiRusshForwardTunnelCallback;
+  uniffi_clone: UniffiCallbackInterfaceCloneUniffiRusshForwardTunnelCallback;
+  on_status_change: UniffiCallbackInterfaceUniffiRusshForwardTunnelCallbackMethod0;
+  on_stats_update: UniffiCallbackInterfaceUniffiRusshForwardTunnelCallbackMethod1;
+};
 export type UniffiForeignFutureResultI8 = {
   return_value: number;
   call_status: UniffiRustCallStatus;

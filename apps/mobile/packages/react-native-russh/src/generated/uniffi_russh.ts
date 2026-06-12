@@ -10,6 +10,7 @@ import {
   type UniffiForeignFutureDroppedCallbackStruct,
   type UniffiVTableCallbackInterfaceUniffiRusshConnectProgressCallback,
   type UniffiVTableCallbackInterfaceUniffiRusshConnectionDisconnectedCallback,
+  type UniffiVTableCallbackInterfaceUniffiRusshForwardTunnelCallback,
   type UniffiForeignFutureResultI8,
   type UniffiForeignFutureCompletei8,
   type UniffiVTableCallbackInterfaceUniffiRusshServerKeyCallback,
@@ -54,7 +55,7 @@ import {
   uniffiTraitInterfaceCallAsync,
   uniffiTypeNameSymbol,
   variantOrdinalSymbol,
-} from "uniffi-bindgen-react-native";
+} from "@ubjs/core";
 const uniffiCaller = new UniffiRustCaller(() => ({ code: 0 }));
 
 const uniffiIsDebug =
@@ -76,7 +77,10 @@ export async function connect(
       /*rustCaller:*/ uniffiCaller,
       /*rustFutureFunc:*/ () => {
         return nativeModule().ubrn_uniffi_uniffi_russh_fn_func_connect(
-          FfiConverterTypeConnectOptions.lower(options),
+          FfiConverterTypeConnectOptions.lower(
+            options,
+            nativeModule().rustbuffer_alloc,
+          ),
         );
       },
       /*pollFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_poll_u64,
@@ -85,6 +89,11 @@ export async function connect(
       /*completeFunc:*/ nativeModule()
         .ubrn_ffi_uniffi_russh_rust_future_complete_u64,
       /*freeFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_free_u64,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
       /*liftFunc:*/ FfiConverterTypeSshConnection.lift.bind(
         FfiConverterTypeSshConnection,
       ),
@@ -103,14 +112,23 @@ export async function connect(
 }
 
 export function generateKeyPair(keyType: KeyType): string /*throws*/ {
-  return FfiConverterString.lift(
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterString.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
     uniffiCaller.rustCallWithError(
       /*liftError:*/ FfiConverterTypeSshError.lift.bind(
         FfiConverterTypeSshError,
       ),
       /*caller:*/ (callStatus) => {
         return nativeModule().ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair(
-          FfiConverterTypeKeyType.lower(keyType),
+          FfiConverterTypeKeyType.lower(
+            keyType,
+            nativeModule().rustbuffer_alloc,
+          ),
           callStatus,
         );
       },
@@ -122,14 +140,23 @@ export function generateKeyPair(keyType: KeyType): string /*throws*/ {
 export function validatePrivateKey(
   privateKeyContent: string,
 ): string /*throws*/ {
-  return FfiConverterString.lift(
+  return ((__rb: Uint8Array) => {
+    try {
+      return FfiConverterString.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
+  })(
     uniffiCaller.rustCallWithError(
       /*liftError:*/ FfiConverterTypeSshError.lift.bind(
         FfiConverterTypeSshError,
       ),
       /*caller:*/ (callStatus) => {
         return nativeModule().ubrn_uniffi_uniffi_russh_fn_func_validate_private_key(
-          FfiConverterString.lower(privateKeyContent),
+          FfiConverterString.lower(
+            privateKeyContent,
+            nativeModule().rustbuffer_alloc,
+          ),
           callStatus,
         );
       },
@@ -683,7 +710,10 @@ export class ConnectProgressCallbackImpl
       /*caller:*/ (callStatus) => {
         nativeModule().ubrn_uniffi_uniffi_russh_fn_method_connectprogresscallback_on_change(
           uniffiTypeConnectProgressCallbackImplObjectFactory.clonePointer(this),
-          FfiConverterTypeSshConnectionProgressEvent.lower(status),
+          FfiConverterTypeSshConnectionProgressEvent.lower(
+            status,
+            nativeModule().rustbuffer_alloc,
+          ),
           callStatus,
         );
       },
@@ -805,7 +835,8 @@ const uniffiCallbackInterfaceConnectProgressCallback: {
         /*makeCall:*/ uniffiMakeCall,
         /*handleSuccess:*/ uniffiHandleSuccess,
         /*handleError:*/ uniffiHandleError,
-        /*lowerString:*/ FfiConverterString.lower,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
       );
       return uniffiResult;
     },
@@ -850,7 +881,10 @@ export class ConnectionDisconnectedCallbackImpl
           uniffiTypeConnectionDisconnectedCallbackImplObjectFactory.clonePointer(
             this,
           ),
-          FfiConverterString.lower(connectionId),
+          FfiConverterString.lower(
+            connectionId,
+            nativeModule().rustbuffer_alloc,
+          ),
           callStatus,
         );
       },
@@ -974,7 +1008,8 @@ const uniffiCallbackInterfaceConnectionDisconnectedCallback: {
         /*makeCall:*/ uniffiMakeCall,
         /*handleSuccess:*/ uniffiHandleSuccess,
         /*handleError:*/ uniffiHandleError,
-        /*lowerString:*/ FfiConverterString.lower,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
       );
       return uniffiResult;
     },
@@ -1087,7 +1122,10 @@ export class ServerKeyCallbackImpl
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_serverkeycallback_on_change(
             uniffiTypeServerKeyCallbackImplObjectFactory.clonePointer(this),
-            FfiConverterTypeServerPublicKeyInfo.lower(serverKeyInfo),
+            FfiConverterTypeServerPublicKeyInfo.lower(
+              serverKeyInfo,
+              nativeModule().rustbuffer_alloc,
+            ),
           );
         },
         /*pollFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_poll_i8,
@@ -1096,6 +1134,11 @@ export class ServerKeyCallbackImpl
         /*completeFunc:*/ nativeModule()
           .ubrn_ffi_uniffi_russh_rust_future_complete_i8,
         /*freeFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_free_i8,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
         /*liftFunc:*/ FfiConverterBool.lift.bind(FfiConverterBool),
         /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
         /*asyncOpts:*/ asyncOpts_,
@@ -1220,7 +1263,10 @@ const uniffiCallbackInterfaceServerKeyCallback: {
           uniffiFutureCallback,
           uniffiCallbackData,
           /* UniffiForeignFutureResultI8 */ {
-            return_value: FfiConverterBool.lower(returnValue),
+            return_value: FfiConverterBool.lower(
+              returnValue,
+              nativeModule().rustbuffer_alloc,
+            ),
             call_status: uniffiCaller.createCallStatus(),
           },
         );
@@ -1240,7 +1286,8 @@ const uniffiCallbackInterfaceServerKeyCallback: {
         /*makeCall:*/ uniffiMakeCall,
         /*handleSuccess:*/ uniffiHandleSuccess,
         /*handleError:*/ uniffiHandleError,
-        /*lowerString:*/ FfiConverterString.lower,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
       );
       return uniffiForeignFuture;
     },
@@ -1322,6 +1369,309 @@ const FfiConverterTypeConnectOptions = (() => {
         FfiConverterTypeServerKeyCallback.allocationSize(
           value.onServerKeyCallback,
         )
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type DynamicForwardConfig = {
+  bindAddress: string;
+  bindPort: number;
+};
+
+/**
+ * Generated factory for {@link DynamicForwardConfig} record objects.
+ */
+export const DynamicForwardConfig = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      DynamicForwardConfig,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<DynamicForwardConfig>,
+  });
+})();
+
+const FfiConverterTypeDynamicForwardConfig = (() => {
+  type TypeName = DynamicForwardConfig;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        bindAddress: FfiConverterString.read(from),
+        bindPort: FfiConverterUInt16.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.bindAddress, into);
+      FfiConverterUInt16.write(value.bindPort, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.bindAddress) +
+        FfiConverterUInt16.allocationSize(value.bindPort)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+// Enum: ForwardTunnelStatus
+export enum ForwardTunnelStatus_Tags {
+  Starting = "Starting",
+  Active = "Active",
+  Failed = "Failed",
+  Stopped = "Stopped",
+}
+export const ForwardTunnelStatus = (() => {
+  type Starting__interface = {
+    tag: ForwardTunnelStatus_Tags.Starting;
+  };
+  class Starting_ extends UniffiEnum implements Starting__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = "ForwardTunnelStatus";
+    readonly tag = ForwardTunnelStatus_Tags.Starting;
+    constructor() {
+      super("ForwardTunnelStatus", "Starting");
+    }
+
+    static new(): Starting_ {
+      return new Starting_();
+    }
+
+    static instanceOf(obj: any): obj is Starting_ {
+      return obj.tag === ForwardTunnelStatus_Tags.Starting;
+    }
+  }
+
+  type Active__interface = {
+    tag: ForwardTunnelStatus_Tags.Active;
+    inner: Readonly<{ effectiveBindPort: number }>;
+  };
+  class Active_ extends UniffiEnum implements Active__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = "ForwardTunnelStatus";
+    readonly tag = ForwardTunnelStatus_Tags.Active;
+    readonly inner: Readonly<{ effectiveBindPort: number }>;
+    constructor(inner: { effectiveBindPort: number }) {
+      super("ForwardTunnelStatus", "Active");
+
+      this.inner = Object.freeze(inner);
+    }
+    static new(inner: { effectiveBindPort: number }): Active_ {
+      return new Active_(inner);
+    }
+
+    static instanceOf(obj: any): obj is Active_ {
+      return obj.tag === ForwardTunnelStatus_Tags.Active;
+    }
+  }
+
+  type Failed__interface = {
+    tag: ForwardTunnelStatus_Tags.Failed;
+    inner: Readonly<{ error: string }>;
+  };
+  class Failed_ extends UniffiEnum implements Failed__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = "ForwardTunnelStatus";
+    readonly tag = ForwardTunnelStatus_Tags.Failed;
+    readonly inner: Readonly<{ error: string }>;
+    constructor(inner: { error: string }) {
+      super("ForwardTunnelStatus", "Failed");
+
+      this.inner = Object.freeze(inner);
+    }
+    static new(inner: { error: string }): Failed_ {
+      return new Failed_(inner);
+    }
+
+    static instanceOf(obj: any): obj is Failed_ {
+      return obj.tag === ForwardTunnelStatus_Tags.Failed;
+    }
+  }
+
+  type Stopped__interface = {
+    tag: ForwardTunnelStatus_Tags.Stopped;
+  };
+  class Stopped_ extends UniffiEnum implements Stopped__interface {
+    /**
+     * @private
+     * This field is private and should not be used, use `tag` instead.
+     */
+    readonly [uniffiTypeNameSymbol] = "ForwardTunnelStatus";
+    readonly tag = ForwardTunnelStatus_Tags.Stopped;
+    constructor() {
+      super("ForwardTunnelStatus", "Stopped");
+    }
+
+    static new(): Stopped_ {
+      return new Stopped_();
+    }
+
+    static instanceOf(obj: any): obj is Stopped_ {
+      return obj.tag === ForwardTunnelStatus_Tags.Stopped;
+    }
+  }
+
+  function instanceOf(obj: any): obj is ForwardTunnelStatus {
+    return obj[uniffiTypeNameSymbol] === "ForwardTunnelStatus";
+  }
+
+  return Object.freeze({
+    instanceOf,
+    Starting: Starting_,
+    Active: Active_,
+    Failed: Failed_,
+    Stopped: Stopped_,
+  });
+})();
+export type ForwardTunnelStatus = InstanceType<
+  (typeof ForwardTunnelStatus)["Starting" | "Active" | "Failed" | "Stopped"]
+>;
+
+// FfiConverter for enum ForwardTunnelStatus
+const FfiConverterTypeForwardTunnelStatus = (() => {
+  const ordinalConverter = FfiConverterInt32;
+  type TypeName = ForwardTunnelStatus;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      switch (ordinalConverter.read(from)) {
+        case 1:
+          return new ForwardTunnelStatus.Starting();
+        case 2:
+          return new ForwardTunnelStatus.Active({
+            effectiveBindPort: FfiConverterUInt16.read(from),
+          });
+        case 3:
+          return new ForwardTunnelStatus.Failed({
+            error: FfiConverterString.read(from),
+          });
+        case 4:
+          return new ForwardTunnelStatus.Stopped();
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      switch (value.tag) {
+        case ForwardTunnelStatus_Tags.Starting: {
+          ordinalConverter.write(1, into);
+          return;
+        }
+        case ForwardTunnelStatus_Tags.Active: {
+          ordinalConverter.write(2, into);
+          const inner = value.inner;
+          FfiConverterUInt16.write(inner.effectiveBindPort, into);
+          return;
+        }
+        case ForwardTunnelStatus_Tags.Failed: {
+          ordinalConverter.write(3, into);
+          const inner = value.inner;
+          FfiConverterString.write(inner.error, into);
+          return;
+        }
+        case ForwardTunnelStatus_Tags.Stopped: {
+          ordinalConverter.write(4, into);
+          return;
+        }
+        default:
+          // Throwing from here means that ForwardTunnelStatus_Tags hasn't matched an ordinal.
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+    allocationSize(value: TypeName): number {
+      switch (value.tag) {
+        case ForwardTunnelStatus_Tags.Starting: {
+          return ordinalConverter.allocationSize(1);
+        }
+        case ForwardTunnelStatus_Tags.Active: {
+          const inner = value.inner;
+          let size = ordinalConverter.allocationSize(2);
+          size += FfiConverterUInt16.allocationSize(inner.effectiveBindPort);
+          return size;
+        }
+        case ForwardTunnelStatus_Tags.Failed: {
+          const inner = value.inner;
+          let size = ordinalConverter.allocationSize(3);
+          size += FfiConverterString.allocationSize(inner.error);
+          return size;
+        }
+        case ForwardTunnelStatus_Tags.Stopped: {
+          return ordinalConverter.allocationSize(4);
+        }
+        default:
+          throw new UniffiInternalError.UnexpectedEnumCase();
+      }
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type ForwardTunnelStats = {
+  status: ForwardTunnelStatus;
+  activeConnections: number;
+  totalConnections: bigint;
+  bytesIn: bigint;
+  bytesOut: bigint;
+};
+
+/**
+ * Generated factory for {@link ForwardTunnelStats} record objects.
+ */
+export const ForwardTunnelStats = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<ForwardTunnelStats, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<ForwardTunnelStats>,
+  });
+})();
+
+const FfiConverterTypeForwardTunnelStats = (() => {
+  type TypeName = ForwardTunnelStats;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        status: FfiConverterTypeForwardTunnelStatus.read(from),
+        activeConnections: FfiConverterUInt32.read(from),
+        totalConnections: FfiConverterUInt64.read(from),
+        bytesIn: FfiConverterUInt64.read(from),
+        bytesOut: FfiConverterUInt64.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterTypeForwardTunnelStatus.write(value.status, into);
+      FfiConverterUInt32.write(value.activeConnections, into);
+      FfiConverterUInt64.write(value.totalConnections, into);
+      FfiConverterUInt64.write(value.bytesIn, into);
+      FfiConverterUInt64.write(value.bytesOut, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterTypeForwardTunnelStatus.allocationSize(value.status) +
+        FfiConverterUInt32.allocationSize(value.activeConnections) +
+        FfiConverterUInt64.allocationSize(value.totalConnections) +
+        FfiConverterUInt64.allocationSize(value.bytesIn) +
+        FfiConverterUInt64.allocationSize(value.bytesOut)
       );
     }
   }
@@ -1605,6 +1955,112 @@ const FfiConverterTypeListenerOptions = (() => {
       return (
         FfiConverterTypeCursor.allocationSize(value.cursor) +
         FfiConverterOptionalUInt32.allocationSize(value.coalesceMs)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type LocalForwardConfig = {
+  bindAddress: string;
+  bindPort: number;
+  destinationAddress: string;
+  destinationPort: number;
+};
+
+/**
+ * Generated factory for {@link LocalForwardConfig} record objects.
+ */
+export const LocalForwardConfig = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<LocalForwardConfig, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<LocalForwardConfig>,
+  });
+})();
+
+const FfiConverterTypeLocalForwardConfig = (() => {
+  type TypeName = LocalForwardConfig;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        bindAddress: FfiConverterString.read(from),
+        bindPort: FfiConverterUInt16.read(from),
+        destinationAddress: FfiConverterString.read(from),
+        destinationPort: FfiConverterUInt16.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.bindAddress, into);
+      FfiConverterUInt16.write(value.bindPort, into);
+      FfiConverterString.write(value.destinationAddress, into);
+      FfiConverterUInt16.write(value.destinationPort, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.bindAddress) +
+        FfiConverterUInt16.allocationSize(value.bindPort) +
+        FfiConverterString.allocationSize(value.destinationAddress) +
+        FfiConverterUInt16.allocationSize(value.destinationPort)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+export type RemoteForwardConfig = {
+  bindAddress: string;
+  bindPort: number;
+  destinationAddress: string;
+  destinationPort: number;
+};
+
+/**
+ * Generated factory for {@link RemoteForwardConfig} record objects.
+ */
+export const RemoteForwardConfig = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<RemoteForwardConfig, ReturnType<typeof defaults>>(
+      defaults,
+    );
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<RemoteForwardConfig>,
+  });
+})();
+
+const FfiConverterTypeRemoteForwardConfig = (() => {
+  type TypeName = RemoteForwardConfig;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    read(from: RustBuffer): TypeName {
+      return {
+        bindAddress: FfiConverterString.read(from),
+        bindPort: FfiConverterUInt16.read(from),
+        destinationAddress: FfiConverterString.read(from),
+        destinationPort: FfiConverterUInt16.read(from),
+      };
+    }
+    write(value: TypeName, into: RustBuffer): void {
+      FfiConverterString.write(value.bindAddress, into);
+      FfiConverterUInt16.write(value.bindPort, into);
+      FfiConverterString.write(value.destinationAddress, into);
+      FfiConverterUInt16.write(value.destinationPort, into);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.bindAddress) +
+        FfiConverterUInt16.allocationSize(value.bindPort) +
+        FfiConverterString.allocationSize(value.destinationAddress) +
+        FfiConverterUInt16.allocationSize(value.destinationPort)
       );
     }
   }
@@ -2225,7 +2681,7 @@ export class ShellClosedCallbackImpl
       /*caller:*/ (callStatus) => {
         nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellclosedcallback_on_change(
           uniffiTypeShellClosedCallbackImplObjectFactory.clonePointer(this),
-          FfiConverterUInt32.lower(channelId),
+          FfiConverterUInt32.lower(channelId, nativeModule().rustbuffer_alloc),
           callStatus,
         );
       },
@@ -2342,7 +2798,8 @@ const uniffiCallbackInterfaceShellClosedCallback: {
         /*makeCall:*/ uniffiMakeCall,
         /*handleSuccess:*/ uniffiHandleSuccess,
         /*handleError:*/ uniffiHandleError,
-        /*lowerString:*/ FfiConverterString.lower,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
       );
       return uniffiResult;
     },
@@ -3260,6 +3717,374 @@ const FfiConverterTypeSshError = (() => {
   return new FFIConverter();
 })();
 
+export interface ForwardHandleLike {
+  getStats(): ForwardTunnelStats;
+  stop(asyncOpts_?: { signal: AbortSignal }) /*throws*/ : Promise<void>;
+}
+/**
+ * @deprecated Use `ForwardHandleLike` instead.
+ */
+export type ForwardHandleInterface = ForwardHandleLike;
+
+export class ForwardHandle
+  extends UniffiAbstractObject
+  implements ForwardHandleLike
+{
+  readonly [uniffiTypeNameSymbol] = "ForwardHandle";
+  readonly [destructorGuardSymbol]: UniffiGcObject;
+  readonly [pointerLiteralSymbol]: UniffiHandle;
+  // No primary constructor declared for this class.
+  private constructor(pointer: UniffiHandle) {
+    super();
+    this[pointerLiteralSymbol] = pointer;
+    this[destructorGuardSymbol] =
+      uniffiTypeForwardHandleObjectFactory.bless(pointer);
+  }
+
+  getStats(): ForwardTunnelStats {
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterTypeForwardTunnelStats.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
+      uniffiCaller.rustCall(
+        /*caller:*/ (callStatus) => {
+          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_forwardhandle_get_stats(
+            uniffiTypeForwardHandleObjectFactory.clonePointer(this),
+            callStatus,
+          );
+        },
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      ),
+    );
+  }
+
+  async stop(asyncOpts_?: { signal: AbortSignal }): Promise<void> /*throws*/ {
+    const __stack = uniffiIsDebug ? new Error().stack : undefined;
+    try {
+      return await uniffiRustCallAsync(
+        /*rustCaller:*/ uniffiCaller,
+        /*rustFutureFunc:*/ () => {
+          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_forwardhandle_stop(
+            uniffiTypeForwardHandleObjectFactory.clonePointer(this),
+          );
+        },
+        /*pollFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_poll_void,
+        /*cancelFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_cancel_void,
+        /*completeFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_complete_void,
+        /*freeFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_free_void,
+        /*liftFunc:*/ (_v) => {},
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+        /*asyncOpts:*/ asyncOpts_,
+        /*errorHandler:*/ FfiConverterTypeSshError.lift.bind(
+          FfiConverterTypeSshError,
+        ),
+      );
+    } catch (__error: any) {
+      if (uniffiIsDebug && __error instanceof Error) {
+        __error.stack = __stack;
+      }
+      throw __error;
+    }
+  }
+
+  uniffiDestroy(): void {
+    const ptr = (this as any)[destructorGuardSymbol];
+    if (ptr !== undefined) {
+      const pointer = uniffiTypeForwardHandleObjectFactory.pointer(this);
+      uniffiTypeForwardHandleObjectFactory.freePointer(pointer);
+      uniffiTypeForwardHandleObjectFactory.unbless(ptr);
+      delete (this as any)[destructorGuardSymbol];
+    }
+  }
+
+  static instanceOf(obj_: any): obj_ is ForwardHandle {
+    return uniffiTypeForwardHandleObjectFactory.isConcreteType(obj_);
+  }
+}
+
+const uniffiTypeForwardHandleObjectFactory: UniffiObjectFactory<ForwardHandleLike> =
+  (() => {
+    return {
+      create(pointer: UniffiHandle): ForwardHandleLike {
+        const instance = Object.create(ForwardHandle.prototype);
+        instance[pointerLiteralSymbol] = pointer;
+        instance[destructorGuardSymbol] = this.bless(pointer);
+        instance[uniffiTypeNameSymbol] = "ForwardHandle";
+        return instance;
+      },
+
+      bless(p: UniffiHandle): UniffiGcObject {
+        return uniffiCaller.rustCall(
+          /*caller:*/ (status) =>
+            nativeModule().ubrn_uniffi_internal_fn_method_forwardhandle_ffi__bless_pointer(
+              p,
+              status,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      unbless(ptr_: UniffiGcObject) {
+        ptr_.markDestroyed();
+      },
+
+      pointer(obj_: ForwardHandleLike): UniffiHandle {
+        if ((obj_ as any)[destructorGuardSymbol] === undefined) {
+          throw new UniffiInternalError.UnexpectedNullPointer();
+        }
+        return (obj_ as any)[pointerLiteralSymbol];
+      },
+
+      clonePointer(obj_: ForwardHandleLike): UniffiHandle {
+        const pointer = this.pointer(obj_);
+        return uniffiCaller.rustCall(
+          /*caller:*/ (callStatus) =>
+            nativeModule().ubrn_uniffi_uniffi_russh_fn_clone_forwardhandle(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      freePointer(pointer: UniffiHandle): void {
+        uniffiCaller.rustCall(
+          /*caller:*/ (callStatus) =>
+            nativeModule().ubrn_uniffi_uniffi_russh_fn_free_forwardhandle(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      isConcreteType(obj_: any): obj_ is ForwardHandleLike {
+        return (
+          obj_[destructorGuardSymbol] &&
+          obj_[uniffiTypeNameSymbol] === "ForwardHandle"
+        );
+      },
+    };
+  })();
+const FfiConverterTypeForwardHandle = new FfiConverterObject(
+  uniffiTypeForwardHandleObjectFactory,
+);
+
+export interface ForwardTunnelCallback {
+  onStatusChange(status: ForwardTunnelStatus): void;
+  onStatsUpdate(stats: ForwardTunnelStats): void;
+}
+
+export class ForwardTunnelCallbackImpl
+  extends UniffiAbstractObject
+  implements ForwardTunnelCallback
+{
+  readonly [uniffiTypeNameSymbol] = "ForwardTunnelCallbackImpl";
+  readonly [destructorGuardSymbol]: UniffiGcObject;
+  readonly [pointerLiteralSymbol]: UniffiHandle;
+  // No primary constructor declared for this class.
+  private constructor(pointer: UniffiHandle) {
+    super();
+    this[pointerLiteralSymbol] = pointer;
+    this[destructorGuardSymbol] =
+      uniffiTypeForwardTunnelCallbackImplObjectFactory.bless(pointer);
+  }
+
+  onStatusChange(status: ForwardTunnelStatus): void {
+    uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        nativeModule().ubrn_uniffi_uniffi_russh_fn_method_forwardtunnelcallback_on_status_change(
+          uniffiTypeForwardTunnelCallbackImplObjectFactory.clonePointer(this),
+          FfiConverterTypeForwardTunnelStatus.lower(
+            status,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    );
+  }
+
+  onStatsUpdate(stats: ForwardTunnelStats): void {
+    uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        nativeModule().ubrn_uniffi_uniffi_russh_fn_method_forwardtunnelcallback_on_stats_update(
+          uniffiTypeForwardTunnelCallbackImplObjectFactory.clonePointer(this),
+          FfiConverterTypeForwardTunnelStats.lower(
+            stats,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    );
+  }
+
+  uniffiDestroy(): void {
+    const ptr = (this as any)[destructorGuardSymbol];
+    if (ptr !== undefined) {
+      const pointer =
+        uniffiTypeForwardTunnelCallbackImplObjectFactory.pointer(this);
+      uniffiTypeForwardTunnelCallbackImplObjectFactory.freePointer(pointer);
+      uniffiTypeForwardTunnelCallbackImplObjectFactory.unbless(ptr);
+      delete (this as any)[destructorGuardSymbol];
+    }
+  }
+
+  static instanceOf(obj_: any): obj_ is ForwardTunnelCallbackImpl {
+    return uniffiTypeForwardTunnelCallbackImplObjectFactory.isConcreteType(
+      obj_,
+    );
+  }
+}
+
+const uniffiTypeForwardTunnelCallbackImplObjectFactory: UniffiObjectFactory<ForwardTunnelCallback> =
+  (() => {
+    return {
+      create(pointer: UniffiHandle): ForwardTunnelCallback {
+        const instance = Object.create(ForwardTunnelCallbackImpl.prototype);
+        instance[pointerLiteralSymbol] = pointer;
+        instance[destructorGuardSymbol] = this.bless(pointer);
+        instance[uniffiTypeNameSymbol] = "ForwardTunnelCallbackImpl";
+        return instance;
+      },
+
+      bless(p: UniffiHandle): UniffiGcObject {
+        return uniffiCaller.rustCall(
+          /*caller:*/ (status) =>
+            nativeModule().ubrn_uniffi_internal_fn_method_forwardtunnelcallback_ffi__bless_pointer(
+              p,
+              status,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      unbless(ptr_: UniffiGcObject) {
+        ptr_.markDestroyed();
+      },
+
+      pointer(obj_: ForwardTunnelCallback): UniffiHandle {
+        if ((obj_ as any)[destructorGuardSymbol] === undefined) {
+          throw new UniffiInternalError.UnexpectedNullPointer();
+        }
+        return (obj_ as any)[pointerLiteralSymbol];
+      },
+
+      clonePointer(obj_: ForwardTunnelCallback): UniffiHandle {
+        const pointer = this.pointer(obj_);
+        return uniffiCaller.rustCall(
+          /*caller:*/ (callStatus) =>
+            nativeModule().ubrn_uniffi_uniffi_russh_fn_clone_forwardtunnelcallback(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      freePointer(pointer: UniffiHandle): void {
+        uniffiCaller.rustCall(
+          /*caller:*/ (callStatus) =>
+            nativeModule().ubrn_uniffi_uniffi_russh_fn_free_forwardtunnelcallback(
+              pointer,
+              callStatus,
+            ),
+          /*liftString:*/ FfiConverterString.lift,
+        );
+      },
+
+      isConcreteType(obj_: any): obj_ is ForwardTunnelCallback {
+        return (
+          obj_[destructorGuardSymbol] &&
+          obj_[uniffiTypeNameSymbol] === "ForwardTunnelCallbackImpl"
+        );
+      },
+    };
+  })();
+const FfiConverterTypeForwardTunnelCallback =
+  new FfiConverterObjectWithCallbacks(
+    uniffiTypeForwardTunnelCallbackImplObjectFactory,
+  );
+
+// Add a vtable for the callbacks that go in ForwardTunnelCallback.
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+const uniffiCallbackInterfaceForwardTunnelCallback: {
+  vtable: any;
+  register: () => void;
+} = {
+  // Create the VTable using a series of closures.
+  // ts automatically converts these into C callback functions.
+  vtable: {
+    on_status_change: (uniffiHandle: bigint, status: Uint8Array) => {
+      const uniffiMakeCall = (): void => {
+        const jsCallback =
+          FfiConverterTypeForwardTunnelCallback.lift(uniffiHandle);
+        return jsCallback.onStatusChange(
+          FfiConverterTypeForwardTunnelStatus.lift(status),
+        );
+      };
+      const uniffiResult = UniffiResult.ready<void>();
+      const uniffiHandleSuccess = (obj: any) => {};
+      const uniffiHandleError = (code: number, errBuf: UniffiByteArray) => {
+        UniffiResult.writeError(uniffiResult, code, errBuf);
+      };
+      uniffiTraitInterfaceCall(
+        /*makeCall:*/ uniffiMakeCall,
+        /*handleSuccess:*/ uniffiHandleSuccess,
+        /*handleError:*/ uniffiHandleError,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
+      );
+      return uniffiResult;
+    },
+    on_stats_update: (uniffiHandle: bigint, stats: Uint8Array) => {
+      const uniffiMakeCall = (): void => {
+        const jsCallback =
+          FfiConverterTypeForwardTunnelCallback.lift(uniffiHandle);
+        return jsCallback.onStatsUpdate(
+          FfiConverterTypeForwardTunnelStats.lift(stats),
+        );
+      };
+      const uniffiResult = UniffiResult.ready<void>();
+      const uniffiHandleSuccess = (obj: any) => {};
+      const uniffiHandleError = (code: number, errBuf: UniffiByteArray) => {
+        UniffiResult.writeError(uniffiResult, code, errBuf);
+      };
+      uniffiTraitInterfaceCall(
+        /*makeCall:*/ uniffiMakeCall,
+        /*handleSuccess:*/ uniffiHandleSuccess,
+        /*handleError:*/ uniffiHandleError,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
+      );
+      return uniffiResult;
+    },
+    uniffi_free: (uniffiHandle: UniffiHandle): void => {
+      // this will throw a stale handle error if the handle isn't found.
+      FfiConverterTypeForwardTunnelCallback.drop(uniffiHandle);
+    },
+    uniffi_clone: (uniffiHandle: UniffiHandle): UniffiHandle => {
+      return FfiConverterTypeForwardTunnelCallback.clone(uniffiHandle);
+    },
+  },
+  register: () => {
+    nativeModule().ubrn_uniffi_uniffi_russh_fn_init_callback_vtable_forwardtunnelcallback(
+      uniffiCallbackInterfaceForwardTunnelCallback.vtable,
+    );
+  },
+};
+
 export interface SftpProgressCallback {
   onProgress(
     transferId: string,
@@ -3292,9 +4117,12 @@ export class SftpProgressCallbackImpl
       /*caller:*/ (callStatus) => {
         nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpprogresscallback_on_progress(
           uniffiTypeSftpProgressCallbackImplObjectFactory.clonePointer(this),
-          FfiConverterString.lower(transferId),
-          FfiConverterUInt64.lower(bytesDone),
-          FfiConverterOptionalUInt64.lower(total),
+          FfiConverterString.lower(transferId, nativeModule().rustbuffer_alloc),
+          FfiConverterUInt64.lower(bytesDone, nativeModule().rustbuffer_alloc),
+          FfiConverterOptionalUInt64.lower(
+            total,
+            nativeModule().rustbuffer_alloc,
+          ),
           callStatus,
         );
       },
@@ -3421,7 +4249,8 @@ const uniffiCallbackInterfaceSftpProgressCallback: {
         /*makeCall:*/ uniffiMakeCall,
         /*handleSuccess:*/ uniffiHandleSuccess,
         /*handleError:*/ uniffiHandleError,
-        /*lowerString:*/ FfiConverterString.lower,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
       );
       return uniffiResult;
     },
@@ -3529,7 +4358,10 @@ export class SftpSession
         /*caller:*/ (callStatus) => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_cancel_transfer(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(transferId),
+            FfiConverterString.lower(
+              transferId,
+              nativeModule().rustbuffer_alloc,
+            ),
             callStatus,
           );
         },
@@ -3550,8 +4382,8 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_chmod(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(path),
-            FfiConverterUInt32.lower(mode),
+            FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
+            FfiConverterUInt32.lower(mode, nativeModule().rustbuffer_alloc),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3628,11 +4460,26 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_download(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(transferId),
-            FfiConverterString.lower(remotePath),
-            FfiConverterString.lower(localPath),
-            FfiConverterOptionalUInt32.lower(chunkSize),
-            FfiConverterOptionalTypeSftpProgressCallback.lower(onProgress),
+            FfiConverterString.lower(
+              transferId,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterString.lower(
+              remotePath,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterString.lower(
+              localPath,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterOptionalUInt32.lower(
+              chunkSize,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterOptionalTypeSftpProgressCallback.lower(
+              onProgress,
+              nativeModule().rustbuffer_alloc,
+            ),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3643,6 +4490,11 @@ export class SftpSession
           .ubrn_ffi_uniffi_russh_rust_future_complete_rust_buffer,
         /*freeFunc:*/ nativeModule()
           .ubrn_ffi_uniffi_russh_rust_future_free_rust_buffer,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
         /*liftFunc:*/ FfiConverterTypeSftpTransferInfo.lift.bind(
           FfiConverterTypeSftpTransferInfo,
         ),
@@ -3661,7 +4513,13 @@ export class SftpSession
   }
 
   getInfo(): SftpSessionInfo {
-    return FfiConverterTypeSftpSessionInfo.lift(
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterTypeSftpSessionInfo.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
       uniffiCaller.rustCall(
         /*caller:*/ (callStatus) => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_get_info(
@@ -3685,7 +4543,7 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_list(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(path),
+            FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3696,6 +4554,11 @@ export class SftpSession
           .ubrn_ffi_uniffi_russh_rust_future_complete_rust_buffer,
         /*freeFunc:*/ nativeModule()
           .ubrn_ffi_uniffi_russh_rust_future_free_rust_buffer,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
         /*liftFunc:*/ FfiConverterSequenceTypeSftpEntry.lift.bind(
           FfiConverterSequenceTypeSftpEntry,
         ),
@@ -3725,8 +4588,11 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_mkdir(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(path),
-            FfiConverterOptionalUInt32.lower(mode),
+            FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
+            FfiConverterOptionalUInt32.lower(
+              mode,
+              nativeModule().rustbuffer_alloc,
+            ),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3763,7 +4629,7 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_realpath(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(path),
+            FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3774,6 +4640,11 @@ export class SftpSession
           .ubrn_ffi_uniffi_russh_rust_future_complete_rust_buffer,
         /*freeFunc:*/ nativeModule()
           .ubrn_ffi_uniffi_russh_rust_future_free_rust_buffer,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
         /*liftFunc:*/ FfiConverterString.lift.bind(FfiConverterString),
         /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
         /*asyncOpts:*/ asyncOpts_,
@@ -3800,7 +4671,7 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_remove(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(path),
+            FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3838,8 +4709,8 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_rename(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(from),
-            FfiConverterString.lower(to),
+            FfiConverterString.lower(from, nativeModule().rustbuffer_alloc),
+            FfiConverterString.lower(to, nativeModule().rustbuffer_alloc),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3876,7 +4747,7 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_rmdir(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(path),
+            FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3913,7 +4784,7 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_stat(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(path),
+            FfiConverterString.lower(path, nativeModule().rustbuffer_alloc),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3924,6 +4795,11 @@ export class SftpSession
           .ubrn_ffi_uniffi_russh_rust_future_complete_rust_buffer,
         /*freeFunc:*/ nativeModule()
           .ubrn_ffi_uniffi_russh_rust_future_free_rust_buffer,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
         /*liftFunc:*/ FfiConverterTypeSftpStat.lift.bind(
           FfiConverterTypeSftpStat,
         ),
@@ -3960,11 +4836,26 @@ export class SftpSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_upload(
             uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            FfiConverterString.lower(transferId),
-            FfiConverterString.lower(localPath),
-            FfiConverterString.lower(remotePath),
-            FfiConverterOptionalUInt32.lower(chunkSize),
-            FfiConverterOptionalTypeSftpProgressCallback.lower(onProgress),
+            FfiConverterString.lower(
+              transferId,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterString.lower(
+              localPath,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterString.lower(
+              remotePath,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterOptionalUInt32.lower(
+              chunkSize,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterOptionalTypeSftpProgressCallback.lower(
+              onProgress,
+              nativeModule().rustbuffer_alloc,
+            ),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -3975,6 +4866,11 @@ export class SftpSession
           .ubrn_ffi_uniffi_russh_rust_future_complete_rust_buffer,
         /*freeFunc:*/ nativeModule()
           .ubrn_ffi_uniffi_russh_rust_future_free_rust_buffer,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
         /*liftFunc:*/ FfiConverterTypeSftpTransferInfo.lift.bind(
           FfiConverterTypeSftpTransferInfo,
         ),
@@ -4099,7 +4995,7 @@ export class ShellListenerImpl
       /*caller:*/ (callStatus) => {
         nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shelllistener_on_event(
           uniffiTypeShellListenerImplObjectFactory.clonePointer(this),
-          FfiConverterTypeShellEvent.lower(ev),
+          FfiConverterTypeShellEvent.lower(ev, nativeModule().rustbuffer_alloc),
           callStatus,
         );
       },
@@ -4214,7 +5110,8 @@ const uniffiCallbackInterfaceShellListener: {
         /*makeCall:*/ uniffiMakeCall,
         /*handleSuccess:*/ uniffiHandleSuccess,
         /*handleError:*/ uniffiHandleError,
-        /*lowerString:*/ FfiConverterString.lower,
+        /*lowerString:*/ FfiConverterString.lower.bind(FfiConverterString),
+        /*alloc:*/ nativeModule().rustbuffer_alloc,
       );
       return uniffiResult;
     },
@@ -4302,8 +5199,14 @@ export class ShellSession
         /*caller:*/ (callStatus) => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_add_listener(
             uniffiTypeShellSessionObjectFactory.clonePointer(this),
-            FfiConverterTypeShellListener.lower(listener),
-            FfiConverterTypeListenerOptions.lower(opts),
+            FfiConverterTypeShellListener.lower(
+              listener,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterTypeListenerOptions.lower(
+              opts,
+              nativeModule().rustbuffer_alloc,
+            ),
             callStatus,
           );
         },
@@ -4316,7 +5219,13 @@ export class ShellSession
    * Buffer statistics snapshot.
    */
   bufferStats(): BufferStats {
-    return FfiConverterTypeBufferStats.lift(
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterTypeBufferStats.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
       uniffiCaller.rustCall(
         /*caller:*/ (callStatus) => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_buffer_stats(
@@ -4383,7 +5292,13 @@ export class ShellSession
   }
 
   getInfo(): ShellSessionInfo {
-    return FfiConverterTypeShellSessionInfo.lift(
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterTypeShellSessionInfo.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
       uniffiCaller.rustCall(
         /*caller:*/ (callStatus) => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_get_info(
@@ -4400,13 +5315,25 @@ export class ShellSession
    * Read the ring buffer from a cursor.
    */
   readBuffer(cursor: Cursor, maxBytes: bigint | undefined): BufferReadResult {
-    return FfiConverterTypeBufferReadResult.lift(
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterTypeBufferReadResult.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
       uniffiCaller.rustCall(
         /*caller:*/ (callStatus) => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_read_buffer(
             uniffiTypeShellSessionObjectFactory.clonePointer(this),
-            FfiConverterTypeCursor.lower(cursor),
-            FfiConverterOptionalUInt64.lower(maxBytes),
+            FfiConverterTypeCursor.lower(
+              cursor,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterOptionalUInt64.lower(
+              maxBytes,
+              nativeModule().rustbuffer_alloc,
+            ),
             callStatus,
           );
         },
@@ -4420,7 +5347,7 @@ export class ShellSession
       /*caller:*/ (callStatus) => {
         nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_remove_listener(
           uniffiTypeShellSessionObjectFactory.clonePointer(this),
-          FfiConverterUInt64.lower(id),
+          FfiConverterUInt64.lower(id, nativeModule().rustbuffer_alloc),
           callStatus,
         );
       },
@@ -4442,7 +5369,10 @@ export class ShellSession
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_send_data(
             uniffiTypeShellSessionObjectFactory.clonePointer(this),
-            FfiConverterArrayBuffer.lower(data),
+            FfiConverterArrayBuffer.lower(
+              data,
+              nativeModule().rustbuffer_alloc,
+            ),
           );
         },
         /*pollFunc:*/ nativeModule()
@@ -4557,6 +5487,21 @@ export interface SshConnectionLike {
    * Convenience snapshot for property-like access in TS.
    */
   getInfo(): SshConnectionInfo;
+  startDynamicForward(
+    config: DynamicForwardConfig,
+    callback: ForwardTunnelCallback,
+    asyncOpts_?: { signal: AbortSignal },
+  ) /*throws*/ : Promise<ForwardHandleLike>;
+  startLocalForward(
+    config: LocalForwardConfig,
+    callback: ForwardTunnelCallback,
+    asyncOpts_?: { signal: AbortSignal },
+  ) /*throws*/ : Promise<ForwardHandleLike>;
+  startRemoteForward(
+    config: RemoteForwardConfig,
+    callback: ForwardTunnelCallback,
+    asyncOpts_?: { signal: AbortSignal },
+  ) /*throws*/ : Promise<ForwardHandleLike>;
   startSftp(asyncOpts_?: {
     signal: AbortSignal;
   }) /*throws*/ : Promise<SftpSessionLike>;
@@ -4624,7 +5569,13 @@ export class SshConnection
    * Convenience snapshot for property-like access in TS.
    */
   getInfo(): SshConnectionInfo {
-    return FfiConverterTypeSshConnectionInfo.lift(
+    return ((__rb: Uint8Array) => {
+      try {
+        return FfiConverterTypeSshConnectionInfo.lift(__rb);
+      } finally {
+        nativeModule().rustbuffer_free(__rb);
+      }
+    })(
       uniffiCaller.rustCall(
         /*caller:*/ (callStatus) => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sshconnection_get_info(
@@ -4635,6 +5586,156 @@ export class SshConnection
         /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
       ),
     );
+  }
+
+  async startDynamicForward(
+    config: DynamicForwardConfig,
+    callback: ForwardTunnelCallback,
+    asyncOpts_?: { signal: AbortSignal },
+  ): Promise<ForwardHandleLike> /*throws*/ {
+    const __stack = uniffiIsDebug ? new Error().stack : undefined;
+    try {
+      return await uniffiRustCallAsync(
+        /*rustCaller:*/ uniffiCaller,
+        /*rustFutureFunc:*/ () => {
+          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_dynamic_forward(
+            uniffiTypeSshConnectionObjectFactory.clonePointer(this),
+            FfiConverterTypeDynamicForwardConfig.lower(
+              config,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterTypeForwardTunnelCallback.lower(
+              callback,
+              nativeModule().rustbuffer_alloc,
+            ),
+          );
+        },
+        /*pollFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_poll_u64,
+        /*cancelFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_cancel_u64,
+        /*completeFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_complete_u64,
+        /*freeFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_free_u64,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
+        /*liftFunc:*/ FfiConverterTypeForwardHandle.lift.bind(
+          FfiConverterTypeForwardHandle,
+        ),
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+        /*asyncOpts:*/ asyncOpts_,
+        /*errorHandler:*/ FfiConverterTypeSshError.lift.bind(
+          FfiConverterTypeSshError,
+        ),
+      );
+    } catch (__error: any) {
+      if (uniffiIsDebug && __error instanceof Error) {
+        __error.stack = __stack;
+      }
+      throw __error;
+    }
+  }
+
+  async startLocalForward(
+    config: LocalForwardConfig,
+    callback: ForwardTunnelCallback,
+    asyncOpts_?: { signal: AbortSignal },
+  ): Promise<ForwardHandleLike> /*throws*/ {
+    const __stack = uniffiIsDebug ? new Error().stack : undefined;
+    try {
+      return await uniffiRustCallAsync(
+        /*rustCaller:*/ uniffiCaller,
+        /*rustFutureFunc:*/ () => {
+          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_local_forward(
+            uniffiTypeSshConnectionObjectFactory.clonePointer(this),
+            FfiConverterTypeLocalForwardConfig.lower(
+              config,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterTypeForwardTunnelCallback.lower(
+              callback,
+              nativeModule().rustbuffer_alloc,
+            ),
+          );
+        },
+        /*pollFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_poll_u64,
+        /*cancelFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_cancel_u64,
+        /*completeFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_complete_u64,
+        /*freeFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_free_u64,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
+        /*liftFunc:*/ FfiConverterTypeForwardHandle.lift.bind(
+          FfiConverterTypeForwardHandle,
+        ),
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+        /*asyncOpts:*/ asyncOpts_,
+        /*errorHandler:*/ FfiConverterTypeSshError.lift.bind(
+          FfiConverterTypeSshError,
+        ),
+      );
+    } catch (__error: any) {
+      if (uniffiIsDebug && __error instanceof Error) {
+        __error.stack = __stack;
+      }
+      throw __error;
+    }
+  }
+
+  async startRemoteForward(
+    config: RemoteForwardConfig,
+    callback: ForwardTunnelCallback,
+    asyncOpts_?: { signal: AbortSignal },
+  ): Promise<ForwardHandleLike> /*throws*/ {
+    const __stack = uniffiIsDebug ? new Error().stack : undefined;
+    try {
+      return await uniffiRustCallAsync(
+        /*rustCaller:*/ uniffiCaller,
+        /*rustFutureFunc:*/ () => {
+          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_remote_forward(
+            uniffiTypeSshConnectionObjectFactory.clonePointer(this),
+            FfiConverterTypeRemoteForwardConfig.lower(
+              config,
+              nativeModule().rustbuffer_alloc,
+            ),
+            FfiConverterTypeForwardTunnelCallback.lower(
+              callback,
+              nativeModule().rustbuffer_alloc,
+            ),
+          );
+        },
+        /*pollFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_poll_u64,
+        /*cancelFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_cancel_u64,
+        /*completeFunc:*/ nativeModule()
+          .ubrn_ffi_uniffi_russh_rust_future_complete_u64,
+        /*freeFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_free_u64,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
+        /*liftFunc:*/ FfiConverterTypeForwardHandle.lift.bind(
+          FfiConverterTypeForwardHandle,
+        ),
+        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+        /*asyncOpts:*/ asyncOpts_,
+        /*errorHandler:*/ FfiConverterTypeSshError.lift.bind(
+          FfiConverterTypeSshError,
+        ),
+      );
+    } catch (__error: any) {
+      if (uniffiIsDebug && __error instanceof Error) {
+        __error.stack = __stack;
+      }
+      throw __error;
+    }
   }
 
   async startSftp(asyncOpts_?: {
@@ -4655,6 +5756,11 @@ export class SshConnection
         /*completeFunc:*/ nativeModule()
           .ubrn_ffi_uniffi_russh_rust_future_complete_u64,
         /*freeFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_free_u64,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
         /*liftFunc:*/ FfiConverterTypeSftpSession.lift.bind(
           FfiConverterTypeSftpSession,
         ),
@@ -4683,7 +5789,10 @@ export class SshConnection
         /*rustFutureFunc:*/ () => {
           return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sshconnection_start_shell(
             uniffiTypeSshConnectionObjectFactory.clonePointer(this),
-            FfiConverterTypeStartShellOptions.lower(opts),
+            FfiConverterTypeStartShellOptions.lower(
+              opts,
+              nativeModule().rustbuffer_alloc,
+            ),
           );
         },
         /*pollFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_poll_u64,
@@ -4692,6 +5801,11 @@ export class SshConnection
         /*completeFunc:*/ nativeModule()
           .ubrn_ffi_uniffi_russh_rust_future_complete_u64,
         /*freeFunc:*/ nativeModule().ubrn_ffi_uniffi_russh_rust_future_free_u64,
+        // Async returns always go through the JS-side converter: the
+        // FFI symbol returns the future handle (u64), and the user-level
+        // RustBuffer comes back via the shared `rust_future_complete_*`
+        // export. The bytes the runtime hands back must be deserialized
+        // here using the per-callable return-type converter.
         /*liftFunc:*/ FfiConverterTypeShellSession.lift.bind(
           FfiConverterTypeShellSession,
         ),
@@ -4916,6 +6030,38 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_forwardhandle_get_stats() !==
+    57720
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_uniffi_russh_checksum_method_forwardhandle_get_stats",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_forwardhandle_stop() !==
+    12883
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_uniffi_russh_checksum_method_forwardhandle_stop",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_forwardtunnelcallback_on_status_change() !==
+    36192
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_uniffi_russh_checksum_method_forwardtunnelcallback_on_status_change",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_forwardtunnelcallback_on_stats_update() !==
+    53164
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_uniffi_russh_checksum_method_forwardtunnelcallback_on_stats_update",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_serverkeycallback_on_change() !==
     10806
   ) {
@@ -5132,6 +6278,30 @@ function uniffiEnsureInitialized() {
     );
   }
   if (
+    nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_dynamic_forward() !==
+    59563
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_uniffi_russh_checksum_method_sshconnection_start_dynamic_forward",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_local_forward() !==
+    3557
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_uniffi_russh_checksum_method_sshconnection_start_local_forward",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_remote_forward() !==
+    35398
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_uniffi_russh_checksum_method_sshconnection_start_remote_forward",
+    );
+  }
+  if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_sshconnection_start_sftp() !==
     63745
   ) {
@@ -5152,6 +6322,7 @@ function uniffiEnsureInitialized() {
   uniffiCallbackInterfaceConnectionDisconnectedCallback.register();
   uniffiCallbackInterfaceServerKeyCallback.register();
   uniffiCallbackInterfaceShellClosedCallback.register();
+  uniffiCallbackInterfaceForwardTunnelCallback.register();
   uniffiCallbackInterfaceSftpProgressCallback.register();
   uniffiCallbackInterfaceShellListener.register();
 }
@@ -5167,8 +6338,15 @@ export default Object.freeze({
     FfiConverterTypeConnectionDisconnectedCallback,
     FfiConverterTypeCursor,
     FfiConverterTypeDroppedRange,
+    FfiConverterTypeDynamicForwardConfig,
+    FfiConverterTypeForwardHandle,
+    FfiConverterTypeForwardTunnelCallback,
+    FfiConverterTypeForwardTunnelStats,
+    FfiConverterTypeForwardTunnelStatus,
     FfiConverterTypeKeyType,
     FfiConverterTypeListenerOptions,
+    FfiConverterTypeLocalForwardConfig,
+    FfiConverterTypeRemoteForwardConfig,
     FfiConverterTypeSecurity,
     FfiConverterTypeServerKeyCallback,
     FfiConverterTypeServerPublicKeyInfo,
