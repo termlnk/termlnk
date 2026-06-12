@@ -19,7 +19,7 @@ import type { ISyncMobileConfig } from './controllers/config.schema';
 import { ITokenManager as ITokenManagerId } from '@termlnk/auth';
 import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService } from '@termlnk/sync';
-import { BackupService, HostSynchroniser, HttpSyncTransportService, IdentitySynchroniser, KnownHostSynchroniser, NoopSyncTransportService, SshKeySynchroniser, SyncCryptoService, SyncOutboxService, SyncService } from '@termlnk/sync-engine';
+import { BackupService, HostSynchroniser, HttpSyncTransportService, IdentitySynchroniser, KnownHostSynchroniser, NoopSyncTransportService, PortForwardingRuleSynchroniser, SshKeySynchroniser, SyncCryptoService, SyncOutboxService, SyncService } from '@termlnk/sync-engine';
 import { defaultPluginConfig, SYNC_MOBILE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { MobileAuthSyncBridgeController } from './controllers/mobile-auth-sync-bridge.controller';
 import { IMobileSyncService, MobileSyncService } from './services/mobile-sync.service';
@@ -69,6 +69,7 @@ export class SyncMobilePlugin extends Plugin {
       [IdentitySynchroniser, { useClass: IdentitySynchroniser }],
       [SshKeySynchroniser, { useClass: SshKeySynchroniser }],
       [KnownHostSynchroniser, { useClass: KnownHostSynchroniser }],
+      [PortForwardingRuleSynchroniser, { useClass: PortForwardingRuleSynchroniser }],
       [IMobileSyncService, { useClass: MobileSyncService }],
       [MobileAuthSyncBridgeController],
     ];
