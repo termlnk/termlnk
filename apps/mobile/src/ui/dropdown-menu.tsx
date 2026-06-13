@@ -60,8 +60,8 @@ function DropdownMenuContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          'z-50 min-w-[12rem] overflow-hidden rounded-2xl bg-surface-raised p-1.5 shadow-md shadow-black/10',
-          className,
+          'z-50 min-w-48 overflow-hidden rounded-2xl bg-surface-raised p-1.5 shadow-md shadow-black/10',
+          className
         )}
         {...props}
       />
@@ -83,14 +83,14 @@ function DropdownMenuItem({
         {
           'text-danger': variant === 'destructive',
           'text-content': variant !== 'destructive',
-        },
+        }
       )}
     >
       <DropdownMenuPrimitive.Item
         className={cn(
           'group flex-row items-center gap-3 rounded-xl px-4 py-3 active:bg-surface-sunken',
           { 'active:bg-danger/10': variant === 'destructive' },
-          className,
+          className
         )}
         {...props}
       />
@@ -120,9 +120,9 @@ const ABSOLUTE_FILL: StyleProp<ViewStyle> = {
 
 export {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuGroup,
+  DropdownMenuTrigger,
 };

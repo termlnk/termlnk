@@ -36,7 +36,7 @@ export function EmptyState({ icon: Icon, title, description }: IEmptyStateProps)
         {title}
       </Text>
       {description != null && (
-        <Text className="mt-2 text-center text-[13px] leading-[18px] text-content-secondary">
+        <Text className="mt-2 text-center text-[13px] leading-4.5 text-content-secondary">
           {description}
         </Text>
       )}

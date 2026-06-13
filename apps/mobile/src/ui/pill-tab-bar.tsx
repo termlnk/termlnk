@@ -60,9 +60,9 @@ export function PillTabBar<T extends string>({ tabs, value, onChange, className 
   });
 
   return (
-    <View className={`h-[36px] flex-row items-center overflow-hidden rounded-full bg-surface-sunken ${className ?? ''}`}>
+    <View className={`h-9 flex-row items-center overflow-hidden rounded-full bg-surface-sunken ${className ?? ''}`}>
       <Animated.View
-        className="absolute h-[30px] rounded-full"
+        className="absolute h-7.5 rounded-full"
         style={{
           backgroundColor: colors.accent,
           width: pillWidth,

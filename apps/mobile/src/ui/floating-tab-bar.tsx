@@ -114,10 +114,12 @@ export function FloatingTabBar({ state, navigation }: ITabBarProps) {
               {showUserAvatar
                 ? <UserAvatar user={user} size={24} radius={12} />
                 : <TabIcon routeName={route.name} focused={focused} color={iconColor} size={24} />}
-              <Text className={cn('mt-1 text-[11px]', {
-                'font-semibold text-content': focused,
-                'text-content-tertiary': !focused,
-              })}>
+              <Text
+                className={cn('mt-1 text-[11px]', {
+                  'font-semibold text-content': focused,
+                  'text-content-tertiary': !focused,
+                })}
+              >
                 {label}
               </Text>
             </Pressable>
