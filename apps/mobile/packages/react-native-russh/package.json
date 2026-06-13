@@ -43,6 +43,7 @@
     "react-native": "^0.85.3"
   },
   "dependencies": {
+    "@ubjs/core": "0.31.0-3",
     "uniffi-bindgen-react-native": "0.31.0-3"
   },
   "devDependencies": {

@@ -5,15 +5,15 @@ project(ReactNativeRussh)
 set (CMAKE_VERBOSE_MAKEFILE ON)
 set (CMAKE_CXX_STANDARD 17)
 
-# Resolve the path to the uniffi-bindgen-react-native package
+# Resolve the path to the uniffi-bindgen-react-native package.
+# Node 22+ strictly enforces `exports` — `require.resolve('.../package.json')`
+# fails when the package does not export that subpath. Resolve the main entry
+# and walk up to the package root instead.
 execute_process(
-    COMMAND node -p "require.resolve('uniffi-bindgen-react-native/package.json')"
+    COMMAND node -e "const r = require.resolve('uniffi-bindgen-react-native'); const i = r.lastIndexOf('node_modules/uniffi-bindgen-react-native/'); console.log(r.substring(0, i + 'node_modules/uniffi-bindgen-react-native'.length))"
     OUTPUT_VARIABLE UNIFFI_BINDGEN_PATH
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-# Get the directory; get_filename_component and cmake_path will normalize
-# paths with Windows path separators.
-get_filename_component(UNIFFI_BINDGEN_PATH "${UNIFFI_BINDGEN_PATH}" DIRECTORY)
 
 # Specifies a path to native header files.
 include_directories(

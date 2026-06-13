@@ -47,6 +47,7 @@ export default function RootLayout() {
                 headerStyle: { backgroundColor: surface },
                 headerTintColor: content,
                 headerShadowVisible: false,
+                headerBackTitle: '',
                 contentStyle: { backgroundColor: surface },
               }}
             >
@@ -63,12 +64,13 @@ export default function RootLayout() {
               <Stack.Screen name="vault/known-hosts" options={{ headerShown: false }} />
               <Stack.Screen name="vault/logs" options={{ headerShown: false }} />
               <Stack.Screen name="vault/port-forwarding" options={{ headerShown: false }} />
+              <Stack.Screen name="vault/port-forwarding-edit" options={{ headerShown: false }} />
               <Stack.Screen name="vault/snippets" options={{ headerShown: false }} />
               <Stack.Screen
                 name="host/edit"
                 options={{
                   presentation: 'formSheet',
-                  headerShown: true,
+                  headerShown: false,
                   sheetGrabberVisible: true,
                   sheetAllowedDetents: [0.5, 0.95] as number[],
                   sheetCornerRadius: 28,
@@ -77,6 +79,26 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="group-picker"
+                options={{
+                  presentation: 'formSheet',
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.6, 0.95] as number[],
+                  sheetCornerRadius: 20,
+                  contentStyle: { flex: 1 },
+                }}
+              />
+              <Stack.Screen
+                name="keychain-picker"
+                options={{
+                  presentation: 'formSheet',
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.6, 0.95] as number[],
+                  sheetCornerRadius: 20,
+                  contentStyle: { flex: 1 },
+                }}
+              />
+              <Stack.Screen
+                name="vault/port-forwarding-host-picker"
                 options={{
                   presentation: 'formSheet',
                   sheetGrabberVisible: true,

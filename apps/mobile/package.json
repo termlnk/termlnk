@@ -23,6 +23,7 @@
     "eas-build-post-install": "bash scripts/eas-prepare-rust.sh"
   },
   "dependencies": {
+    "@expo/dom-webview": "^56.0.5",
     "@noble/ciphers": "^2.2.0",
     "@noble/hashes": "^2.2.0",
     "@react-native-menu/menu": "^2.0.0",
@@ -36,8 +37,8 @@
     "@termlnk/auth-mobile": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database-mobile": "workspace:*",
-    "@termlnk/react-native-russh": "workspace:*",
     "@termlnk/port-forwarding-mobile": "workspace:*",
+    "@termlnk/react-native-russh": "workspace:*",
     "@termlnk/sftp-mobile": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/sync-engine": "workspace:*",
