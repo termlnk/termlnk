@@ -237,7 +237,7 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
               }
             }}
           >
-            <RoundButton icon={Plus} onPress={onNewHost} accessibilityLabel="New host" />
+            <RoundButton icon={Plus} accessibilityLabel="New host" />
           </MenuView>
         )}
       />

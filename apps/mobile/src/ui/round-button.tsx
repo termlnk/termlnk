@@ -13,8 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type { LucideIcon } from 'lucide-react-native';
 import type { VariantProps } from 'class-variance-authority';
+import type { LucideIcon } from 'lucide-react-native';
 import { cva } from 'class-variance-authority';
 import { Pressable } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
@@ -30,12 +30,12 @@ const roundButtonVariants = cva(
       },
     },
     defaultVariants: { variant: 'plain' },
-  },
+  }
 );
 
 interface IRoundButtonProps extends VariantProps<typeof roundButtonVariants> {
   readonly icon: LucideIcon;
-  readonly onPress: () => void;
+  readonly onPress?: () => void;
   readonly disabled?: boolean;
   readonly accessibilityLabel?: string;
   readonly className?: string;
@@ -57,7 +57,7 @@ export function RoundButton({ icon: Icon, onPress, variant = 'plain', disabled, 
       className={cn(
         roundButtonVariants({ variant }),
         { 'bg-surface-sunken': disabled },
-        className,
+        className
       )}
       style={{
         shadowColor: '#000',

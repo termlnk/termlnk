@@ -16,6 +16,7 @@
 import type { VariantProps } from 'class-variance-authority';
 import type { ReactNode } from 'react';
 import { cva } from 'class-variance-authority';
+import { ChevronRight } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
 import { cn } from './cn';
@@ -41,8 +42,9 @@ export function FormSection({ title, children, footer }: { title?: string; child
 
 export function FieldRow({ children, last }: { children: ReactNode; last?: boolean }) {
   return (
-    <View className={cn({ 'border-b border-divider': !last })}>
+    <View>
       {children}
+      {!last && <View className="mx-4 h-px bg-divider/50" />}
     </View>
   );
 }
@@ -186,11 +188,15 @@ export function SegmentedField<T extends string>({ label, value, options, onChan
 }
 
 export function NavField({ label, value, onPress, last }: { label: string; value: string; onPress: () => void; last?: boolean }) {
+  const colors = useThemeColors();
   return (
     <FieldRow last={last}>
       <Pressable onPress={onPress} className="flex-row items-center justify-between px-4 py-3.5 active:bg-surface-sunken">
         <Text className="text-[15px] leading-[20px] text-content">{label}</Text>
-        <Text className="ml-2 text-[14px] leading-[18px] text-content-secondary" numberOfLines={1}>{value}</Text>
+        <View className="ml-2 flex-row items-center">
+          <Text className="text-[14px] leading-[18px] text-content-tertiary" numberOfLines={1}>{value}</Text>
+          <ChevronRight size={18} color={colors.contentTertiary} style={{ marginLeft: 4 }} />
+        </View>
       </Pressable>
     </FieldRow>
   );
