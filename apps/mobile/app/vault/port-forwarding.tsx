@@ -110,7 +110,9 @@ export default function PortForwardingScreen() {
         onBack={() => router.back()}
         right={<RoundButton icon={Plus} onPress={() => router.push('/vault/port-forwarding-edit')} accessibilityLabel="Add rule" />}
       />
-      <SearchField value={search} onChangeText={setSearch} placeholder="Search rules..." />
+      <View className="px-4">
+        <SearchField value={search} onChangeText={setSearch} placeholder="Search rules..." />
+      </View>
       {filtered.length === 0 && !search
         ? (
           <View className="flex-1 justify-center">

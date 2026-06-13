@@ -21,16 +21,12 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHostRepository, useObservable, usePortForwardingService } from '../../src/core/core-context';
 import { takePendingHostSelection } from '../../src/hosts/host-selection';
-import { DangerButton, FormSection, NavField, SegmentedField, TextField } from '../../src/ui/form';
-import { ModalHeaderButton } from '../../src/ui/modal-header-button';
+import { DiagramFigure } from '../../src/port-forwarding/diagram-figure';
+import { TypeTabBar } from '../../src/port-forwarding/type-tab-bar';
+import { DangerButton, FieldRow, FormSection, InlineField, NavField } from '../../src/ui/form';
+import { RoundButton } from '../../src/ui/round-button';
 import { ScreenContainer } from '../../src/ui/screen-container';
 import { ScreenHeader } from '../../src/ui/screen-header';
-
-const TYPE_OPTIONS = [
-  { label: 'Local', value: 'local' as const },
-  { label: 'Remote', value: 'remote' as const },
-  { label: 'Dynamic', value: 'dynamic' as const },
-] as const;
 
 export default function PortForwardingEditScreen() {
   const router = useRouter();
@@ -59,6 +55,26 @@ export default function PortForwardingEditScreen() {
     const h = hosts.find((x) => x.id === hostId);
     return h?.label ?? hostId;
   }, [hostId, hosts]);
+
+  const confirmDisabled = useMemo(() => {
+    if (!hostId || !bindPort.trim()) {
+      return true;
+    }
+    const bp = Number.parseInt(bindPort, 10);
+    if (Number.isNaN(bp) || bp < 0 || bp > 65535) {
+      return true;
+    }
+    if (type !== 'dynamic') {
+      if (!destinationAddress.trim() || !destinationPort.trim()) {
+        return true;
+      }
+      const dp = Number.parseInt(destinationPort, 10);
+      if (Number.isNaN(dp) || dp < 1 || dp > 65535) {
+        return true;
+      }
+    }
+    return false;
+  }, [hostId, bindPort, type, destinationAddress, destinationPort]);
 
   useEffect(() => {
     void hostRepo.ready();
@@ -168,51 +184,51 @@ export default function PortForwardingEditScreen() {
   return (
     <ScreenContainer>
       <ScreenHeader
-        variant="modal"
+        variant="nav"
         title={isNew ? 'Create Rule' : 'Edit Rule'}
         onBack={() => router.back()}
-        right={<ModalHeaderButton icon={Check} onPress={onSave} accessibilityLabel="Save rule" disabled={busy} loading={busy} />}
+        right={<RoundButton icon={Check} variant="accent" onPress={onSave} accessibilityLabel="Save rule" disabled={confirmDisabled || busy} />}
       />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
       >
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
-          <FormSection>
-            <SegmentedField
-              label="Type"
-              value={type}
-              options={TYPE_OPTIONS}
-              onChange={setType}
-            />
-            <TextField label="Label" value={label} onChangeText={setLabel} placeholder="Optional" />
-          </FormSection>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <TypeTabBar value={type} onChange={setType} />
+
+          <DiagramFigure type={type} />
 
           {type === 'local' && (
-            <FormSection title="Local Forward">
-              <TextField label="Local Port" value={bindPort} onChangeText={setBindPort} placeholder="Required" keyboardType="numeric" />
-              <TextField label="Bind Address" value={bindAddress} onChangeText={setBindAddress} placeholder="127.0.0.1" />
-              <NavField label="Host" value={hostLabel || 'Select host'} onPress={onPickHost} />
-              <TextField label="Destination Address" value={destinationAddress} onChangeText={setDestinationAddress} placeholder="Required" />
-              <TextField label="Destination Port" value={destinationPort} onChangeText={setDestinationPort} placeholder="Required" keyboardType="numeric" last />
+            <FormSection>
+              <FieldRow><InlineField label="Label" value={label} onChangeText={setLabel} placeholder="Optional" /></FieldRow>
+              <FieldRow><InlineField label="Local Port" value={bindPort} onChangeText={setBindPort} placeholder="Required" keyboardType="numeric" /></FieldRow>
+              <FieldRow><InlineField label="Bind Address" value={bindAddress} onChangeText={setBindAddress} placeholder="127.0.0.1" /></FieldRow>
+              <NavField label="Intermediate Host" value={hostLabel || 'Required'} onPress={onPickHost} />
+              <FieldRow><InlineField label="Destination address" value={destinationAddress} onChangeText={setDestinationAddress} placeholder="Required" /></FieldRow>
+              <FieldRow last><InlineField label="Destination port number" value={destinationPort} onChangeText={setDestinationPort} placeholder="Required" keyboardType="numeric" /></FieldRow>
             </FormSection>
           )}
 
           {type === 'remote' && (
-            <FormSection title="Remote Forward">
-              <NavField label="Remote Host" value={hostLabel || 'Select host'} onPress={onPickHost} />
-              <TextField label="Remote Port" value={bindPort} onChangeText={setBindPort} placeholder="Required" keyboardType="numeric" />
-              <TextField label="Bind Address" value={bindAddress} onChangeText={setBindAddress} placeholder="Optional" />
-              <TextField label="Destination Address" value={destinationAddress} onChangeText={setDestinationAddress} placeholder="Required" />
-              <TextField label="Destination Port" value={destinationPort} onChangeText={setDestinationPort} placeholder="Required" keyboardType="numeric" last />
+            <FormSection>
+              <FieldRow><InlineField label="Label" value={label} onChangeText={setLabel} placeholder="Optional" /></FieldRow>
+              <NavField label="Remote host" value={hostLabel || 'Required'} onPress={onPickHost} />
+              <FieldRow><InlineField label="Remote port number" value={bindPort} onChangeText={setBindPort} placeholder="Required" keyboardType="numeric" /></FieldRow>
+              <FieldRow><InlineField label="Bind Address" value={bindAddress} onChangeText={setBindAddress} placeholder="Optional" /></FieldRow>
+              <FieldRow><InlineField label="Destination address" value={destinationAddress} onChangeText={setDestinationAddress} placeholder="Required" /></FieldRow>
+              <FieldRow last><InlineField label="Destination port number" value={destinationPort} onChangeText={setDestinationPort} placeholder="Required" keyboardType="numeric" /></FieldRow>
             </FormSection>
           )}
 
           {type === 'dynamic' && (
-            <FormSection title="Dynamic Forward (SOCKS5)">
-              <TextField label="Local Port" value={bindPort} onChangeText={setBindPort} placeholder="Required" keyboardType="numeric" />
-              <TextField label="Bind Address" value={bindAddress} onChangeText={setBindAddress} placeholder="127.0.0.1" />
-              <NavField label="Host" value={hostLabel || 'Select host'} onPress={onPickHost} last />
+            <FormSection>
+              <FieldRow><InlineField label="Label" value={label} onChangeText={setLabel} placeholder="Optional" /></FieldRow>
+              <FieldRow><InlineField label="Local Port" value={bindPort} onChangeText={setBindPort} placeholder="Required" keyboardType="numeric" /></FieldRow>
+              <FieldRow><InlineField label="Bind Address" value={bindAddress} onChangeText={setBindAddress} placeholder="127.0.0.1" /></FieldRow>
+              <NavField label="Intermediate Host" value={hostLabel || 'Required'} onPress={onPickHost} last />
             </FormSection>
           )}
 

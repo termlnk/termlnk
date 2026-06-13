@@ -13,27 +13,22 @@
  * governing permissions and limitations under the License.
  */
 
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Monitor } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { ScrollView, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHostRepository, useObservable } from '../../src/core/core-context';
 import { setPendingHostSelection } from '../../src/hosts/host-selection';
 import { Card } from '../../src/ui/card';
-import { EmptyState } from '../../src/ui/empty-state';
 import { IconTile } from '../../src/ui/icon-tile';
 import { NavRow } from '../../src/ui/rows';
-import { ScreenContainer } from '../../src/ui/screen-container';
-import { ScreenHeader } from '../../src/ui/screen-header';
-import { SearchField } from '../../src/ui/search-field';
 
 export default function PortForwardingHostPickerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const hostRepo = useHostRepository();
   const hosts = useObservable(hostRepo.hosts$, []);
-  const [search, setSearch] = useState('');
 
   useEffect(() => {
     void hostRepo.ready();
@@ -43,40 +38,29 @@ export default function PortForwardingHostPickerScreen() {
     return hosts.filter((h) => h.type === 'host');
   }, [hosts]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) {
-      return hostNodes;
-    }
-    const q = search.toLowerCase();
-    return hostNodes.filter((h) =>
-      h.label.toLowerCase().includes(q)
-      || (h.addr ?? '').toLowerCase().includes(q)
-    );
-  }, [hostNodes, search]);
-
   const onSelect = (hostId: string, label: string) => {
     setPendingHostSelection({ hostId, label });
     router.back();
   };
 
   return (
-    <ScreenContainer>
-      <ScreenHeader variant="nav" title="Select Host" onBack={() => router.back()} />
-      <SearchField value={search} onChangeText={setSearch} placeholder="Search hosts..." />
-      {filtered.length === 0
-        ? (
-          <View className="flex-1 justify-center">
-            <EmptyState
-              icon={Monitor}
-              title="No hosts"
-              description={search ? `No hosts match "${search}"` : 'Add a host first to use port forwarding.'}
-            />
-          </View>
-        )
-        : (
-          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 32 }}>
+    <>
+      <Stack.Screen options={{ title: 'Select Host' }} />
+      <ScrollView
+        className="flex-1 bg-surface"
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 96, paddingBottom: insets.bottom + 32 }}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+      >
+        {hostNodes.length === 0
+          ? (
+            <Text className="mt-4 px-2 text-center text-[14px] text-content-secondary">
+              No hosts yet. Add a host first to use port forwarding.
+            </Text>
+          )
+          : (
             <Card dividerInset={64}>
-              {filtered.map((h) => (
+              {hostNodes.map((h) => (
                 <NavRow
                   key={h.id}
                   leading={<IconTile icon={Monitor} tone="host" />}
@@ -86,8 +70,8 @@ export default function PortForwardingHostPickerScreen() {
                 />
               ))}
             </Card>
-          </ScrollView>
-        )}
-    </ScreenContainer>
+          )}
+      </ScrollView>
+    </>
   );
 }
