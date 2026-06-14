@@ -168,7 +168,6 @@ export function HostRow(props: IHostRowProps) {
     >
       <Pressable
         onPress={props.onPress}
-        delayLongPress={400}
         className="active:bg-surface-sunken"
       >
         <View className="flex-row items-center px-4 py-3">
