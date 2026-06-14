@@ -19,13 +19,7 @@ import { IAuthService } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Button, cn, Switch, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { ISyncService, SyncState } from '@termlnk/sync';
-import {
-  CloudCheckIcon,
-  CloudOffIcon,
-  CloudUploadIcon,
-  RefreshCwIcon,
-  TriangleAlertIcon,
-} from 'lucide-react';
+import { CloudCheckIcon, CloudOffIcon, CloudUploadIcon, RefreshCwIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
 
 interface IStateVisual {
@@ -173,7 +167,7 @@ export function SyncStatusPanel() {
               {localeService.t(`sync-ui.error.${lastError.code}`)}
             </span>
             {lastError.message && lastError.message !== lastError.code && (
-              <span className={cn('tm:text-grey-fg')}>{lastError.message}</span>
+              <span className={cn('tm:break-all tm:text-grey-fg')}>{lastError.message}</span>
             )}
           </div>
           {lastError.requiresUserAction && authService && (
