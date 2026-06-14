@@ -1,0 +1,33 @@
+diff --git a/ios/NewArch/MenuView.mm b/ios/NewArch/MenuView.mm
+--- a/ios/NewArch/MenuView.mm
++++ b/ios/NewArch/MenuView.mm
+@@ -20,6 +20,7 @@
+
+ @implementation MenuView {
+     UIView <FabricViewImplementationProtocol> * _view;
++    UIContextMenuInteraction *_parentInteraction;
+ }
+
+ + (ComponentDescriptorProvider)componentDescriptorProvider
+@@ -167,6 +168,21 @@
+
+     if (oldViewProps.shouldOpenOnLongPress != newViewProps.shouldOpenOnLongPress) {
+         _view.shouldOpenOnLongPress = newViewProps.shouldOpenOnLongPress;
++
++        if (newViewProps.shouldOpenOnLongPress) {
++            _view.userInteractionEnabled = NO;
++            if (!_parentInteraction) {
++                _parentInteraction = [[UIContextMenuInteraction alloc]
++                    initWithDelegate:(id<UIContextMenuInteractionDelegate>)_view];
++                [self addInteraction:_parentInteraction];
++            }
++        } else {
++            _view.userInteractionEnabled = YES;
++            if (_parentInteraction) {
++                [self removeInteraction:_parentInteraction];
++                _parentInteraction = nil;
++            }
++        }
+     }
+
+     if (oldViewProps.hitSlop.top != newViewProps.hitSlop.top ||
