@@ -20,15 +20,15 @@ import { IKeychainManagerService } from '@termlnk/rpc-client';
 import { TooltipWrapper } from '@termlnk/ui';
 import { Eraser, ShieldCheck, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { KnownHostDetailDialog } from './KnownHostDetailDialog';
+import { IKnownHostDetailDialogService } from '../../services/known-hosts/known-host-detail-dialog.service';
 
 export function KnownHostsExplorer() {
   const localeService = useDependency(LocaleService);
   const keychain = useDependency(IKeychainManagerService);
+  const detailDialogService = useDependency(IKnownHostDetailDialogService);
   const t = useCallback((k: string) => localeService.t(k), [localeService]);
 
   const [rows, setRows] = useState<IKnownHost[]>([]);
-  const [detail, setDetail] = useState<IKnownHost | null>(null);
 
   const reload = useCallback(() => {
     keychain.listKnownHosts().then(setRows).catch(() => {});
@@ -86,7 +86,7 @@ export function KnownHostsExplorer() {
                     tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-2
                     tm:hover:bg-one-bg2
                   `}
-                  onClick={() => setDetail(row)}
+                  onClick={() => detailDialogService.open(row)}
                 >
                   <div className="tm:min-w-0 tm:flex-1">
                     <div className="tm:truncate tm:text-[12px] tm:text-white">
@@ -117,8 +117,6 @@ export function KnownHostsExplorer() {
             </ul>
           )}
       </div>
-
-      {detail && <KnownHostDetailDialog host={detail} onClose={() => setDetail(null)} />}
     </div>
   );
 }

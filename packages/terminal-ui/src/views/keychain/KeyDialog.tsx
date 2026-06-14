@@ -13,22 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IPublicSshKey, SshKeyAlgorithm, SshKeyCipher } from '@termlnk/terminal';
+import type { SshKeyAlgorithm, SshKeyCipher } from '@termlnk/terminal';
 import type { KeyDialogMode } from '../../services/keychain/keychain-dialog.service';
 import { LocaleService } from '@termlnk/core';
-import { Button, DialogContent, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogPrimitive, DialogTitle, Field, FieldContent, FieldLabel, Input, Switch, Textarea, ToggleGroup, ToggleGroupItem, useDependency } from '@termlnk/design';
+import { Button, Field, FieldContent, FieldLabel, Input, Switch, Textarea, ToggleGroup, ToggleGroupItem, useDependency, useObservable } from '@termlnk/design';
 import { IKeychainManagerService } from '@termlnk/rpc-client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-
-interface IKeyDialogProps {
-  mode: KeyDialogMode;
-  editKey?: IPublicSshKey;
-  onClose: () => void;
-}
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { IKeychainDialogService } from '../../services/keychain/keychain-dialog.service';
 
 const ECDSA_BITS = [256, 384, 521];
-// RSA: strongest first so it becomes the default when switching algorithm.
-// 1024 is weak/legacy but offered for old-device compatibility.
 const RSA_BITS = [4096, 2048, 1024];
 
 function getBitOptions(algorithm: SshKeyAlgorithm): number[] {
@@ -41,34 +34,75 @@ function getBitOptions(algorithm: SshKeyAlgorithm): number[] {
   return [];
 }
 
-// Parse the free-typed rounds field at submit, falling back to the default.
 function clampRounds(value: string): number {
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) ? Math.max(1, Math.min(1000, n)) : 16;
 }
 
-const dialogContentCls = `
-  tm:w-[min(34rem,calc(100%-2rem))] tm:gap-4 tm:rounded-xl tm:border-line tm:bg-one-bg tm:p-5
-  tm:shadow-[0_18px_52px_rgb(0_0_0/0.45)]
-`;
-
-export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
+export function KeyDialog() {
   const localeService = useDependency(LocaleService);
   const keychain = useDependency(IKeychainManagerService);
+  const keychainDialog = useDependency(IKeychainDialogService);
   const t = useCallback((k: string) => localeService.t(k), [localeService]);
 
-  const [label, setLabel] = useState(editKey?.label ?? '');
-  const [algorithm, setAlgorithm] = useState<SshKeyAlgorithm>(editKey?.algorithm ?? 'ed25519');
+  const dialogState = useObservable(keychainDialog.state$, keychainDialog.getState());
+  const mode: KeyDialogMode = dialogState.key?.mode ?? 'generate';
+  const editKey = dialogState.key?.key;
+
+  const [label, setLabel] = useState('');
+  const [algorithm, setAlgorithm] = useState<SshKeyAlgorithm>('ed25519');
   const [bits, setBits] = useState<number>(4096);
-  const [publicKey, setPublicKey] = useState(editKey?.publicKey ?? '');
+  const [publicKey, setPublicKey] = useState('');
   const [privateKey, setPrivateKey] = useState('');
-  const [certificate, setCertificate] = useState(editKey?.certificate ?? '');
+  const [certificate, setCertificate] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [cipher, setCipher] = useState<SshKeyCipher>('aes256-ctr');
   const [rounds, setRounds] = useState('16');
-  const [savePassphrase, setSavePassphrase] = useState(editKey?.savePassphrase ?? false);
+  const [savePassphrase, setSavePassphrase] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const resetKey = dialogState.key
+    ? `${mode}:${editKey?.id ?? ''}`
+    : '';
+  const prevResetKeyRef = useRef(resetKey);
+  useEffect(() => {
+    if (resetKey === prevResetKeyRef.current) {
+      return;
+    }
+    prevResetKeyRef.current = resetKey;
+
+    setError('');
+    setBusy(false);
+    setPassphrase('');
+    setPrivateKey('');
+    setCipher('aes256-ctr');
+    setRounds('16');
+
+    if (!dialogState.key) {
+      setLabel('');
+      setAlgorithm('ed25519');
+      setBits(4096);
+      setPublicKey('');
+      setCertificate('');
+      setSavePassphrase(false);
+      return;
+    }
+    if (editKey) {
+      setLabel(editKey.label);
+      setAlgorithm(editKey.algorithm);
+      setPublicKey(editKey.publicKey ?? '');
+      setCertificate(editKey.certificate ?? '');
+      setSavePassphrase(editKey.savePassphrase ?? false);
+    } else {
+      setLabel('');
+      setAlgorithm('ed25519');
+      setBits(4096);
+      setPublicKey('');
+      setCertificate('');
+      setSavePassphrase(false);
+    }
+  }, [resetKey, dialogState.key, editKey, mode]);
 
   useEffect(() => {
     if (mode !== 'edit' || !editKey) {
@@ -95,12 +129,15 @@ export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
 
   const handleAlgorithmChange = useCallback((next: SshKeyAlgorithm) => {
     setAlgorithm(next);
-    // Keep bits valid for the new algorithm; ed25519 has none.
     const options = getBitOptions(next);
     if (options.length > 0 && !options.includes(bits)) {
       setBits(options[0]);
     }
   }, [bits]);
+
+  const handleClose = useCallback(() => {
+    keychainDialog.close();
+  }, [keychainDialog]);
 
   const handleSubmit = useCallback(async () => {
     if (!label.trim()) {
@@ -138,187 +175,162 @@ export function KeyDialog({ mode, editKey, onClose }: IKeyDialogProps) {
           savePassphrase,
         });
       }
-      onClose();
+      handleClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
-  }, [mode, editKey, keychain, label, algorithm, bits, bitOptions, publicKey, privateKey, certificate, passphrase, cipher, rounds, savePassphrase, onClose]);
+  }, [mode, editKey, keychain, label, algorithm, bits, bitOptions, publicKey, privateKey, certificate, passphrase, cipher, rounds, savePassphrase, handleClose]);
 
-  const titleKey = mode === 'generate'
-    ? 'terminal-ui.keychain.key.generateTitle'
-    : mode === 'new'
-      ? 'terminal-ui.keychain.key.newKeyTitle'
-      : 'terminal-ui.keychain.key.editTitle';
   const canSubmit = !!label.trim() && (mode === 'generate' || !!privateKey.trim());
 
   return (
-    <DialogPrimitive open onOpenChange={(open) => !open && onClose()}>
-      <DialogPortal>
-        <DialogOverlay className="tm:bg-darker-black/70 tm:backdrop-blur-[1.5px]" />
-        <DialogContent
-          closable={false}
-          className={dialogContentCls}
-          onEscapeKeyDown={(e) => {
-            e.preventDefault();
-            onClose();
-          }}
-          onPointerDownOutside={(e) => {
-            e.preventDefault();
-            onClose();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle className="tm:text-[15px] tm:font-semibold tm:text-white">{t(titleKey)}</DialogTitle>
-          </DialogHeader>
+    <div className="tm:flex tm:flex-col tm:gap-4">
+      <Field>
+        <FieldLabel>{t('terminal-ui.keychain.field.label')}</FieldLabel>
+        <FieldContent>
+          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="prod-key" />
+        </FieldContent>
+      </Field>
 
+      {mode === 'edit' && editKey && (
+        <>
           <Field>
-            <FieldLabel>{t('terminal-ui.keychain.field.label')}</FieldLabel>
+            <FieldLabel>{t('terminal-ui.keychain.field.privateKey')}</FieldLabel>
             <FieldContent>
-              <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="prod-key" />
+              <Textarea
+                className="tm:min-h-28 tm:font-mono tm:text-[12px]"
+                value={privateKey}
+                onChange={(e) => setPrivateKey(e.target.value)}
+              />
             </FieldContent>
           </Field>
+          <Field>
+            <FieldLabel>{t('terminal-ui.keychain.field.publicKey')}</FieldLabel>
+            <FieldContent>
+              <Textarea
+                className="tm:min-h-28 tm:font-mono tm:text-[12px]"
+                value={publicKey}
+                onChange={(e) => setPublicKey(e.target.value)}
+              />
+            </FieldContent>
+          </Field>
+        </>
+      )}
 
-          {mode === 'edit' && editKey && (
-            <>
-              <Field>
-                <FieldLabel>{t('terminal-ui.keychain.field.privateKey')}</FieldLabel>
-                <FieldContent>
-                  <Textarea
-                    className="tm:min-h-28 tm:font-mono tm:text-[12px]"
-                    value={privateKey}
-                    onChange={(e) => setPrivateKey(e.target.value)}
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>{t('terminal-ui.keychain.field.publicKey')}</FieldLabel>
-                <FieldContent>
-                  <Textarea
-                    className="tm:min-h-28 tm:font-mono tm:text-[12px]"
-                    value={publicKey}
-                    onChange={(e) => setPublicKey(e.target.value)}
-                  />
-                </FieldContent>
-              </Field>
-            </>
-          )}
-
-          {mode === 'generate' && (
-            <>
-              <Field>
-                <FieldLabel>{t('terminal-ui.keychain.field.algorithm')}</FieldLabel>
-                <FieldContent>
-                  <SegmentedToggle
-                    value={algorithm}
-                    options={[
-                      { value: 'ed25519', label: 'ED25519' },
-                      { value: 'ecdsa', label: 'ECDSA' },
-                      { value: 'rsa', label: 'RSA' },
-                    ]}
-                    onValueChange={(v) => handleAlgorithmChange(v as SshKeyAlgorithm)}
-                  />
-                </FieldContent>
-              </Field>
-              {bitOptions.length > 0 && (
-                <Field>
-                  <FieldLabel>{t('terminal-ui.keychain.field.bits')}</FieldLabel>
-                  <FieldContent>
-                    <SegmentedToggle
-                      value={String(bits)}
-                      options={bitOptions.map((b) => ({ value: String(b), label: String(b) }))}
-                      onValueChange={(v) => setBits(Number(v))}
-                    />
-                  </FieldContent>
-                </Field>
-              )}
-            </>
-          )}
-
-          {mode === 'new' && (
+      {mode === 'generate' && (
+        <>
+          <Field>
+            <FieldLabel>{t('terminal-ui.keychain.field.algorithm')}</FieldLabel>
+            <FieldContent>
+              <SegmentedToggle
+                value={algorithm}
+                options={[
+                  { value: 'ed25519', label: 'ED25519' },
+                  { value: 'ecdsa', label: 'ECDSA' },
+                  { value: 'rsa', label: 'RSA' },
+                ]}
+                onValueChange={(v) => handleAlgorithmChange(v as SshKeyAlgorithm)}
+              />
+            </FieldContent>
+          </Field>
+          {bitOptions.length > 0 && (
             <Field>
-              <FieldLabel>{t('terminal-ui.keychain.field.privateKey')}</FieldLabel>
+              <FieldLabel>{t('terminal-ui.keychain.field.bits')}</FieldLabel>
               <FieldContent>
-                <Textarea
-                  className="tm:min-h-28 tm:font-mono tm:text-[12px]"
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
-                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                <SegmentedToggle
+                  value={String(bits)}
+                  options={bitOptions.map((b) => ({ value: String(b), label: String(b) }))}
+                  onValueChange={(v) => setBits(Number(v))}
                 />
               </FieldContent>
             </Field>
           )}
+        </>
+      )}
 
-          {mode !== 'edit' && (
-            <Field>
-              <FieldLabel>{t('terminal-ui.keychain.field.passphrase')}</FieldLabel>
-              <FieldContent>
-                <Input type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} />
-              </FieldContent>
-            </Field>
-          )}
+      {mode === 'new' && (
+        <Field>
+          <FieldLabel>{t('terminal-ui.keychain.field.privateKey')}</FieldLabel>
+          <FieldContent>
+            <Textarea
+              className="tm:min-h-28 tm:font-mono tm:text-[12px]"
+              value={privateKey}
+              onChange={(e) => setPrivateKey(e.target.value)}
+              placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+            />
+          </FieldContent>
+        </Field>
+      )}
 
-          {mode === 'generate' && passphrase.trim() !== '' && (
-            <>
-              <Field>
-                <FieldLabel>{t('terminal-ui.keychain.field.cipher')}</FieldLabel>
-                <FieldContent>
-                  <SegmentedToggle
-                    value={cipher}
-                    options={[
-                      { value: 'aes256-ctr', label: 'AES-256' },
-                      { value: 'aes128-ctr', label: 'AES-128' },
-                      { value: '3des-cbc', label: '3DES' },
-                    ]}
-                    onValueChange={(v) => setCipher(v as SshKeyCipher)}
-                  />
-                </FieldContent>
-              </Field>
-              <Field>
-                <FieldLabel>{t('terminal-ui.keychain.field.rounds')}</FieldLabel>
-                <FieldContent>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={1000}
-                    value={rounds}
-                    onChange={(e) => setRounds(e.target.value)}
-                  />
-                  <p className="tm:mt-1 tm:text-[11px] tm:text-grey-fg">{t('terminal-ui.keychain.field.roundsHelp')}</p>
-                </FieldContent>
-              </Field>
-            </>
-          )}
+      {mode !== 'edit' && (
+        <Field>
+          <FieldLabel>{t('terminal-ui.keychain.field.passphrase')}</FieldLabel>
+          <FieldContent>
+            <Input type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} />
+          </FieldContent>
+        </Field>
+      )}
 
-          <label className="tm:flex tm:items-center tm:gap-2 tm:text-[12px] tm:text-grey-fg2">
-            <Switch checked={savePassphrase} onCheckedChange={setSavePassphrase} />
-            {t('terminal-ui.keychain.field.savePassphrase')}
-          </label>
-
+      {mode === 'generate' && passphrase.trim() !== '' && (
+        <>
           <Field>
-            <FieldLabel>{t('terminal-ui.keychain.field.certificate')}</FieldLabel>
+            <FieldLabel>{t('terminal-ui.keychain.field.cipher')}</FieldLabel>
             <FieldContent>
-              <Textarea
-                className="tm:font-mono tm:text-[12px]"
-                value={certificate}
-                onChange={(e) => setCertificate(e.target.value)}
-                placeholder="ssh-ed25519-cert-v01@openssh.com ..."
+              <SegmentedToggle
+                value={cipher}
+                options={[
+                  { value: 'aes256-ctr', label: 'AES-256' },
+                  { value: 'aes128-ctr', label: 'AES-128' },
+                  { value: '3des-cbc', label: '3DES' },
+                ]}
+                onValueChange={(v) => setCipher(v as SshKeyCipher)}
               />
             </FieldContent>
           </Field>
+          <Field>
+            <FieldLabel>{t('terminal-ui.keychain.field.rounds')}</FieldLabel>
+            <FieldContent>
+              <Input
+                type="number"
+                min={1}
+                max={1000}
+                value={rounds}
+                onChange={(e) => setRounds(e.target.value)}
+              />
+              <p className="tm:mt-1 tm:text-[11px] tm:text-grey-fg">{t('terminal-ui.keychain.field.roundsHelp')}</p>
+            </FieldContent>
+          </Field>
+        </>
+      )}
 
-          {error && <div className="tm:text-[12px] tm:text-red">{error}</div>}
+      <label className="tm:flex tm:items-center tm:gap-2 tm:text-[12px] tm:text-grey-fg2">
+        <Switch checked={savePassphrase} onCheckedChange={setSavePassphrase} />
+        {t('terminal-ui.keychain.field.savePassphrase')}
+      </label>
 
-          <DialogFooter className="tm:gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>{t('terminal-ui.keychain.action.cancel')}</Button>
-            <Button variant="primary" size="sm" onClick={handleSubmit} disabled={!canSubmit || busy}>
-              {t('terminal-ui.keychain.action.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </DialogPortal>
-    </DialogPrimitive>
+      <Field>
+        <FieldLabel>{t('terminal-ui.keychain.field.certificate')}</FieldLabel>
+        <FieldContent>
+          <Textarea
+            className="tm:font-mono tm:text-[12px]"
+            value={certificate}
+            onChange={(e) => setCertificate(e.target.value)}
+            placeholder="ssh-ed25519-cert-v01@openssh.com ..."
+          />
+        </FieldContent>
+      </Field>
+
+      {error && <div className="tm:text-[12px] tm:text-red">{error}</div>}
+
+      <div className="tm:flex tm:justify-end tm:gap-2 tm:pt-1">
+        <Button variant="outline" size="sm" onClick={handleClose}>{t('terminal-ui.keychain.action.cancel')}</Button>
+        <Button variant="primary" size="sm" onClick={handleSubmit} disabled={!canSubmit || busy}>
+          {t('terminal-ui.keychain.action.save')}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -334,7 +346,6 @@ function SegmentedToggle({ value, options, onValueChange }: ISegmentedToggleProp
       type="single"
       value={value}
       spacing={2}
-      // Ignore empty value so a segment is always selected.
       onValueChange={(next) => next && onValueChange(next)}
       className="tm:w-full tm:border tm:border-line tm:bg-one-bg3 tm:p-0.5"
     >

@@ -13,90 +13,67 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IKnownHost } from '@termlnk/terminal';
 import { LocaleService } from '@termlnk/core';
-import { Button, DialogContent, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogPrimitive, DialogTitle, Field, FieldContent, FieldLabel, useDependency } from '@termlnk/design';
+import { Button, Field, FieldContent, FieldLabel, useDependency, useObservable } from '@termlnk/design';
 import { Check, Copy } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { IKnownHostDetailDialogService } from '../../services/known-hosts/known-host-detail-dialog.service';
 
-interface IKnownHostDetailDialogProps {
-  host: IKnownHost;
-  onClose: () => void;
-}
-
-const dialogContentCls = `
-  tm:w-[min(34rem,calc(100%-2rem))] tm:gap-4 tm:rounded-xl tm:border-line tm:bg-one-bg tm:p-5
-  tm:shadow-[0_18px_52px_rgb(0_0_0/0.45)]
-`;
 const valueCls = `
   tm:rounded-md tm:border tm:border-line tm:bg-one-bg3 tm:px-2.5 tm:py-1.5 tm:text-[12px] tm:break-all
   tm:text-light-grey
 `;
 
-export function KnownHostDetailDialog({ host, onClose }: IKnownHostDetailDialogProps) {
+export function KnownHostDetailDialog() {
   const localeService = useDependency(LocaleService);
+  const detailDialogService = useDependency(IKnownHostDetailDialogService);
   const t = useCallback((k: string) => localeService.t(k), [localeService]);
 
+  const state = useObservable(detailDialogService.state$, detailDialogService.getState());
+  const host = state.host;
+
+  if (!host) {
+    return null;
+  }
+
   return (
-    <DialogPrimitive open onOpenChange={(open) => !open && onClose()}>
-      <DialogPortal>
-        <DialogOverlay className="tm:bg-darker-black/70 tm:backdrop-blur-[1.5px]" />
-        <DialogContent
-          closable={false}
-          className={dialogContentCls}
-          onEscapeKeyDown={(e) => {
-            e.preventDefault();
-            onClose();
-          }}
-          onPointerDownOutside={(e) => {
-            e.preventDefault();
-            onClose();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle className="tm:text-[15px] tm:font-semibold tm:text-white">
-              {t('terminal-ui.knownHosts.detail.title')}
-            </DialogTitle>
-          </DialogHeader>
+    <div className="tm:flex tm:flex-col tm:gap-4">
+      <div className="tm:flex tm:gap-3">
+        <Field className="tm:flex-1">
+          <FieldLabel>{t('terminal-ui.knownHosts.detail.host')}</FieldLabel>
+          <FieldContent><div className={valueCls}>{host.host}</div></FieldContent>
+        </Field>
+        <Field className="tm:w-24">
+          <FieldLabel>{t('terminal-ui.knownHosts.detail.port')}</FieldLabel>
+          <FieldContent><div className={valueCls}>{host.port}</div></FieldContent>
+        </Field>
+      </div>
 
-          <div className="tm:flex tm:gap-3">
-            <Field className="tm:flex-1">
-              <FieldLabel>{t('terminal-ui.knownHosts.detail.host')}</FieldLabel>
-              <FieldContent><div className={valueCls}>{host.host}</div></FieldContent>
-            </Field>
-            <Field className="tm:w-24">
-              <FieldLabel>{t('terminal-ui.knownHosts.detail.port')}</FieldLabel>
-              <FieldContent><div className={valueCls}>{host.port}</div></FieldContent>
-            </Field>
-          </div>
+      <Field>
+        <FieldLabel>{t('terminal-ui.knownHosts.detail.keyType')}</FieldLabel>
+        <FieldContent><div className={valueCls}>{host.keyType}</div></FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel>{t('terminal-ui.knownHosts.detail.keyType')}</FieldLabel>
-            <FieldContent><div className={valueCls}>{host.keyType}</div></FieldContent>
-          </Field>
+      <Field>
+        <FieldLabel>{t('terminal-ui.knownHosts.detail.fingerprint')}</FieldLabel>
+        <FieldContent><CopyableValue value={host.fingerprint} /></FieldContent>
+      </Field>
 
-          <Field>
-            <FieldLabel>{t('terminal-ui.knownHosts.detail.fingerprint')}</FieldLabel>
-            <FieldContent><CopyableValue value={host.fingerprint} /></FieldContent>
-          </Field>
+      {host.publicKey && (
+        <Field>
+          <FieldLabel>{t('terminal-ui.knownHosts.detail.publicKey')}</FieldLabel>
+          <FieldContent>
+            <CopyableValue value={`${host.keyType} ${host.publicKey}`} mono />
+          </FieldContent>
+        </Field>
+      )}
 
-          {host.publicKey && (
-            <Field>
-              <FieldLabel>{t('terminal-ui.knownHosts.detail.publicKey')}</FieldLabel>
-              <FieldContent>
-                <CopyableValue value={`${host.keyType} ${host.publicKey}`} mono />
-              </FieldContent>
-            </Field>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={onClose}>
-              {t('terminal-ui.knownHosts.detail.close')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </DialogPortal>
-    </DialogPrimitive>
+      <div className="tm:flex tm:justify-end">
+        <Button variant="outline" size="sm" onClick={() => detailDialogService.close()}>
+          {t('terminal-ui.knownHosts.detail.close')}
+        </Button>
+      </div>
+    </div>
   );
 }
 

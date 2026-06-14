@@ -15,8 +15,8 @@
 
 import type { IPublicIdentity, IPublicSshKey } from '@termlnk/terminal';
 import type { Observable } from 'rxjs';
-import { Disposable } from '@termlnk/core';
-import { BehaviorSubject } from 'rxjs';
+import { createIdentifier, Disposable } from '@termlnk/core';
+import { BehaviorSubject, Subject } from 'rxjs';
 
 export type KeyDialogMode = 'generate' | 'new' | 'edit';
 
@@ -25,45 +25,66 @@ export interface IKeychainDialogState {
   identity?: { identity?: IPublicIdentity };
 }
 
-/**
- * Holds which keychain dialog is open so commands (DI layer) can open dialogs
- * that the KeychainExplorer view renders by subscribing to `state$`. Mirrors
- * HostDialogService: the view never owns this state, commands drive it.
- */
-export class KeychainDialogService extends Disposable {
+export interface IKeychainDialogService {
+  readonly state$: Observable<IKeychainDialogState>;
+  readonly stateUpdate$: Observable<IKeychainDialogState>;
+  getState(): IKeychainDialogState;
+  openGenerateKey(): void;
+  openNewKey(): void;
+  openEditKey(key: IPublicSshKey): void;
+  openNewIdentity(): void;
+  openEditIdentity(identity: IPublicIdentity): void;
+  close(): void;
+}
+export const IKeychainDialogService = createIdentifier<IKeychainDialogService>('terminal-ui.keychain-dialog-service');
+
+export class KeychainDialogService extends Disposable implements IKeychainDialogService {
   private readonly _state$ = new BehaviorSubject<IKeychainDialogState>({});
   readonly state$: Observable<IKeychainDialogState> = this._state$.asObservable();
 
-  get state(): IKeychainDialogState {
+  private readonly _stateUpdate$ = new Subject<IKeychainDialogState>();
+  readonly stateUpdate$: Observable<IKeychainDialogState> = this._stateUpdate$.asObservable();
+
+  getState(): IKeychainDialogState {
     return this._state$.getValue();
   }
 
   openGenerateKey(): void {
-    this._state$.next({ key: { mode: 'generate' } });
+    this._transition({ key: { mode: 'generate' } });
   }
 
   openNewKey(): void {
-    this._state$.next({ key: { mode: 'new' } });
+    this._transition({ key: { mode: 'new' } });
   }
 
   openEditKey(key: IPublicSshKey): void {
-    this._state$.next({ key: { mode: 'edit', key } });
+    this._transition({ key: { mode: 'edit', key } });
   }
 
   openNewIdentity(): void {
-    this._state$.next({ identity: {} });
+    this._transition({ identity: {} });
   }
 
   openEditIdentity(identity: IPublicIdentity): void {
-    this._state$.next({ identity: { identity } });
+    this._transition({ identity: { identity } });
   }
 
   close(): void {
-    this._state$.next({});
+    const current = this._state$.getValue();
+    if (!current.key && !current.identity) {
+      return;
+    }
+    this._transition({});
   }
 
   override dispose(): void {
     super.dispose();
     this._state$.complete();
+    this._stateUpdate$.complete();
+  }
+
+  private _transition(next: IKeychainDialogState): void {
+    this._state$.next(next);
+    this._stateUpdate$.next(next);
   }
 }

@@ -15,15 +15,13 @@
 
 import type { IPublicIdentity, IPublicSshKey } from '@termlnk/terminal';
 import { LocaleService } from '@termlnk/core';
-import { Badge, Button, cn, Tabs, TabsContent, TabsList, TabsTrigger, useDependency, useObservable } from '@termlnk/design';
+import { Badge, Button, cn, Tabs, TabsContent, TabsList, TabsTrigger, useDependency } from '@termlnk/design';
 import { IKeychainManagerService } from '@termlnk/rpc-client';
 import { IContextMenuService } from '@termlnk/ui';
 import { CirclePlus, FileKey2, KeyRound, Pencil, Trash2, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { KEYCHAIN_ADD_MENU } from '../../controllers/keychain/add-menu';
-import { KeychainDialogService } from '../../services/keychain/keychain-dialog.service';
-import { IdentityDialog } from './IdentityDialog';
-import { KeyDialog } from './KeyDialog';
+import { IKeychainDialogService } from '../../services/keychain/keychain-dialog.service';
 
 type KeychainTab = 'keys' | 'identities';
 
@@ -31,15 +29,13 @@ export function KeychainExplorer() {
   const localeService = useDependency(LocaleService);
   const keychain = useDependency(IKeychainManagerService);
   const contextMenuService = useDependency(IContextMenuService);
-  const dialogService = useDependency(KeychainDialogService);
+  const dialogService = useDependency(IKeychainDialogService);
   const t = useCallback((k: string) => localeService.t(k), [localeService]);
 
   const [tab, setTab] = useState<KeychainTab>('keys');
   const [keys, setKeys] = useState<IPublicSshKey[]>([]);
   const [identities, setIdentities] = useState<IPublicIdentity[]>([]);
   const [error, setError] = useState('');
-
-  const dialog = useObservable(dialogService.state$, dialogService.state);
 
   const reloadKeys = useCallback(() => {
     keychain.listKeys().then(setKeys).catch(() => {});
@@ -159,13 +155,6 @@ export function KeychainExplorer() {
             )}
         </TabsContent>
       </Tabs>
-
-      {dialog.key && (
-        <KeyDialog mode={dialog.key.mode} editKey={dialog.key.key} onClose={() => dialogService.close()} />
-      )}
-      {dialog.identity && (
-        <IdentityDialog editIdentity={dialog.identity.identity} onClose={() => dialogService.close()} />
-      )}
     </div>
   );
 }

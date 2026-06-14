@@ -15,3 +15,5 @@
 
 export const KEYCHAIN_EXPLORER_NAME = 'terminal-ui.KEYCHAIN_EXPLORER';
 export const KEYCHAIN_ICON_NAME = 'terminal-ui.KEYCHAIN_ICON';
+export const KEY_DIALOG_COMPONENT_NAME = 'terminal-ui.component.key-dialog';
+export const IDENTITY_DIALOG_COMPONENT_NAME = 'terminal-ui.component.identity-dialog';

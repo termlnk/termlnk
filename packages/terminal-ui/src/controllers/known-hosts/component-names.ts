@@ -15,3 +15,4 @@
 
 export const KNOWN_HOSTS_EXPLORER_NAME = 'terminal-ui.KNOWN_HOSTS_EXPLORER';
 export const KNOWN_HOSTS_ICON_NAME = 'terminal-ui.KNOWN_HOSTS_ICON';
+export const KNOWN_HOST_DETAIL_DIALOG_COMPONENT_NAME = 'terminal-ui.component.known-host-detail-dialog';

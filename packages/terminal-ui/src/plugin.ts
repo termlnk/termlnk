@@ -23,6 +23,8 @@ import { defaultPluginConfig, TERMINAL_UI_PLUGIN_CONFIG_KEY } from './controller
 import { HostDialogController } from './controllers/host-dialog/host-dialog.controller';
 import { HostsExplorerController } from './controllers/hosts-explorer/hosts-explorer.controller';
 import { KeychainController } from './controllers/keychain/keychain.controller';
+import { KeychainDialogController } from './controllers/keychain/keychain-dialog.controller';
+import { KnownHostDetailDialogController } from './controllers/known-hosts/known-host-detail-dialog.controller';
 import { KnownHostsController } from './controllers/known-hosts/known-hosts.controller';
 import { SessionSyncController } from './controllers/session-sync.controller';
 import { TerminalPersistenceController } from './controllers/terminal-persistence.controller';
@@ -30,7 +32,8 @@ import { TerminalUIController } from './controllers/terminal-ui.controller';
 import { WorkspaceController } from './controllers/workspace/workspace.controller';
 import { HostDialogService } from './services/host-dialog/host-dialog.service';
 import { HostExplorerService, IHostExplorerService } from './services/hosts-explorer/hosts-explorer.service';
-import { KeychainDialogService } from './services/keychain/keychain-dialog.service';
+import { IKeychainDialogService, KeychainDialogService } from './services/keychain/keychain-dialog.service';
+import { IKnownHostDetailDialogService, KnownHostDetailDialogService } from './services/known-hosts/known-host-detail-dialog.service';
 import { ILastCwdService, LastCwdService } from './services/local-terminal/last-cwd.service';
 import { ITabListDropdownService, TabListDropdownService } from './services/tab-list-dropdown/tab-list-dropdown.service';
 import { ITerminalInputService, TerminalInputService } from './services/terminal-input/terminal-input.service';
@@ -71,6 +74,8 @@ export class TerminalUIPlugin extends Plugin {
       [TerminalPersistenceController],
       [SessionSyncController],
       [KeychainController],
+      [KeychainDialogController],
+      [KnownHostDetailDialogController],
       [KnownHostsController],
     ]);
   }
@@ -79,7 +84,8 @@ export class TerminalUIPlugin extends Plugin {
     const dependencies: Dependency[] = [
       [HostDialogService, { useClass: HostDialogService }],
       [IHostExplorerService, { useClass: HostExplorerService }],
-      [KeychainDialogService, { useClass: KeychainDialogService }],
+      [IKeychainDialogService, { useClass: KeychainDialogService }],
+      [IKnownHostDetailDialogService, { useClass: KnownHostDetailDialogService }],
       [ITerminalUIService, { useClass: TerminalUIService }],
       [ITerminalViewRegistry, { useClass: TerminalViewRegistry }],
       [ITabListDropdownService, { useClass: TabListDropdownService }],
@@ -95,6 +101,8 @@ export class TerminalUIPlugin extends Plugin {
       [TerminalPersistenceController],
       [SessionSyncController],
       [KeychainController],
+      [KeychainDialogController],
+      [KnownHostDetailDialogController],
       [KnownHostsController],
     ];
     registerDependencies(this._injector, dependencies);

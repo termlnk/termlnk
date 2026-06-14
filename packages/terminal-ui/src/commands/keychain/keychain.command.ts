@@ -14,12 +14,12 @@
  */
 
 import type { IAccessor, ICommand } from '@termlnk/core';
-import { KeychainDialogService } from '../../services/keychain/keychain-dialog.service';
+import { IKeychainDialogService } from '../../services/keychain/keychain-dialog.service';
 
 export const GenerateKeyCommand: ICommand = {
   id: 'terminal-ui.command.keychain.generate-key',
   handler: (accessor: IAccessor) => {
-    accessor.get(KeychainDialogService).openGenerateKey();
+    accessor.get(IKeychainDialogService).openGenerateKey();
     return true;
   },
 };
@@ -27,7 +27,7 @@ export const GenerateKeyCommand: ICommand = {
 export const NewKeyCommand: ICommand = {
   id: 'terminal-ui.command.keychain.new-key',
   handler: (accessor: IAccessor) => {
-    accessor.get(KeychainDialogService).openNewKey();
+    accessor.get(IKeychainDialogService).openNewKey();
     return true;
   },
 };
@@ -35,7 +35,7 @@ export const NewKeyCommand: ICommand = {
 export const NewIdentityCommand: ICommand = {
   id: 'terminal-ui.command.keychain.new-identity',
   handler: (accessor: IAccessor) => {
-    accessor.get(KeychainDialogService).openNewIdentity();
+    accessor.get(IKeychainDialogService).openNewIdentity();
     return true;
   },
 };
