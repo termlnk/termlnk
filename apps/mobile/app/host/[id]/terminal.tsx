@@ -14,15 +14,20 @@
  */
 
 import type { IMobileHost } from '@termlnk/database-mobile';
-import type { IMobileSshSession } from '@termlnk/terminal-mobile';
+import type { IMobileSshSession, IXtermWebViewConfig } from '@termlnk/terminal-mobile';
 import { buildXtermHtml, xtermBridge } from '@termlnk/terminal-mobile';
+import { base46ToXterm, THEME_MAP } from '@termlnk/themes';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useConnectionService, usePreferencesService, useRecentSessionsRepository, useSyncService } from '../../../src/core/core-context';
+import { AuthFailedSheet } from '../../../src/terminal/auth-failed-sheet';
+import { HostKeySheet } from '../../../src/terminal/host-key-sheet';
 import { TerminalAccessory } from '../../../src/terminal/terminal-accessory';
+import { useSshEvent } from '../../../src/terminal/use-ssh-event';
+import { useThemeColors } from '../../../src/theme/theme-provider';
 
 type ConnectState = 'connecting' | 'awaiting-credentials' | 'connected' | 'error';
 
@@ -30,8 +35,6 @@ interface IManualCredentials {
   username: string;
   password: string;
 }
-
-const TERMINAL_BACKGROUND = '#0a0a0a';
 
 export default function TerminalScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -41,12 +44,10 @@ export default function TerminalScreen() {
   const recentRepo = useRecentSessionsRepository();
   const connectionService = useConnectionService();
   const prefsService = usePreferencesService();
-  // Snapshot the font size once for this session. Subscribing reactively would rebuild
-  // the WebView `source` on any prefs change and tear down a live terminal mid-session;
-  // a new font size instead applies the next time the terminal is opened.
-  const [fontSize, setFontSize] = useState<number | null>(null);
-  // Live value shown in the theme panel stepper; decoupled from the snapshot above
-  // so adjusting it never rebuilds the WebView mid-session.
+  // Snapshot terminal config once for this session — the WebView HTML is built from
+  // this snapshot. Live adjustments (font size, theme) are pushed via injectJavaScript.
+  const [termConfig, setTermConfig] = useState<IXtermWebViewConfig | null>(null);
+  // Live value shown in the theme panel stepper.
   const [displayFontSize, setDisplayFontSize] = useState(13);
   const webviewRef = useRef<WebView>(null);
   // Tracks whether the soft keyboard (xterm textarea focus) is currently raised.
@@ -58,28 +59,50 @@ export default function TerminalScreen() {
   const [error, setError] = useState<string | null>(null);
   const [manualCreds, setManualCreds] = useState<IManualCredentials>({ username: '', password: '' });
   const [session, setSession] = useState<IMobileSshSession | null>(null);
+  const { hostKeyEvent, authFailedEvent, setPendingEvent } = useSshEvent(id);
   // startShell needs the WebView's fit-size up front — the russh wrapper has
   // no window-change, so the first PTY dimensions are also the final ones.
   const shellStartedRef = useRef(false);
   // Lands the host in the Recent tab once, on the first connected emission.
   const touchedRef = useRef(false);
 
-  const xtermHtml = useMemo(() => buildXtermHtml(fontSize ?? 13), [fontSize]);
+  const colors = useThemeColors();
+
+  const terminalBg = useMemo(
+    () => termConfig?.theme?.background ?? colors.surface,
+    [termConfig, colors.surface]
+  );
+
+  const xtermHtml = useMemo(() => {
+    if (!termConfig) {
+      return null;
+    }
+    return buildXtermHtml(termConfig);
+  }, [termConfig]);
 
   useEffect(() => {
     void prefsService.ready().then(() => {
-      const fs = prefsService.get().terminalFontSize;
-      setFontSize(fs);
-      setDisplayFontSize(fs);
+      const p = prefsService.get();
+      const theme = THEME_MAP.get(p.terminalThemeName);
+      const xtermTheme = theme ? base46ToXterm(theme) : undefined;
+      setTermConfig({
+        fontSize: p.terminalFontSize,
+        fontFamily: p.terminalFontFamily,
+        cursorStyle: p.terminalCursorStyle,
+        cursorBlink: p.terminalCursorBlink,
+        scrollback: p.terminalScrollback,
+        theme: xtermTheme,
+      });
+      setDisplayFontSize(p.terminalFontSize);
     });
   }, [prefsService]);
 
-  // Font-size changes persist and apply on the next connect (the running session
-  // keeps its snapshot to avoid tearing down the WebView).
+  // Font-size changes persist and apply live to the running terminal.
   const onFontDelta = useCallback((delta: number) => {
     setDisplayFontSize((prev) => {
       const next = Math.min(22, Math.max(9, prev + delta));
       void prefsService.update({ terminalFontSize: next });
+      webviewRef.current?.injectJavaScript(`window.__termlnkTerm && window.__termlnkTerm.setFontSize(${next}); true;`);
       return next;
     });
   }, [prefsService]);
@@ -106,6 +129,16 @@ export default function TerminalScreen() {
     const b64 = xtermBridge.toBase64(output);
     webviewRef.current?.injectJavaScript(`window.__termlnkTerm.write(${JSON.stringify(b64)}); true;`);
   }, []);
+
+  const onSetThemeLive = useCallback((themeName: string) => {
+    const theme = THEME_MAP.get(themeName);
+    if (!theme) {
+      return;
+    }
+    const xtermTheme = base46ToXterm(theme);
+    webviewRef.current?.injectJavaScript(`window.__termlnkTerm && window.__termlnkTerm.setTheme(${JSON.stringify(xtermTheme)}); true;`);
+    void prefsService.update({ terminalThemeName: themeName });
+  }, [prefsService]);
 
   // Subscribe to the public hosts stream for the row metadata (label, addr, port).
   useEffect(() => {
@@ -194,7 +227,7 @@ export default function TerminalScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1"
-      style={{ backgroundColor: TERMINAL_BACKGROUND }}
+      style={{ backgroundColor: terminalBg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <Stack.Screen
@@ -202,7 +235,7 @@ export default function TerminalScreen() {
           headerShown: false,
         }}
       />
-      <View style={{ height: insets.top, backgroundColor: TERMINAL_BACKGROUND }} />
+      <View style={{ height: insets.top, backgroundColor: terminalBg }} />
 
       {state === 'connecting' && (
         <View className="flex-1 items-center justify-center">
@@ -256,7 +289,7 @@ export default function TerminalScreen() {
         </View>
       )}
 
-      {state === 'connected' && (
+      {state === 'connected' && xtermHtml != null && (
         <>
           <WebView
             ref={webviewRef}
@@ -266,7 +299,7 @@ export default function TerminalScreen() {
             domStorageEnabled
             keyboardDisplayRequiresUserAction={false}
             className="flex-1"
-            style={{ backgroundColor: TERMINAL_BACKGROUND }}
+            style={{ backgroundColor: terminalBg }}
             onError={(e) => {
               const desc = e.nativeEvent.description || 'Unknown WebView error';
               setError(`WebView failed to load: ${desc}`);
@@ -319,10 +352,14 @@ export default function TerminalScreen() {
               onToggleKeyboard={onToggleKeyboard}
               fontSize={displayFontSize}
               onFontDelta={onFontDelta}
+              onSetThemeLive={onSetThemeLive}
             />
           )}
         </>
       )}
+
+      <HostKeySheet event={hostKeyEvent} onDismiss={() => setPendingEvent(null)} />
+      <AuthFailedSheet event={authFailedEvent} onDismiss={() => setPendingEvent(null)} />
     </KeyboardAvoidingView>
   );
 }

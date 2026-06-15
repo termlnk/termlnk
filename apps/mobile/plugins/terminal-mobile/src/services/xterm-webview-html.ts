@@ -13,7 +13,20 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IXtermTheme } from '@termlnk/themes';
+import { base46ToXterm, oneDark } from '@termlnk/themes';
 import { XTERM_ADDON_FIT_VERSION, XTERM_CSS, XTERM_VERSION, XTERM_WEBVIEW_BUNDLE_JS } from './webview/xterm-webview-bundle.generated';
+
+export interface IXtermWebViewConfig {
+  readonly fontSize?: number;
+  readonly fontFamily?: string;
+  readonly cursorStyle?: 'bar' | 'block' | 'underline';
+  readonly cursorBlink?: boolean;
+  readonly scrollback?: number;
+  readonly theme?: IXtermTheme;
+}
+
+const DEFAULT_THEME: IXtermTheme = base46ToXterm(oneDark);
 
 // Defensive escape for content embedded inside <script> / <style>. The bundle and CSS
 // currently contain no `</script>` / `</style>` sequence, but masking `</` to `<\/`
@@ -23,11 +36,23 @@ function escapeForHtmlInline(source: string): string {
   return source.replace(/<\//g, '<\\/');
 }
 
-export function buildXtermHtml(fontSize = 13): string {
-  // Coerce + clamp before injecting into the inline config; a dirty stored value
-  // (NaN / out-of-range / non-numeric) would otherwise emit a bad font size. The entry
-  // bundle clamps again defensively when the config is absent.
-  const safeFontSize = Number.isFinite(fontSize) ? Math.min(22, Math.max(9, Math.round(fontSize))) : 13;
+function clampFontSize(value: number | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(22, Math.max(9, Math.round(value)))
+    : 13;
+}
+
+export function buildXtermHtml(config?: IXtermWebViewConfig): string {
+  const fontSize = clampFontSize(config?.fontSize);
+  const fontFamily = config?.fontFamily ?? 'Menlo, monospace';
+  const cursorStyle = config?.cursorStyle ?? 'bar';
+  const cursorBlink = config?.cursorBlink ?? true;
+  const scrollback = config?.scrollback ?? 1000;
+  const theme = config?.theme ?? DEFAULT_THEME;
+  const bg = theme.background;
+
+  const inlineConfig = JSON.stringify({ fontSize, fontFamily, cursorStyle, cursorBlink, scrollback, theme });
+
   const css = escapeForHtmlInline(XTERM_CSS);
   const bundle = escapeForHtmlInline(XTERM_WEBVIEW_BUNDLE_JS);
 
@@ -38,14 +63,15 @@ export function buildXtermHtml(fontSize = 13): string {
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <style>${css}</style>
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; background: #0a0a0a; }
+    html, body { margin: 0; padding: 0; height: 100%; background: ${bg}; }
     #t { position: absolute; inset: 0; padding: 8px; }
+    .xterm .xterm-viewport::-webkit-scrollbar { display: none; }
   </style>
 </head>
 <body>
   <div id="t"></div>
   <!-- xterm ${XTERM_VERSION} + @xterm/addon-fit ${XTERM_ADDON_FIT_VERSION} (esbuild IIFE, inlined) -->
-  <script>window.__TERMLNK_CONFIG__ = { fontSize: ${safeFontSize} };</script>
+  <script>window.__TERMLNK_CONFIG__ = ${inlineConfig};</script>
   <script>${bundle}</script>
 </body>
 </html>`;

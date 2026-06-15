@@ -14,27 +14,15 @@
  */
 
 import type { LucideIcon } from 'lucide-react-native';
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Braces,
-  ChevronLeft,
-  CircleX,
-  Clock,
-  HelpCircle,
-  Keyboard,
-  LayoutGrid,
-  Minus,
-  Palette,
-  Plus,
-  Settings,
-  TerminalSquare,
-} from 'lucide-react-native';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { DEFAULT_PREFERENCES } from '@termlnk/database-mobile';
+import { ALL_THEMES } from '@termlnk/themes';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Braces, ChevronLeft, CircleX, Clock, Keyboard, LayoutGrid, Minus, Palette, Plus, Settings, TerminalSquare } from 'lucide-react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, FlatList, Pressable, ScrollView, Text, View } from 'react-native';
+import { useObservable, usePreferencesService } from '../core/core-context';
+import { KeyboardHideIcon } from './keyboard-hide-icon';
 import { ARROW_KEYS, KEY_GRID } from './terminal-keys';
+import { ThemeMiniCard } from './theme-mini-card';
 
 // The terminal keeps its own dark identity independent of the OS chrome theme
 // (it sits next to the always-dark xterm WebView), so its palette is fixed here.
@@ -59,6 +47,7 @@ interface ITerminalAccessoryProps {
   readonly onToggleKeyboard: () => void;
   readonly fontSize: number;
   readonly onFontDelta: (delta: number) => void;
+  readonly onSetThemeLive?: (themeName: string) => void;
 }
 
 const ARROW_ICONS: Record<string, LucideIcon> = {
@@ -70,6 +59,11 @@ const ARROW_ICONS: Record<string, LucideIcon> = {
 
 export function TerminalAccessory(props: ITerminalAccessoryProps) {
   const [panel, setPanel] = useState<Panel>('keys');
+  const [collapsed, setCollapsed] = useState(false);
+
+  const onToggleCollapse = useCallback(() => {
+    setCollapsed((prev) => !prev);
+  }, []);
 
   return (
     <View style={{ backgroundColor: TERM.bg, borderTopColor: TERM.border, borderTopWidth: 1 }}>
@@ -78,37 +72,49 @@ export function TerminalAccessory(props: ITerminalAccessoryProps) {
         onBack={props.onBack}
         onClose={props.onClose}
         onToggleKeyboard={props.onToggleKeyboard}
+        collapsed={collapsed}
+        onToggleCollapse={onToggleCollapse}
       />
 
-      <View style={{ height: 320 }}>
-        {panel === 'keys' && <KeysPanel onKey={props.onKey} />}
-        {panel === 'snippets' && <SnippetsPanel />}
-        {panel === 'history' && <PlaceholderPanel title="No history yet" subtitle="Commands you run will appear here." />}
-        {panel === 'theme' && <ThemePanel fontSize={props.fontSize} onFontDelta={props.onFontDelta} />}
-      </View>
+      {!collapsed && (
+        <>
+          <View style={{ height: 320 }}>
+            {panel === 'keys' && <KeysPanel onKey={props.onKey} />}
+            {panel === 'snippets' && <SnippetsPanel />}
+            {panel === 'history' && <PlaceholderPanel title="No history yet" subtitle="Commands you run will appear here." />}
+            {panel === 'theme' && (
+              <ThemePanel
+                fontSize={props.fontSize}
+                onFontDelta={props.onFontDelta}
+                onSetThemeLive={props.onSetThemeLive}
+              />
+            )}
+          </View>
 
-      <BottomToolbar panel={panel} onSelect={setPanel} onToggleKeyboard={props.onToggleKeyboard} />
+          <BottomToolbar panel={panel} onSelect={setPanel} onToggleCollapse={onToggleCollapse} />
+        </>
+      )}
     </View>
   );
 }
 
-function HostBar({ hostLabel, onBack, onClose, onToggleKeyboard }: { hostLabel: string; onBack: () => void; onClose: () => void; onToggleKeyboard: () => void }) {
+function HostBar({ hostLabel, onBack, onClose, onToggleKeyboard, collapsed, onToggleCollapse }: { hostLabel: string; onBack: () => void; onClose: () => void; onToggleKeyboard: () => void; collapsed: boolean; onToggleCollapse: () => void }) {
   return (
-    <View className="flex-row items-center px-3 py-2">
+    <View className="flex-row items-center px-3 py-1.5" style={collapsed ? { paddingBottom: 20 } : undefined}>
       <ToolButton icon={ChevronLeft} onPress={onBack} />
       <View
-        className="mx-2 h-11 flex-1 flex-row items-center rounded-2xl px-3"
-        style={{ backgroundColor: TERM.pillBg, borderWidth: 1, borderColor: TERM.green }}
+        className="mx-2 h-9 flex-1 flex-row items-center rounded-lg px-3"
+        style={{ backgroundColor: TERM.pillBg }}
       >
-        <TerminalSquare size={18} color={TERM.green} />
-        <Text className="ml-2 flex-1 text-[15px] font-medium" style={{ color: TERM.green }} numberOfLines={1}>{hostLabel}</Text>
+        <TerminalSquare size={16} color={TERM.green} />
+        <Text className="ml-2 flex-1 text-[14px] font-medium" style={{ color: TERM.green }} numberOfLines={1}>{hostLabel}</Text>
         <Pressable onPress={onClose} hitSlop={8} className="active:opacity-60">
-          <CircleX size={18} color={TERM.green} />
+          <CircleX size={16} color={TERM.green} />
         </Pressable>
       </View>
       <ToolButton icon={Plus} onPress={() => Alert.alert('New session', 'Opening additional sessions is coming soon.')} />
       <View className="w-1.5" />
-      <ToolButton icon={Keyboard} onPress={onToggleKeyboard} />
+      <ToolButton icon={Keyboard} onPress={collapsed ? onToggleCollapse : onToggleKeyboard} />
     </View>
   );
 }
@@ -117,10 +123,10 @@ function ToolButton({ icon: Icon, onPress }: { icon: LucideIcon; onPress: () => 
   return (
     <Pressable
       onPress={onPress}
-      className="h-11 w-11 items-center justify-center rounded-2xl active:opacity-70"
+      className="h-9 w-9 items-center justify-center rounded-xl active:opacity-70"
       style={{ backgroundColor: TERM.key }}
     >
-      <Icon size={20} color={TERM.text} />
+      <Icon size={18} color={TERM.text} />
     </Pressable>
   );
 }
@@ -215,11 +221,51 @@ function PlaceholderPanel({ title, subtitle }: { title: string; subtitle: string
   );
 }
 
-const THEME_THUMBS = ['Termlnk Dark', 'Termlnk Light', 'Flexoki Dark', 'Kanagawa Wave'];
+function ThemePanel({ fontSize, onFontDelta, onSetThemeLive }: { fontSize: number; onFontDelta: (delta: number) => void; onSetThemeLive?: (themeName: string) => void }) {
+  const prefsService = usePreferencesService();
+  const prefs = useObservable(prefsService.prefs$, DEFAULT_PREFERENCES);
+  const currentThemeName = prefs.terminalThemeName;
 
-function ThemePanel({ fontSize, onFontDelta }: { fontSize: number; onFontDelta: (delta: number) => void }) {
-  return (
-    <ScrollView contentContainerStyle={{ padding: 12 }}>
+  const handleThemeSelect = useCallback((themeName: string) => {
+    if (onSetThemeLive) {
+      onSetThemeLive(themeName);
+    }
+  }, [onSetThemeLive]);
+
+  const paddedThemes = useMemo(() => {
+    const remainder = ALL_THEMES.length % 3;
+    if (remainder === 0) {
+      return ALL_THEMES;
+    }
+    const placeholders = Array.from({ length: 3 - remainder }, (_, i) => ({
+      _placeholder: true as const,
+      key: `__pad_${i}`,
+    }));
+    return [...ALL_THEMES, ...placeholders] as ((typeof ALL_THEMES)[number] | { _placeholder: true; key: string })[];
+  }, []);
+
+  const renderItem = useCallback(({ item }: { item: (typeof ALL_THEMES)[number] | { _placeholder: true; key: string } }) => {
+    if ('_placeholder' in item) {
+      return <View className="flex-1" />;
+    }
+    return (
+      <ThemeMiniCard
+        theme={item}
+        selected={item.name === currentThemeName}
+        onPress={() => handleThemeSelect(item.name)}
+      />
+    );
+  }, [currentThemeName, handleThemeSelect]);
+
+  const keyExtractor = useCallback((t: (typeof ALL_THEMES)[number] | { _placeholder: true; key: string }) => {
+    if ('_placeholder' in t) {
+      return t.key;
+    }
+    return t.name;
+  }, []);
+
+  const listHeader = useMemo(() => (
+    <>
       <View className="flex-row gap-2">
         <View className="flex-1 flex-row items-center justify-between rounded-xl px-3 py-2" style={{ backgroundColor: TERM.key }}>
           <Pressable onPress={() => onFontDelta(-1)} hitSlop={8} className="active:opacity-60"><Minus size={18} color={TERM.text} /></Pressable>
@@ -229,38 +275,38 @@ function ThemePanel({ fontSize, onFontDelta }: { fontSize: number; onFontDelta: 
           </Text>
           <Pressable onPress={() => onFontDelta(1)} hitSlop={8} className="active:opacity-60"><Plus size={18} color={TERM.text} /></Pressable>
         </View>
-        <View className="flex-1 items-center justify-center rounded-xl px-3 py-2" style={{ backgroundColor: TERM.key }}>
-          <Text className="text-[14px]" style={{ color: TERM.muted }}>Source Code Pro</Text>
-        </View>
       </View>
-      <Text className="mt-2 text-[12px]" style={{ color: TERM.muted }}>Font size applies the next time you connect.</Text>
+      <Text className="mt-2 text-[12px]" style={{ color: TERM.muted }}>Font size and theme changes are live.</Text>
+    </>
+  ), [fontSize, onFontDelta]);
 
-      <View className="mt-4 flex-row flex-wrap gap-3">
-        {THEME_THUMBS.map((name) => (
-          <Pressable
-            key={name}
-            onPress={() => Alert.alert('Terminal theme', 'Theme switching is coming soon.')}
-            style={{ width: '47%' }}
-            className="active:opacity-70"
-          >
-            <View className="h-20 rounded-xl" style={{ backgroundColor: TERM.key, borderWidth: 1, borderColor: TERM.border }} />
-            <Text className="mt-1 text-center text-[12px]" style={{ color: TERM.muted }}>{name}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </ScrollView>
+  return (
+    <FlatList
+      numColumns={3}
+      showsVerticalScrollIndicator={false}
+      data={paddedThemes}
+      keyExtractor={keyExtractor}
+      columnWrapperStyle={{ gap: 8, marginTop: 10 }}
+      contentContainerStyle={{ padding: 12 }}
+      ListHeaderComponent={listHeader}
+      renderItem={renderItem}
+    />
   );
 }
 
-function BottomToolbar({ panel, onSelect, onToggleKeyboard }: { panel: Panel; onSelect: (p: Panel) => void; onToggleKeyboard: () => void }) {
+function BottomToolbar({ panel, onSelect, onToggleCollapse }: { panel: Panel; onSelect: (p: Panel) => void; onToggleCollapse: () => void }) {
   return (
-    <View className="flex-row items-center justify-around border-t px-2 py-2" style={{ borderColor: TERM.border }}>
+    <View className="flex-row items-center justify-around border-t px-2 py-2" style={{ borderColor: TERM.border, paddingBottom: 20 }}>
       <TabIcon icon={LayoutGrid} active={panel === 'keys'} onPress={() => onSelect('keys')} />
       <TabIcon icon={Braces} active={panel === 'snippets'} onPress={() => onSelect('snippets')} />
       <TabIcon icon={Clock} active={panel === 'history'} onPress={() => onSelect('history')} />
       <TabIcon icon={Palette} active={panel === 'theme'} onPress={() => onSelect('theme')} />
-      <TabIcon icon={HelpCircle} active={false} onPress={() => Alert.alert('Help', 'Terminal help is coming soon.')} />
-      <TabIcon icon={Keyboard} active={false} onPress={onToggleKeyboard} />
+      <Pressable
+        onPress={onToggleCollapse}
+        className="h-10 w-10 items-center justify-center rounded-xl active:opacity-70"
+      >
+        <KeyboardHideIcon size={24} color={TERM.muted} />
+      </Pressable>
     </View>
   );
 }

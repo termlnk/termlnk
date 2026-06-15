@@ -16,8 +16,9 @@
 import type { VariantProps } from 'class-variance-authority';
 import type { ReactNode } from 'react';
 import { cva } from 'class-variance-authority';
-import { ChevronRight } from 'lucide-react-native';
-import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { ChevronDown, ChevronRight } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
 import { cn } from './cn';
 import { hapticError, hapticLight, hapticSelection } from './haptics';
@@ -57,6 +58,7 @@ interface ITextFieldProps {
   readonly secureTextEntry?: boolean;
   readonly keyboardType?: 'default' | 'numeric' | 'email-address' | 'url';
   readonly autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  readonly autoCorrect?: boolean;
   readonly multiline?: boolean;
   readonly last?: boolean;
 }
@@ -66,7 +68,7 @@ export function TextField(props: ITextFieldProps) {
   return (
     <FieldRow last={props.last}>
       <View className="px-4 py-2.5">
-        <Text className="mb-1 text-[12px] font-medium uppercase tracking-wide text-content-tertiary">
+        <Text className="mb-1 text-[12px] font-medium text-content-tertiary">
           {props.label}
         </Text>
         <TextInput
@@ -77,7 +79,7 @@ export function TextField(props: ITextFieldProps) {
           secureTextEntry={props.secureTextEntry}
           keyboardType={props.keyboardType}
           autoCapitalize={props.autoCapitalize ?? 'none'}
-          autoCorrect={false}
+          autoCorrect={props.autoCorrect}
           multiline={props.multiline}
           className={cn('text-[15px] leading-[20px] text-content', { 'min-h-[88px]': props.multiline })}
           style={props.multiline ? { textAlignVertical: 'top' } : undefined}
@@ -95,6 +97,7 @@ interface IInlineFieldProps {
   readonly secureTextEntry?: boolean;
   readonly keyboardType?: 'default' | 'numeric' | 'email-address' | 'url';
   readonly autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  readonly autoCorrect?: boolean;
   readonly trailing?: ReactNode;
 }
 
@@ -112,9 +115,9 @@ export function InlineField(props: IInlineFieldProps) {
         secureTextEntry={props.secureTextEntry}
         keyboardType={props.keyboardType}
         autoCapitalize={props.autoCapitalize ?? 'none'}
-        autoCorrect={false}
+        autoCorrect={props.autoCorrect}
         className="flex-1 text-[15px] leading-[20px] text-content"
-        style={hasLabel ? { textAlign: 'right' } : undefined}
+        style={hasLabel ? fieldStyles.textAlignRight : undefined}
       />
       {props.trailing != null && <View className="ml-3">{props.trailing}</View>}
     </View>
@@ -155,7 +158,7 @@ export function SegmentedField<T extends string>({ label, value, options, onChan
   return (
     <FieldRow last={last}>
       <View className="px-4 py-2.5">
-        <Text className="mb-1.5 text-[12px] font-medium uppercase tracking-wide text-content-tertiary">
+        <Text className="mb-1.5 text-[12px] font-medium text-content-tertiary">
           {label}
         </Text>
         <View className="flex-row flex-wrap gap-1.5">
@@ -197,6 +200,75 @@ export function NavField({ label, value, onPress, last }: { label: string; value
           <Text className="text-[14px] leading-[18px] text-content-tertiary" numberOfLines={1}>{value}</Text>
           <ChevronRight size={18} color={colors.contentTertiary} style={{ marginLeft: 4 }} />
         </View>
+      </Pressable>
+    </FieldRow>
+  );
+}
+
+interface IPasswordFieldProps {
+  readonly label: string;
+  readonly value: string;
+  readonly onChangeText: (v: string) => void;
+  readonly placeholder?: string;
+  readonly last?: boolean;
+}
+
+export function PasswordField(props: IPasswordFieldProps) {
+  const colors = useThemeColors();
+  const [revealed, setRevealed] = useState(false);
+  const toggleRevealed = () => {
+    hapticLight();
+    setRevealed((prev) => !prev);
+  };
+  return (
+    <FieldRow last={props.last}>
+      <View className="flex-row items-end px-4 py-2.5">
+        <View className="flex-1">
+          <Text className="mb-1 text-[12px] font-medium text-content-tertiary">
+            {props.label}
+          </Text>
+          <TextInput
+            value={props.value}
+            onChangeText={props.onChangeText}
+            placeholder={props.placeholder}
+            placeholderTextColor={colors.contentTertiary}
+            secureTextEntry={!revealed}
+            autoCapitalize="none"
+            autoCorrect={false}
+            className="text-[15px] leading-[20px] text-content"
+          />
+        </View>
+        <Pressable onPress={toggleRevealed} className="mb-0.5 ml-3">
+          <Text className="text-[13px] font-medium text-accent">
+            {revealed ? 'HIDE' : 'SHOW'}
+          </Text>
+        </Pressable>
+      </View>
+    </FieldRow>
+  );
+}
+
+interface ISelectFieldProps {
+  readonly label: string;
+  readonly displayValue: string;
+  readonly onPress: () => void;
+  readonly last?: boolean;
+}
+
+export function SelectField(props: ISelectFieldProps) {
+  const colors = useThemeColors();
+  return (
+    <FieldRow last={props.last}>
+      <Pressable onPress={props.onPress} className="flex-row items-center px-4 py-2.5 active:bg-surface-sunken">
+        <View className="flex-1">
+          <Text className="mb-1 text-[12px] font-medium text-content-tertiary">
+            {props.label}
+          </Text>
+          <Text className="text-[15px] leading-[20px] text-content">
+            {props.displayValue}
+          </Text>
+        </View>
+        <ChevronDown size={18} color={colors.contentTertiary} />
       </Pressable>
     </FieldRow>
   );
@@ -265,3 +337,7 @@ export function DangerButton({ title, onPress, className }: { title: string; onP
     </Pressable>
   );
 }
+
+const fieldStyles = StyleSheet.create({
+  textAlignRight: { textAlign: 'right' },
+});

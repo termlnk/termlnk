@@ -26,8 +26,19 @@ import { IDatabaseMobileAdaptorService } from './expo-sqlite-adaptor.service';
 // Fields below the core set back Termius-style toggles whose behaviour is not yet
 // wired (keyboard/session experiments). They persist so the UI is honest across
 // relaunches; `_load` merges over DEFAULT_PREFERENCES so older rows stay valid.
+export type TerminalCursorStyle = 'bar' | 'block' | 'underline';
+
 export interface IMobilePreferences {
   readonly terminalFontSize: number;
+  readonly terminalThemeName: string;
+  readonly terminalFontFamily: string;
+  readonly terminalCursorStyle: TerminalCursorStyle;
+  readonly terminalCursorBlink: boolean;
+  readonly terminalScrollback: number;
+  readonly terminalKeepAlive: number;
+  readonly terminalHaptic: boolean;
+  readonly terminalPinchToZoom: boolean;
+  readonly terminalPreventSleeping: boolean;
   readonly autoLockMinutes: number;
   readonly biometricLock: boolean;
   readonly aiBaseUrl: string;
@@ -45,6 +56,15 @@ export interface IMobilePreferences {
 
 export const DEFAULT_PREFERENCES: IMobilePreferences = {
   terminalFontSize: 13,
+  terminalThemeName: 'one-dark',
+  terminalFontFamily: 'Menlo, monospace',
+  terminalCursorStyle: 'bar',
+  terminalCursorBlink: true,
+  terminalScrollback: 1000,
+  terminalKeepAlive: 60,
+  terminalHaptic: true,
+  terminalPinchToZoom: false,
+  terminalPreventSleeping: false,
   autoLockMinutes: 5,
   biometricLock: false,
   aiBaseUrl: 'https://api.openai.com/v1',

@@ -21,6 +21,15 @@ interface BridgeMessage {
   [key: string]: unknown;
 }
 
+interface ITermlnkConfig {
+  fontSize?: number;
+  fontFamily?: string;
+  cursorStyle?: 'bar' | 'block' | 'underline';
+  cursorBlink?: boolean;
+  scrollback?: number;
+  theme?: Record<string, string>;
+}
+
 declare global {
   interface Window {
     ReactNativeWebView?: { postMessage: (message: string) => void };
@@ -28,9 +37,11 @@ declare global {
       write: (base64: string) => void;
       focus: () => void;
       blur: () => void;
+      setTheme: (theme: Record<string, string>) => void;
+      setFontSize: (size: number) => void;
     };
     __termlnkReport?: (payload: BridgeMessage) => void;
-    __TERMLNK_CONFIG__?: { fontSize?: number };
+    __TERMLNK_CONFIG__?: ITermlnkConfig;
   }
 }
 
@@ -75,11 +86,17 @@ window.addEventListener('unhandledrejection', (ev) => {
 });
 
 function start(): void {
+  const cfg = window.__TERMLNK_CONFIG__;
+  const theme = cfg?.theme ?? { background: '#1e222a', foreground: '#abb2bf' };
+
   const term = new Terminal({
-    fontSize: clampFontSize(window.__TERMLNK_CONFIG__?.fontSize),
-    fontFamily: 'Menlo, Monaco, monospace',
-    theme: { background: '#0a0a0a', foreground: '#e5e7eb' },
-    cursorBlink: true,
+    fontSize: clampFontSize(cfg?.fontSize),
+    fontFamily: cfg?.fontFamily ?? 'Menlo, Monaco, monospace',
+    cursorStyle: cfg?.cursorStyle ?? 'bar',
+    cursorBlink: cfg?.cursorBlink ?? true,
+    scrollback: cfg?.scrollback ?? 1000,
+    theme,
+    scrollbar: { width: 6 },
     // Do NOT set convertEol: the SSH PTY already does onlcr, so the stream is already
     // \r\n. Re-inserting CR before every LF corrupts tmux's cursor-positioning
     // sequences and causes status-bar drift on refresh.
@@ -141,6 +158,24 @@ function start(): void {
     },
     focus: (): void => term.focus(),
     blur: (): void => term.blur(),
+    setTheme: (theme: Record<string, string>): void => {
+      try {
+        term.options.theme = theme;
+        if (theme.background) {
+          document.body.style.background = theme.background;
+        }
+      } catch {
+        // Ignore malformed theme.
+      }
+    },
+    setFontSize: (size: number): void => {
+      try {
+        term.options.fontSize = clampFontSize(size);
+        fit.fit();
+      } catch {
+        // Ignore invalid size.
+      }
+    },
   };
 
   // Forward user input as base64 so high-bit bytes survive the postMessage round-trip.
