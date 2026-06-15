@@ -28,6 +28,9 @@ import { ArrowUp, Download, File as FileIcon, Folder as FolderIcon, Upload } fro
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { useConnectionService, useRecentSessionsRepository, useSftpClientFactory, useSyncService } from '../../../src/core/core-context';
+import { AuthFailedSheet } from '../../../src/terminal/auth-failed-sheet';
+import { HostKeySheet } from '../../../src/terminal/host-key-sheet';
+import { useSshEvent } from '../../../src/terminal/use-ssh-event';
 import { useThemeColors } from '../../../src/theme/theme-provider';
 import { PrimaryButton } from '../../../src/ui/form';
 
@@ -74,6 +77,7 @@ export default function SftpScreen() {
 
   const [session, setSession] = useState<IMobileSshSession | null>(null);
   const [sftp, setSftp] = useState<MobileSftpClientService | null>(null);
+  const { hostKeyEvent, authFailedEvent, setPendingEvent } = useSshEvent(id);
   // Mirrors `sftp` for a stable unmount cleanup that never disposes on intermediate renders.
   const sftpRef = useRef<MobileSftpClientService | null>(null);
 
@@ -379,6 +383,9 @@ export default function SftpScreen() {
           />
         </View>
       )}
+
+      <HostKeySheet event={hostKeyEvent} onDismiss={() => setPendingEvent(null)} />
+      <AuthFailedSheet event={authFailedEvent} onDismiss={() => setPendingEvent(null)} />
     </KeyboardAvoidingView>
   );
 }

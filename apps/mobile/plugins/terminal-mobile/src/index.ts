@@ -22,9 +22,11 @@ export { IMobileConnectionService, MobileConnectionService } from './services/mo
 export type { HostConnectionStatus, IHostConnectionState, IMobileManualCredentials } from './services/mobile-connection.service';
 export { IMobileSshClientService, MobileSshClientService } from './services/mobile-ssh-client.service';
 export type { IMobileSshConnectOptions, IMobileSshSession, IShellStartOptions, SshConnectionState } from './services/mobile-ssh-client.service';
+export type { IMobileAuthFailedEvent, IMobileHostKeyFirstUseEvent, IMobileHostKeyMismatchEvent, MobileSshSessionEvent } from './services/mobile-ssh-session-event';
 export { MobileSshSessionManager } from './services/mobile-ssh-session-manager';
 export type { IManagedSshSession, ManagedSessionState } from './services/mobile-ssh-session-manager';
 export { evaluateServerKey, forgetServerKey, loadStoredServerKey, recordServerKey } from './services/server-key-tofu';
 export type { IStoredServerKey, TofuDecision } from './services/server-key-tofu';
 export { TerminalKeyBar } from './services/terminal-keybar';
 export { buildXtermHtml, xtermBridge } from './services/xterm-webview-html';
+export type { IXtermWebViewConfig } from './services/xterm-webview-html';

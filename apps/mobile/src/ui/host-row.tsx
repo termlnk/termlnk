@@ -19,6 +19,7 @@ import { MenuView } from '@react-native-menu/menu';
 import { ChevronRight, MoreHorizontal } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
+import { cn } from './cn';
 import { HostAvatar } from './host-avatar';
 
 interface IHostRowProps {
@@ -30,6 +31,8 @@ interface IHostRowProps {
   readonly onPress: () => void;
   readonly menuItems?: readonly IMenuItem[];
   readonly connecting?: boolean;
+  readonly connected?: boolean;
+  readonly error?: string | null;
   // MenuView can intercept short taps on navigable group rows, so callers opt in
   // only where the native context menu does not block the primary action.
   readonly useNativeMenu?: boolean;
@@ -80,17 +83,31 @@ function toAction(item: IMenuAction): MenuAction {
 }
 
 function HostRowContent(props: IHostRowProps) {
-  const subtitle = props.connecting ? 'Connecting…' : props.subtitle;
+  const hasError = props.error != null && props.error.length > 0;
+  let subtitle = props.subtitle;
+  if (props.connecting) {
+    subtitle = 'Connecting…';
+  } else if (hasError) {
+    subtitle = props.error;
+  } else if (props.connected) {
+    subtitle = 'Active · 1 session';
+  }
 
   return (
     <>
-      <HostAvatar id={props.id} label={props.label} type={props.type} connecting={props.connecting} />
+      <HostAvatar id={props.id} label={props.label} type={props.type} connecting={props.connecting} error={hasError} />
       <View className="ml-3 flex-1">
         <Text numberOfLines={1} className="text-[15px] font-medium leading-[20px] text-content">
           {props.label}
         </Text>
         {subtitle != null && (
-          <Text numberOfLines={1} className="mt-0.5 text-[12px] leading-4 text-content-secondary">
+          <Text
+            numberOfLines={1}
+            className={cn('mt-0.5 text-[12px] leading-4', {
+              'text-danger': hasError,
+              'text-content-secondary': !hasError,
+            })}
+          >
             {subtitle}
           </Text>
         )}

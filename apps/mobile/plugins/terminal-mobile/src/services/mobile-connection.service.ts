@@ -24,9 +24,10 @@ import type { IMobileHostRepository, IMobileIdentityRepository, IMobileSshKeyRep
 import type { Observable } from 'rxjs';
 import type { IHostConnectArgs } from './auto-connect-from-vault';
 import type { IMobileSshSession } from './mobile-ssh-client.service';
+import type { MobileSshSessionEvent } from './mobile-ssh-session-event';
 import { createIdentifier, Disposable, ILogService as ILogServiceId, Inject } from '@termlnk/core';
 import { IMobileHostRepository as IMobileHostRepositoryId, IMobileIdentityRepository as IMobileIdentityRepositoryId, IMobileSshKeyRepository as IMobileSshKeyRepositoryId } from '@termlnk/database-mobile';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { resolveHostConnectArgs } from './auto-connect-from-vault';
 import { IMobileSshClientService } from './mobile-ssh-client.service';
 
@@ -46,6 +47,10 @@ export interface IMobileManualCredentials {
 export interface IMobileConnectionService {
   // Per-host connection state. The list subscribes to animate connecting rows.
   readonly connections$: Observable<ReadonlyMap<string, IHostConnectionState>>;
+  // Interactive events (host key verify, auth failure). The terminal screen subscribes
+  // and shows the appropriate sheet; each event carries a respond() callback that
+  // resumes the suspended connection handshake.
+  readonly event$: Observable<MobileSshSessionEvent>;
   // Resolve a vault credential and open the SSH transport. Idempotent: a connected host
   // returns its existing session, an in-flight connect returns the same promise, and a host
   // with no usable credential resolves to null with status 'needs-credentials' so the caller
@@ -69,9 +74,13 @@ export class MobileConnectionService extends Disposable implements IMobileConnec
   private readonly _connections$ = new BehaviorSubject<ReadonlyMap<string, IHostConnectionState>>(new Map());
   readonly connections$: Observable<ReadonlyMap<string, IHostConnectionState>> = this._connections$.asObservable();
 
+  private readonly _event$ = new Subject<MobileSshSessionEvent>();
+  readonly event$: Observable<MobileSshSessionEvent> = this._event$.asObservable();
+
   // In-flight transport connects keyed by hostId so a list tap and the screen mount dedupe
   // onto one SSH connection instead of racing two.
   private readonly _inflight = new Map<string, Promise<IMobileSshSession | null>>();
+  private readonly _pendingAuthResolves = new Set<(value: IMobileSshSession | null) => void>();
 
   private readonly _sshClient: IMobileSshClientService;
   private readonly _hostRepo: IMobileHostRepository;
@@ -95,12 +104,21 @@ export class MobileConnectionService extends Disposable implements IMobileConnec
   }
 
   override dispose(): void {
-    for (const state of this._connections$.getValue().values()) {
+    const connections = this._connections$.getValue();
+
+    for (const resolve of this._pendingAuthResolves) {
+      resolve(null);
+    }
+    this._pendingAuthResolves.clear();
+
+    super.dispose();
+
+    for (const state of connections.values()) {
       state.session?.disconnect();
     }
     this._inflight.clear();
     this._connections$.complete();
-    super.dispose();
+    this._event$.complete();
   }
 
   getState(hostId: string): IHostConnectionState {
@@ -182,13 +200,68 @@ export class MobileConnectionService extends Disposable implements IMobileConnec
   private async _openTransport(hostId: string, args: IHostConnectArgs): Promise<IMobileSshSession | null> {
     this._patch(hostId, { status: 'connecting', session: null, error: null });
     try {
-      const session = await this._sshClient.connect({ ...args, hostId });
+      const session = await this._sshClient.connect({
+        ...args,
+        hostId,
+        onInteraction: (event) => this._event$.next(event),
+      });
       this._patch(hostId, { status: 'connected', session, error: null });
       return session;
     } catch (err) {
+      if (this._isAuthFailed(err)) {
+        return this._handleAuthFailure(hostId, args, err);
+      }
       this._fail(hostId, err);
       return null;
     }
+  }
+
+  private _isAuthFailed(err: unknown): boolean {
+    return (
+      err != null
+      && typeof err === 'object'
+      && 'kind' in err
+      && (err as { kind: string }).kind === 'authFailed'
+    );
+  }
+
+  private _handleAuthFailure(
+    hostId: string,
+    originalArgs: IHostConnectArgs,
+    err: unknown
+  ): Promise<IMobileSshSession | null> {
+    const message = err instanceof Error ? err.message : String(err);
+    // Capture only non-sensitive fields; password/privateKey must not linger
+    // in the closure while the auth-failed sheet is open.
+    const { host, port, username, passphrase } = originalArgs;
+    return new Promise<IMobileSshSession | null>((resolve) => {
+      this._pendingAuthResolves.add(resolve);
+      this._event$.next({
+        type: 'auth_failed',
+        hostId,
+        host,
+        port,
+        username,
+        message,
+        respond: (newPassword) => {
+          this._pendingAuthResolves.delete(resolve);
+          if (newPassword === null) {
+            this._fail(hostId, err);
+            resolve(null);
+          } else {
+            resolve(
+              this._openTransport(hostId, {
+                host,
+                port,
+                username,
+                passphrase,
+                password: newPassword,
+              })
+            );
+          }
+        },
+      });
+    });
   }
 
   private _fail(hostId: string, err: unknown): void {

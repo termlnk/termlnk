@@ -70,10 +70,17 @@ export async function forgetServerKey(hostId: string): Promise<void> {
 export async function evaluateServerKey(
   hostId: string,
   algorithm: string,
-  fingerprintSha256: string
+  fingerprintSha256: string,
+  options?: { saveOnFirstUse?: boolean }
 ): Promise<TofuDecision> {
   const stored = await loadStoredServerKey(hostId);
   if (!stored) {
+    if (options?.saveOnFirstUse === false) {
+      return {
+        kind: 'first-use',
+        saved: { algorithm, fingerprintSha256, firstSeenAtMs: Date.now() },
+      };
+    }
     const saved = await recordServerKey(hostId, algorithm, fingerprintSha256);
     return { kind: 'first-use', saved };
   }

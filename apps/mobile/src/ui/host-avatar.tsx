@@ -27,9 +27,11 @@ interface IHostAvatarProps {
   readonly size?: number;
   // Overlays a spinning accent ring while the host's SSH transport is being established.
   readonly connecting?: boolean;
+  // Overlays a static danger-colored ring when the last connection attempt failed.
+  readonly error?: boolean;
 }
 
-export function HostAvatar({ id, label, type, size = 36, connecting = false }: IHostAvatarProps) {
+export function HostAvatar({ id, label, type, size = 36, connecting = false, error = false }: IHostAvatarProps) {
   const colors = useThemeColors();
   const dimension = { width: size, height: size };
 
@@ -46,6 +48,7 @@ export function HostAvatar({ id, label, type, size = 36, connecting = false }: I
         )
         : <HostInitial id={id} label={label} size={size} dimension={dimension} />}
       {connecting && <ConnectingRing size={size} />}
+      {!connecting && error && <ErrorRing size={size} />}
     </View>
   );
 }
@@ -151,6 +154,47 @@ function ConnectingRing({ size }: { size: number }) {
           strokeLinecap="round"
           strokeDasharray={[dashLength, gapLength]}
           strokeDashoffset={movingOffset}
+        />
+      </Svg>
+    </View>
+  );
+}
+
+function ErrorRing({ size }: { size: number }) {
+  const colors = useThemeColors();
+  const ringSize = size + 8;
+  const strokeWidth = 2.5;
+  const inset = strokeWidth / 2;
+  const rectSize = ringSize - strokeWidth;
+  const radius = Math.round(size * 0.34) + 4;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: -4,
+        left: -4,
+        width: ringSize,
+        height: ringSize,
+      }}
+    >
+      <Svg
+        width={ringSize}
+        height={ringSize}
+        viewBox={`0 0 ${ringSize} ${ringSize}`}
+      >
+        <Rect
+          x={inset}
+          y={inset}
+          width={rectSize}
+          height={rectSize}
+          rx={radius}
+          ry={radius}
+          fill="none"
+          stroke={colors.danger}
+          strokeWidth={strokeWidth}
+          strokeOpacity={0.85}
         />
       </Svg>
     </View>

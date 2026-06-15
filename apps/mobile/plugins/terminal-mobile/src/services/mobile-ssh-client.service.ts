@@ -15,10 +15,11 @@
 
 import type { ISftpSession, ISshConnection, ISshShell, ITerminalChunk, ShellListenerEvent } from '@termlnk/react-native-russh';
 import type { Observable } from 'rxjs';
+import type { MobileSshSessionEvent } from './mobile-ssh-session-event';
 import { createIdentifier, Disposable } from '@termlnk/core';
 import { RnRussh } from '@termlnk/react-native-russh';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { evaluateServerKey } from './server-key-tofu';
+import { evaluateServerKey, forgetServerKey, recordServerKey } from './server-key-tofu';
 
 export type SshConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -29,6 +30,7 @@ export interface IMobileSshConnectOptions {
   readonly password?: string;
   readonly privateKey?: string;
   readonly hostId?: string; // optional — when provided drives the TOFU store
+  readonly onInteraction?: (event: MobileSshSessionEvent) => void;
 }
 
 export interface IShellStartOptions {
@@ -211,22 +213,67 @@ export class MobileSshClientService extends Disposable implements IMobileSshClie
         : { type: 'password', password: options.password! },
       onServerKey: async (info) => {
         if (!options.hostId) {
-          // No TOFU store key — accept once. Callers should pass hostId so
-          // the store is keyed correctly; we don't want to refuse based on
-          // a stale empty store either.
           return true;
         }
+        const interactive = !!options.onInteraction;
         const decision = await evaluateServerKey(
           options.hostId,
           info.algorithm,
-          info.fingerprintSha256
+          info.fingerprintSha256,
+          interactive ? { saveOnFirstUse: false } : undefined
         );
+        if (decision.kind === 'trusted') {
+          return true;
+        }
+        if (decision.kind === 'first-use') {
+          if (!interactive) {
+            return true;
+          }
+          return new Promise<boolean>((resolve) => {
+            options.onInteraction!({
+              type: 'host_key_first_use',
+              hostId: options.hostId!,
+              host: info.host,
+              port: info.port,
+              algorithm: info.algorithm,
+              fingerprintSha256: info.fingerprintSha256,
+              respond: (accept) => {
+                if (accept) {
+                  void recordServerKey(options.hostId!, info.algorithm, info.fingerprintSha256);
+                }
+                resolve(accept);
+              },
+            });
+          });
+        }
         if (decision.kind === 'mismatch') {
-          throw new Error(
-            `Host key for ${info.host}:${info.port} changed since first use. ` +
-              `Stored ${decision.stored.algorithm} ${decision.stored.fingerprintSha256}; ` +
-              `presented ${decision.presented.algorithm} ${decision.presented.fingerprintSha256}.`
-          );
+          if (!interactive) {
+            throw new Error(
+              `Host key for ${info.host}:${info.port} changed since first use. ` +
+                `Stored ${decision.stored.algorithm} ${decision.stored.fingerprintSha256}; ` +
+                `presented ${decision.presented.algorithm} ${decision.presented.fingerprintSha256}.`
+            );
+          }
+          return new Promise<boolean>((resolve) => {
+            options.onInteraction!({
+              type: 'host_key_mismatch',
+              hostId: options.hostId!,
+              host: info.host,
+              port: info.port,
+              algorithm: info.algorithm,
+              fingerprintSha256: info.fingerprintSha256,
+              storedAlgorithm: decision.stored.algorithm,
+              storedFingerprint: decision.stored.fingerprintSha256,
+              respond: (replaceAndContinue) => {
+                if (replaceAndContinue) {
+                  void forgetServerKey(options.hostId!).then(() =>
+                    recordServerKey(options.hostId!, info.algorithm, info.fingerprintSha256)
+                  );
+                }
+                resolve(replaceAndContinue);
+              },
+            });
+          });
         }
         return true;
       },

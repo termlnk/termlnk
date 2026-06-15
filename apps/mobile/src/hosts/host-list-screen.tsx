@@ -24,6 +24,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConnectionService, useHostRepository, useObservable, useSyncService } from '../core/core-context';
+import { AuthFailedSheet } from '../terminal/auth-failed-sheet';
+import { HostKeySheet } from '../terminal/host-key-sheet';
+import { useSshEvent } from '../terminal/use-ssh-event';
 import { useThemeColors } from '../theme/theme-provider';
 import { Card } from '../ui/card';
 import { CreateHostEmptyState } from '../ui/create-host-empty-state';
@@ -81,6 +84,11 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
   // Records which host a "Move to group" flow is acting on so the group-picker hand-off
   // (consumed on focus return) knows what to reparent.
   const movingHostIdRef = useRef<string | null>(null);
+  // Tracks which host+intent is pending navigation on successful connect.
+  const pendingNavigationRef = useRef<{ hostId: string; intent: 'terminal' | 'sftp' } | null>(null);
+
+  const getEventHostId = useCallback(() => pendingNavigationRef.current?.hostId ?? null, []);
+  const { hostKeyEvent, authFailedEvent, setPendingEvent } = useSshEvent(getEventHostId);
 
   const isRoot = parentId === 'root';
   const self = isRoot ? null : allHosts.find((h) => h.id === parentId) ?? null;
@@ -137,15 +145,51 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
     router.push({ pathname: '/host/edit', params: { pid: parentId, kind: 'group' } });
   }, [router, parentId]);
 
-  // Open the SSH transport (drives the row's connecting animation via connections$), then
-  // navigate to the screen, which attaches to the live session — connect() is idempotent.
-  const onConnect = useCallback(async (host: IMobileHost, intent: 'terminal' | 'sftp') => {
-    await connectionService.connect(host.id);
-    if (intent === 'sftp') {
-      router.push({ pathname: '/host/[id]/sftp', params: { id: host.id } });
-    } else {
-      router.push({ pathname: '/host/[id]/terminal', params: { id: host.id } });
+  // Navigate to terminal/sftp once connection reaches 'connected'.
+  useEffect(() => {
+    const sub = connectionService.connections$.subscribe((map) => {
+      const nav = pendingNavigationRef.current;
+      if (!nav) {
+        return;
+      }
+      const conn = map.get(nav.hostId);
+      if (conn?.status === 'connected') {
+        pendingNavigationRef.current = null;
+        setPendingEvent(null);
+        if (nav.intent === 'sftp') {
+          router.push({ pathname: '/host/[id]/sftp', params: { id: nav.hostId } });
+        } else {
+          router.push({ pathname: '/host/[id]/terminal', params: { id: nav.hostId } });
+        }
+      } else if (conn?.status === 'error' || conn?.status === 'needs-credentials') {
+        pendingNavigationRef.current = null;
+        if (conn.status === 'needs-credentials') {
+          router.push({ pathname: '/host/[id]/terminal', params: { id: nav.hostId } });
+        }
+      }
+    });
+    return () => sub.unsubscribe();
+  }, [connectionService, router, setPendingEvent]);
+
+  // Fire-and-forget: start the SSH transport and let the connections$ subscription
+  // handle navigation once the session is ready. If already connected, navigate
+  // immediately — connect() is idempotent and won't re-emit on connections$.
+  const onConnect = useCallback((host: IMobileHost, intent: 'terminal' | 'sftp') => {
+    const existing = connectionService.getState(host.id);
+    if (existing.status === 'connected' && existing.session) {
+      if (intent === 'sftp') {
+        router.push({ pathname: '/host/[id]/sftp', params: { id: host.id } });
+      } else {
+        router.push({ pathname: '/host/[id]/terminal', params: { id: host.id } });
+      }
+      return;
     }
+    // Already pending for this host — don't re-trigger.
+    if (pendingNavigationRef.current?.hostId === host.id) {
+      return;
+    }
+    pendingNavigationRef.current = { hostId: host.id, intent };
+    void connectionService.connect(host.id);
   }, [connectionService, router]);
 
   const onPressItem = useCallback((host: IMobileHost) => {
@@ -153,7 +197,7 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
       router.push({ pathname: '/group/[id]', params: { id: host.id } });
       return;
     }
-    void onConnect(host, 'terminal');
+    onConnect(host, 'terminal');
   }, [router, onConnect]);
 
   const onEdit = useCallback((host: IMobileHost) => {
@@ -194,8 +238,8 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
       ];
     }
     return [
-      { key: 'connect', label: 'Connect', icon: Plug, sfSymbol: 'bolt.fill', onPress: () => void onConnect(host, 'terminal') },
-      { key: 'sftp', label: 'Connect via SFTP', icon: FolderOpen, sfSymbol: 'folder.fill', onPress: () => void onConnect(host, 'sftp') },
+      { key: 'connect', label: 'Connect', icon: Plug, sfSymbol: 'bolt.fill', onPress: () => onConnect(host, 'terminal') },
+      { key: 'sftp', label: 'Connect via SFTP', icon: FolderOpen, sfSymbol: 'folder.fill', onPress: () => onConnect(host, 'sftp') },
       { key: 'sep1', divider: true },
       { key: 'duplicate', label: 'Duplicate', icon: Copy, sfSymbol: 'doc.on.doc', onPress: () => void onDuplicate(host) },
       { key: 'move', label: 'Move to group', icon: FolderInput, sfSymbol: 'folder.badge.plus', onPress: () => onMoveToGroup(host) },
@@ -211,9 +255,21 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
     return status === 'resolving' || status === 'connecting';
   }, [connections]);
 
+  const getConnectionError = useCallback((hostId: string): string | null => {
+    const conn = connections.get(hostId);
+    if (conn?.status === 'error') {
+      return conn.error;
+    }
+    return null;
+  }, [connections]);
+
   const visibleGroups = groups.filter((g) => matches(g, query));
   const visibleHosts = hosts.filter((h) => matches(h, query));
   const isEmpty = visibleGroups.length === 0 && visibleHosts.length === 0;
+  const dismissEvent = useCallback(() => {
+    setPendingEvent(null);
+  }, [setPendingEvent]);
+
   const showCreateHost = isRoot && query.length === 0 && isEmpty && !refreshing;
 
   return (
@@ -291,6 +347,8 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
                     type={h.type}
                     subtitle={hostSubtitle(h)}
                     connecting={isConnecting(h.id)}
+                    connected={connections.get(h.id)?.status === 'connected'}
+                    error={getConnectionError(h.id)}
                     onPress={() => onPressItem(h)}
                     menuItems={getMenuItems(h)}
                     useNativeMenu
@@ -310,6 +368,16 @@ export function HostListScreen({ parentId }: IHostListScreenProps) {
           </ScrollView>
         )}
 
+      <HostKeySheet
+        event={hostKeyEvent}
+        hostLabel={hostKeyEvent ? (hosts.find((h) => h.id === hostKeyEvent.hostId)?.label) : undefined}
+        onDismiss={dismissEvent}
+      />
+      <AuthFailedSheet
+        event={authFailedEvent}
+        hostLabel={authFailedEvent ? (hosts.find((h) => h.id === authFailedEvent.hostId)?.label) : undefined}
+        onDismiss={dismissEvent}
+      />
     </ScreenContainer>
   );
 }
