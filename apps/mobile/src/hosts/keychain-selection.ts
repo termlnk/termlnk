@@ -20,6 +20,7 @@ export interface IKeychainSelection {
   readonly type: 'key' | 'identity';
   readonly id: string;
   readonly label: string;
+  readonly sourceRoute: string;
 }
 
 let _pending: IKeychainSelection | null = null;
@@ -28,7 +29,10 @@ export function setPendingKeychainSelection(selection: IKeychainSelection): void
   _pending = selection;
 }
 
-export function takePendingKeychainSelection(): IKeychainSelection | null {
+export function takePendingKeychainSelection(sourceRoute: string): IKeychainSelection | null {
+  if (_pending?.sourceRoute !== sourceRoute) {
+    return null;
+  }
   const value = _pending;
   _pending = null;
   return value;

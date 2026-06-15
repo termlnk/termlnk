@@ -29,9 +29,10 @@ export default function KeychainPickerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const params = useLocalSearchParams<{ type: string; selectedId?: string }>();
+  const params = useLocalSearchParams<{ type: string; selectedId?: string; sourceRoute?: string }>();
   const pickerType = params.type === 'identity' ? 'identity' : 'key';
   const selectedId = params.selectedId ?? '';
+  const sourceRoute = params.sourceRoute ?? 'host-edit';
 
   const keyRepo = useSshKeyRepository();
   const identityRepo = useIdentityRepository();
@@ -50,7 +51,7 @@ export default function KeychainPickerScreen() {
   const items = pickerType === 'key' ? keys : identities;
 
   const onSelect = (id: string, label: string) => {
-    setPendingKeychainSelection({ type: pickerType, id, label });
+    setPendingKeychainSelection({ type: pickerType, id, label, sourceRoute });
     router.back();
   };
 

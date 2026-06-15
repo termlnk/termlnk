@@ -144,7 +144,7 @@ export function HostEditScreen({ hostId, parentId, kind, prefillAddr, prefillUse
       if (groupSelection != null) {
         setParentPid(groupSelection.pid);
       }
-      const keychainSelection = takePendingKeychainSelection();
+      const keychainSelection = takePendingKeychainSelection('host-edit');
       if (keychainSelection != null) {
         if (keychainSelection.type === 'key') {
           setKeyId(keychainSelection.id);
@@ -348,7 +348,7 @@ export function HostEditScreen({ hostId, parentId, kind, prefillAddr, prefillUse
                   title="Key"
                   value={selectedKeyLabel || 'Select'}
                   chevronTone="accent"
-                  onPress={() => router.push({ pathname: '/keychain-picker', params: { type: 'key', selectedId: keyId } })}
+                  onPress={() => router.push({ pathname: '/keychain-picker', params: { type: 'key', selectedId: keyId, sourceRoute: 'host-edit' } })}
                 />
               )}
               {credType === 'identity' && (
@@ -356,7 +356,7 @@ export function HostEditScreen({ hostId, parentId, kind, prefillAddr, prefillUse
                   title="Identity"
                   value={selectedIdentityLabel || 'Select'}
                   chevronTone="accent"
-                  onPress={() => router.push({ pathname: '/keychain-picker', params: { type: 'identity', selectedId: identityId } })}
+                  onPress={() => router.push({ pathname: '/keychain-picker', params: { type: 'identity', selectedId: identityId, sourceRoute: 'host-edit' } })}
                 />
               )}
               <View className="h-3 bg-surface" />

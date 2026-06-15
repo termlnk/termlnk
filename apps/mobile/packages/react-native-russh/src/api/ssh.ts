@@ -331,14 +331,30 @@ export function connect(opts: IConnectOptions): Promise<ISshConnection> {
 }
 
 export function generateKeyPair(
-  type: 'rsa' | 'ecdsa' | 'ed25519'
+  type: 'rsa' | 'ecdsa' | 'ed25519',
+  options?: {
+    passphrase?: string;
+    cipher?: string;
+    rounds?: number;
+    ecdsaCurve?: string;
+    rsaBits?: number;
+  },
 ): string {
   const map: Record<typeof type, GeneratedRussh.KeyType> = {
     rsa: GeneratedRussh.KeyType.Rsa,
     ecdsa: GeneratedRussh.KeyType.Ecdsa,
     ed25519: GeneratedRussh.KeyType.Ed25519,
   };
-  return callRusshSync(() => GeneratedRussh.generateKeyPair(map[type]));
+  return callRusshSync(() =>
+    GeneratedRussh.generateKeyPair(
+      map[type],
+      options?.passphrase ?? undefined,
+      options?.cipher ?? undefined,
+      options?.rounds ?? undefined,
+      options?.ecdsaCurve ?? undefined,
+      options?.rsaBits ?? undefined,
+    ),
+  );
 }
 
 export function validatePrivateKey(

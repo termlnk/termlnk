@@ -60,14 +60,17 @@ export default function KeychainScreen() {
         right={(
           <MenuView
             actions={[
-              { id: 'ssh-key', title: 'SSH Key', image: 'key.fill' },
-              { id: 'identity', title: 'Identity', image: 'person.fill' },
+              { id: 'identity', title: 'New Identity', image: 'person.fill' },
+              { id: 'new-key', title: 'New Key', image: 'key.fill' },
+              { id: 'generate-key', title: 'Generate Key', image: 'wand.and.stars' },
             ]}
             onPressAction={({ nativeEvent }) => {
-              if (nativeEvent.event === 'ssh-key') {
-                router.push('/keychain/key');
-              } else if (nativeEvent.event === 'identity') {
+              if (nativeEvent.event === 'identity') {
                 router.push('/keychain/identity');
+              } else if (nativeEvent.event === 'new-key') {
+                router.push('/keychain/new-key');
+              } else if (nativeEvent.event === 'generate-key') {
+                router.push('/keychain/generate-key');
               }
             }}
           >

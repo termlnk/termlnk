@@ -1,6 +1,8 @@
+use rand::{Rng, RngExt};
 use russh::keys::ssh_key::{
     self,
-    private::{Ed25519Keypair, KeypairData},
+    private::{Ed25519Keypair, KeypairData, RsaKeypair},
+    Cipher as SshCipher,
 };
 use russh::keys::{Algorithm, EcdsaCurve};
 
@@ -23,23 +25,71 @@ pub fn validate_private_key(private_key_content: String) -> Result<String, SshEr
     Ok(canonical)
 }
 
+fn parse_cipher(name: &str) -> SshCipher {
+    match name {
+        "aes256-ctr" => SshCipher::Aes256Ctr,
+        "aes128-ctr" => SshCipher::Aes128Ctr,
+        "3des-cbc" => SshCipher::TDesCbc,
+        _ => SshCipher::Aes256Ctr,
+    }
+}
+
+fn parse_ecdsa_curve(name: &str) -> EcdsaCurve {
+    match name {
+        "nistp384" => EcdsaCurve::NistP384,
+        "nistp521" => EcdsaCurve::NistP521,
+        _ => EcdsaCurve::NistP256,
+    }
+}
+
 #[uniffi::export]
-pub fn generate_key_pair(key_type: KeyType) -> Result<String, SshError> {
+pub fn generate_key_pair(
+    key_type: KeyType,
+    passphrase: Option<String>,
+    cipher: Option<String>,
+    rounds: Option<u32>,
+    ecdsa_curve: Option<String>,
+    rsa_bits: Option<u32>,
+) -> Result<String, SshError> {
     let mut rng = rand::rng();
     let key = match key_type {
-        KeyType::Rsa => russh::keys::PrivateKey::random(&mut rng, Algorithm::Rsa { hash: None })?,
-        KeyType::Ecdsa => russh::keys::PrivateKey::random(
-            &mut rng,
-            Algorithm::Ecdsa {
-                curve: EcdsaCurve::NistP256,
-            },
-        )?,
+        KeyType::Rsa => {
+            let bits = rsa_bits.unwrap_or(2048) as usize;
+            let key_data = KeypairData::from(RsaKeypair::random(&mut rng, bits)?);
+            ssh_key::PrivateKey::new(key_data, "")?
+        }
+        KeyType::Ecdsa => {
+            let curve = ecdsa_curve.as_deref().map(parse_ecdsa_curve).unwrap_or(EcdsaCurve::NistP256);
+            russh::keys::PrivateKey::random(
+                &mut rng,
+                Algorithm::Ecdsa { curve },
+            )?
+        }
         KeyType::Ed25519 => russh::keys::PrivateKey::random(&mut rng, Algorithm::Ed25519)?,
         KeyType::Ed448 => return Err(SshError::UnsupportedKeyType),
     };
-    Ok(key
-        .to_openssh(russh::keys::ssh_key::LineEnding::LF)?
-        .to_string())
+
+    let should_encrypt = passphrase
+        .as_ref()
+        .is_some_and(|p| !p.is_empty());
+
+    if should_encrypt {
+        let pass = passphrase.unwrap();
+        let c = cipher.as_deref().map(parse_cipher).unwrap_or(SshCipher::Aes256Ctr);
+        let r = rounds.unwrap_or(16);
+        let mut salt = vec![0u8; 16];
+        rng.fill(&mut salt[..]);
+        let kdf = ssh_key::Kdf::Bcrypt { salt, rounds: r };
+        let checkint = rng.next_u32();
+        let encrypted = key.encrypt_with(c, kdf, checkint, pass.as_bytes())?;
+        Ok(encrypted
+            .to_openssh(ssh_key::LineEnding::LF)?
+            .to_string())
+    } else {
+        Ok(key
+            .to_openssh(ssh_key::LineEnding::LF)?
+            .to_string())
+    }
 }
 
 // Best-effort fix for OpenSSH ed25519 keys that store only a 32-byte seed in

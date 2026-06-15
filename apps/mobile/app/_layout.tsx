@@ -66,6 +66,10 @@ export default function RootLayout() {
               <Stack.Screen name="vault/port-forwarding" options={{ headerShown: false }} />
               <Stack.Screen name="vault/port-forwarding-edit" options={{ headerShown: false }} />
               <Stack.Screen name="vault/snippets" options={{ headerShown: false }} />
+              <Stack.Screen name="keychain/identity" options={{ headerShown: false }} />
+              <Stack.Screen name="keychain/key" options={{ headerShown: false }} />
+              <Stack.Screen name="keychain/new-key" options={{ headerShown: false }} />
+              <Stack.Screen name="keychain/generate-key" options={{ headerShown: false }} />
               <Stack.Screen
                 name="host/edit"
                 options={{

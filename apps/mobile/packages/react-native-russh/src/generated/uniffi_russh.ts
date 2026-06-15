@@ -111,7 +111,7 @@ export async function connect(
   }
 }
 
-export function generateKeyPair(keyType: KeyType): string /*throws*/ {
+export function generateKeyPair(keyType: KeyType, passphrase: string | undefined, cipher: string | undefined, rounds: number | undefined, ecdsaCurve: string | undefined, rsaBits: number | undefined): string /*throws*/ {
   return ((__rb: Uint8Array) => {
     try {
       return FfiConverterString.lift(__rb);
@@ -127,6 +127,26 @@ export function generateKeyPair(keyType: KeyType): string /*throws*/ {
         return nativeModule().ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair(
           FfiConverterTypeKeyType.lower(
             keyType,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalString.lower(
+            passphrase,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalString.lower(
+            cipher,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalUInt32.lower(
+            rounds,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalString.lower(
+            ecdsaCurve,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalUInt32.lower(
+            rsaBits,
             nativeModule().rustbuffer_alloc,
           ),
           callStatus,
@@ -5927,8 +5947,10 @@ const FfiConverterOptionalTypeConnectionDisconnectedCallback =
 // FfiConverter for string | undefined
 const FfiConverterOptionalString = new FfiConverterOptional(FfiConverterString);
 
-// FfiConverter for number | undefined
+// FfiConverter for u32 | undefined
 const FfiConverterOptionalUInt32 = new FfiConverterOptional(FfiConverterUInt32);
+
+// FfiConverter for number | undefined
 
 // FfiConverter for bigint | undefined
 const FfiConverterOptionalUInt64 = new FfiConverterOptional(FfiConverterUInt64);

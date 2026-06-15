@@ -13,12 +13,16 @@
  * governing permissions and limitations under the License.
  */
 
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Check } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useIdentityRepository, useObservable, useSshKeyRepository } from '../../src/core/core-context';
-import { DangerButton, FormSection, PrimaryButton, SegmentedField, TextField } from '../../src/ui/form';
+import { takePendingKeychainSelection } from '../../src/hosts/keychain-selection';
+import { DangerButton, FormSection, NavField, PasswordField, TextField } from '../../src/ui/form';
+import { RoundButton } from '../../src/ui/round-button';
 import { ScreenContainer } from '../../src/ui/screen-container';
+import { ScreenHeader } from '../../src/ui/screen-header';
 
 export default function IdentityEditRoute() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -32,9 +36,8 @@ export default function IdentityEditRoute() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [keyId, setKeyId] = useState('');
+  const [keyLabel, setKeyLabel] = useState('');
   const [busy, setBusy] = useState(false);
-  // Guards Save until the edit record has loaded, so a quick tap can't persist an empty
-  // password over the stored one before getInfo resolves.
   const [loaded, setLoaded] = useState(!isEdit);
 
   useEffect(() => {
@@ -59,9 +62,30 @@ export default function IdentityEditRoute() {
     };
   }, [id, identityRepo]);
 
-  const keyOptions = useMemo(
-    () => [{ label: 'None', value: '' }, ...keys.map((k) => ({ label: k.label, value: k.id }))],
-    [keys]
+  useEffect(() => {
+    if (keyId) {
+      const found = keys.find((k) => k.id === keyId);
+      if (found) {
+        setKeyLabel(found.label);
+      }
+    } else {
+      setKeyLabel('');
+    }
+  }, [keyId, keys]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const selection = takePendingKeychainSelection('identity-edit');
+      if (selection != null && selection.type === 'key') {
+        setKeyId(selection.id);
+        setKeyLabel(selection.label);
+      }
+    }, [])
+  );
+
+  const confirmDisabled = useMemo(
+    () => !label.trim() || !username.trim() || !loaded,
+    [label, username, loaded]
   );
 
   async function onSave() {
@@ -100,23 +124,35 @@ export default function IdentityEditRoute() {
     ]);
   }
 
+  const onPickKey = useCallback(() => {
+    router.push({
+      pathname: '/keychain-picker',
+      params: { type: 'key', selectedId: keyId, sourceRoute: 'identity-edit' },
+    });
+  }, [router, keyId]);
+
   return (
     <ScreenContainer>
-      <Stack.Screen options={{ title: isEdit ? 'Edit Identity' : 'New Identity', headerShown: true }} />
+      <ScreenHeader
+        variant="nav"
+        title={isEdit ? 'Edit Identity' : 'New Identity'}
+        onBack={() => router.back()}
+        right={<RoundButton icon={Check} variant="accent" onPress={onSave} disabled={confirmDisabled || busy} accessibilityLabel="Save" />}
+      />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1">
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-          <FormSection title="Identity" footer="A reusable username plus an optional password and/or key, referenced by hosts.">
-            <TextField label="Name" value={label} onChangeText={setLabel} placeholder="Production" autoCapitalize="words" />
-            <TextField label="Username" value={username} onChangeText={setUsername} placeholder="root" />
-            <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry last={keyOptions.length <= 1} />
-            {keyOptions.length > 1 && (
-              <SegmentedField label="Key" value={keyId} options={keyOptions} onChange={setKeyId} last />
-            )}
+          <FormSection>
+            <TextField label="Name" value={label} onChangeText={setLabel} placeholder="Name" autoCapitalize="words" />
+            <TextField label="Username" value={username} onChangeText={setUsername} placeholder="Required" />
+            <PasswordField label="Password" value={password} onChangeText={setPassword} placeholder="Password" />
+            <NavField label="Key" value={keyLabel || ''} onPress={onPickKey} last />
           </FormSection>
-          <View className="mt-6 gap-3 px-4">
-            <PrimaryButton title={isEdit ? 'Save' : 'Create'} onPress={onSave} busy={busy} disabled={!loaded} />
-            {isEdit && <DangerButton title="Delete" onPress={onDelete} />}
-          </View>
+
+          {isEdit && (
+            <View className="mt-6 gap-3 px-4">
+              <DangerButton title="Delete" onPress={onDelete} />
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>
