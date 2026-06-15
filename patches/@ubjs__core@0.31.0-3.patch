@@ -1,0 +1,52 @@
+diff --git a/dist/cjs/objects.js b/dist/cjs/objects.js
+index ff892a8fa69e42e1a1458cba7a978c49d24b3a86..d63605843c6910715f2fcc0a2953d8116eec8dbc 100644
+--- a/dist/cjs/objects.js
++++ b/dist/cjs/objects.js
+@@ -79,6 +79,12 @@ class FfiConverterObjectWithCallbacks extends FfiConverterObject {
+         }
+         return this.handleMap.insert(value);
+     }
++    lowerHandle(value) {
++        if (this.factory.isConcreteType(value)) {
++            return this.factory.clonePointer(value);
++        }
++        return this.handleMap.insert(value);
++    }
+     lift(value) {
+         if (this.handleMap.has(value)) {
+             return this.handleMap.get(value);
+diff --git a/dist/esm/objects.js b/dist/esm/objects.js
+index bf316c60771901281603d49a4789d06588a3f7c0..a9df142fc996b94cf36ee2ecbc95d18df522b310 100644
+--- a/dist/esm/objects.js
++++ b/dist/esm/objects.js
+@@ -74,6 +74,12 @@ export class FfiConverterObjectWithCallbacks extends FfiConverterObject {
+         }
+         return this.handleMap.insert(value);
+     }
++    lowerHandle(value) {
++        if (this.factory.isConcreteType(value)) {
++            return this.factory.clonePointer(value);
++        }
++        return this.handleMap.insert(value);
++    }
+     lift(value) {
+         if (this.handleMap.has(value)) {
+             return this.handleMap.get(value);
+diff --git a/src/objects.ts b/src/objects.ts
+index a949d1a06b7bf23b17885f8069f3893f6caf8c2d..a33e50dcefa862e441d3fe341981b6502ab3c931 100644
+--- a/src/objects.ts
++++ b/src/objects.ts
+@@ -110,6 +110,13 @@ export class FfiConverterObjectWithCallbacks<T> extends FfiConverterObject<T> {
+     return this.handleMap.insert(value);
+   }
+ 
++  protected lowerHandle(value: T): UniffiHandle {
++    if (this.factory.isConcreteType(value)) {
++      return this.factory.clonePointer(value);
++    }
++    return this.handleMap.insert(value);
++  }
++
+   lift(value: UniffiHandle): T {
+     if (this.handleMap.has(value)) {
+       return this.handleMap.get(value);

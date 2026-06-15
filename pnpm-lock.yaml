@@ -43,6 +43,8 @@ overrides:
   uuid@>=13.0.0 <13.0.1: ^13.0.1
 
 patchedDependencies:
+  '@react-native-menu/menu@2.0.0': 409918dea80ffac0c69af843a1cdd77ee57d420dfdff34a0c9e75d3db9dd3436
+  '@ubjs/core@0.31.0-3': 0377aebf41f9b1d60b00176d0ede5019e4c07dbd211940f4c275f0e0dff39237
   babel-preset-expo@56.0.14: a70d904fc88d2825521e042b3b13ae736290f2855328edecbbb841ffc90abc12
   react-native-css@3.0.7: 24efbd946998c404b2a6e0cafac9523dc78ae7a6330a854dfc4a91fcab04dced
 
@@ -685,7 +687,7 @@ importers:
         version: 2.2.0
       '@react-native-menu/menu':
         specifier: ^2.0.0
-        version: 2.0.0(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
+        version: 2.0.0(patch_hash=409918dea80ffac0c69af843a1cdd77ee57d420dfdff34a0c9e75d3db9dd3436)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
       '@rn-primitives/dropdown-menu':
         specifier: ^1.4.0
         version: 1.4.0(@rn-primitives/portal@1.4.0(@types/react@19.2.17)(immer@11.1.8)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3)))(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.3(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
@@ -737,6 +739,9 @@ importers:
       '@termlnk/terminal-mobile':
         specifier: workspace:*
         version: link:plugins/terminal-mobile
+      '@termlnk/themes':
+        specifier: workspace:*
+        version: link:../../packages/themes
       '@wendellhu/redi':
         specifier: 1.1.2
         version: 1.1.2(react@19.2.3)
@@ -896,7 +901,7 @@ importers:
     dependencies:
       '@ubjs/core':
         specifier: 0.31.0-3
-        version: 0.31.0-3
+        version: 0.31.0-3(patch_hash=0377aebf41f9b1d60b00176d0ede5019e4c07dbd211940f4c275f0e0dff39237)
       react:
         specifier: ^19.2.6
         version: 19.2.6
@@ -1105,6 +1110,9 @@ importers:
       '@termlnk/react-native-russh':
         specifier: workspace:*
         version: link:../../packages/react-native-russh
+      '@termlnk/themes':
+        specifier: workspace:*
+        version: link:../../../../packages/themes
       expo-secure-store:
         specifier: ^56.0.4
         version: 56.0.4(expo@56.0.9)
@@ -21862,7 +21870,7 @@ snapshots:
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.7)
     optional: true
 
-  '@react-native-menu/menu@2.0.0(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)':
+  '@react-native-menu/menu@2.0.0(patch_hash=409918dea80ffac0c69af843a1cdd77ee57d420dfdff34a0c9e75d3db9dd3436)(react-native@0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)':
     dependencies:
       react: 19.2.3
       react-native: 0.85.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.17)(react@19.2.3)
@@ -23505,7 +23513,7 @@ snapshots:
       - supports-color
     optional: true
 
-  '@ubjs/core@0.31.0-3': {}
+  '@ubjs/core@0.31.0-3(patch_hash=0377aebf41f9b1d60b00176d0ede5019e4c07dbd211940f4c275f0e0dff39237)': {}
 
   '@ungap/structured-clone@1.3.0': {}
 

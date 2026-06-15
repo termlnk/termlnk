@@ -137,3 +137,4 @@ patchedDependencies:
   babel-preset-expo@56.0.14: patches/babel-preset-expo@56.0.14.patch
   react-native-css@3.0.7: patches/react-native-css@3.0.7.patch
   '@react-native-menu/menu@2.0.0': patches/@react-native-menu__menu@2.0.0.patch
+  '@ubjs/core@0.31.0-3': patches/@ubjs__core@0.31.0-3.patch

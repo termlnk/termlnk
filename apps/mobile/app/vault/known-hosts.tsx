@@ -13,10 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IMobileKnownHost } from '@termlnk/database-mobile';
 import { useRouter } from 'expo-router';
-import { Check, CircleCheck, Fingerprint, Search, Trash2 } from 'lucide-react-native';
+import { Check, CircleCheck, Fingerprint, Search, Trash2, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKnownHostRepository, useObservable } from '../../src/core/core-context';
 import { useThemeColors } from '../../src/theme/theme-provider';
@@ -38,6 +39,7 @@ export default function KnownHostsScreen() {
   const [search, setSearch] = useState('');
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<IMobileKnownHost | null>(null);
 
   useEffect(() => {
     void knownHostRepo.ready();
@@ -171,6 +173,8 @@ export default function KnownHostsScreen() {
                       onPress={() => {
                         if (selecting) {
                           toggleSelect(kh.id);
+                        } else {
+                          setDetail(kh);
                         }
                       }}
                       className="flex-row items-center px-4 py-3 active:bg-surface-sunken"
@@ -178,7 +182,7 @@ export default function KnownHostsScreen() {
                       {selecting && (
                         <View className="mr-3">
                           {isSelected
-                            ? <CircleCheck size={22} color={colors.accent} fill={colors.accent} />
+                            ? <CircleCheck size={22} color="#fff" fill={colors.accent} />
                             : <View className="h-[22px] w-[22px] rounded-full border-2 border-divider" />}
                         </View>
                       )}
@@ -194,6 +198,77 @@ export default function KnownHostsScreen() {
               </Card>
             )}
       </ScrollView>
+
+      {/* Host detail bottom sheet */}
+      <Modal
+        visible={detail != null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDetail(null)}
+      >
+        <Pressable
+          onPress={() => setDetail(null)}
+          className="flex-1 justify-end bg-black/40"
+        >
+          <Pressable onPress={() => {}}>
+            <View
+              className="rounded-t-3xl bg-surface"
+              style={{ paddingBottom: insets.bottom + 16 }}
+            >
+              <View className="items-center py-3">
+                <View className="h-[5px] w-9 rounded-full bg-content-tertiary/30" />
+              </View>
+
+              <View className="px-5 pb-5">
+                <View className="mb-4 flex-row items-center">
+                  <Pressable
+                    onPress={() => setDetail(null)}
+                    className="mr-3 h-8 w-8 items-center justify-center rounded-full bg-surface"
+                  >
+                    <X size={16} color={colors.content} />
+                  </Pressable>
+                  <Text className="flex-1 text-center text-[17px] font-semibold text-content">
+                    Host Information
+                  </Text>
+                  <View className="w-8" />
+                </View>
+
+                <View className="rounded-xl bg-surface-raised p-4">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-[15px] font-medium text-content">
+                      Host Address
+                    </Text>
+                    <Text className="text-[15px] text-content-secondary">
+                      {detail?.host}
+                    </Text>
+                  </View>
+
+                  {detail?.publicKey ? (
+                    <>
+                      <View className="my-3 h-px bg-divider/50" />
+                      <Text
+                        className="text-[14px] leading-[20px] text-content"
+                        selectable
+                      >
+                        {detail.keyType}
+                        {' '}
+                        {detail.publicKey}
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <View className="my-3 h-px bg-divider/50" />
+                      <Text className="text-[14px] leading-[20px] text-content-secondary">
+                        {detail?.keyType}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScreenContainer>
   );
 }

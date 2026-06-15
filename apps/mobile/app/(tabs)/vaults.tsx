@@ -16,11 +16,11 @@
 import { AuthState } from '@termlnk/auth';
 import { SyncState } from '@termlnk/sync';
 import { useRouter } from 'expo-router';
-import { ArrowLeftRight, Braces, ChevronDown, Cloud, CloudOff, FingerprintPattern, KeyRound, ScrollText, Server } from 'lucide-react-native';
+import { ArrowLeftRight, Braces, ChevronDown, Cloud, CloudOff, FingerprintPattern, KeyRound, Server } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthState, useHostRepository, useKnownHostRepository, useObservable, useRecentSessionsRepository, useSyncService } from '../../src/core/core-context';
+import { useAuthState, useHostRepository, useKnownHostRepository, useObservable, useSyncService } from '../../src/core/core-context';
 import { useThemeColors } from '../../src/theme/theme-provider';
 import { Card } from '../../src/ui/card';
 import { TAB_BAR_HEIGHT } from '../../src/ui/floating-tab-bar';
@@ -33,20 +33,17 @@ export default function VaultsTab() {
   const colors = useThemeColors();
   const hostRepo = useHostRepository();
   const knownHostRepo = useKnownHostRepository();
-  const recentRepo = useRecentSessionsRepository();
   const syncService = useSyncService();
   const authState = useAuthState();
 
   const hosts = useObservable(hostRepo.hosts$, []);
   const knownHosts = useObservable(knownHostRepo.knownHosts$, []);
-  const sessions = useObservable(recentRepo.sessions$, []);
   const syncState = useObservable(syncService.state$, SyncState.Disabled);
 
   useEffect(() => {
     void hostRepo.ready();
     void knownHostRepo.ready();
-    void recentRepo.ready();
-  }, [hostRepo, knownHostRepo, recentRepo]);
+  }, [hostRepo, knownHostRepo]);
 
   const hostCount = hosts.filter((h) => h.type === 'host').length;
   const isAuthenticated = authState === AuthState.Authenticated;
@@ -107,12 +104,6 @@ export default function VaultsTab() {
             title="Known Hosts"
             value={String(knownHosts.length)}
             onPress={() => router.push('/vault/known-hosts')}
-          />
-          <NavRow
-            leading={<ScrollText size={24} color={colors.content} />}
-            title="Logs"
-            value={String(sessions.length)}
-            onPress={() => router.push('/vault/logs')}
           />
         </Card>
       </ScrollView>
