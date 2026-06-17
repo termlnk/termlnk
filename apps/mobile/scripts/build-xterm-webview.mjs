@@ -6,7 +6,7 @@
  *
  * Bundle generator for the WebView-based mobile terminal renderer.
  *
- * Bundles plugins/terminal-mobile/src/services/webview/xterm-webview-entry.ts (a real
+ * Bundles packages-internal/terminal-mobile/src/services/webview/xterm-webview-entry.ts (a real
  * TypeScript module that imports @xterm/xterm + @xterm/addon-fit and wires the
  * RN<->WebView bridge) into a single IIFE via esbuild, and emits
  * webview/xterm-webview-bundle.generated.ts with that bundle and the matching xterm CSS
@@ -25,7 +25,8 @@ import esbuild from 'esbuild';
 const require = createRequire(import.meta.url);
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const MOBILE_ROOT = path.resolve(SCRIPT_DIR, '..');
-const WEBVIEW_DIR = path.join(MOBILE_ROOT, 'plugins/terminal-mobile/src/services/webview');
+const WORKSPACE_ROOT = path.resolve(MOBILE_ROOT, '../..');
+const WEBVIEW_DIR = path.join(WORKSPACE_ROOT, 'packages-internal/terminal-mobile/src/services/webview');
 const ENTRY = path.join(WEBVIEW_DIR, 'xterm-webview-entry.ts');
 const OUT = path.join(WEBVIEW_DIR, 'xterm-webview-bundle.generated.ts');
 

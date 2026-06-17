@@ -262,7 +262,7 @@ importers:
         version: link:../../../packages/electron
       '@termlnk/electron-main':
         specifier: workspace:*
-        version: link:../plugins/electron-main
+        version: link:../../../packages-internal/electron-main
       '@termlnk/extension':
         specifier: workspace:*
         version: link:../../../packages/extension
@@ -271,7 +271,7 @@ importers:
         version: link:../../../packages/extension-core
       '@termlnk/island-core':
         specifier: workspace:*
-        version: link:../plugins/island-core
+        version: link:../../../packages-internal/island-core
       '@termlnk/network':
         specifier: workspace:*
         version: link:../../../packages/network
@@ -310,252 +310,6 @@ importers:
         specifier: 41.7.1
         version: 41.7.1
 
-  apps/desktop/plugins/electron-main:
-    dependencies:
-      '@earendil-works/pi-agent-core':
-        specifier: ^0.79.6
-        version: 0.79.6(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
-      '@janwirth/electron-trpc-link':
-        specifier: 11.1.2-bugfix-2
-        version: 11.1.2-bugfix-2(@trpc/client@11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.17.0(typescript@6.0.3))(electron@41.7.1)
-      '@sinclair/typebox':
-        specifier: ^0.34.49
-        version: 0.34.49
-      '@termlnk/agent':
-        specifier: workspace:*
-        version: link:../../../../packages/agent
-      '@termlnk/auth':
-        specifier: workspace:*
-        version: link:../../../../packages/auth
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/database':
-        specifier: workspace:*
-        version: link:../../../../packages/database
-      '@termlnk/electron':
-        specifier: workspace:*
-        version: link:../../../../packages/electron
-      '@termlnk/island':
-        specifier: workspace:*
-        version: link:../island
-      '@termlnk/rpc':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc
-      '@termlnk/rpc-server':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc-server
-      '@termlnk/sync':
-        specifier: workspace:*
-        version: link:../../../../packages/sync
-      '@trpc/server':
-        specifier: ^11.17.0
-        version: 11.17.0(typescript@6.0.3)
-      electron-updater:
-        specifier: ^6.8.9
-        version: 6.8.9
-      semver:
-        specifier: ^7.7.4
-        version: 7.8.4
-      uuid:
-        specifier: ^14.0.0
-        version: 14.0.0
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      '@types/semver':
-        specifier: ^7.7.1
-        version: 7.7.1
-      electron:
-        specifier: 41.7.1
-        version: 41.7.1
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.16
-        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-    optionalDependencies:
-      '@termlnk/macos-utils':
-        specifier: workspace:*
-        version: link:../../../../internal/macos-utils
-
-  apps/desktop/plugins/electron-renderer:
-    dependencies:
-      '@janwirth/electron-trpc-link':
-        specifier: 11.1.2-bugfix-2
-        version: 11.1.2-bugfix-2(@trpc/client@11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.17.0(typescript@6.0.3))(electron@41.7.1)
-      '@termlnk/auth':
-        specifier: workspace:*
-        version: link:../../../../packages/auth
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/design':
-        specifier: workspace:*
-        version: link:../../../../packages/design
-      '@termlnk/electron':
-        specifier: workspace:*
-        version: link:../../../../packages/electron
-      '@termlnk/rpc':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc
-      '@termlnk/rpc-client':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc-client
-      '@termlnk/settings-ui':
-        specifier: workspace:*
-        version: link:../../../../packages/settings-ui
-      '@termlnk/ui':
-        specifier: workspace:*
-        version: link:../../../../packages/ui
-      '@trpc/client':
-        specifier: ^11.17.0
-        version: 11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3)
-      lucide-react:
-        specifier: ^1.17.0
-        version: 1.18.0(react@19.2.7)
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-    devDependencies:
-      '@termlnk/electron-main':
-        specifier: workspace:*
-        version: link:../electron-main
-      '@termlnk/rpc-server':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc-server
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      electron:
-        specifier: 41.7.1
-        version: 41.7.1
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      tailwindcss:
-        specifier: ^4.3.1
-        version: 4.3.1
-      tailwindcss-animate:
-        specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@4.3.1)
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.16
-        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-
-  apps/desktop/plugins/island:
-    dependencies:
-      '@termlnk/agent':
-        specifier: workspace:*
-        version: link:../../../../packages/agent
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.16
-        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-
-  apps/desktop/plugins/island-core:
-    dependencies:
-      '@termlnk/agent':
-        specifier: workspace:*
-        version: link:../../../../packages/agent
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/island':
-        specifier: workspace:*
-        version: link:../island
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.16
-        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-
-  apps/desktop/plugins/island-ui:
-    dependencies:
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/design':
-        specifier: workspace:*
-        version: link:../../../../packages/design
-      '@termlnk/island':
-        specifier: workspace:*
-        version: link:../island
-      '@termlnk/rpc':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc
-      '@termlnk/rpc-client':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc-client
-      '@termlnk/settings-ui':
-        specifier: workspace:*
-        version: link:../../../../packages/settings-ui
-      lucide-react:
-        specifier: ^1.17.0
-        version: 1.18.0(react@19.2.7)
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.16
-        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-
   apps/desktop/renderer:
     dependencies:
       '@tanstack/react-query':
@@ -587,7 +341,7 @@ importers:
         version: link:../../../packages/electron
       '@termlnk/electron-renderer':
         specifier: workspace:*
-        version: link:../plugins/electron-renderer
+        version: link:../../../packages-internal/electron-renderer
       '@termlnk/extension':
         specifier: workspace:*
         version: link:../../../packages/extension
@@ -596,10 +350,10 @@ importers:
         version: link:../../../packages/extension-ui
       '@termlnk/island':
         specifier: workspace:*
-        version: link:../plugins/island
+        version: link:../../../packages-internal/island
       '@termlnk/island-ui':
         specifier: workspace:*
-        version: link:../plugins/island-ui
+        version: link:../../../packages-internal/island-ui
       '@termlnk/port-forwarding-ui':
         specifier: workspace:*
         version: link:../../../packages/port-forwarding-ui
@@ -705,7 +459,7 @@ importers:
         version: 2.3.2(@babel/runtime@7.29.7)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
       '@termlnk/agent-mobile':
         specifier: workspace:*
-        version: link:plugins/agent-mobile
+        version: link:../../packages-internal/agent-mobile
       '@termlnk/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -714,22 +468,22 @@ importers:
         version: link:../../packages/auth-core
       '@termlnk/auth-mobile':
         specifier: workspace:*
-        version: link:plugins/auth-mobile
+        version: link:../../packages-internal/auth-mobile
       '@termlnk/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@termlnk/database-mobile':
         specifier: workspace:*
-        version: link:plugins/database-mobile
+        version: link:../../packages-internal/database-mobile
       '@termlnk/port-forwarding-mobile':
         specifier: workspace:*
-        version: link:plugins/port-forwarding-mobile
+        version: link:../../packages-internal/port-forwarding-mobile
       '@termlnk/react-native-russh':
         specifier: workspace:*
-        version: link:packages/react-native-russh
+        version: link:../../packages-internal/react-native-russh
       '@termlnk/sftp-mobile':
         specifier: workspace:*
-        version: link:plugins/sftp-mobile
+        version: link:../../packages-internal/sftp-mobile
       '@termlnk/sync':
         specifier: workspace:*
         version: link:../../packages/sync
@@ -738,10 +492,10 @@ importers:
         version: link:../../packages/sync-engine
       '@termlnk/sync-mobile':
         specifier: workspace:*
-        version: link:plugins/sync-mobile
+        version: link:../../packages-internal/sync-mobile
       '@termlnk/terminal-mobile':
         specifier: workspace:*
-        version: link:plugins/terminal-mobile
+        version: link:../../packages-internal/terminal-mobile
       '@termlnk/themes':
         specifier: workspace:*
         version: link:../../packages/themes
@@ -903,355 +657,6 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  apps/mobile/packages/react-native-russh:
-    dependencies:
-      '@ubjs/core':
-        specifier: 0.31.0-3
-        version: 0.31.0-3(patch_hash=0377aebf41f9b1d60b00176d0ede5019e4c07dbd211940f4c275f0e0dff39237)
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-      react-native:
-        specifier: ^0.85.3
-        version: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
-      uniffi-bindgen-react-native:
-        specifier: 0.31.0-3
-        version: 0.31.0-3
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  apps/mobile/plugins/agent-mobile:
-    dependencies:
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/database-mobile':
-        specifier: workspace:*
-        version: link:../database-mobile
-      expo-secure-store:
-        specifier: ^56.0.4
-        version: 56.0.4(expo@56.0.12)
-      rxjs:
-        specifier: '>=7.0.0'
-        version: 7.8.2
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  apps/mobile/plugins/auth-mobile:
-    dependencies:
-      '@termlnk/auth':
-        specifier: workspace:*
-        version: link:../../../../packages/auth
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      expo-device:
-        specifier: ^56.0.4
-        version: 56.0.4(expo@56.0.12)
-      expo-local-authentication:
-        specifier: ^56.0.4
-        version: 56.0.4(expo@56.0.12)
-      expo-secure-store:
-        specifier: ^56.0.4
-        version: 56.0.4(expo@56.0.12)
-      react-native:
-        specifier: ^0.85.3
-        version: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
-      react-native-libsodium:
-        specifier: ^1.7.0
-        version: 1.7.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
-      rxjs:
-        specifier: '>=7.0.0'
-        version: 7.8.2
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  apps/mobile/plugins/database-mobile:
-    dependencies:
-      '@noble/ciphers':
-        specifier: ^2.2.0
-        version: 2.2.0
-      '@noble/hashes':
-        specifier: ^2.2.0
-        version: 2.2.0
-      '@termlnk/auth':
-        specifier: workspace:*
-        version: link:../../../../packages/auth
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/sync':
-        specifier: workspace:*
-        version: link:../../../../packages/sync
-      drizzle-orm:
-        specifier: 1.0.0-rc.3
-        version: 1.0.0-rc.3(@opentelemetry/api@1.9.1)(@sinclair/typebox@0.34.49)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)(expo-sqlite@56.0.5(expo@56.0.12)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7))(typebox@1.1.38)(valibot@1.4.1(typescript@6.0.3))(zod@4.4.3)
-      expo-secure-store:
-        specifier: ^56.0.4
-        version: 56.0.4(expo@56.0.12)
-      expo-sqlite:
-        specifier: ^56.0.4
-        version: 56.0.5(expo@56.0.12)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
-      nanoid:
-        specifier: ^5.1.11
-        version: 5.1.11
-      rxjs:
-        specifier: '>=7.0.0'
-        version: 7.8.2
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      '@termlnk/snippet':
-        specifier: workspace:*
-        version: link:../../../../packages/snippet
-      drizzle-kit:
-        specifier: 1.0.0-rc.3
-        version: 1.0.0-rc.3
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  apps/mobile/plugins/port-forwarding-mobile:
-    dependencies:
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/database-mobile':
-        specifier: workspace:*
-        version: link:../database-mobile
-      '@termlnk/react-native-russh':
-        specifier: workspace:*
-        version: link:../../packages/react-native-russh
-      '@termlnk/terminal-mobile':
-        specifier: workspace:*
-        version: link:../terminal-mobile
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-      react-native:
-        specifier: ^0.85.3
-        version: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
-      rxjs:
-        specifier: '>=7.0.0'
-        version: 7.8.2
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      '@types/react':
-        specifier: ^19.2.17
-        version: 19.2.17
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  apps/mobile/plugins/sftp-mobile:
-    dependencies:
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/react-native-russh':
-        specifier: workspace:*
-        version: link:../../packages/react-native-russh
-      '@termlnk/terminal-mobile':
-        specifier: workspace:*
-        version: link:../terminal-mobile
-      rxjs:
-        specifier: '>=7.0.0'
-        version: 7.8.2
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  apps/mobile/plugins/sync-mobile:
-    dependencies:
-      '@termlnk/auth':
-        specifier: workspace:*
-        version: link:../../../../packages/auth
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/database-mobile':
-        specifier: workspace:*
-        version: link:../database-mobile
-      '@termlnk/sync':
-        specifier: workspace:*
-        version: link:../../../../packages/sync
-      '@termlnk/sync-engine':
-        specifier: workspace:*
-        version: link:../../../../packages/sync-engine
-      rxjs:
-        specifier: '>=7.0.0'
-        version: 7.8.2
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  apps/mobile/plugins/terminal-mobile:
-    dependencies:
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/database-mobile':
-        specifier: workspace:*
-        version: link:../database-mobile
-      '@termlnk/react-native-russh':
-        specifier: workspace:*
-        version: link:../../packages/react-native-russh
-      '@termlnk/themes':
-        specifier: workspace:*
-        version: link:../../../../packages/themes
-      expo-secure-store:
-        specifier: ^56.0.4
-        version: 56.0.4(expo@56.0.12)
-      lucide-react-native:
-        specifier: ^1.17.0
-        version: 1.18.0(react-native-svg@15.15.5(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-      react-native:
-        specifier: ^0.85.3
-        version: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
-      rxjs:
-        specifier: '>=7.0.0'
-        version: 7.8.2
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      '@types/react':
-        specifier: ^19.2.17
-        version: 19.2.17
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-
-  apps/web/plugins/web-renderer:
-    dependencies:
-      '@termlnk/auth':
-        specifier: workspace:*
-        version: link:../../../../packages/auth
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/design':
-        specifier: workspace:*
-        version: link:../../../../packages/design
-      '@termlnk/electron':
-        specifier: workspace:*
-        version: link:../../../../packages/electron
-      '@termlnk/network':
-        specifier: workspace:*
-        version: link:../../../../packages/network
-      '@termlnk/rpc-client':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc-client
-      '@termlnk/sftp-ui':
-        specifier: workspace:*
-        version: link:../../../../packages/sftp-ui
-      '@termlnk/shared-terminal':
-        specifier: workspace:*
-        version: link:../../../../packages/shared-terminal
-      '@termlnk/ui':
-        specifier: workspace:*
-        version: link:../../../../packages/ui
-      '@trpc/client':
-        specifier: ^11.17.0
-        version: 11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3)
-      lucide-react:
-        specifier: ^1.17.0
-        version: 1.18.0(react@19.2.7)
-      react:
-        specifier: ^19.2.7
-        version: 19.2.7
-    devDependencies:
-      '@termlnk/rpc-server':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc-server
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.16
-        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-
-  apps/web/plugins/web-server:
-    dependencies:
-      '@noble/hashes':
-        specifier: ^2.2.0
-        version: 2.2.0
-      '@termlnk/auth':
-        specifier: workspace:*
-        version: link:../../../../packages/auth
-      '@termlnk/core':
-        specifier: workspace:*
-        version: link:../../../../packages/core
-      '@termlnk/rpc-server':
-        specifier: workspace:*
-        version: link:../../../../packages/rpc-server
-      '@trpc/server':
-        specifier: ^11.17.0
-        version: 11.17.0(typescript@6.0.3)
-      hash-wasm:
-        specifier: ^4.12.0
-        version: 4.12.0
-      ws:
-        specifier: ^8.21.0
-        version: 8.21.0
-    devDependencies:
-      '@termlnk/shared':
-        specifier: workspace:*
-        version: link:../../../../internal/shared
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
-      rxjs:
-        specifier: ^7.8.2
-        version: 7.8.2
-      typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.0.16
-        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-
   apps/web/renderer:
     dependencies:
       '@tanstack/react-query':
@@ -1322,7 +727,7 @@ importers:
         version: link:../../../packages/ui
       '@termlnk/web-renderer':
         specifier: workspace:*
-        version: link:../plugins/web-renderer
+        version: link:../../../packages-internal/web-renderer
       ahooks:
         specifier: ^3.9.7
         version: 3.9.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1431,7 +836,7 @@ importers:
         version: link:../../../packages/sync-core
       '@termlnk/web-server':
         specifier: workspace:*
-        version: link:../plugins/web-server
+        version: link:../../../packages-internal/web-server
     devDependencies:
       '@termlnk/shared':
         specifier: workspace:*
@@ -1523,6 +928,601 @@ importers:
       '@types/fs-extra':
         specifier: ^11.0.4
         version: 11.0.4
+
+  packages-internal/agent-mobile:
+    dependencies:
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/database-mobile':
+        specifier: workspace:*
+        version: link:../database-mobile
+      expo-secure-store:
+        specifier: ^56.0.4
+        version: 56.0.4(expo@56.0.12)
+      rxjs:
+        specifier: '>=7.0.0'
+        version: 7.8.2
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages-internal/auth-mobile:
+    dependencies:
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      expo-device:
+        specifier: ^56.0.4
+        version: 56.0.4(expo@56.0.12)
+      expo-local-authentication:
+        specifier: ^56.0.4
+        version: 56.0.4(expo@56.0.12)
+      expo-secure-store:
+        specifier: ^56.0.4
+        version: 56.0.4(expo@56.0.12)
+      react-native:
+        specifier: ^0.85.3
+        version: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
+      react-native-libsodium:
+        specifier: ^1.7.0
+        version: 1.7.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
+      rxjs:
+        specifier: '>=7.0.0'
+        version: 7.8.2
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages-internal/database-mobile:
+    dependencies:
+      '@noble/ciphers':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@noble/hashes':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
+      drizzle-orm:
+        specifier: 1.0.0-rc.3
+        version: 1.0.0-rc.3(@opentelemetry/api@1.9.1)(@sinclair/typebox@0.34.49)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)(expo-sqlite@56.0.5(expo@56.0.12)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7))(typebox@1.1.38)(valibot@1.4.1(typescript@6.0.3))(zod@4.4.3)
+      expo-secure-store:
+        specifier: ^56.0.4
+        version: 56.0.4(expo@56.0.12)
+      expo-sqlite:
+        specifier: ^56.0.4
+        version: 56.0.5(expo@56.0.12)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
+      nanoid:
+        specifier: ^5.1.11
+        version: 5.1.11
+      rxjs:
+        specifier: '>=7.0.0'
+        version: 7.8.2
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      '@termlnk/snippet':
+        specifier: workspace:*
+        version: link:../../packages/snippet
+      drizzle-kit:
+        specifier: 1.0.0-rc.3
+        version: 1.0.0-rc.3
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages-internal/electron-main:
+    dependencies:
+      '@earendil-works/pi-agent-core':
+        specifier: ^0.79.6
+        version: 0.79.6(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
+      '@janwirth/electron-trpc-link':
+        specifier: 11.1.2-bugfix-2
+        version: 11.1.2-bugfix-2(@trpc/client@11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.17.0(typescript@6.0.3))(electron@41.7.1)
+      '@sinclair/typebox':
+        specifier: ^0.34.49
+        version: 0.34.49
+      '@termlnk/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@termlnk/electron':
+        specifier: workspace:*
+        version: link:../../packages/electron
+      '@termlnk/island':
+        specifier: workspace:*
+        version: link:../island
+      '@termlnk/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      '@termlnk/rpc-server':
+        specifier: workspace:*
+        version: link:../../packages/rpc-server
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
+      '@trpc/server':
+        specifier: ^11.17.0
+        version: 11.17.0(typescript@6.0.3)
+      electron-updater:
+        specifier: ^6.8.9
+        version: 6.8.9
+      semver:
+        specifier: ^7.7.4
+        version: 7.8.4
+      uuid:
+        specifier: ^14.0.0
+        version: 14.0.0
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      '@types/semver':
+        specifier: ^7.7.1
+        version: 7.7.1
+      electron:
+        specifier: 41.7.1
+        version: 41.7.1
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+    optionalDependencies:
+      '@termlnk/macos-utils':
+        specifier: workspace:*
+        version: link:../../internal/macos-utils
+
+  packages-internal/electron-renderer:
+    dependencies:
+      '@janwirth/electron-trpc-link':
+        specifier: 11.1.2-bugfix-2
+        version: 11.1.2-bugfix-2(@trpc/client@11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.17.0(typescript@6.0.3))(electron@41.7.1)
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+      '@termlnk/electron':
+        specifier: workspace:*
+        version: link:../../packages/electron
+      '@termlnk/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      '@termlnk/rpc-client':
+        specifier: workspace:*
+        version: link:../../packages/rpc-client
+      '@termlnk/settings-ui':
+        specifier: workspace:*
+        version: link:../../packages/settings-ui
+      '@termlnk/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@trpc/client':
+        specifier: ^11.17.0
+        version: 11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3)
+      lucide-react:
+        specifier: ^1.17.0
+        version: 1.18.0(react@19.2.7)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+    devDependencies:
+      '@termlnk/electron-main':
+        specifier: workspace:*
+        version: link:../electron-main
+      '@termlnk/rpc-server':
+        specifier: workspace:*
+        version: link:../../packages/rpc-server
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      electron:
+        specifier: 41.7.1
+        version: 41.7.1
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      tailwindcss:
+        specifier: ^4.3.1
+        version: 4.3.1
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@4.3.1)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages-internal/island:
+    dependencies:
+      '@termlnk/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages-internal/island-core:
+    dependencies:
+      '@termlnk/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/island':
+        specifier: workspace:*
+        version: link:../island
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages-internal/island-ui:
+    dependencies:
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+      '@termlnk/island':
+        specifier: workspace:*
+        version: link:../island
+      '@termlnk/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
+      '@termlnk/rpc-client':
+        specifier: workspace:*
+        version: link:../../packages/rpc-client
+      '@termlnk/settings-ui':
+        specifier: workspace:*
+        version: link:../../packages/settings-ui
+      lucide-react:
+        specifier: ^1.17.0
+        version: 1.18.0(react@19.2.7)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages-internal/port-forwarding-mobile:
+    dependencies:
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/database-mobile':
+        specifier: workspace:*
+        version: link:../database-mobile
+      '@termlnk/react-native-russh':
+        specifier: workspace:*
+        version: link:../react-native-russh
+      '@termlnk/terminal-mobile':
+        specifier: workspace:*
+        version: link:../terminal-mobile
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      react-native:
+        specifier: ^0.85.3
+        version: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
+      rxjs:
+        specifier: '>=7.0.0'
+        version: 7.8.2
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages-internal/react-native-russh:
+    dependencies:
+      '@ubjs/core':
+        specifier: 0.31.0-3
+        version: 0.31.0-3(patch_hash=0377aebf41f9b1d60b00176d0ede5019e4c07dbd211940f4c275f0e0dff39237)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      react-native:
+        specifier: ^0.85.3
+        version: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
+      uniffi-bindgen-react-native:
+        specifier: 0.31.0-3
+        version: 0.31.0-3
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages-internal/sftp-mobile:
+    dependencies:
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/react-native-russh':
+        specifier: workspace:*
+        version: link:../react-native-russh
+      '@termlnk/terminal-mobile':
+        specifier: workspace:*
+        version: link:../terminal-mobile
+      rxjs:
+        specifier: '>=7.0.0'
+        version: 7.8.2
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages-internal/sync-mobile:
+    dependencies:
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/database-mobile':
+        specifier: workspace:*
+        version: link:../database-mobile
+      '@termlnk/sync':
+        specifier: workspace:*
+        version: link:../../packages/sync
+      '@termlnk/sync-engine':
+        specifier: workspace:*
+        version: link:../../packages/sync-engine
+      rxjs:
+        specifier: '>=7.0.0'
+        version: 7.8.2
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages-internal/terminal-mobile:
+    dependencies:
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/database-mobile':
+        specifier: workspace:*
+        version: link:../database-mobile
+      '@termlnk/react-native-russh':
+        specifier: workspace:*
+        version: link:../react-native-russh
+      '@termlnk/themes':
+        specifier: workspace:*
+        version: link:../../packages/themes
+      expo-secure-store:
+        specifier: ^56.0.4
+        version: 56.0.4(expo@56.0.12)
+      lucide-react-native:
+        specifier: ^1.17.0
+        version: 1.18.0(react-native-svg@15.15.5(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      react-native:
+        specifier: ^0.85.3
+        version: 0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.7)
+      rxjs:
+        specifier: '>=7.0.0'
+        version: 7.8.2
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages-internal/web-renderer:
+    dependencies:
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+      '@termlnk/electron':
+        specifier: workspace:*
+        version: link:../../packages/electron
+      '@termlnk/network':
+        specifier: workspace:*
+        version: link:../../packages/network
+      '@termlnk/rpc-client':
+        specifier: workspace:*
+        version: link:../../packages/rpc-client
+      '@termlnk/sftp-ui':
+        specifier: workspace:*
+        version: link:../../packages/sftp-ui
+      '@termlnk/shared-terminal':
+        specifier: workspace:*
+        version: link:../../packages/shared-terminal
+      '@termlnk/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@trpc/client':
+        specifier: ^11.17.0
+        version: 11.17.0(@trpc/server@11.17.0(typescript@6.0.3))(typescript@6.0.3)
+      lucide-react:
+        specifier: ^1.17.0
+        version: 1.18.0(react@19.2.7)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+    devDependencies:
+      '@termlnk/rpc-server':
+        specifier: workspace:*
+        version: link:../../packages/rpc-server
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages-internal/web-server:
+    dependencies:
+      '@noble/hashes':
+        specifier: ^2.2.0
+        version: 2.2.0
+      '@termlnk/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@termlnk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@termlnk/rpc-server':
+        specifier: workspace:*
+        version: link:../../packages/rpc-server
+      '@trpc/server':
+        specifier: ^11.17.0
+        version: 11.17.0(typescript@6.0.3)
+      hash-wasm:
+        specifier: ^4.12.0
+        version: 4.12.0
+      ws:
+        specifier: ^8.21.0
+        version: 8.21.0
+    devDependencies:
+      '@termlnk/shared':
+        specifier: workspace:*
+        version: link:../../internal/shared
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0)
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@25.9.3)(@vitest/coverage-istanbul@4.1.9)(happy-dom@20.10.5)(vite@8.0.16(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/agent:
     dependencies:
@@ -6849,8 +6849,8 @@ packages:
       react: ^19.2.7
       react-dom: ^19.2.7
 
-  '@react-grab/cli@0.1.44':
-    resolution: {integrity: sha512-gMDYY2rw6OWajCcDlXSIgs2LC432YJXSb3Lm5yM187uhRgBYddoEVULi36h+IolX3r7jSb3ew7vn9FfI8NSo0A==}
+  '@react-grab/cli@0.1.46':
+    resolution: {integrity: sha512-rNjGKeRY3HROku1J/a7y8RGHRGFR6ZnllSPqNLfFI5cUu6FCdjjxHvXf1TEXxW7I5REq8iKoLuzM9iYboXCRdg==}
     hasBin: true
 
   '@react-native-masked-view/masked-view@0.3.2':
@@ -8549,6 +8549,10 @@ packages:
 
   agent-install@0.0.5:
     resolution: {integrity: sha512-nHlms9BkP8ZiY79HrwCGiA2DcNaXrAaJrCM/BEqQ7MEsSKyCk+2A76xPGylIfASZSZE0SaU3T0bNSg4rBPIJAQ==}
+    hasBin: true
+
+  agent-install@0.0.6:
+    resolution: {integrity: sha512-7NRMZ/ZDz2vHevQTgJsocBFpakB1/Wx5ip19YSJuj4VOXpraWztTerViNtdSyARKZT9e2yVwUUB5JXXCE7mNrA==}
     hasBin: true
 
   ahooks@3.9.7:
@@ -13796,8 +13800,8 @@ packages:
     peerDependencies:
       react: ^19.2.7
 
-  react-grab@0.1.44:
-    resolution: {integrity: sha512-bDEwBdI90ljq2lhUtPqmWis/HwYB/CvfT0m5i+P9F83Pt0Ot8o9XL8v00s9jcWzdQUlsFDzmq2FO2CHUe8JY8A==}
+  react-grab@0.1.46:
+    resolution: {integrity: sha512-i6sSSBGqW1yxZ5TZL9wX2m9qNMKOydpou5IMaXrK1iylJAJyr/npoqv4mhq3cO7480FBhmlEZbf5VF8KOCBlMQ==}
     hasBin: true
     peerDependencies:
       react: ^19.2.7
@@ -20512,9 +20516,9 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
-  '@react-grab/cli@0.1.44':
+  '@react-grab/cli@0.1.46':
     dependencies:
-      agent-install: 0.0.5
+      agent-install: 0.0.6
       commander: 14.0.3
       ignore: 7.0.5
       ora: 9.4.0
@@ -22306,6 +22310,15 @@ snapshots:
   agent-base@7.1.4: {}
 
   agent-install@0.0.5:
+    dependencies:
+      '@iarna/toml': 2.2.5
+      commander: 14.0.3
+      jsonc-parser: 3.3.1
+      picocolors: 1.1.1
+      prompts: 2.4.2
+      yaml: 2.9.0
+
+  agent-install@0.0.6:
     dependencies:
       '@iarna/toml': 2.2.5
       commander: 14.0.3
@@ -27898,13 +27911,13 @@ snapshots:
 
   node-abi@4.31.0:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.4
 
   node-addon-api@7.1.1: {}
 
   node-api-version@0.2.1:
     dependencies:
-      semver: 7.7.4
+      semver: 7.8.4
 
   node-domexception@1.0.0: {}
 
@@ -27932,7 +27945,7 @@ snapshots:
       graceful-fs: 4.2.11
       nopt: 9.0.0
       proc-log: 6.1.0
-      semver: 7.7.4
+      semver: 7.8.4
       tar: 7.5.16
       tinyglobby: 0.2.17
       undici: 8.5.0
@@ -28924,9 +28937,9 @@ snapshots:
       react: 19.2.7
     optional: true
 
-  react-grab@0.1.44(react@19.2.7):
+  react-grab@0.1.46(react@19.2.7):
     dependencies:
-      '@react-grab/cli': 0.1.44
+      '@react-grab/cli': 0.1.46
       bippy: 0.5.41(react@19.2.7)
     optionalDependencies:
       react: 19.2.7
@@ -29338,7 +29351,7 @@ snapshots:
       react: 19.2.7
       react-doctor: 0.5.6(eslint@10.5.0(jiti@2.7.0))
       react-dom: 19.2.7(react@19.2.7)
-      react-grab: 0.1.44(react@19.2.7)
+      react-grab: 0.1.46(react@19.2.7)
     optionalDependencies:
       esbuild: 0.28.1
       unplugin: 3.0.0

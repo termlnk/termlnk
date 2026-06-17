@@ -31,12 +31,10 @@
         "apps/desktop",
         "apps/desktop/main",
         "apps/desktop/renderer",
-        "apps/desktop/plugins/*",
+        "packages-internal/*",
         "apps/web/server",
         "apps/web/renderer",
-        "apps/web/plugins/*",
-        "apps/mobile",
-        "apps/mobile/packages/*"
+        "apps/mobile"
       ]
     }
   }

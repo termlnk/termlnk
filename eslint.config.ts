@@ -68,7 +68,11 @@ export default antfu(
   // disable class-membership checks here. Layout/wrapping rules also relax —
   // RN doesn't follow the desktop's `tm:` prefix convention.
   {
-    files: ['apps/mobile/**/*.{ts,tsx}'],
+    files: [
+      'apps/mobile/**/*.{ts,tsx}',
+      'packages-internal/*-mobile/**/*.{ts,tsx}',
+      'packages-internal/react-native-russh/**/*.{ts,tsx}',
+    ],
     rules: {
       'better-tailwindcss/no-unknown-classes': 'off',
       'better-tailwindcss/enforce-consistent-line-wrapping': 'off',
