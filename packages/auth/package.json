@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/auth",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": false,
   "description": "Auth shared contracts for termlnk - user identity, SRP6a, master key derivation, and token management interfaces",
   "author": "telan <telanflow@gmail.com>",

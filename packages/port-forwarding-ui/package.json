@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/port-forwarding-ui",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": false,
   "description": "Port forwarding UI for termlnk (local/remote/dynamic SSH tunnels)",
   "author": "telan <telanflow@gmail.com>",

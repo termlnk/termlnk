@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/agent-ui",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": false,
   "description": "Agent UI components for termlnk - provider configuration and model selection",
   "author": "telan <telanflow@gmail.com>",

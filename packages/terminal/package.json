@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/terminal",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": false,
   "description": "Terminal library for termlnk",
   "author": "telan <telanflow@gmail.com>",
