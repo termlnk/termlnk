@@ -6,8 +6,8 @@
 @source "../../../../packages/ui/src";
 @source "../../../../packages/themes-ui/src";
 @source "../../../../packages/terminal-ui/src";
-@source "../../plugins/electron-renderer/src";
-@source "../../plugins/island-ui/src";
+@source "../../../../packages-internal/electron-renderer/src";
+@source "../../../../packages-internal/island-ui/src";
 @source "../../../../packages/sftp-ui/src";
 @source "../../../../packages/settings-ui/src";
 @source "../../../../packages/extension-ui/src";

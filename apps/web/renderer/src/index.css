@@ -12,7 +12,7 @@
 @source "../../../../packages/agent-ui/src";
 @source "../../../../packages/auth-ui/src";
 @source "../../../../packages/sync-ui/src";
-@source "../../plugins/web-renderer/src";
+@source "../../../../packages-internal/web-renderer/src";
 
 body,
 #root {
