@@ -23,6 +23,7 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/database-mobile": "workspace:*",
     "@termlnk/react-native-russh": "workspace:*",
+    "@termlnk/terminal-mobile": "workspace:*",
     "react": "^19.2.6",
     "react-native": "^0.85.3",
     "rxjs": ">=7.0.0"
@@ -30,7 +31,8 @@
   "dependencies": {
     "@termlnk/core": "workspace:*",
     "@termlnk/database-mobile": "workspace:*",
-    "@termlnk/react-native-russh": "workspace:*"
+    "@termlnk/react-native-russh": "workspace:*",
+    "@termlnk/terminal-mobile": "workspace:*"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
