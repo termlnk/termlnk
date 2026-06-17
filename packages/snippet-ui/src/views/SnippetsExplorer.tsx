@@ -35,7 +35,6 @@ export const SnippetsExplorer: FC = () => {
   const snippetService = useDependency(ISnippetService) as ISnippetServiceType;
   const snippetDialog = useDependency(ISnippetDialogService);
   const localeService = useDependency(LocaleService);
-  const contextMenuService = useDependency(IContextMenuService);
   const snippetContextService = useDependency(ISnippetContextService);
   const logService = useDependency(ILogService);
 
@@ -503,8 +502,8 @@ interface IPackageRowProps {
   focusedItemId: string | null;
   treeFocused: boolean;
   suppressSelectionStyle: boolean;
-  contextMenuService: ReturnType<typeof useDependency<typeof IContextMenuService>>;
-  snippetContextService: ReturnType<typeof useDependency<typeof ISnippetContextService>>;
+  contextMenuService: IContextMenuService;
+  snippetContextService: ISnippetContextService;
   childCount?: number;
 }
 
@@ -531,8 +530,8 @@ function PackageRow({ item, pkg, focusedItemId, treeFocused, suppressSelectionSt
       {...itemProps}
       onContextMenu={handleContextMenu}
       className={cn(`
-        tm:flex tm:w-full tm:items-center tm:gap-2 tm:rounded-md tm:px-2 tm:py-1.5 tm:text-left
-        tm:text-[12px] tm:outline-hidden tm:select-none
+        tm:flex tm:w-full tm:items-center tm:gap-2 tm:rounded-md tm:px-2 tm:py-1.5 tm:text-left tm:text-[12px]
+        tm:outline-hidden tm:select-none
         tm:hover:bg-one-bg2
       `, {
         'tm:bg-one-bg3': shouldShowFocusStyle,
@@ -562,8 +561,8 @@ interface ISnippetRowProps {
   focusedItemId: string | null;
   treeFocused: boolean;
   suppressSelectionStyle: boolean;
-  contextMenuService: ReturnType<typeof useDependency<typeof IContextMenuService>>;
-  snippetContextService: ReturnType<typeof useDependency<typeof ISnippetContextService>>;
+  contextMenuService: IContextMenuService;
+  snippetContextService: ISnippetContextService;
   snippetDialog: ISnippetDialogService;
 }
 
@@ -597,8 +596,8 @@ function SnippetRow({ item, snippet, focusedItemId, treeFocused, suppressSelecti
       onContextMenu={handleContextMenu}
       className={cn(
         `
-          tm:flex tm:items-center tm:gap-2.5 tm:rounded-lg tm:border tm:border-line tm:bg-black tm:p-2.5
-          tm:text-left tm:outline-hidden
+          tm:flex tm:items-center tm:gap-2.5 tm:rounded-lg tm:border tm:border-line tm:bg-black tm:p-2.5 tm:text-left
+          tm:outline-hidden
           tm:hover:bg-one-bg2
         `,
         {
