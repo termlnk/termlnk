@@ -13,14 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
-import type { MenuAction } from '@react-native-menu/menu';
-import type { IMenuAction, IMenuItem } from './menu-types';
+import type { IMenuItem } from './menu-types';
 import { MenuView } from '@react-native-menu/menu';
 import { ChevronRight, MoreHorizontal } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { useThemeColors } from '../theme/theme-provider';
 import { cn } from './cn';
 import { HostAvatar } from './host-avatar';
+import { isMenuAction, toNativeMenuActions } from './native-menu';
 
 interface IHostRowProps {
   readonly id: string;
@@ -33,53 +33,7 @@ interface IHostRowProps {
   readonly connecting?: boolean;
   readonly connected?: boolean;
   readonly error?: string | null;
-  // MenuView can intercept short taps on navigable group rows, so callers opt in
-  // only where the native context menu does not block the primary action.
   readonly useNativeMenu?: boolean;
-}
-
-function isAction(item: IMenuItem): item is IMenuAction {
-  return !('divider' in item);
-}
-
-function toNativeActions(items: readonly IMenuItem[]): MenuAction[] {
-  const groups: IMenuAction[][] = [];
-  let current: IMenuAction[] = [];
-  for (const item of items) {
-    if ('divider' in item) {
-      if (current.length > 0) {
-        groups.push(current);
-        current = [];
-      }
-    } else {
-      current.push(item);
-    }
-  }
-  if (current.length > 0) {
-    groups.push(current);
-  }
-
-  if (groups.length <= 1) {
-    return groups.flatMap((g) => g.map(toAction));
-  }
-
-  return groups.map((group, i) => ({
-    id: `__group_${i}`,
-    title: '',
-    displayInline: true,
-    subactions: group.map(toAction),
-  }));
-}
-
-function toAction(item: IMenuAction): MenuAction {
-  return {
-    id: item.key,
-    title: item.label,
-    image: item.sfSymbol,
-    attributes: {
-      destructive: item.destructive,
-    },
-  };
 }
 
 function HostRowContent(props: IHostRowProps) {
@@ -122,12 +76,12 @@ function HostRowContent(props: IHostRowProps) {
 function NativeMenuButton({ items }: { readonly items: readonly IMenuItem[] }) {
   const colors = useThemeColors();
   const actionLookup = new Map(
-    items.filter(isAction).map((item) => [item.key, item])
+    items.filter(isMenuAction).map((item) => [item.key, item])
   );
 
   return (
     <MenuView
-      actions={toNativeActions(items)}
+      actions={toNativeMenuActions(items)}
       onPressAction={({ nativeEvent }) => {
         const action = actionLookup.get(nativeEvent.event);
         if (action != null) {
@@ -146,10 +100,10 @@ export function HostRow(props: IHostRowProps) {
   const colors = useThemeColors();
   const hasMenu = props.useNativeMenu === true
     && props.menuItems != null
-    && props.menuItems.filter(isAction).length > 0;
+    && props.menuItems.filter(isMenuAction).length > 0;
   const hasInlineMenu = props.useNativeMenu !== true
     && props.menuItems != null
-    && props.menuItems.filter(isAction).length > 0;
+    && props.menuItems.filter(isMenuAction).length > 0;
 
   if (!hasMenu) {
     return (
@@ -169,12 +123,12 @@ export function HostRow(props: IHostRowProps) {
   }
 
   const actionLookup = new Map(
-    props.menuItems!.filter(isAction).map((item) => [item.key, item])
+    props.menuItems!.filter(isMenuAction).map((item) => [item.key, item])
   );
 
   return (
     <MenuView
-      actions={toNativeActions(props.menuItems!)}
+      actions={toNativeMenuActions(props.menuItems!)}
       shouldOpenOnLongPress
       onPressAction={({ nativeEvent }) => {
         const action = actionLookup.get(nativeEvent.event);

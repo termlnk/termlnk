@@ -17,10 +17,10 @@ import { AuthState } from '@termlnk/auth';
 import { SyncState } from '@termlnk/sync';
 import { useRouter } from 'expo-router';
 import { ArrowLeftRight, Braces, ChevronDown, Cloud, CloudOff, FingerprintPattern, KeyRound, Server } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuthState, useHostRepository, useKnownHostRepository, useObservable, useSyncService } from '../../src/core/core-context';
+import { useAuthState, useHostRepository, useIdentityRepository, useKnownHostRepository, useObservable, usePortForwardingService, useSnippetRepository, useSshKeyRepository, useSyncService } from '../../src/core/core-context';
 import { useThemeColors } from '../../src/theme/theme-provider';
 import { Card } from '../../src/ui/card';
 import { TAB_BAR_HEIGHT } from '../../src/ui/floating-tab-bar';
@@ -33,19 +33,31 @@ export default function VaultsTab() {
   const colors = useThemeColors();
   const hostRepo = useHostRepository();
   const knownHostRepo = useKnownHostRepository();
+  const identityRepo = useIdentityRepository();
+  const sshKeyRepo = useSshKeyRepository();
+  const snippetRepo = useSnippetRepository();
+  const portForwardingService = usePortForwardingService();
   const syncService = useSyncService();
   const authState = useAuthState();
 
   const hosts = useObservable(hostRepo.hosts$, []);
   const knownHosts = useObservable(knownHostRepo.knownHosts$, []);
+  const identities = useObservable(identityRepo.identities$, []);
+  const sshKeys = useObservable(sshKeyRepo.keys$, []);
+  const snippets = useObservable(snippetRepo.snippets$, []);
+  const portForwardingRules = useObservable(portForwardingService.rules$, []);
   const syncState = useObservable(syncService.state$, SyncState.Disabled);
 
   useEffect(() => {
     void hostRepo.ready();
     void knownHostRepo.ready();
-  }, [hostRepo, knownHostRepo]);
+    void identityRepo.ready();
+    void sshKeyRepo.ready();
+    void snippetRepo.ready();
+  }, [hostRepo, knownHostRepo, identityRepo, sshKeyRepo, snippetRepo]);
 
-  const hostCount = hosts.filter((h) => h.type === 'host').length;
+  const hostCount = useMemo(() => hosts.filter((h) => h.type === 'host').length, [hosts]);
+  const keychainCount = identities.length + sshKeys.length;
   const isAuthenticated = authState === AuthState.Authenticated;
   const cloudColor = isAuthenticated ? colors.contentSecondary : colors.contentTertiary;
   const CloudIcon = isAuthenticated ? Cloud : CloudOff;
@@ -77,7 +89,7 @@ export default function VaultsTab() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 24 }}>
-        <Card dividerInset={64}>
+        <Card dividerInset={0}>
           <NavRow
             leading={<Server size={24} color={colors.content} />}
             title="Hosts"
@@ -87,16 +99,19 @@ export default function VaultsTab() {
           <NavRow
             leading={<KeyRound size={24} color={colors.content} />}
             title="Keychain"
+            value={String(keychainCount)}
             onPress={() => router.push('/vault/keychain')}
           />
           <NavRow
             leading={<ArrowLeftRight size={24} color={colors.content} />}
             title="Port Forwarding"
+            value={String(portForwardingRules.length)}
             onPress={() => router.push('/vault/port-forwarding')}
           />
           <NavRow
             leading={<Braces size={24} color={colors.content} />}
             title="Snippets"
+            value={String(snippets.length)}
             onPress={() => router.push('/vault/snippets')}
           />
           <NavRow

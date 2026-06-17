@@ -45,6 +45,7 @@ export interface IShellStartOptions {
 
 export interface IMobileSshSession {
   readonly host: string;
+  readonly connection: ISshConnection;
   readonly state: SshConnectionState;
   readonly state$: Observable<SshConnectionState>;
   readonly shellOutput$: Observable<string>;
@@ -79,6 +80,10 @@ class MobileSshSession extends Disposable implements IMobileSshSession {
     private readonly _connection: ISshConnection
   ) {
     super();
+  }
+
+  get connection(): ISshConnection {
+    return this._connection;
   }
 
   override dispose(): void {

@@ -56,7 +56,7 @@ export function NavRow(props: INavRowProps) {
             {props.value != null && (
               <Text className="ml-2 text-[14px] leading-[18px] text-content-secondary" numberOfLines={1}>{props.value}</Text>
             )}
-            {showChevron && <ChevronRight size={20} color={chevronColor} />}
+            {showChevron && <ChevronRight size={20} color={chevronColor} className="ml-2" />}
           </>
         )}
     </Pressable>

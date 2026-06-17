@@ -197,7 +197,7 @@ export function NavField({ label, value, onPress, last }: { label: string; value
       <Pressable onPress={onPress} className="flex-row items-center justify-between px-4 py-3.5 active:bg-surface-sunken">
         <Text className="text-[15px] leading-[20px] text-content">{label}</Text>
         <View className="ml-2 flex-row items-center">
-          <Text className="text-[14px] leading-[18px] text-content-tertiary" numberOfLines={1}>{value}</Text>
+          <Text className="text-[14px] leading-[18px] text-content-secondary" numberOfLines={1}>{value}</Text>
           <ChevronRight size={18} color={colors.contentTertiary} style={{ marginLeft: 4 }} />
         </View>
       </Pressable>

@@ -18,7 +18,8 @@ import type { LucideIcon } from 'lucide-react-native';
 export interface IMenuAction {
   readonly key: string;
   readonly label: string;
-  readonly icon: LucideIcon;
+  // Lucide icon for non-native rendering; MenuView uses `sfSymbol` on iOS.
+  readonly icon?: LucideIcon;
   readonly sfSymbol?: string;
   readonly onPress: () => void;
   readonly destructive?: boolean;

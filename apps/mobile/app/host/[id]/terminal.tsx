@@ -47,6 +47,9 @@ export default function TerminalScreen() {
   // Snapshot terminal config once for this session — the WebView HTML is built from
   // this snapshot. Live adjustments (font size, theme) are pushed via injectJavaScript.
   const [termConfig, setTermConfig] = useState<IXtermWebViewConfig | null>(null);
+  // Live theme background tracked separately from termConfig so swapping themes does
+  // not invalidate xtermHtml (which would reload the WebView and wipe the session).
+  const [liveThemeBg, setLiveThemeBg] = useState<string | null>(null);
   // Live value shown in the theme panel stepper.
   const [displayFontSize, setDisplayFontSize] = useState(13);
   const webviewRef = useRef<WebView>(null);
@@ -69,8 +72,8 @@ export default function TerminalScreen() {
   const colors = useThemeColors();
 
   const terminalBg = useMemo(
-    () => termConfig?.theme?.background ?? colors.surface,
-    [termConfig, colors.surface]
+    () => liveThemeBg ?? termConfig?.theme?.background ?? colors.surface,
+    [liveThemeBg, termConfig, colors.surface]
   );
 
   const xtermHtml = useMemo(() => {
@@ -130,6 +133,9 @@ export default function TerminalScreen() {
     webviewRef.current?.injectJavaScript(`window.__termlnkTerm.write(${JSON.stringify(b64)}); true;`);
   }, []);
 
+  // Live theme switch: paint via injectJavaScript only. Mutating termConfig
+  // would invalidate the xtermHtml useMemo, reload the WebView, and wipe the
+  // live session — the whole point of injectJavaScript was to avoid that.
   const onSetThemeLive = useCallback((themeName: string) => {
     const theme = THEME_MAP.get(themeName);
     if (!theme) {
@@ -137,6 +143,9 @@ export default function TerminalScreen() {
     }
     const xtermTheme = base46ToXterm(theme);
     webviewRef.current?.injectJavaScript(`window.__termlnkTerm && window.__termlnkTerm.setTheme(${JSON.stringify(xtermTheme)}); true;`);
+    if (xtermTheme.background) {
+      setLiveThemeBg(xtermTheme.background);
+    }
     void prefsService.update({ terminalThemeName: themeName });
   }, [prefsService]);
 

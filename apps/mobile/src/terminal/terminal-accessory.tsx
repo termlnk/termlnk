@@ -15,18 +15,29 @@
 
 import type { LucideIcon } from 'lucide-react-native';
 import { DEFAULT_PREFERENCES } from '@termlnk/database-mobile';
-import { ALL_THEMES } from '@termlnk/themes';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Braces, ChevronLeft, CircleX, Clock, Keyboard, LayoutGrid, Minus, Palette, Plus, Settings, TerminalSquare } from 'lucide-react-native';
-import { useCallback, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, ScrollView, Text, View } from 'react-native';
-import { useObservable, usePreferencesService } from '../core/core-context';
+import { ALL_THEMES, THEME_MAP } from '@termlnk/themes';
+import { useRouter } from 'expo-router';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Braces, ChevronDown, ChevronLeft, ChevronRight, CircleX, Clock, Keyboard, LayoutGrid, Minus, Palette, Plus, Search, Settings, TerminalSquare } from 'lucide-react-native';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useObservable, usePreferencesService, useSnippetRepository } from '../core/core-context';
+import { filterSnippets, groupSnippets } from '../ui/snippet-utils';
 import { KeyboardHideIcon } from './keyboard-hide-icon';
 import { ARROW_KEYS, KEY_GRID } from './terminal-keys';
 import { ThemeMiniCard } from './theme-mini-card';
 
-// The terminal keeps its own dark identity independent of the OS chrome theme
-// (it sits next to the always-dark xterm WebView), so its palette is fixed here.
-const TERM = {
+interface ITermColors {
+  readonly bg: string;
+  readonly key: string;
+  readonly keyActive: string;
+  readonly text: string;
+  readonly muted: string;
+  readonly green: string;
+  readonly pillBg: string;
+  readonly border: string;
+}
+
+const TERM_FALLBACK: ITermColors = {
   bg: '#161a23',
   key: '#252b37',
   keyActive: '#30374a',
@@ -36,6 +47,30 @@ const TERM = {
   pillBg: '#15392b',
   border: '#2a3140',
 };
+
+const TermColorsContext = createContext<ITermColors>(TERM_FALLBACK);
+
+function useTermColors(): ITermColors {
+  return useContext(TermColorsContext);
+}
+
+function colorsFromThemeName(name: string): ITermColors {
+  const theme = THEME_MAP.get(name);
+  if (!theme) {
+    return TERM_FALLBACK;
+  }
+  const b = theme.base_30;
+  return {
+    bg: b.darker_black,
+    key: b.one_bg,
+    keyActive: b.one_bg2,
+    text: b.white,
+    muted: b.grey,
+    green: b.green,
+    pillBg: `${b.green}26`,
+    border: b.line,
+  };
+}
 
 type Panel = 'keys' | 'snippets' | 'history' | 'theme';
 
@@ -60,45 +95,51 @@ const ARROW_ICONS: Record<string, LucideIcon> = {
 export function TerminalAccessory(props: ITerminalAccessoryProps) {
   const [panel, setPanel] = useState<Panel>('keys');
   const [collapsed, setCollapsed] = useState(false);
+  const prefsService = usePreferencesService();
+  const prefs = useObservable(prefsService.prefs$, DEFAULT_PREFERENCES);
+  const termColors = useMemo(() => colorsFromThemeName(prefs.terminalThemeName), [prefs.terminalThemeName]);
 
   const onToggleCollapse = useCallback(() => {
     setCollapsed((prev) => !prev);
   }, []);
 
   return (
-    <View style={{ backgroundColor: TERM.bg, borderTopColor: TERM.border, borderTopWidth: 1 }}>
-      <HostBar
-        hostLabel={props.hostLabel}
-        onBack={props.onBack}
-        onClose={props.onClose}
-        onToggleKeyboard={props.onToggleKeyboard}
-        collapsed={collapsed}
-        onToggleCollapse={onToggleCollapse}
-      />
+    <TermColorsContext.Provider value={termColors}>
+      <View style={{ backgroundColor: termColors.bg, borderTopColor: termColors.border, borderTopWidth: 1 }}>
+        <HostBar
+          hostLabel={props.hostLabel}
+          onBack={props.onBack}
+          onClose={props.onClose}
+          onToggleKeyboard={props.onToggleKeyboard}
+          collapsed={collapsed}
+          onToggleCollapse={onToggleCollapse}
+        />
 
-      {!collapsed && (
-        <>
-          <View style={{ height: 320 }}>
-            {panel === 'keys' && <KeysPanel onKey={props.onKey} />}
-            {panel === 'snippets' && <SnippetsPanel />}
-            {panel === 'history' && <PlaceholderPanel title="No history yet" subtitle="Commands you run will appear here." />}
-            {panel === 'theme' && (
-              <ThemePanel
-                fontSize={props.fontSize}
-                onFontDelta={props.onFontDelta}
-                onSetThemeLive={props.onSetThemeLive}
-              />
-            )}
-          </View>
+        {!collapsed && (
+          <>
+            <View style={{ height: 320 }}>
+              {panel === 'keys' && <KeysPanel onKey={props.onKey} />}
+              {panel === 'snippets' && <SnippetsPanel onKey={props.onKey} />}
+              {panel === 'history' && <PlaceholderPanel title="No history yet" subtitle="Commands you run will appear here." />}
+              {panel === 'theme' && (
+                <ThemePanel
+                  fontSize={props.fontSize}
+                  onFontDelta={props.onFontDelta}
+                  onSetThemeLive={props.onSetThemeLive}
+                />
+              )}
+            </View>
 
-          <BottomToolbar panel={panel} onSelect={setPanel} onToggleCollapse={onToggleCollapse} />
-        </>
-      )}
-    </View>
+            <BottomToolbar panel={panel} onSelect={setPanel} onToggleCollapse={onToggleCollapse} />
+          </>
+        )}
+      </View>
+    </TermColorsContext.Provider>
   );
 }
 
 function HostBar({ hostLabel, onBack, onClose, onToggleKeyboard, collapsed, onToggleCollapse }: { hostLabel: string; onBack: () => void; onClose: () => void; onToggleKeyboard: () => void; collapsed: boolean; onToggleCollapse: () => void }) {
+  const TERM = useTermColors();
   return (
     <View className="flex-row items-center px-3 py-1.5" style={collapsed ? { paddingBottom: 20 } : undefined}>
       <ToolButton icon={ChevronLeft} onPress={onBack} />
@@ -120,6 +161,7 @@ function HostBar({ hostLabel, onBack, onClose, onToggleKeyboard, collapsed, onTo
 }
 
 function ToolButton({ icon: Icon, onPress }: { icon: LucideIcon; onPress: () => void }) {
+  const TERM = useTermColors();
   return (
     <Pressable
       onPress={onPress}
@@ -132,6 +174,7 @@ function ToolButton({ icon: Icon, onPress }: { icon: LucideIcon; onPress: () => 
 }
 
 function KeysPanel({ onKey }: { onKey: (seq: string) => void }) {
+  const TERM = useTermColors();
   return (
     <ScrollView contentContainerStyle={{ padding: 8 }} keyboardShouldPersistTaps="always">
       <View className="mb-2 flex-row gap-2">
@@ -178,6 +221,7 @@ function KeysPanel({ onKey }: { onKey: (seq: string) => void }) {
 }
 
 function WideButton({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+  const TERM = useTermColors();
   return (
     <Pressable
       onPress={onPress}
@@ -190,28 +234,161 @@ function WideButton({ icon: Icon, label, onPress }: { icon: LucideIcon; label: s
   );
 }
 
-function SnippetsPanel() {
-  return (
-    <View className="flex-1 items-center justify-center px-8">
-      <View className="h-16 w-16 items-center justify-center rounded-2xl" style={{ backgroundColor: TERM.key }}>
-        <Braces size={28} color={TERM.green} />
+function SnippetsPanel({ onKey }: { onKey: (seq: string) => void }) {
+  const router = useRouter();
+  const snippetRepo = useSnippetRepository();
+  const TERM = useTermColors();
+  const snippets = useObservable(snippetRepo.snippets$, []);
+  const packages = useObservable(snippetRepo.packages$, []);
+  const [search, setSearch] = useState('');
+  const expandedPkgs = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of packages) {
+      if (p.expanded) {
+        set.add(p.id);
+      }
+    }
+    return set;
+  }, [packages]);
+
+  useEffect(() => {
+    void snippetRepo.ready();
+  }, [snippetRepo]);
+
+  const filtered = useMemo(() => filterSnippets(snippets, search), [snippets, search]);
+
+  const grouped = useMemo(() => groupSnippets(filtered), [filtered]);
+
+  const executeSnippet = useCallback((content: string | null) => {
+    if (!content) {
+      return;
+    }
+    onKey(`${content}\r`);
+  }, [onKey]);
+
+  const togglePackage = useCallback((id: string) => {
+    const next = new Set(expandedPkgs);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    void snippetRepo.setExpandedPackageIds([...next]);
+  }, [expandedPkgs, snippetRepo]);
+
+  const hasContent = snippets.length > 0 || packages.length > 0;
+
+  if (!hasContent) {
+    return (
+      <View className="flex-1 items-center justify-center px-8">
+        <View className="h-16 w-16 items-center justify-center rounded-2xl" style={{ backgroundColor: TERM.key }}>
+          <Braces size={28} color={TERM.green} />
+        </View>
+        <Text className="mt-4 text-center text-[16px] font-semibold" style={{ color: TERM.green }}>There are no snippets</Text>
+        <Text className="mt-2 text-center text-[13px] leading-5" style={{ color: TERM.muted }}>
+          Save your frequently used commands as Snippets for easy execution in the future.
+        </Text>
+        <Pressable
+          onPress={() => router.push('/vault/snippet-edit')}
+          className="mt-5 w-full items-center rounded-xl py-3 active:opacity-70"
+          style={{ backgroundColor: TERM.key }}
+        >
+          <Text className="text-[15px] font-medium" style={{ color: TERM.green }}>Create snippet</Text>
+        </Pressable>
       </View>
-      <Text className="mt-4 text-center text-[16px] font-semibold" style={{ color: TERM.green }}>There are no snippets</Text>
-      <Text className="mt-2 text-center text-[13px] leading-5" style={{ color: TERM.muted }}>
-        Save your frequently used commands as Snippets for easy execution in the future.
-      </Text>
+    );
+  }
+
+  return (
+    <ScrollView contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12 }} keyboardShouldPersistTaps="always">
+      {/* Search */}
+      <View className="mb-2 flex-row items-center rounded-xl px-3" style={{ backgroundColor: TERM.key, height: 40 }}>
+        <Search size={16} color={TERM.muted} />
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search"
+          placeholderTextColor={TERM.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          className="ml-2 flex-1 text-[14px]"
+          style={{ color: TERM.text }}
+        />
+      </View>
+
+      {/* Package rows */}
+      {packages.map((pkg) => {
+        const pkgSnippets = grouped.byPackage.get(pkg.id) ?? [];
+        const expanded = expandedPkgs.has(pkg.id);
+        return (
+          <View key={pkg.id}>
+            <Pressable
+              onPress={() => togglePackage(pkg.id)}
+              className="flex-row items-center justify-between border-b py-3 active:opacity-70"
+              style={{ borderColor: TERM.border }}
+            >
+              <Text className="text-[15px]" style={{ color: TERM.text }}>{pkg.label}</Text>
+              <View className="flex-row items-center">
+                <Text className="mr-1 text-[14px]" style={{ color: TERM.muted }}>{pkgSnippets.length}</Text>
+                {expanded
+                  ? <ChevronDown size={16} color={TERM.muted} />
+                  : <ChevronRight size={16} color={TERM.muted} />}
+              </View>
+            </Pressable>
+            {expanded && pkgSnippets.map((snippet) => (
+              <Pressable
+                key={snippet.id}
+                onPress={() => executeSnippet(snippet.content)}
+                className="flex-row items-center border-b py-3 pl-2 active:opacity-70"
+                style={{ borderColor: TERM.border }}
+              >
+                <View className="mr-3 h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: TERM.key }}>
+                  <Braces size={16} color={TERM.muted} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[14px]" style={{ color: TERM.text }} numberOfLines={1}>{snippet.label}</Text>
+                  <Text className="mt-0.5 text-[12px]" style={{ color: TERM.muted }} numberOfLines={1}>{snippet.content}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        );
+      })}
+
+      {/* Ungrouped snippets */}
+      {grouped.ungrouped.map((snippet) => (
+        <Pressable
+          key={snippet.id}
+          onPress={() => executeSnippet(snippet.content)}
+          className="flex-row items-center border-b py-3 active:opacity-70"
+          style={{ borderColor: TERM.border }}
+        >
+          <View className="mr-3 h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: TERM.key }}>
+            <Braces size={16} color={TERM.muted} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[14px]" style={{ color: TERM.text }} numberOfLines={1}>{snippet.label}</Text>
+            <Text className="mt-0.5 text-[12px]" style={{ color: TERM.muted }} numberOfLines={1}>{snippet.content}</Text>
+          </View>
+        </Pressable>
+      ))}
+
+      {/* Add new snippet */}
       <Pressable
-        onPress={() => Alert.alert('Snippets', 'Creating snippets is coming soon.')}
-        className="mt-5 w-full items-center rounded-xl py-3 active:opacity-70"
-        style={{ backgroundColor: TERM.key }}
+        onPress={() => router.push('/vault/snippet-edit')}
+        className="flex-row items-center py-3 active:opacity-70"
       >
-        <Text className="text-[15px] font-medium" style={{ color: TERM.green }}>Create snippet</Text>
+        <View className="mr-3 h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: TERM.key }}>
+          <Plus size={16} color={TERM.muted} />
+        </View>
+        <Text className="text-[14px]" style={{ color: TERM.muted }}>Add new snippet</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 function PlaceholderPanel({ title, subtitle }: { title: string; subtitle: string }) {
+  const TERM = useTermColors();
   return (
     <View className="flex-1 items-center justify-center px-8">
       <Clock size={28} color={TERM.muted} />
@@ -222,6 +399,7 @@ function PlaceholderPanel({ title, subtitle }: { title: string; subtitle: string
 }
 
 function ThemePanel({ fontSize, onFontDelta, onSetThemeLive }: { fontSize: number; onFontDelta: (delta: number) => void; onSetThemeLive?: (themeName: string) => void }) {
+  const TERM = useTermColors();
   const prefsService = usePreferencesService();
   const prefs = useObservable(prefsService.prefs$, DEFAULT_PREFERENCES);
   const currentThemeName = prefs.terminalThemeName;
@@ -278,7 +456,7 @@ function ThemePanel({ fontSize, onFontDelta, onSetThemeLive }: { fontSize: numbe
       </View>
       <Text className="mt-2 text-[12px]" style={{ color: TERM.muted }}>Font size and theme changes are live.</Text>
     </>
-  ), [fontSize, onFontDelta]);
+  ), [fontSize, onFontDelta, TERM]);
 
   return (
     <FlatList
@@ -295,6 +473,7 @@ function ThemePanel({ fontSize, onFontDelta, onSetThemeLive }: { fontSize: numbe
 }
 
 function BottomToolbar({ panel, onSelect, onToggleCollapse }: { panel: Panel; onSelect: (p: Panel) => void; onToggleCollapse: () => void }) {
+  const TERM = useTermColors();
   return (
     <View className="flex-row items-center justify-around border-t px-2 py-2" style={{ borderColor: TERM.border, paddingBottom: 20 }}>
       <TabIcon icon={LayoutGrid} active={panel === 'keys'} onPress={() => onSelect('keys')} />
@@ -305,20 +484,21 @@ function BottomToolbar({ panel, onSelect, onToggleCollapse }: { panel: Panel; on
         onPress={onToggleCollapse}
         className="h-10 w-10 items-center justify-center rounded-xl active:opacity-70"
       >
-        <KeyboardHideIcon size={24} color={TERM.muted} />
+        <KeyboardHideIcon size={24} color={TERM.text} />
       </Pressable>
     </View>
   );
 }
 
 function TabIcon({ icon: Icon, active, onPress }: { icon: LucideIcon; active: boolean; onPress: () => void }) {
+  const TERM = useTermColors();
   return (
     <Pressable
       onPress={onPress}
       className="h-10 w-10 items-center justify-center rounded-xl active:opacity-70"
       style={{ backgroundColor: active ? TERM.keyActive : 'transparent' }}
     >
-      <Icon size={20} color={active ? TERM.green : TERM.muted} />
+      <Icon size={20} color={active ? TERM.green : TERM.text} />
     </Pressable>
   );
 }
