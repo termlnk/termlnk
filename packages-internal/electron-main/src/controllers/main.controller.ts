@@ -80,7 +80,6 @@ export class MainController extends Disposable {
 
     const options: ICreateWindowOptions = {
       ...persistedState.bounds,
-      hiddenInMissionControl: true,
       webPreferences: {
         preload: config.preload,
         devTools: true,
