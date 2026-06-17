@@ -261,6 +261,17 @@ export interface IProviderSyncRepository {
 }
 export const IProviderSyncRepository = createIdentifier<IProviderSyncRepository>('sync.provider-repository');
 
+// Snippet uses a single table with a type discriminator (snippet | package), mirroring host.
+// The sync layer sees all rows as opaque — tree topology is embedded in pid/tree fields.
+export interface ISnippetSyncRepository {
+  readonly changed$: Observable<ISyncRowChangeEvent>;
+  getList(): Promise<ISyncEntityRow[]>;
+  getById(id: string): Promise<ISyncEntityRow | null | undefined>;
+  syncUpsertRow(entity: ISyncEntityRow): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+export const ISnippetSyncRepository = createIdentifier<ISnippetSyncRepository>('sync.snippet-repository');
+
 // --- Backup ----------------------------------------------------------------------------
 
 // The engine serializes the whole snapshot opaquely and only reads `exportedAt` plus

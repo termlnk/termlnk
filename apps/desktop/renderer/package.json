@@ -32,6 +32,7 @@
     "@termlnk/sftp-ui": "workspace:*",
     "@termlnk/shared-terminal": "workspace:*",
     "@termlnk/shared-terminal-ui": "workspace:*",
+    "@termlnk/snippet-ui": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/sync-ui": "workspace:*",
     "@termlnk/terminal": "workspace:*",

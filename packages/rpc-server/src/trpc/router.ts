@@ -37,6 +37,7 @@ import { remoteSessionRouter } from './routers/remote-session';
 import { sftpRouter } from './routers/sftp';
 import { sharedSessionRouter } from './routers/shared-session';
 import { skillRouter } from './routers/skill';
+import { snippetRouter } from './routers/snippet';
 import { sshRouter } from './routers/ssh';
 import { syncRouter } from './routers/sync';
 import { terminalSessionBackupRouter } from './routers/terminal-session-backup';
@@ -62,6 +63,7 @@ export const appRouter = router({
   remoteSession: remoteSessionRouter,
   sharedSession: sharedSessionRouter,
   skill: skillRouter,
+  snippet: snippetRouter,
   ssh: sshRouter,
   sync: syncRouter,
   fileTransfer: fileTransferRouter,

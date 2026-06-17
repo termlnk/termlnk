@@ -15,7 +15,7 @@
 
 import type { IConfigOptions, IConfigService, IDisposable, ILogService, LogLevel } from '@termlnk/core';
 import type { IResourceSynchroniser, ISyncMutation, ISyncPatchItem, SyncResourceId } from '@termlnk/sync';
-import type { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
+import type { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SnippetSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 import type { Observable } from 'rxjs';
 import { SYNC_PLUGIN_CONFIG_KEY, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject, EMPTY } from 'rxjs';
@@ -112,6 +112,7 @@ function createBed(excluded: SyncResourceId[] | undefined): ITestBed {
     new StubSynchroniser('ai_provider') as unknown as ProviderSynchroniser,
     new StubSynchroniser('mcp_server') as unknown as McpSynchroniser,
     new StubSynchroniser('skill') as unknown as SkillSynchroniser,
+    new StubSynchroniser('snippet') as unknown as SnippetSynchroniser,
     new StubSynchroniser('ssh_key') as unknown as SshKeySynchroniser,
     new StubSynchroniser('identity') as unknown as IdentitySynchroniser,
     new StubSynchroniser('known_host') as unknown as KnownHostSynchroniser,
@@ -129,6 +130,7 @@ const ALL_RESOURCES_SORTED: SyncResourceId[] = [
   'mcp_server',
   'port_forwarding_rule',
   'skill',
+  'snippet',
   'ssh_key',
 ];
 
@@ -148,7 +150,7 @@ describe('SynchroniserRegistrationController', () => {
   it('skips a single excluded synchroniser', () => {
     const bed = createBed(['host']);
     expect(bed.fakeSync.registered.sort()).toEqual([
-      'ai_provider', 'config', 'identity', 'known_host', 'mcp_server', 'port_forwarding_rule', 'skill', 'ssh_key',
+      'ai_provider', 'config', 'identity', 'known_host', 'mcp_server', 'port_forwarding_rule', 'skill', 'snippet', 'ssh_key',
     ]);
     bed.controller.dispose();
   });
@@ -156,7 +158,7 @@ describe('SynchroniserRegistrationController', () => {
   it('skips multiple excluded synchronisers', () => {
     const bed = createBed(['ai_provider', 'mcp_server', 'skill']);
     expect(bed.fakeSync.registered.sort()).toEqual([
-      'config', 'host', 'identity', 'known_host', 'port_forwarding_rule', 'ssh_key',
+      'config', 'host', 'identity', 'known_host', 'port_forwarding_rule', 'snippet', 'ssh_key',
     ]);
     bed.controller.dispose();
   });

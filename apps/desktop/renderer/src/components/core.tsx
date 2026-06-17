@@ -31,6 +31,7 @@ import { SettingsUIPlugin } from '@termlnk/settings-ui';
 import { SFTPUIPlugin } from '@termlnk/sftp-ui';
 import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { SharedTerminalUIPlugin } from '@termlnk/shared-terminal-ui';
+import { SnippetUIPlugin } from '@termlnk/snippet-ui';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
@@ -89,6 +90,7 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
   core.registerPlugin(SharedTerminalUIPlugin);
   core.registerPlugin(SFTPUIPlugin);
   core.registerPlugin(PortForwardingUIPlugin);
+  core.registerPlugin(SnippetUIPlugin);
   core.registerPlugin(SettingsUIPlugin);
   core.registerPlugin(IslandSettingsPlugin);
   core.registerPlugin(ExtensionPlugin);

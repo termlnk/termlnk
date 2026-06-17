@@ -1,0 +1,17 @@
+{
+  "extends": "@termlnk/shared/tsconfig/base",
+  "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ],
+  "include": [
+    "src"
+  ]
+}

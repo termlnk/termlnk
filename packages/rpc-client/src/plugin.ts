@@ -20,6 +20,7 @@ import { IAuthService } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IFileTransferService, INotifyService, IPortForwardingService, RPCPlugin } from '@termlnk/rpc';
 import { IDevicePairingService, IInviteService, IRemoteSessionService, ISharedSessionService } from '@termlnk/shared-terminal';
+import { ISnippetService } from '@termlnk/snippet';
 import { IBackupClientService, ISyncService } from '@termlnk/sync';
 import { IPTYService } from '@termlnk/terminal';
 import { defaultPluginConfig, RPC_CLIENT_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
@@ -45,6 +46,7 @@ import { RemoteSessionService } from './services/remote-session/remote-session.s
 import { ISFTPService, SFTPClientService } from './services/sftp/sftp.service';
 import { SharedSessionService } from './services/shared-session/shared-session.service';
 import { SkillService } from './services/skill/skill.service';
+import { SnippetClientService } from './services/snippet/snippet.service';
 import { ISSHService, SSHService } from './services/ssh/ssh.service';
 import { BackupClientService } from './services/sync/backup-client.service';
 import { SyncClientService } from './services/sync/sync-client.service';
@@ -105,6 +107,7 @@ export class RPCClientPlugin extends Plugin {
       [ISFTPService, { useClass: SFTPClientService }],
       [ISharedSessionService, { useClass: SharedSessionService }],
       [ISkillService, { useClass: SkillService }],
+      [ISnippetService, { useClass: SnippetClientService }],
       [ISSHService, { useClass: SSHService }],
       [ISyncService, { useClass: SyncClientService }],
       [IBackupClientService, { useClass: BackupClientService }],

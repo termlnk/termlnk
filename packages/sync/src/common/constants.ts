@@ -22,6 +22,7 @@ export const SYNC_RESOURCES = [
   'ai_provider',
   'mcp_server',
   'skill',
+  'snippet',
   'ssh_key',
   'identity',
   'known_host',

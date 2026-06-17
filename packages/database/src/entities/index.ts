@@ -24,6 +24,7 @@ export * from './mcp-server';
 export * from './port-forwarding-rule';
 export * from './provider';
 export * from './skill';
+export * from './snippet';
 export * from './ssh-key';
 export * from './sync-cursor';
 export * from './sync-field-meta';

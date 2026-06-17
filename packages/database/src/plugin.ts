@@ -19,7 +19,7 @@ import type { IDatabaseConfig } from './controllers/config.schema';
 import type * as entities from './entities';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
-import { IBackupRepository, IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IMcpServerSyncRepository, IPortForwardingRuleSyncRepository, IProviderSyncRepository, ISkillSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from '@termlnk/sync';
+import { IBackupRepository, IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IMcpServerSyncRepository, IPortForwardingRuleSyncRepository, IProviderSyncRepository, ISkillSyncRepository, ISnippetSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from '@termlnk/sync';
 import { DEFAULT_DB_ADAPTOR } from './config/config';
 import { DATABASE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
@@ -36,6 +36,7 @@ import { McpServerRepository } from './repositories/mcp-server';
 import { PortForwardingRuleRepository } from './repositories/port-forwarding-rule';
 import { ProviderRepository } from './repositories/provider';
 import { SkillRepository } from './repositories/skill';
+import { SnippetRepository } from './repositories/snippet';
 import { SshKeyRepository } from './repositories/ssh-key';
 import { SyncCursorRepository } from './repositories/sync-cursor';
 import { SyncFieldMetaRepository } from './repositories/sync-field-meta';
@@ -108,6 +109,7 @@ export class DatabasePlugin extends Plugin {
       [PortForwardingRuleRepository, { useClass: PortForwardingRuleRepository }],
       [ProviderRepository, { useClass: ProviderRepository }],
       [SkillRepository, { useClass: SkillRepository }],
+      [SnippetRepository, { useClass: SnippetRepository }],
       [SshKeyRepository, { useClass: SshKeyRepository }],
       [SyncCursorRepository, { useClass: SyncCursorRepository }],
       [SyncFieldMetaRepository, { useClass: SyncFieldMetaRepository }],
@@ -127,6 +129,10 @@ export class DatabasePlugin extends Plugin {
       [IPortForwardingRuleSyncRepository, { useExisting: PortForwardingRuleRepository }],
       [IProviderSyncRepository, { useExisting: ProviderRepository }],
       [ISkillSyncRepository, { useExisting: SkillRepository }],
+      [ISnippetSyncRepository, {
+        useFactory: (repo: SnippetRepository) => SnippetRepository.toSyncRepository(repo),
+        deps: [SnippetRepository],
+      }],
       [ISshKeySyncRepository, { useExisting: SshKeyRepository }],
       [ISyncCursorRepository, { useExisting: SyncCursorRepository }],
       [ISyncFieldMetaRepository, { useExisting: SyncFieldMetaRepository }],

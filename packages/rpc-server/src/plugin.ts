@@ -20,6 +20,7 @@ import { DependentOn, IConfigService, Inject, Injector, LocaleService, merge, me
 import { ConfigRepository, DatabasePlugin } from '@termlnk/database';
 import { IFileTransferService, INotifyService, IPortForwardingService, ISSHSessionService, ISSHToolService, ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { IInviteService, ISharedSessionService } from '@termlnk/shared-terminal';
+import { ISnippetService } from '@termlnk/snippet';
 import { IPTYSessionService } from '@termlnk/terminal';
 import { defaultPluginConfig, RPC_SERVER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { McpToolsController } from './controllers/mcp-tools.controller';
@@ -37,6 +38,7 @@ import { InviteService } from './services/shared-terminal/invite.service';
 import { SharedSessionService } from './services/shared-terminal/shared-session.service';
 import { CommandBlockService, ICommandBlockService } from './services/shell-integration/command-block.service';
 import { TerminalSessionEnvService } from './services/shell-integration/terminal-session-env.service';
+import { SnippetService } from './services/snippet/snippet.service';
 import { SSHSessionService } from './services/ssh-session/ssh-session.service';
 import { SSHToolService } from './services/ssh-tool.service';
 import { ISSHHostChainService, SSHHostChainService } from './services/ssh/ssh-host-chain.service';
@@ -90,6 +92,7 @@ export class RPCServerPlugin extends Plugin {
       [ISharedSessionService, { useClass: SharedSessionService }],
       [IDeepLinkRouterService, { useClass: DeepLinkRouterService }],
       [IInviteService, { useClass: InviteService }],
+      [ISnippetService, { useClass: SnippetService }],
       [McpToolsController],
       [TerminalSessionPromptController],
     ];

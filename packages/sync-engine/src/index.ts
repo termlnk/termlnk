@@ -32,4 +32,5 @@ export { McpSynchroniser } from './synchronisers/mcp-synchroniser';
 export { PortForwardingRuleSynchroniser } from './synchronisers/port-forwarding-rule-synchroniser';
 export { ProviderSynchroniser } from './synchronisers/provider-synchroniser';
 export { SkillSynchroniser } from './synchronisers/skill-synchroniser';
+export { SnippetSynchroniser } from './synchronisers/snippet-synchroniser';
 export { SshKeySynchroniser } from './synchronisers/ssh-key-synchroniser';

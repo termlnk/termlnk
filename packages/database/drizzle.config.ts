@@ -37,6 +37,7 @@ export default defineConfig({
     './src/entities/port-forwarding-rule.ts',
     './src/entities/provider.ts',
     './src/entities/skill.ts',
+    './src/entities/snippet.ts',
     './src/entities/ssh-key.ts',
     './src/entities/sync-cursor.ts',
     './src/entities/sync-field-meta.ts',

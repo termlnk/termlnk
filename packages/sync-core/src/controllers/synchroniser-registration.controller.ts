@@ -16,7 +16,7 @@
 import type { IResourceSynchroniser, ISyncPluginConfig, SyncResourceId } from '@termlnk/sync';
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { ISyncService, SYNC_PLUGIN_CONFIG_KEY } from '@termlnk/sync';
-import { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
+import { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SnippetSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 
 // Registers synchronisers at onReady (plugin onStarting is too early — dependencies
 // are not yet constructed). Synchroniser construction is side-effect free; start()
@@ -32,6 +32,7 @@ export class SynchroniserRegistrationController extends Disposable {
     @Inject(ProviderSynchroniser) private readonly _provider: ProviderSynchroniser,
     @Inject(McpSynchroniser) private readonly _mcp: McpSynchroniser,
     @Inject(SkillSynchroniser) private readonly _skill: SkillSynchroniser,
+    @Inject(SnippetSynchroniser) private readonly _snippet: SnippetSynchroniser,
     @Inject(SshKeySynchroniser) private readonly _sshKey: SshKeySynchroniser,
     @Inject(IdentitySynchroniser) private readonly _identity: IdentitySynchroniser,
     @Inject(KnownHostSynchroniser) private readonly _knownHost: KnownHostSynchroniser,
@@ -46,6 +47,7 @@ export class SynchroniserRegistrationController extends Disposable {
       ['ai_provider', this._provider],
       ['mcp_server', this._mcp],
       ['skill', this._skill],
+      ['snippet', this._snippet],
       ['ssh_key', this._sshKey],
       ['identity', this._identity],
       ['known_host', this._knownHost],
