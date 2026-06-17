@@ -43,6 +43,7 @@
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
+    "@termlnk/snippet": "workspace:*",
     "drizzle-kit": "1.0.0-rc.3",
     "typescript": "^6.0.3"
   }

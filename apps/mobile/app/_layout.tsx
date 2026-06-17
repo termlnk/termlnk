@@ -66,6 +66,38 @@ export default function RootLayout() {
               <Stack.Screen name="vault/port-forwarding" options={{ headerShown: false }} />
               <Stack.Screen name="vault/port-forwarding-edit" options={{ headerShown: false }} />
               <Stack.Screen name="vault/snippets" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="vault/snippet-edit"
+                options={{
+                  presentation: 'formSheet',
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.6, 0.95] as number[],
+                  sheetCornerRadius: 28,
+                  contentStyle: { flex: 1 },
+                }}
+              />
+              <Stack.Screen
+                name="vault/snippet-package-edit"
+                options={{
+                  presentation: 'formSheet',
+                  headerShown: false,
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.4, 0.95] as number[],
+                  sheetCornerRadius: 28,
+                  contentStyle: { flex: 1 },
+                }}
+              />
+              <Stack.Screen
+                name="vault/snippet-package-picker"
+                options={{
+                  presentation: 'formSheet',
+                  sheetGrabberVisible: true,
+                  sheetAllowedDetents: [0.5, 0.95] as number[],
+                  sheetCornerRadius: 20,
+                  contentStyle: { flex: 1 },
+                }}
+              />
               <Stack.Screen name="keychain/identity" options={{ headerShown: false }} />
               <Stack.Screen name="keychain/key" options={{ headerShown: false }} />
               <Stack.Screen name="keychain/new-key" options={{ headerShown: false }} />

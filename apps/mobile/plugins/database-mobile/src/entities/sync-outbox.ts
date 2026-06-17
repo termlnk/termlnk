@@ -15,19 +15,21 @@
 
 import type { SyncResourceId } from '@termlnk/sync';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import { blob, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { bytesBlob } from './base';
 
 // Persistent pending-mutation queue (offline-first), mirrors @termlnk/database's
-// desktop sync_outbox table row-for-row so the platform-agnostic sync engine behaves
-// identically on both ends. expo-sqlite returns Uint8Array for BLOB (matches the
-// desktop better-sqlite3 Buffer surface drizzle exposes through { mode: 'buffer' }).
+// desktop sync_outbox table row-for-row so the platform-agnostic sync engine
+// behaves identically on both ends. `payload` uses a Uint8Array-native column
+// type (see `bytesBlob` in ./base) because Hermes lacks the Node `Buffer` global
+// that drizzle's stock `{ mode: 'buffer' }` mapper assumes.
 export const syncOutboxEntity = sqliteTable('sync_outbox', {
   id: text('id').primaryKey().notNull(),
   clientMutId: integer('client_mut_id').notNull(),
   resource: text('resource').notNull().$type<SyncResourceId>(),
   op: text('op').notNull().$type<'upsert' | 'delete'>(),
   entityId: text('entity_id').notNull(),
-  payload: blob('payload', { mode: 'buffer' }),
+  payload: bytesBlob('payload'),
   baseVersion: integer('base_version'),
   createdAt: integer('created_at').notNull(),
   retryCount: integer('retry_count').notNull().default(0),

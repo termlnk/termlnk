@@ -16,14 +16,15 @@
 import type { Dependency } from '@termlnk/core';
 import type { IDatabaseMobileConfig } from './controllers/config.schema';
 import { IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
-import { IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IPortForwardingRuleSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from '@termlnk/sync';
+import { IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IPortForwardingRuleSyncRepository, ISnippetSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from '@termlnk/sync';
 import { DATABASE_MOBILE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { ExpoSqliteAdaptor, IDatabaseMobileAdaptorService } from './services/expo-sqlite-adaptor.service';
 import { IMobileHostRepository, MobileHostRepository } from './services/mobile-host-repository';
 import { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository, MobileIdentityRepository, MobileKnownHostRepository, MobileSshKeyRepository } from './services/mobile-keychain-repositories';
-import { IMobilePreferencesService, MobilePreferencesService } from './services/mobile-preferences.service';
 import { IMobilePortForwardingRuleRepository, MobilePortForwardingRuleRepository } from './services/mobile-port-forwarding-rule-repository';
+import { IMobilePreferencesService, MobilePreferencesService } from './services/mobile-preferences.service';
 import { IMobileSecretCipherService, MobileSecretCipherService } from './services/mobile-secret-cipher.service';
+import { IMobileSnippetRepository, MobileSnippetRepository } from './services/mobile-snippet-repository';
 import { MobileSyncConfigRepository, MobileSyncCursorRepository, MobileSyncFieldMetaRepository, MobileSyncOutboxRepository, MobileSyncRowMetaRepository } from './services/mobile-sync-repositories';
 import { IRecentSessionsRepository, RecentSessionsRepository } from './services/recent-sessions-repository';
 
@@ -56,6 +57,7 @@ export class DatabaseMobilePlugin extends Plugin {
       [IMobileKnownHostRepository, { useClass: MobileKnownHostRepository }],
       [IRecentSessionsRepository, { useClass: RecentSessionsRepository }],
       [IMobilePortForwardingRuleRepository, { useClass: MobilePortForwardingRuleRepository }],
+      [IMobileSnippetRepository, { useClass: MobileSnippetRepository }],
       [IMobilePreferencesService, { useClass: MobilePreferencesService }],
 
       // Sync engine bookkeeping repos (moved here from sync-mobile)
@@ -72,6 +74,12 @@ export class DatabaseMobilePlugin extends Plugin {
       [ISshKeySyncRepository, { useExisting: IMobileSshKeyRepository }],
       [IKnownHostSyncRepository, { useExisting: IMobileKnownHostRepository }],
       [IPortForwardingRuleSyncRepository, { useExisting: IMobilePortForwardingRuleRepository }],
+      // Snippet uses a single merged table (type discriminator: snippet | package);
+      // the sync adapter exposes all rows as opaque ISyncEntityRow.
+      [ISnippetSyncRepository, {
+        useFactory: (repo: MobileSnippetRepository) => MobileSnippetRepository.toSyncRepository(repo),
+        deps: [IMobileSnippetRepository],
+      }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }

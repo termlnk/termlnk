@@ -13,8 +13,21 @@
  * governing permissions and limitations under the License.
  */
 
-import { text } from 'drizzle-orm/sqlite-core';
+import { customType, text } from 'drizzle-orm/sqlite-core';
 import { customAlphabet } from 'nanoid';
+
+// BLOB column that surfaces raw Uint8Array on both read and write paths.
+// Drizzle's stock `blob(..., { mode: 'buffer' })` reaches for `Buffer.isBuffer`
+// unguarded (sqlite-core/columns/blob.js → SQLiteBlobBuffer.mapFromDriverValue),
+// which throws "Property 'Buffer' doesn't exist" on Hermes — there is no Buffer
+// global in React Native. expo-sqlite already binds and returns Uint8Array for
+// BLOB columns, so a pass-through customType keeps the conversion off the JS
+// engine entirely.
+export const bytesBlob = customType<{ data: Uint8Array; driverData: Uint8Array }>({
+  dataType() {
+    return 'blob';
+  },
+});
 
 export const createdAt = () => text('created_at').notNull().$defaultFn(() => new Date().toISOString());
 

@@ -22,7 +22,7 @@ import { IMasterKeyService as IMasterKeyServiceId } from '@termlnk/auth';
 import { createIdentifier, Disposable, ILogService as ILogServiceId, Inject } from '@termlnk/core';
 import { IMobileHostRepository } from '@termlnk/database-mobile';
 import { ISyncService as ISyncServiceId } from '@termlnk/sync';
-import { HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, PortForwardingRuleSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
+import { HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, PortForwardingRuleSynchroniser, SnippetSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 
 export interface IMobileSyncService {
   readonly hosts$: Observable<readonly IMobileHost[]>;
@@ -54,6 +54,7 @@ export class MobileSyncService extends Disposable implements IMobileSyncService 
     @Inject(SshKeySynchroniser) sshKeySynchroniser: SshKeySynchroniser,
     @Inject(KnownHostSynchroniser) knownHostSynchroniser: KnownHostSynchroniser,
     @Inject(PortForwardingRuleSynchroniser) portForwardingRuleSynchroniser: PortForwardingRuleSynchroniser,
+    @Inject(SnippetSynchroniser) snippetSynchroniser: SnippetSynchroniser,
     @Inject(IMasterKeyServiceId) masterKeyService: IMasterKeyService,
     @Inject(ILogServiceId) logService: ILogService
   ) {
@@ -72,6 +73,7 @@ export class MobileSyncService extends Disposable implements IMobileSyncService 
     this.disposeWithMe(syncService.register(sshKeySynchroniser));
     this.disposeWithMe(syncService.register(knownHostSynchroniser));
     this.disposeWithMe(syncService.register(portForwardingRuleSynchroniser));
+    this.disposeWithMe(syncService.register(snippetSynchroniser));
 
     // Surface persisted hosts before the first pull resolves.
     void hostRepo.ready().catch((err) => {

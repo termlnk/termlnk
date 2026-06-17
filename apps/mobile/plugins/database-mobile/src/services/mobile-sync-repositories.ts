@@ -41,8 +41,9 @@ import { IDatabaseMobileAdaptorService } from './expo-sqlite-adaptor.service';
 
 // Drizzle-backed implementations of the sync engine's bookkeeping repositories. They
 // mirror @termlnk/database's desktop entities row-for-row so the platform-agnostic
-// engine (@termlnk/sync-engine) behaves identically on both ends. expo-sqlite binds /
-// returns BLOB columns as Uint8Array, which Drizzle exposes here as Buffer-like.
+// engine (@termlnk/sync-engine) behaves identically on both ends. The `payload` BLOB
+// column is declared with a Uint8Array-native customType (see ../entities/base.ts);
+// avoid `mode: 'buffer'` here because Hermes lacks the Node `Buffer` global.
 
 // --- Outbox ------------------------------------------------------------------------------
 
@@ -68,7 +69,7 @@ export class MobileSyncOutboxRepository extends Disposable implements ISyncOutbo
         resource: record.resource,
         op: record.op,
         entityId: record.entityId,
-        payload: payload as Buffer | null,
+        payload,
         baseVersion: record.baseVersion,
         createdAt: record.createdAt,
         retryCount,

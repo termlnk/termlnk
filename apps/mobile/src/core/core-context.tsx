@@ -21,7 +21,7 @@ import { IMobileAiService } from '@termlnk/agent-mobile';
 import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { IBiometricService } from '@termlnk/auth-mobile';
 import { Quantity } from '@termlnk/core';
-import { IMobileHostRepository, IMobileIdentityRepository, IMobileKnownHostRepository, IMobilePreferencesService, IMobileSshKeyRepository, IRecentSessionsRepository } from '@termlnk/database-mobile';
+import { IMobileHostRepository, IMobileIdentityRepository, IMobileKnownHostRepository, IMobilePreferencesService, IMobileSnippetRepository, IMobileSshKeyRepository, IRecentSessionsRepository } from '@termlnk/database-mobile';
 import { IMobileSftpClientFactory } from '@termlnk/sftp-mobile';
 import { IMobileSyncService } from '@termlnk/sync-mobile';
 import { IMobileConnectionService, IMobileSshClientService } from '@termlnk/terminal-mobile';
@@ -163,6 +163,11 @@ export function useBiometricService(): IBiometricService {
 export function usePortForwardingService(): IMobilePortForwardingService {
   const { core } = useCoreContext();
   return useMemo(() => core.getInjector().get(IMobilePortForwardingService), [core]);
+}
+
+export function useSnippetRepository(): IMobileSnippetRepository {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSnippetRepository), [core]);
 }
 
 export function useObservable<T, TInitial extends T = T>(observable$: Observable<T> | undefined, initial: TInitial): T {

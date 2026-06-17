@@ -16,6 +16,8 @@
 export { DATABASE_MOBILE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IDatabaseMobileConfig } from './controllers/config.schema';
 export type { IPortForwardingRuleEntity, IPortForwardingRuleEntityInsert, PortForwardingType } from './entities/port-forwarding-rule';
+export type { ISnippetEntity, ISnippetEntityInsert, IMobileSnippetType } from './entities/snippet';
+export { DEFAULT_SNIPPET_ROOT } from './entities/snippet';
 export { DATABASE_MOBILE_PLUGIN_NAME, DatabaseMobilePlugin } from './plugin';
 export { ExpoSqliteAdaptor, IDatabaseMobileAdaptorService } from './services/expo-sqlite-adaptor.service';
 export type { DatabaseMobile } from './services/expo-sqlite-adaptor.service';
@@ -23,6 +25,7 @@ export { IMobileHostRepository, MobileHostRepository } from './services/mobile-h
 export { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository, MobileIdentityRepository, MobileKnownHostRepository, MobileSshKeyRepository } from './services/mobile-keychain-repositories';
 export { IMobilePortForwardingRuleRepository, MobilePortForwardingRuleRepository } from './services/mobile-port-forwarding-rule-repository';
 export { DEFAULT_PREFERENCES, IMobilePreferencesService, MobilePreferencesService } from './services/mobile-preferences.service';
+export { IMobileSnippetRepository, MobileSnippetRepository } from './services/mobile-snippet-repository';
 export type { IMobilePreferences, TerminalCursorStyle } from './services/mobile-preferences.service';
 export { IMobileSecretCipherService, MobileSecretCipherService } from './services/mobile-secret-cipher.service';
 export { IRecentSessionsRepository, RecentSessionsRepository } from './services/recent-sessions-repository';

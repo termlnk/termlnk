@@ -23,4 +23,5 @@ export * from './sync-cursor';
 export * from './sync-field-meta';
 export * from './sync-outbox';
 export * from './port-forwarding-rule';
+export * from './snippet';
 export * from './sync-row-meta';
