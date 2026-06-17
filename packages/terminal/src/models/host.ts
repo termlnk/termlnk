@@ -30,7 +30,8 @@ export interface IHostItemBase {
 export interface IHostSettings {
   connectTimeout: number;
   connectHeartbeat: number;
-  runScript: string;
+  runScript?: string;
+  startupSnippetId?: string;
   encode: string;
   x11Forward: boolean;
   termType: string;

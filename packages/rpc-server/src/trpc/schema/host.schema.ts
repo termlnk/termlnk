@@ -40,6 +40,7 @@ export const settingsSchema = z.object({
   connectTimeout: z.number().nullish(),
   connectHeartbeat: z.number().nullish(),
   runScript: z.string().nullish(),
+  startupSnippetId: z.string().nullish(),
   encode: z.string().nullish(),
   x11Forward: z.boolean().nullish(),
   termType: z.string().nullish(),

@@ -271,7 +271,7 @@ export function AdvancedTab(props: IAdvancedTabProps) {
           <Textarea
             id="advanced-runscript"
             className="tm:min-h-12 tm:px-2 tm:py-1 tm:text-xs"
-            value={settings.runScript}
+            value={settings.runScript ?? ''}
             onChange={(e) => updateSettings({ runScript: e.target.value })}
             rows={3}
             placeholder={localeService.t('terminal-ui.host-dialog.advanced.runScriptPlaceholder')}

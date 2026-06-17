@@ -87,6 +87,11 @@ export class SSHSession extends Disposable implements IDisposable {
      * session opens a regular interactive shell channel (legacy path).
      */
     private readonly _bootstrapCommand: Nullable<string>,
+    // Caller-supplied override for the post-shell run-script.
+    //   undefined → inherit host.settings.runScript
+    //   null      → explicit suppress (snippet configured but unresolvable)
+    //   string    → use verbatim ('' is a legitimate empty-body snippet, still a no-op)
+    private readonly _runScriptOverride: string | null | undefined,
     @ISSHSocketService private readonly _sshSocketService: ISSHSocketService,
     @ILogService private readonly _logService: ILogService
   ) {
@@ -353,11 +358,17 @@ export class SSHSession extends Disposable implements IDisposable {
   }
 
   private _executeRunScript(): void {
-    const runScript = this._host?.settings?.runScript;
-    if (!runScript || !this._channel) return;
+    const runScript = this._runScriptOverride === undefined
+      ? this._host?.settings?.runScript
+      : this._runScriptOverride;
+    if (!runScript || !this._channel) {
+      return;
+    }
 
     const lines = runScript.split('\n').filter((line) => line.trim().length > 0);
-    if (lines.length === 0) return;
+    if (lines.length === 0) {
+      return;
+    }
 
     // Delay to let the remote shell initialize before sending commands
     setTimeout(() => {

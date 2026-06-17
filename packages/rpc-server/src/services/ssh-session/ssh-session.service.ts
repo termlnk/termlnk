@@ -18,8 +18,8 @@ import type { ISSHSessionService } from '@termlnk/rpc';
 import type { IHost, IShellIntegrationConfig } from '@termlnk/terminal';
 import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
 import type { ISSHSocket } from '../ssh/ssh-socket';
-import { Disposable, ILogService, Inject, InjectSelf } from '@termlnk/core';
-import { ConfigRepository, HostRepository } from '@termlnk/database';
+import { Disposable, ILogService, Inject, InjectSelf, Optional } from '@termlnk/core';
+import { ConfigRepository, HostRepository, SnippetRepository } from '@termlnk/database';
 import { IFileTransferService, ITerminalSessionNotifyService, SSHSessionStatus, SSHSocketStatus } from '@termlnk/rpc';
 import { getCredentialUsername, normalizeShellIntegrationConfig, SHELL_INTEGRATION_CONFIG_KEY } from '@termlnk/terminal';
 import { filter, take } from 'rxjs';
@@ -42,7 +42,8 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     @ISSHHostChainService private readonly _sshHostChainService: ISSHHostChainService,
     @ITerminalSessionNotifyService private readonly _notifyService: ITerminalSessionNotifyService,
     @ICommandBlockService private readonly _commandBlockService: ICommandBlockService,
-    @ILogService private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @Optional(SnippetRepository) private readonly _snippetRepository?: SnippetRepository
   ) {
     super();
   }
@@ -68,6 +69,10 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     }
 
     const resolvedHost = await resolveHostWithProxy(host as IHost, this._configRepository);
+
+    // Resolve startup snippet to a runScript override without mutating the
+    // host record. startupSnippetId, when set, supersedes inline runScript.
+    const runScriptOverride = await this._resolveStartupSnippet(resolvedHost);
 
     // Chain handle is synchronously subscribable; the build runs asynchronously
     // so sessionId returns immediately. Hop events fired before the renderer
@@ -96,7 +101,8 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
         cols,
         rows,
         initialPassword,
-        bootstrapCommand
+        bootstrapCommand,
+        runScriptOverride
       );
       if (chainHandle) {
         session.attachHostChain(chainHandle);
@@ -338,6 +344,28 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
       return normalizeShellIntegrationConfig(raw);
     } catch {
       return normalizeShellIntegrationConfig(null);
+    }
+  }
+
+  private async _resolveStartupSnippet(host: IHost): Promise<string | null | undefined> {
+    const snippetId = host.settings?.startupSnippetId;
+    if (!snippetId) {
+      return undefined;
+    }
+    if (!this._snippetRepository) {
+      this._logService.warn('[SSHSessionService] startupSnippetId set but SnippetRepository is unavailable');
+      return null;
+    }
+    try {
+      const snippet = await this._snippetRepository.getSnippetById(snippetId);
+      if (!snippet) {
+        this._logService.warn(`[SSHSessionService] startup snippet ${snippetId} not found; skipping runScript`);
+        return null;
+      }
+      return snippet.content;
+    } catch (err) {
+      this._logService.warn('[SSHSessionService] Failed to resolve startup snippet:', err);
+      return null;
     }
   }
 }
