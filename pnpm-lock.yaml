@@ -1505,6 +1505,9 @@ importers:
         specifier: ^8.21.0
         version: 8.21.0
     devDependencies:
+      '@termlnk/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared
@@ -2240,6 +2243,9 @@ importers:
       '@termlnk/database':
         specifier: workspace:*
         version: link:../database
+      '@termlnk/extension':
+        specifier: workspace:*
+        version: link:../extension
       '@termlnk/rpc-server':
         specifier: workspace:*
         version: link:../rpc-server

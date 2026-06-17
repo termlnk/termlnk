@@ -73,6 +73,7 @@
   "devDependencies": {
     "@termlnk/agent": "workspace:*",
     "@termlnk/database": "workspace:*",
+    "@termlnk/extension": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@termlnk/shared": "workspace:*",
     "@termlnk/terminal": "workspace:*",
