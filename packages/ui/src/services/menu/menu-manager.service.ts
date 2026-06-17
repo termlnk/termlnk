@@ -205,7 +205,7 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
       if (typeof value === 'object') {
         const children = this._buildMenuSchema(value);
         if (children.length > 0) {
-          menuItem.children = children.sort((a, b) => a.order - b.order);
+          menuItem.children = children.sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER));
         }
 
         if (menuItem.item || menuItem.children) {
@@ -214,6 +214,14 @@ export class MenuManagerService extends Disposable implements IMenuManagerServic
       }
     }
 
-    return result;
+    // Sort siblings at every level by `order`. Items without an explicit order
+    // fall to the end (Number.MAX_SAFE_INTEGER). This applies to context menus,
+    // approval menus, and any other position — callers should rely on `order`
+    // rather than insertion order to position their contributions.
+    return result.sort((a, b) => {
+      const oa = a.order ?? Number.MAX_SAFE_INTEGER;
+      const ob = b.order ?? Number.MAX_SAFE_INTEGER;
+      return oa - ob;
+    });
   }
 }

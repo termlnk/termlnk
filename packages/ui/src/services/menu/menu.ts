@@ -83,7 +83,7 @@ export type MenuSchemaType = {
 
 export interface IMenuSchema {
   key: string;
-  order: number;
+  order?: number;
   item?: IMenuItem;
   children?: IMenuSchema[];
 }

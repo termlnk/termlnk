@@ -22,7 +22,8 @@ import { allowAlwaysMenuFactory, APPROVAL_MENU } from './menu/approval.menu';
 export const menuSchema: MenuSchemaType = {
   [MenuPosition.SIDE_TAB_BAR]: {
     [ToggleAIPanelCommand.id]: {
-      order: 5,
+      // MenuManagerService sorts orderless entries to the tail
+      // (MAX_SAFE_INTEGER fallback), which is the intended position here.
       menuItemFactory: aiPanelMenuFactory,
     },
   },
