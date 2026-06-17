@@ -42,7 +42,7 @@ export function PortForwardingExplorer() {
   const highlightedId = dialogState.open && dialogState.mode === 'edit' ? dialogState.ruleId : null;
 
   return (
-    <div className="tm:flex tm:size-full tm:flex-col tm:text-light-grey">
+    <div className="tm:flex tm:size-full tm:flex-col tm:bg-black2 tm:text-light-grey">
       <div
         className={cn(`
           tm:box-border tm:flex tm:h-10 tm:w-full tm:flex-row tm:items-center tm:px-2 tm:text-[12px] tm:font-normal

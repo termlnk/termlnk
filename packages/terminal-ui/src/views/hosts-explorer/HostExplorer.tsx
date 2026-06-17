@@ -384,7 +384,7 @@ export function HostExplorer() {
     <div
       key="hosts-explorer"
       ref={containerRef}
-      className="tm:flex tm:size-full tm:flex-col"
+      className="tm:flex tm:size-full tm:flex-col tm:bg-black2"
       onBlur={handleContainerBlur}
       onFocus={handleContainerFocus}
     >

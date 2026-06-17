@@ -93,8 +93,8 @@ const locale = {
     },
     confirm: {
       delete: {
-        title: 'Delete forwarding rule',
-        description: 'This action cannot be undone.',
+        title: '転送ルールを削除',
+        description: 'この操作は元に戻せません。',
       },
     },
   },

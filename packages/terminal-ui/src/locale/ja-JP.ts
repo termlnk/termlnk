@@ -243,6 +243,12 @@ const locale: typeof enUS = {
       action: {
         clearAll: 'すべて削除',
       },
+      confirm: {
+        clearAllTitle: '既知のホストをすべて削除',
+        clearAllDesc: '{0} 件の既知のホストキーをすべて削除しますか？次回接続時に各ホストを再確認する必要があります。',
+        delete: '削除',
+        cancel: 'キャンセル',
+      },
       detail: {
         title: 'ホストキーの詳細',
         host: 'ホスト',

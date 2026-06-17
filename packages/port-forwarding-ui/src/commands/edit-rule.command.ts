@@ -15,6 +15,7 @@
 
 import type { IAccessor, ICommand } from '@termlnk/core';
 import type { IRuleIdParams } from './start-rule.command';
+import { IConfirmService, LocaleService } from '@termlnk/core';
 import { IPortForwardingService } from '@termlnk/rpc';
 import { IRuleDialogService } from '../services/rule-dialog/rule-dialog.service';
 import { resolveRuleId } from './start-rule.command';
@@ -33,7 +34,22 @@ export const DeleteRuleCommand: ICommand<IRuleIdParams> = {
   id: 'port-forwarding-ui.command.delete-rule',
   handler: async (accessor: IAccessor, params?: IRuleIdParams): Promise<boolean> => {
     const ruleId = resolveRuleId(accessor, params);
-    if (!ruleId) return false;
+    if (!ruleId) {
+      return false;
+    }
+    const confirmService = accessor.get(IConfirmService);
+    const localeService = accessor.get(LocaleService);
+    const confirmed = await confirmService.confirm({
+      id: `delete-rule-${ruleId}`,
+      title: { title: 'port-forwarding-ui.confirm.delete.title' },
+      description: { title: 'port-forwarding-ui.confirm.delete.description' },
+      confirmText: localeService.t('port-forwarding-ui.action.delete'),
+      confirmVariant: 'destructive',
+      cancelText: localeService.t('port-forwarding-ui.action.cancel'),
+    });
+    if (!confirmed) {
+      return false;
+    }
     const service = accessor.get(IPortForwardingService);
     await service.stopRule(ruleId).catch(() => {});
     await service.deleteRule(ruleId);

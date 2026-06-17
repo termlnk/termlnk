@@ -93,8 +93,8 @@ const locale = {
     },
     confirm: {
       delete: {
-        title: 'Delete forwarding rule',
-        description: 'This action cannot be undone.',
+        title: '포워딩 규칙 삭제',
+        description: '이 작업은 되돌릴 수 없습니다.',
       },
     },
   },

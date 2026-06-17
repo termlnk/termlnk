@@ -243,6 +243,12 @@ const locale: typeof enUS = {
       action: {
         clearAll: '모두 지우기',
       },
+      confirm: {
+        clearAllTitle: '알려진 호스트 모두 삭제',
+        clearAllDesc: '{0}개의 알려진 호스트 키를 모두 삭제하시겠습니까? 다음 연결 시 각 호스트를 다시 확인해야 합니다.',
+        delete: '삭제',
+        cancel: '취소',
+      },
       detail: {
         title: '호스트 키 세부 정보',
         host: '호스트',

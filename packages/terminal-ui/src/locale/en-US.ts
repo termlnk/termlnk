@@ -241,6 +241,12 @@ const locale = {
       action: {
         clearAll: 'Clear all',
       },
+      confirm: {
+        clearAllTitle: 'Clear all known hosts',
+        clearAllDesc: 'Remove all {0} known host keys? You will need to verify each host again on the next connection.',
+        delete: 'Clear',
+        cancel: 'Cancel',
+      },
       detail: {
         title: 'Host Key Details',
         host: 'Host',

@@ -14,7 +14,7 @@
  */
 
 import type { IKnownHost } from '@termlnk/terminal';
-import { LocaleService } from '@termlnk/core';
+import { IConfirmService, LocaleService } from '@termlnk/core';
 import { Badge, Button, useDependency } from '@termlnk/design';
 import { IKeychainManagerService } from '@termlnk/rpc-client';
 import { TooltipWrapper } from '@termlnk/ui';
@@ -25,6 +25,7 @@ import { IKnownHostDetailDialogService } from '../../services/known-hosts/known-
 export function KnownHostsExplorer() {
   const localeService = useDependency(LocaleService);
   const keychain = useDependency(IKeychainManagerService);
+  const confirmService = useDependency(IConfirmService);
   const detailDialogService = useDependency(IKnownHostDetailDialogService);
   const t = useCallback((k: string) => localeService.t(k), [localeService]);
 
@@ -44,12 +45,26 @@ export function KnownHostsExplorer() {
     keychain.deleteKnownHost(id).catch(() => {});
   }, [keychain]);
 
-  const clearAll = useCallback(() => {
+  const clearAll = useCallback(async () => {
+    if (rows.length === 0) {
+      return;
+    }
+    const confirmed = await confirmService.confirm({
+      id: 'clear-all-known-hosts',
+      title: { title: 'terminal-ui.knownHosts.confirm.clearAllTitle' },
+      description: { title: localeService.t('terminal-ui.knownHosts.confirm.clearAllDesc', String(rows.length)) },
+      confirmText: localeService.t('terminal-ui.knownHosts.confirm.delete'),
+      confirmVariant: 'destructive',
+      cancelText: localeService.t('terminal-ui.knownHosts.confirm.cancel'),
+    });
+    if (!confirmed) {
+      return;
+    }
     keychain.deleteKnownHosts(rows.map((r) => r.id)).catch(() => {});
-  }, [keychain, rows]);
+  }, [keychain, rows, confirmService, localeService]);
 
   return (
-    <div className="tm:flex tm:size-full tm:flex-col tm:text-light-grey">
+    <div className="tm:flex tm:size-full tm:flex-col tm:bg-black2 tm:text-light-grey">
       <div
         className={`
           tm:box-border tm:flex tm:h-10 tm:w-full tm:flex-row tm:items-center tm:px-2 tm:text-[12px] tm:font-normal
@@ -83,7 +98,7 @@ export function KnownHostsExplorer() {
                   key={row.id}
                   className={`
                     tm:group
-                    tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-line tm:bg-one-bg tm:p-2
+                    tm:flex tm:items-center tm:gap-2 tm:rounded-md tm:border tm:border-line tm:bg-black tm:p-2
                     tm:hover:bg-one-bg2
                   `}
                   onClick={() => detailDialogService.open(row)}

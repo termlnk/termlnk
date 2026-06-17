@@ -52,8 +52,8 @@ const buttonVariants = cva(
         `,
         ghost: `
           tm:bg-transparent tm:text-white
-          tm:hover:bg-one-bg tm:hover:text-white
-          tm:aria-expanded:bg-one-bg2 tm:aria-expanded:text-white
+          tm:hover:bg-one-bg2 tm:hover:text-white
+          tm:aria-expanded:bg-one-bg3 tm:aria-expanded:text-white
         `,
         destructive: `
           tm:bg-red tm:text-[#fff]

@@ -243,6 +243,12 @@ const locale: typeof enUS = {
       action: {
         clearAll: '清除全部',
       },
+      confirm: {
+        clearAllTitle: '清除所有已知主機',
+        clearAllDesc: '確定移除全部 {0} 個已知主機金鑰嗎？下次連線時需要重新驗證每台主機。',
+        delete: '清除',
+        cancel: '取消',
+      },
       detail: {
         title: '主機金鑰詳情',
         host: '主機',

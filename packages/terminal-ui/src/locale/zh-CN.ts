@@ -243,6 +243,12 @@ const locale: typeof enUS = {
       action: {
         clearAll: '清空全部',
       },
+      confirm: {
+        clearAllTitle: '清空所有已知主机',
+        clearAllDesc: '确定移除全部 {0} 个已知主机密钥吗？下次连接时需要重新验证每台主机。',
+        delete: '清空',
+        cancel: '取消',
+      },
       detail: {
         title: '主机密钥详情',
         host: '主机',

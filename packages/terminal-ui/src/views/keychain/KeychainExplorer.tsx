@@ -74,7 +74,7 @@ export function KeychainExplorer() {
   }, [keychain]);
 
   return (
-    <div className="tm:flex tm:size-full tm:flex-col tm:text-light-grey">
+    <div className="tm:flex tm:size-full tm:flex-col tm:bg-black2 tm:text-light-grey">
       <div
         className={`
           tm:box-border tm:flex tm:h-10 tm:w-full tm:flex-row tm:items-center tm:px-2 tm:text-[12px] tm:font-normal
@@ -182,9 +182,10 @@ function KeychainRow({ icon, title, subtitle, badge, onEdit, onDelete }: IKeycha
     <li
       className={cn(`
         tm:group
-        tm:flex tm:items-center tm:gap-2.5 tm:rounded-lg tm:border tm:border-line tm:bg-one-bg tm:p-2.5
+        tm:flex tm:items-center tm:gap-2.5 tm:rounded-lg tm:border tm:border-line tm:bg-black tm:p-2.5
         tm:hover:bg-one-bg2
       `)}
+      onClick={onEdit}
     >
       <span
         className="
@@ -204,8 +205,8 @@ function KeychainRow({ icon, title, subtitle, badge, onEdit, onDelete }: IKeycha
           tm:group-hover:flex
         "
       >
-        <Button variant="ghost" size="icon-xs" onClick={onEdit}><Pencil size={13} /></Button>
-        <Button variant="ghost" size="icon-xs" onClick={onDelete} className="tm:hover:bg-red/10 tm:hover:text-red"><Trash2 size={13} /></Button>
+        <Button variant="ghost" size="icon-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }}><Pencil size={13} /></Button>
+        <Button variant="ghost" size="icon-xs" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="tm:hover:bg-red/10 tm:hover:text-red"><Trash2 size={13} /></Button>
       </div>
     </li>
   );

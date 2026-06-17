@@ -108,9 +108,9 @@ export function TreeItem(props: ITreeItemProps) {
       className={cn(`
         tm:group
         tm:relative tm:box-border tm:flex tm:h-[22px] tm:w-full tm:flex-row tm:items-center tm:leading-[22px]
-        tm:hover:bg-one-bg
+        tm:hover:bg-one-bg2
       `, {
-        'tm:bg-one-bg2': shouldShowFocusStyle || shouldShowBlurredSelectionStyle,
+        'tm:bg-one-bg3': shouldShowFocusStyle || shouldShowBlurredSelectionStyle,
         'tm:ring-1 tm:ring-blue tm:ring-inset': isActiveSelected,
         'tm:bg-blue': item.isDragTarget(),
       })}

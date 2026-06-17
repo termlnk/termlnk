@@ -94,7 +94,7 @@ export function ExtensionExplorer() {
   }, [extensionService]);
 
   return (
-    <div className="tm:flex tm:h-full tm:flex-col">
+    <div className="tm:flex tm:h-full tm:flex-col tm:bg-black2">
       {/* Header */}
       <div
         className={`
