@@ -24,7 +24,7 @@
     "@termlnk/database-mobile": "workspace:*",
     "@termlnk/react-native-russh": "workspace:*",
     "@termlnk/terminal-mobile": "workspace:*",
-    "react": "^19.2.6",
+    "react": "^19.2.7",
     "react-native": "^0.85.3",
     "rxjs": ">=7.0.0"
   },

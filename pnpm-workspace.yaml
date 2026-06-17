@@ -21,6 +21,7 @@ symlink: true
 gitChecks: false
 pmOnFail: warn
 verifyDepsBeforeRun: false
+minimumReleaseAge: 0
 
 allowBuilds:
   '@swc/core': true
@@ -48,8 +49,8 @@ allowBuilds:
 overrides:
   '@types/react': ^19.2.17
   '@types/react-dom': ^19.2.3
-  react: ^19.2.6
-  react-dom: ^19.2.6
+  react: ^19.2.7
+  react-dom: ^19.2.7
   # apps/mobile must pin react to the exact version react-native 0.85.3's bundled
   # renderer asserts: ReactNativeRenderer hardcodes `if ("19.2.3" !== React.version) throw`.
   # Scoped so desktop/web stay on 19.2.6; only the mobile subtree drops to 19.2.3.
@@ -64,7 +65,7 @@ overrides:
   # https://github.com/rolldown/rolldown/issues/9515
   rolldown: 1.0.1
   tar: ^7.5.13
-  undici: ^8.3.0
+  undici: ^8.5.0
   file-type: ^22.0.0
   '@tootallnate/once': ^3.0.1
   tmp: ^0.2.6
@@ -98,43 +99,8 @@ overrides:
   'uuid@>=11.0.0 <11.1.1': ^11.1.1
   'uuid@>=13.0.0 <13.0.1': ^13.0.1
 
-minimumReleaseAgeExclude:
-  - '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260606.1'
-  - '@typescript/native-preview-darwin-x64@7.0.0-dev.20260606.1'
-  - '@typescript/native-preview-linux-arm64@7.0.0-dev.20260606.1'
-  - '@typescript/native-preview-linux-arm@7.0.0-dev.20260606.1'
-  - '@typescript/native-preview-linux-x64@7.0.0-dev.20260606.1'
-  - '@typescript/native-preview-win32-arm64@7.0.0-dev.20260606.1'
-  - '@typescript/native-preview-win32-x64@7.0.0-dev.20260606.1'
-  - '@typescript/native-preview@7.0.0-dev.20260606.1'
-  - '@expo/cli@56.1.14'
-  - '@expo/fingerprint@0.19.4'
-  - '@expo/inline-modules@0.0.11'
-  - '@expo/prebuild-config@56.0.15'
-  - '@expo/router-server@56.0.13'
-  - '@expo/ui@56.0.16'
-  - expo-asset@56.0.16
-  - expo-build-properties@56.0.17
-  - expo-constants@56.0.17
-  - expo-dev-client@56.0.19
-  - expo-dev-launcher@56.0.19
-  - expo-modules-autolinking@56.0.15
-  - expo-modules-core@56.0.15
-  - expo-modules-jsi@56.0.8
-  - expo-notifications@56.0.16
-  - expo-router@56.2.9
-  - expo-server@56.0.5
-  - expo-symbols@56.0.6
-  - expo@56.0.9
-  - app-builder-lib@26.15.1
-  - dmg-builder@26.15.1
-  - electron-builder-squirrel-windows@26.15.1
-  - electron-builder@26.15.1
-  - electron-publish@26.15.1
-  - '@wendellhu/redi@1.1.2'
-
 patchedDependencies:
-  babel-preset-expo@56.0.14: patches/babel-preset-expo@56.0.14.patch
+  babel-preset-expo@56.0.15: patches/babel-preset-expo@56.0.15.patch
   react-native-css@3.0.7: patches/react-native-css@3.0.7.patch
   '@react-native-menu/menu@2.0.0': patches/@react-native-menu__menu@2.0.0.patch
   '@ubjs/core@0.31.0-3': patches/@ubjs__core@0.31.0-3.patch
