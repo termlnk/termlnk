@@ -25,6 +25,7 @@ const createNotifySchema = z.object({
   groupId: z.string().optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
   showDesktop: z.boolean().optional(),
+  transient: z.boolean().optional(),
   action: z.object({
     type: z.enum(['command', 'url']),
     commandId: z.string().optional(),

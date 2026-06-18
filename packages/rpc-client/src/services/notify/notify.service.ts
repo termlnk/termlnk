@@ -94,6 +94,7 @@ export class NotifyService extends Disposable implements INotifyService {
     this.disposeWithMe(toDisposable(
       serverEvent$.subscribe((event) => {
         switch (event.type) {
+          case 'transient':
           case 'added': {
             if (event.notification) {
               const n = event.notification;
@@ -105,6 +106,7 @@ export class NotifyService extends Disposable implements INotifyService {
                 groupId: n.groupId,
                 priority: n.priority,
                 showDesktop: n.showDesktop,
+                transient: n.transient,
                 action: n.action,
                 metadata: n.metadata,
               });

@@ -87,19 +87,24 @@ export class NotificationService extends Disposable implements INotificationServ
       read: false,
       priority: params.priority ?? 'normal',
       showDesktop: params.showDesktop ?? true,
+      transient: params.transient ?? false,
       action: params.action,
       metadata: params.metadata,
     };
 
-    const current = this._notifications$.value;
-    const updated = [notification, ...current].slice(0, MAX_NOTIFICATIONS);
+    if (!notification.transient) {
+      const current = this._notifications$.value;
+      const updated = [notification, ...current].slice(0, MAX_NOTIFICATIONS);
 
-    this._notifications$.next(updated);
-    this._updateUnreadCount();
+      this._notifications$.next(updated);
+      this._updateUnreadCount();
+    }
 
-    this._notificationEvent$.next({ type: 'added', notification });
+    this._notificationEvent$.next({
+      type: notification.transient ? 'transient' : 'added',
+      notification,
+    });
 
-    // Show desktop notification if enabled and appropriate
     if (notification.showDesktop && this._shouldShowDesktop(notification)) {
       this._showDesktopNotification(notification);
     }
@@ -249,7 +254,9 @@ export class NotificationService extends Disposable implements INotificationServ
   }
 
   private _handleNotificationClick(notification: INotification): void {
-    this.markAsRead(notification.id);
+    if (!notification.transient) {
+      this.markAsRead(notification.id);
+    }
 
     if (notification.action) {
       switch (notification.action.type) {
@@ -268,6 +275,8 @@ export class NotificationService extends Disposable implements INotificationServ
       }
     }
 
-    this.openPanel();
+    if (!notification.transient) {
+      this.openPanel();
+    }
   }
 }

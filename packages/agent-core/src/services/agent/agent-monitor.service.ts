@@ -318,6 +318,7 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
       source: 'agent',
       groupId: event.sessionId,
       priority: 'normal',
+      transient: true,
       showDesktop: this._shouldShowDesktop(),
       metadata: { agent: event.agent, ...payload },
     });

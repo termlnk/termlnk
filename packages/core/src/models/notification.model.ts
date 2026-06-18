@@ -48,6 +48,9 @@ export interface INotification {
   /** Whether to show desktop notification */
   readonly showDesktop: boolean;
 
+  /** Not persisted to notification list */
+  readonly transient: boolean;
+
   /** Optional action to execute when notification is clicked */
   readonly action?: INotificationAction;
 
@@ -85,6 +88,9 @@ export interface ICreateNotificationParams {
   /** Whether to show desktop notification (optional, defaults to true) */
   showDesktop?: boolean;
 
+  /** Not persisted to notification list (optional, defaults to false) */
+  transient?: boolean;
+
   /** Optional action to execute when notification is clicked */
   action?: INotificationAction;
 
@@ -111,7 +117,7 @@ export interface INotificationStats {
 /**
  * Notification event type for observable streaming.
  */
-export type NotificationEventType = 'added' | 'updated' | 'removed' | 'cleared';
+export type NotificationEventType = 'added' | 'transient' | 'updated' | 'removed' | 'cleared';
 
 /**
  * Notification event emitted by NotificationService.
