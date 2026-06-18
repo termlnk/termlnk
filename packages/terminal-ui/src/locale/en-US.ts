@@ -122,6 +122,7 @@ const locale = {
         portMax: 'Port must be at most 65535',
         portInvalid: 'Port must be an integer',
         usernameRequired: 'Username is required',
+        passwordRequired: 'Password is required',
         privateKeyRequired: 'Private key is required',
         keyRequired: 'Please select a key',
         identityRequired: 'Please select an identity',

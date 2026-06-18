@@ -124,6 +124,7 @@ const locale: typeof enUS = {
         portMax: '포트 번호는 65535 이하여야 합니다',
         portInvalid: '포트 번호는 정수여야 합니다',
         usernameRequired: '사용자명은 필수입니다',
+        passwordRequired: '비밀번호는 필수입니다',
         privateKeyRequired: '개인 키는 필수입니다',
         keyRequired: '키를 선택하세요',
         identityRequired: '아이덴티티를 선택하세요',

@@ -46,7 +46,7 @@ function isValidAddr(value: string): boolean {
 export const passwordCredentialSchema = z.object({
   type: z.literal('password'),
   username: z.string().min(1, 'validation.usernameRequired'),
-  password: z.string(),
+  password: z.string('validation.passwordRequired'),
 });
 
 export const rsaCredentialSchema = z.object({
@@ -56,7 +56,7 @@ export const rsaCredentialSchema = z.object({
   // treats "" as "keep the existing private key". A CREATE-mode submit without a key
   // still gets rejected server-side ("RSA credential changed type but no privateKey
   // provided"); the renderer catches and surfaces that error.
-  privateKey: z.string(),
+  privateKey: z.string('validation.privateKeyRequired'),
 });
 
 export const keyCredentialSchema = z.object({

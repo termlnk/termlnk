@@ -124,6 +124,7 @@ const locale: typeof enUS = {
         portMax: '端口号最大为 65535',
         portInvalid: '端口号必须为整数',
         usernameRequired: '用户名不能为空',
+        passwordRequired: '密码不能为空',
         privateKeyRequired: '私钥不能为空',
         keyRequired: '请选择一个密钥',
         identityRequired: '请选择一个身份',

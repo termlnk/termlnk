@@ -124,6 +124,7 @@ const locale: typeof enUS = {
         portMax: 'ポート番号は65535以下にしてください',
         portInvalid: 'ポート番号は整数で入力してください',
         usernameRequired: 'ユーザー名は必須です',
+        passwordRequired: 'パスワードは必須です',
         privateKeyRequired: '秘密鍵は必須です',
         keyRequired: 'キーを選択してください',
         identityRequired: 'アイデンティティを選択してください',
