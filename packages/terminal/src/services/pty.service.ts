@@ -41,6 +41,7 @@ export interface IPTYService {
   data$(sessionId: string): Observable<string>;
   status$(sessionId: string): Observable<PTYSessionStatus>;
   getShellPath(sessionId: string): Promise<string>;
+  getCurrentCwd(sessionId: string): Promise<string>;
   getLocalTerminalShellOptions(): Promise<ILocalTerminalShellOption[]>;
 }
 

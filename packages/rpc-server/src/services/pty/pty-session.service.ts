@@ -127,6 +127,10 @@ export class PTYSessionService extends Disposable implements IPTYSessionService 
     return this._getSessionOrThrow(sessionId).shellPath;
   }
 
+  async getCurrentCwd(sessionId: string): Promise<string> {
+    return this._commandBlockService.getCurrentCwd(sessionId);
+  }
+
   async getLocalTerminalShellOptions(): Promise<ILocalTerminalShellOption[]> {
     return getAvailableLocalTerminalShellOptions(platform);
   }

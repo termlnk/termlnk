@@ -101,6 +101,13 @@ export const ptyRouter = router({
       return ptySessionService.getShellPath(input);
     }),
 
+  getCurrentCwd: publicProcedure
+    .input(sessionIdSchema)
+    .query(async ({ ctx, input }) => {
+      const ptySessionService = ctx.injector.get(IPTYSessionService);
+      return ptySessionService.getCurrentCwd(input);
+    }),
+
   getLocalTerminalShellOptions: publicProcedure
     .query(async ({ ctx }) => {
       const ptySessionService = ctx.injector.get(IPTYSessionService);

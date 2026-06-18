@@ -64,6 +64,10 @@ export class PTYService extends Disposable implements IPTYService {
     return this._client.getShellPath.query(sessionId);
   }
 
+  async getCurrentCwd(sessionId: string): Promise<string> {
+    return this._client.getCurrentCwd.query(sessionId);
+  }
+
   async getLocalTerminalShellOptions(): Promise<ILocalTerminalShellOption[]> {
     return this._client.getLocalTerminalShellOptions.query();
   }

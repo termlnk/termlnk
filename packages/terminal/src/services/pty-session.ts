@@ -25,6 +25,7 @@ export interface IPTYSessionService {
   write(sessionId: string, data: string): Promise<void>;
   resize(sessionId: string, rows: number, cols: number): Promise<void>;
   getShellPath(sessionId: string): Promise<string>;
+  getCurrentCwd(sessionId: string): Promise<string>;
   getLocalTerminalShellOptions(): Promise<ILocalTerminalShellOption[]>;
 }
 export const IPTYSessionService = createIdentifier<IPTYSessionService>('pty.pty-session-service');

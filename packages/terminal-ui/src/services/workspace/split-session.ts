@@ -51,7 +51,8 @@ export async function splitTerminalSession(
     newSessionId = await sshService.createSession(session.hostId);
     terminalUIService.addSession({ id: newSessionId, type: 'ssh', hostId: session.hostId, hostName: session.hostName });
   } else {
-    newSessionId = await ptyService.createSession({ cols: 80, rows: 24 });
+    const cwd = await ptyService.getCurrentCwd(sourceSessionId).catch(() => '');
+    newSessionId = await ptyService.createSession({ cols: 80, rows: 24, cwd: cwd || undefined });
     terminalUIService.addSession({ id: newSessionId, type: 'local', hostId: '', hostName: 'Local', status: 'idle' });
   }
 
