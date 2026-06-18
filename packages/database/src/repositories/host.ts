@@ -299,7 +299,7 @@ export class HostRepository extends Disposable implements IHostSyncRepository {
       return;
     }
 
-    this._emitChange('move', updated.id, updated.pid);
+    this._emitChange('move', updated.id, updated.pid, sourcePid);
   }
 
   async delete(id: string): Promise<void> {
@@ -492,8 +492,8 @@ export class HostRepository extends Disposable implements IHostSyncRepository {
     return res[0].tree;
   }
 
-  private _emitChange(type: IHostChangeEvent['type'], id: string, pid: string): void {
-    this._changed$.next({ type, id, pid });
+  private _emitChange(type: IHostChangeEvent['type'], id: string, pid: string, oldPid?: string): void {
+    this._changed$.next({ type, id, pid, oldPid });
   }
 
   // Empty sensitive field on the incoming credential preserves the existing one; otherwise

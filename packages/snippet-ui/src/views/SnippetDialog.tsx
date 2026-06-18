@@ -22,7 +22,7 @@ import { IHostManagerService } from '@termlnk/rpc-client';
 import { ISnippetService } from '@termlnk/snippet';
 import { HostType } from '@termlnk/terminal';
 import { GripVertical, PlusIcon, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ISnippetDialogService } from '../services/snippet-dialog.service';
 
 export const SNIPPET_DIALOG_COMPONENT_NAME = 'snippet-ui.component.snippet-dialog';
@@ -66,6 +66,7 @@ export const SnippetDialog: FC = () => {
   const [content, setContent] = useState('');
   const [description, setDescription] = useState('');
   const [pid, setPid] = useState<string | undefined>(undefined);
+  const originalPidRef = useRef<string>('root');
   const [targetHostIds, setTargetHostIds] = useState<string[]>([]);
   const [allHosts, setAllHosts] = useState<IHostOption[]>([]);
   const [allPackages, setAllPackages] = useState<ISnippetPackage[]>([]);
@@ -93,6 +94,7 @@ export const SnippetDialog: FC = () => {
           setDescription(s.description ?? '');
           setPid(s.pid === 'root' ? undefined : s.pid);
           setTargetHostIds(s.targetHostIds ?? []);
+          originalPidRef.current = s.pid;
         }
       });
     } else {
@@ -101,6 +103,7 @@ export const SnippetDialog: FC = () => {
       setDescription('');
       setPid(undefined);
       setTargetHostIds([]);
+      originalPidRef.current = 'root';
     }
     setPickerOpen(false);
   }, [state.open, state.mode, state.snippetId, snippetService]);
@@ -111,17 +114,20 @@ export const SnippetDialog: FC = () => {
     }
     setBusy(true);
     try {
-      const data = {
+      const newPid = pid ?? 'root';
+      const fields = {
         label,
         content,
         description: description || undefined,
-        pid: pid ?? 'root',
         targetHostIds: targetHostIds.length > 0 ? targetHostIds : undefined,
       };
       if (state.mode === 'edit' && state.snippetId) {
-        await snippetService.update(state.snippetId, data);
+        if (newPid !== originalPidRef.current) {
+          await snippetService.move(state.snippetId, newPid, Number.MAX_SAFE_INTEGER);
+        }
+        await snippetService.update(state.snippetId, fields);
       } else {
-        await snippetService.create({ ...data, sort: 0, favorite: false });
+        await snippetService.create({ ...fields, pid: newPid, sort: 0, favorite: false });
       }
       snippetDialog.close();
     } finally {

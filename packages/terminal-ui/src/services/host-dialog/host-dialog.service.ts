@@ -24,6 +24,7 @@ import { createDefaultHostItem, DEFAULT_HOST_SETTINGS, HostDialogMode, HostDialo
 
 export class HostDialogService extends Disposable {
   private readonly _model = new HostDialogStateModel();
+  private _originalPid: string = DEFAULT_HOST_ROOT;
 
   get stateUpdate$(): Observable<Partial<IHostDialogState>> {
     return this._model.stateUpdate$;
@@ -59,8 +60,10 @@ export class HostDialogService extends Disposable {
       }
       item = hostItem as HostFormItem;
       item.settings = { ...DEFAULT_HOST_SETTINGS, ...item.settings };
+      this._originalPid = item.pid;
     } else {
       item.pid = parentId;
+      this._originalPid = parentId;
     }
 
     this._model.changeState({
@@ -83,6 +86,9 @@ export class HostDialogService extends Disposable {
     if (mode === HostDialogMode.CREATE) {
       await this._hostManagerService.create(hostItem);
     } else {
+      if (hostItem.pid !== this._originalPid) {
+        await this._hostManagerService.move(hostItem.id, hostItem.pid, Number.MAX_SAFE_INTEGER);
+      }
       await this._hostManagerService.update(hostItem);
     }
   }

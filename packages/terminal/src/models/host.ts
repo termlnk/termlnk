@@ -126,4 +126,5 @@ export interface IHostChangeEvent {
   type: 'add' | 'update' | 'delete' | 'move';
   id: string;
   pid: string;
+  oldPid?: string;
 }

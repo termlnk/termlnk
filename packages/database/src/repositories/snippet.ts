@@ -258,7 +258,7 @@ export class SnippetRepository extends Disposable {
     }
 
     const eventType = entity.type === SnippetType.PACKAGE ? 'package' : 'snippet';
-    this._changed$.next({ type: eventType, action: 'move', id, pid: finalTargetPid });
+    this._changed$.next({ type: eventType, action: 'move', id, pid: finalTargetPid, oldPid: sourcePid });
   }
 
   // --- Expanded state ---

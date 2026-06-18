@@ -257,6 +257,9 @@ export const SnippetsExplorer: FC = () => {
           childrenToRefresh.add(event.pid);
           if (event.action === 'move') {
             dataToRefresh.add(event.id);
+            if (event.oldPid) {
+              childrenToRefresh.add(event.oldPid);
+            }
           }
         }
       }

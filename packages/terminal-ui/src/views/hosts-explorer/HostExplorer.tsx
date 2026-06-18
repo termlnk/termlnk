@@ -228,6 +228,9 @@ export function HostExplorer() {
           childrenToRefresh.add(event.pid);
           if (event.type === 'move') {
             dataToRefresh.add(event.id);
+            if (event.oldPid) {
+              childrenToRefresh.add(event.oldPid);
+            }
           }
         }
       }

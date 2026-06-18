@@ -52,4 +52,5 @@ export interface ISnippetChangeEvent {
   readonly action: 'add' | 'update' | 'delete' | 'move';
   readonly id: string;
   readonly pid: string;
+  readonly oldPid?: string;
 }
