@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/sync-core",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": false,
   "description": "Sync core implementations for termlnk - E2EE crypto (XChaCha20-Poly1305), outbox queue, transport, and per-resource synchronisers",
   "author": "telan <telanflow@gmail.com>",

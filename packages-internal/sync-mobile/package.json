@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/sync-mobile",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Mobile sync plugin — assembles @termlnk/sync-engine against expo-sqlite-backed repositories from @termlnk/database-mobile.",
   "author": "telan <telanflow@gmail.com>",

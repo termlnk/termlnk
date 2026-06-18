@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/auth-mobile",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Mobile auth platform plugin (Expo SecureStore key/value, AppState idle probe, device name, libsodium password hasher, biometric capability).",
   "author": "telan <telanflow@gmail.com>",
