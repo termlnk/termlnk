@@ -28,7 +28,7 @@ RUN cd /workspace/node_modules/better-sqlite3 && (npx --no-install prebuild-inst
 RUN pnpm --filter @termlnk/web-app-server exec vite build \
  && pnpm --filter @termlnk/web-app-renderer run build
 
-RUN pnpm --filter @termlnk/web-app-server deploy --prod --legacy --config.allowNonAppliedPatches=true /prod \
+RUN pnpm --filter @termlnk/web-app-server deploy --prod --legacy /prod \
  && cp -r node_modules/better-sqlite3/build /prod/node_modules/better-sqlite3/build \
  && cp -r node_modules/node-pty/build /prod/node_modules/node-pty/build \
  && cd /prod && node -e "new (require('better-sqlite3'))(':memory:').close(); require('node-pty'); console.log('[docker] prod closure native ok')"
