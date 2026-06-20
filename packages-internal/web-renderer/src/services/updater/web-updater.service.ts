@@ -21,6 +21,8 @@ import { HTTPResponseError, HTTPService } from '@termlnk/network';
 import { BehaviorSubject, Subject, switchMap, timer } from 'rxjs';
 import { WEB_RENDERER_PLUGIN_CONFIG_KEY } from '../../controllers/config.schema';
 
+declare const __APP_VERSION__: string | undefined;
+
 const DEFAULT_GITHUB_API_BASE = 'https://api.github.com';
 const DEFAULT_REPO = 'termlnk/termlnk';
 const DEFAULT_INITIAL_DELAY_MS = 30 * 1000;
@@ -195,7 +197,10 @@ export class WebUpdaterService extends Disposable implements IUpdaterService {
     if (cfg.updater?.currentVersion) {
       return cfg.updater.currentVersion;
     }
-    const fromBuild = (globalThis as { __APP_VERSION__?: string }).__APP_VERSION__;
+    // Bare identifier so Vite's `define` replaces it at bundle time.
+    // `typeof` on an undeclared variable returns "undefined" without throwing.
+
+    const fromBuild = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : undefined;
     return typeof fromBuild === 'string' && fromBuild.length > 0 ? fromBuild : '0.0.0';
   }
 }

@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IUpdateInfo } from '@termlnk/core';
 import type { ReactNode } from 'react';
-import { LocaleService } from '@termlnk/core';
+import { IUpdaterService, LocaleService } from '@termlnk/core';
 import { Badge, Button, cn, LogoIcon, useDependency } from '@termlnk/design';
-import { IRPCClientService } from '@termlnk/rpc-client';
 import { ArrowUpRight, Download, RefreshCw, ScrollText, Star } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -40,19 +40,6 @@ const STATUS_TEXT_CLASS: Record<UpdateState, string> = {
   error: 'tm:text-red',
 };
 
-interface IUpdateInfo {
-  version?: string;
-}
-
-interface IUpdaterClient {
-  getCurrentVersion?: {
-    query: () => Promise<string>;
-  };
-  checkForUpdates?: {
-    mutate: () => Promise<IUpdateInfo | null>;
-  };
-}
-
 const AUTHOR_NAME = 'telan';
 const AUTHOR_URL = 'https://x.com/telanflow';
 const LICENSE_NAME = 'PolyForm Noncommercial 1.0.0';
@@ -61,28 +48,19 @@ const RELEASES_URL = `${GITHUB_URL}/releases`;
 
 export function AboutTab() {
   const localeService = useDependency(LocaleService);
-  const rpcClientService = useDependency(IRPCClientService);
+  const updaterService = useDependency(IUpdaterService);
 
   const [currentVersion, setCurrentVersion] = useState('-');
   const [latestVersion, setLatestVersion] = useState('-');
   const [updateState, setUpdateState] = useState<UpdateState>('idle');
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
 
-  const getUpdaterClient = useCallback((): IUpdaterClient | null => {
-    const client = rpcClientService.getClient() as { updater?: IUpdaterClient };
-    return client.updater ?? null;
-  }, [rpcClientService]);
-
   useEffect(() => {
     let active = true;
 
     const loadVersion = async () => {
       try {
-        const updater = getUpdaterClient();
-        if (!updater?.getCurrentVersion?.query) {
-          return;
-        }
-        const version = await updater.getCurrentVersion.query();
+        const version = await updaterService.getCurrentVersion();
         if (active && version) {
           setCurrentVersion(version);
         }
@@ -98,7 +76,7 @@ export function AboutTab() {
     return () => {
       active = false;
     };
-  }, [getUpdaterClient]);
+  }, [updaterService]);
 
   const openExternal = useCallback((url: string) => {
     const win = window as Window & {
@@ -123,12 +101,7 @@ export function AboutTab() {
     setUpdateState('checking');
 
     try {
-      const updater = getUpdaterClient();
-      if (!updater?.checkForUpdates?.mutate) {
-        throw new Error('updater unavailable');
-      }
-
-      const info = await updater.checkForUpdates.mutate();
+      const info = await updaterService.checkForUpdates();
       setLastCheckedAt(new Date());
 
       if (info?.version) {
@@ -143,7 +116,7 @@ export function AboutTab() {
       setLastCheckedAt(new Date());
       setUpdateState('error');
     }
-  }, [currentVersion, getUpdaterClient, updateState]);
+  }, [currentVersion, updaterService, updateState]);
 
   const statusText = useMemo(() => {
     switch (updateState) {

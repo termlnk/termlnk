@@ -34,6 +34,11 @@ import extensionuijaJP from '@termlnk/extension-ui/locale/ja-JP';
 import extensionuikoKR from '@termlnk/extension-ui/locale/ko-KR';
 import extensionuizhCN from '@termlnk/extension-ui/locale/zh-CN';
 import extensionuizhTW from '@termlnk/extension-ui/locale/zh-TW';
+import portforwardinguienUS from '@termlnk/port-forwarding-ui/locale/en-US';
+import portforwardinguijaJP from '@termlnk/port-forwarding-ui/locale/ja-JP';
+import portforwardinguikoKR from '@termlnk/port-forwarding-ui/locale/ko-KR';
+import portforwardinguizhCN from '@termlnk/port-forwarding-ui/locale/zh-CN';
+import portforwardinguizhTW from '@termlnk/port-forwarding-ui/locale/zh-TW';
 import settingsuienUS from '@termlnk/settings-ui/locale/en-US';
 import settingsuijaJP from '@termlnk/settings-ui/locale/ja-JP';
 import settingsuikoKR from '@termlnk/settings-ui/locale/ko-KR';
@@ -44,6 +49,11 @@ import sftpuijaJP from '@termlnk/sftp-ui/locale/ja-JP';
 import sftpuikoKR from '@termlnk/sftp-ui/locale/ko-KR';
 import sftpuizhCN from '@termlnk/sftp-ui/locale/zh-CN';
 import sftpuizhTW from '@termlnk/sftp-ui/locale/zh-TW';
+import snippetuienUS from '@termlnk/snippet-ui/locale/en-US';
+import snippetuijaJP from '@termlnk/snippet-ui/locale/ja-JP';
+import snippetuikoKR from '@termlnk/snippet-ui/locale/ko-KR';
+import snippetuizhCN from '@termlnk/snippet-ui/locale/zh-CN';
+import snippetuizhTW from '@termlnk/snippet-ui/locale/zh-TW';
 import sharedterminaluienUS from '@termlnk/shared-terminal-ui/locale/en-US';
 import sharedterminaluijaJP from '@termlnk/shared-terminal-ui/locale/ja-JP';
 import sharedterminaluikoKR from '@termlnk/shared-terminal-ui/locale/ko-KR';
@@ -71,9 +81,11 @@ export const enUS = merge(
   authuienUS,
   designenUS,
   extensionuienUS,
+  portforwardinguienUS,
   settingsuienUS,
   sftpuienUS,
   sharedterminaluienUS,
+  snippetuienUS,
   syncuienUS,
   terminaluienUS,
   uienUS
@@ -84,9 +96,11 @@ export const zhCN = merge(
   authuizhCN,
   designzhCN,
   extensionuizhCN,
+  portforwardinguizhCN,
   settingsuizhCN,
   sftpuizhCN,
   sharedterminaluizhCN,
+  snippetuizhCN,
   syncuizhCN,
   terminaluizhCN,
   uizhCN
@@ -97,9 +111,11 @@ export const jaJP = merge(
   authuijaJP,
   designjaJP,
   extensionuijaJP,
+  portforwardinguijaJP,
   settingsuijaJP,
   sftpuijaJP,
   sharedterminaluijaJP,
+  snippetuijaJP,
   syncuijaJP,
   terminaluijaJP,
   uijaJP
@@ -110,9 +126,11 @@ export const koKR = merge(
   authuikoKR,
   designkoKR,
   extensionuikoKR,
+  portforwardinguikoKR,
   settingsuikoKR,
   sftpuikoKR,
   sharedterminaluikoKR,
+  snippetuikoKR,
   syncuikoKR,
   terminaluikoKR,
   uikoKR
@@ -123,9 +141,11 @@ export const zhTW = merge(
   authuizhTW,
   designzhTW,
   extensionuizhTW,
+  portforwardinguizhTW,
   settingsuizhTW,
   sftpuizhTW,
   sharedterminaluizhTW,
+  snippetuizhTW,
   syncuizhTW,
   terminaluizhTW,
   uizhTW

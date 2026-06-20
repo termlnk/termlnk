@@ -7,6 +7,9 @@
 @source "../../../../packages/themes-ui/src";
 @source "../../../../packages/terminal-ui/src";
 @source "../../../../packages/sftp-ui/src";
+@source "../../../../packages/port-forwarding-ui/src";
+@source "../../../../packages/snippet-ui/src";
+@source "../../../../packages/shared-terminal-ui/src";
 @source "../../../../packages/settings-ui/src";
 @source "../../../../packages/extension-ui/src";
 @source "../../../../packages/agent-ui/src";

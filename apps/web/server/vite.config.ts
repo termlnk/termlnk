@@ -34,7 +34,7 @@ export default defineConfig({
     },
   },
   ssr: {
-    noExternal: [/^@termlnk\//],
+    noExternal: [/^@termlnk\//, /^@noble\//],
     external: [
       'better-sqlite3',
       'node-pty',

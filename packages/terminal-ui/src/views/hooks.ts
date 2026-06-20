@@ -27,7 +27,6 @@ import { DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_
 import { fromFontFaceSetEvent } from '@termlnk/ui';
 import { FitAddon } from '@xterm/addon-fit';
 import { ImageAddon } from '@xterm/addon-image';
-import { LigaturesAddon } from '@xterm/addon-ligatures';
 import { ProgressAddon } from '@xterm/addon-progress';
 import { SearchAddon } from '@xterm/addon-search';
 import { SerializeAddon } from '@xterm/addon-serialize';
@@ -235,7 +234,12 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
     }
 
     if (rendererEngine === 'webgl') {
-      term.loadAddon(new LigaturesAddon());
+      // @xterm/addon-ligatures requires Node.js APIs (diagnostics_channel via
+      // lru-cache, font-finder via child_process). Dynamic import so the web
+      // build degrades gracefully — ligatures are a nice-to-have.
+      import('@xterm/addon-ligatures').then(({ LigaturesAddon }) => {
+        term.loadAddon(new LigaturesAddon());
+      }).catch(() => {});
     }
 
     if (autoFit) {
