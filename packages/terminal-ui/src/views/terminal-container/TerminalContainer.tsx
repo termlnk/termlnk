@@ -201,7 +201,7 @@ export function TerminalContainer(): React.JSX.Element {
       <div
         className={`
           tm:row-span-full tm:flex tm:size-full tm:flex-col
-          tm:bg-[linear-gradient(180deg,color-mix(in_srgb,var(--tm-black)_96%,transparent),color-mix(in_srgb,var(--tm-darker-black)_98%,transparent))]
+          tm:bg-[linear-gradient(180deg,color-mix(in_srgb,var(--tm-black)_96%,transparent),color-mix(in_srgb,var(--tm-black)_98%,transparent))]
         `}
       >
         {showLocalTabs && (

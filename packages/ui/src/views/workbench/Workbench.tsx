@@ -132,7 +132,7 @@ export function DesktopWorkbenchContent(props: ITermlnkWorkbenchProps) {
 
             {/* footer */}
             {footer && (
-              <footer className="tm:bg-darker-black">
+              <footer className="tm:bg-black">
                 <ComponentContainer key="footer" components={footerComponents} sharedProps={{ contextMenu }} />
               </footer>
             )}

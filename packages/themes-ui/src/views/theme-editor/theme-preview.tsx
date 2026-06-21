@@ -33,7 +33,7 @@ export function ThemePreview({ theme }: IThemePreviewProps) {
       {/* 标题栏 */}
       <div
         className="tm:flex tm:items-center tm:gap-2 tm:px-3 tm:py-2"
-        style={{ backgroundColor: base_30.darker_black }}
+        style={{ backgroundColor: base_30.black }}
       >
         <div className="tm:flex tm:gap-1.5">
           <div className="tm:size-3 tm:rounded-full" style={{ backgroundColor: base_30.red }} />

@@ -111,7 +111,7 @@ export function WorkspaceContainer({ workspaceId }: IWorkspaceContainerProps) {
         className={cn(
           'tm:relative tm:size-full tm:overflow-hidden tm:p-0',
           {
-            'tm:bg-[linear-gradient(180deg,color-mix(in_srgb,var(--tm-black)_94%,transparent),color-mix(in_srgb,var(--tm-darker-black)_98%,transparent))]': !isTransparent,
+            'tm:bg-[linear-gradient(180deg,color-mix(in_srgb,var(--tm-black)_94%,transparent),color-mix(in_srgb,var(--tm-black)_98%,transparent))]': !isTransparent,
           }
         )}
         style={{ transform: 'translateZ(0)' }}

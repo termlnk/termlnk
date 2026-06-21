@@ -587,9 +587,7 @@ export function TerminalTabs(props: ITerminalTabsProps) {
       {/* Fixed right buttons when overflowing */}
       {isOverflowing && (
         <div
-          className={`
-            electron-no-drag tm:flex tm:h-full tm:min-w-17 tm:items-center tm:gap-0.5 tm:bg-darker-black tm:px-1
-          `}
+          className="electron-no-drag tm:flex tm:h-full tm:min-w-17 tm:items-center tm:gap-0.5 tm:bg-black tm:px-1"
         >
           <TooltipWrapper
             side="bottom"

@@ -90,9 +90,7 @@ export function UpdateDialog() {
         <div className="tm:flex tm:flex-col tm:gap-1">
           <div className="tm:text-xs tm:font-medium tm:text-white">{localeService.t('ui.updater.release-notes')}</div>
           <div
-            className={`
-              tm:max-h-[200px] tm:overflow-y-auto tm:rounded-sm tm:border tm:border-line tm:bg-darker-black tm:p-3
-            `}
+            className="tm:max-h-[200px] tm:overflow-y-auto tm:rounded-sm tm:border tm:border-line tm:bg-black tm:p-3"
           >
             <ReleaseNotesMarkdown content={updateInfo.releaseNotes} />
           </div>
