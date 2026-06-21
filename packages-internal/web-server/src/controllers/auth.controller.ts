@@ -13,12 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import { Disposable, ILogService, Inject } from '@termlnk/core';
+import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { IMasterKeyHolderService } from '../services/master-key-holder.service';
 import { IWebServerService } from '../services/web-server.service';
 import { IWebSessionService } from '../services/web-session.service';
 import { createAuthRouteHandler } from '../trpc/auth-routes';
-import { TERMLNK_WEB_AUTH_PATH_PREFIX } from './config.schema';
+import { type IWebServerConfig, TERMLNK_WEB_AUTH_PATH_PREFIX, WEB_SERVER_PLUGIN_CONFIG_KEY } from './config.schema';
 
 // Mounts the auth handler so the login UI loads even while the holder is still pending,
 // then fires holder.initialize() without blocking onReady. Holder failures flip the
@@ -28,16 +28,21 @@ export class AuthController extends Disposable {
     @Inject(IWebServerService) private readonly _webServerService: IWebServerService,
     @Inject(IMasterKeyHolderService) private readonly _masterKeyHolder: IMasterKeyHolderService,
     @Inject(IWebSessionService) private readonly _sessionService: IWebSessionService,
-    @ILogService private readonly _logService: ILogService
+    @ILogService private readonly _logService: ILogService,
+    @IConfigService private readonly _configService: IConfigService
   ) {
     super();
   }
 
   mountAndInit(): void {
+    const cfg = this._configService.getConfig<IWebServerConfig>(WEB_SERVER_PLUGIN_CONFIG_KEY);
+    const demo = cfg?.demo ?? false;
+
     const handler = createAuthRouteHandler({
       masterKeyHolder: this._masterKeyHolder,
       sessionService: this._sessionService,
       logService: this._logService,
+      demo,
     });
     this._webServerService.mountRouteHandler(TERMLNK_WEB_AUTH_PATH_PREFIX, handler);
 

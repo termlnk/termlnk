@@ -90,6 +90,13 @@ export interface IWebServerConfig {
   sessionIdleTimeoutMs?: number;
 
   /**
+   * Demo mode — bypasses browser login and makes the app publicly accessible
+   * without credentials. Intended for the website live embed; never enable in
+   * a deployment that holds real SSH credentials.
+   */
+  demo?: boolean;
+
+  /**
    * Plugin DI override — same mechanism as ElectronMainPlugin / SyncCorePlugin.
    * Tests can swap IWebServerService for an in-memory fake; deployments can
    * inject a custom IStaticFileService.

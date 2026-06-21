@@ -64,6 +64,7 @@ const host = process.env.TERMLNK_WEB_HOST ?? '127.0.0.1';
 const staticRoot = process.env.TERMLNK_WEB_STATIC_ROOT;
 const tlsCert = process.env.TERMLNK_WEB_TLS_CERT;
 const tlsKey = process.env.TERMLNK_WEB_TLS_KEY;
+const demo = process.env.TERMLNK_WEB_DEMO === 'true';
 
 // Mirrors apps/desktop/main/src/bootstrap.ts: TERMLNK_CLOUD_BASE_URL when set,
 // otherwise the baked-in production endpoint so a fresh self-hosted deploy can
@@ -129,6 +130,7 @@ async function bootstrap(): Promise<void> {
     staticRoot,
     tlsCert,
     tlsKey,
+    demo,
     override: [
       [IWebServerRouterProvider, {
         useValue: { getRouter: () => appRouter },

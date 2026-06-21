@@ -85,6 +85,7 @@ async function setupBed(opts: { masterPassword?: string; sessionIdleTimeoutMs?: 
       masterKeyHolder: holder,
       sessionService,
       logService: injector.get(ILogServiceId),
+      demo: false,
     })
   );
   await webServerService.start();

@@ -127,14 +127,14 @@ export class WebServerService extends Disposable implements IWebServerService {
 
   setRouter(router: AnyRouter): void {
     this._router = router;
+    const demo = this._isDemoMode();
     this._trpcHandler = createTRPCStandaloneHandler({
       router,
       injector: this._injector,
       basePath: '/trpc',
-      // Cookie-based session check. WebSessionService.resolveFromRequest also
-      // bumps lastActivityAt on hit, so RPC traffic naturally keeps the
-      // session alive past the idle timeout.
-      authenticate: (req) => this._sessionService.resolveFromRequest(req) !== null,
+      authenticate: demo
+        ? () => true
+        : (req) => this._sessionService.resolveFromRequest(req) !== null,
     });
   }
 
@@ -159,6 +159,7 @@ export class WebServerService extends Disposable implements IWebServerService {
     this._state$.next({ ...INITIAL_STATE, status: 'starting' });
 
     const config = this._resolveConfig();
+    const demo = this._isDemoMode();
     const requestListener = this._buildRequestListener();
 
     try {
@@ -172,7 +173,9 @@ export class WebServerService extends Disposable implements IWebServerService {
       this._wsHandle = createTRPCWSHandler({
         router: this._router!,
         injector: this._injector,
-        authenticate: (req) => this._sessionService.resolveFromRequest(req) !== null,
+        authenticate: demo
+          ? () => true
+          : (req) => this._sessionService.resolveFromRequest(req) !== null,
       });
 
       // Single upgrade dispatcher: route /trpc-ws to the tRPC WS handler;
@@ -237,6 +240,11 @@ export class WebServerService extends Disposable implements IWebServerService {
       tlsCert: cfg.tlsCert,
       tlsKey: cfg.tlsKey,
     };
+  }
+
+  private _isDemoMode(): boolean {
+    const cfg = this._configService.getConfig<IWebServerConfig>(WEB_SERVER_PLUGIN_CONFIG_KEY);
+    return cfg?.demo ?? false;
   }
 
   private _buildRequestListener() {

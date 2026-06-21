@@ -32,6 +32,7 @@ export interface IAuthRouteHandlerDeps {
   readonly masterKeyHolder: IMasterKeyHolderService;
   readonly sessionService: IWebSessionService;
   readonly logService: ILogService;
+  readonly demo: boolean;
 }
 
 /**
@@ -79,6 +80,10 @@ export function createAuthRouteHandler(deps: IAuthRouteHandlerDeps): IRouteHandl
 async function handleLogin(req: IncomingMessage, res: ServerResponse, deps: IAuthRouteHandlerDeps): Promise<void> {
   if (req.method !== 'POST') {
     sendJson(res, 405, { error: 'method_not_allowed' });
+    return;
+  }
+  if (deps.demo) {
+    sendJson(res, 200, { ok: true });
     return;
   }
   const holderState = deps.masterKeyHolder.getState();
@@ -135,6 +140,15 @@ async function handleLogout(req: IncomingMessage, res: ServerResponse, deps: IAu
 async function handleStatus(req: IncomingMessage, res: ServerResponse, deps: IAuthRouteHandlerDeps): Promise<void> {
   if (req.method !== 'GET') {
     sendJson(res, 405, { error: 'method_not_allowed' });
+    return;
+  }
+  if (deps.demo) {
+    sendJson(res, 200, {
+      holderStatus: 'unlocked',
+      holderError: null,
+      authenticated: true,
+      demo: true,
+    });
     return;
   }
   const holderState = deps.masterKeyHolder.getState();
