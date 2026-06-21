@@ -14,9 +14,9 @@
  */
 
 import { INotificationService } from '@termlnk/core';
-import { Button, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
+import { Button, cn, Tooltip, TooltipContent, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { BuiltInUIPart, ComponentContainer, NotificationIcon, NotificationPanel, ResizableService, SIDE_TAB_BAR_WIDTH_REM, SideTabBarService, useComponentsOfPart } from '@termlnk/ui';
-import { LogOut } from 'lucide-react';
+import { LogOut, Maximize2, Minus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 /**
@@ -38,6 +38,58 @@ import { useEffect, useRef, useState } from 'react';
  *   indirection avoids dragging the whole login state machine into a
  *   leaf component; WebShell owns the lifecycle.
  */
+function isDemoMode(): boolean {
+  return (window as unknown as { __TERMLNK_DEMO?: boolean }).__TERMLNK_DEMO === true;
+}
+
+function DecorativeTrafficLights() {
+  return (
+    <div className="tm:flex tm:shrink-0 tm:items-center tm:pl-3">
+      <div className="tm:group tm:flex tm:items-center tm:gap-2">
+        <div
+          className={cn(`
+            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:text-[#353535]
+            tm:outline-1 tm:-outline-offset-1 tm:bg-[#ec6765] tm:outline-[#e73e3b]
+          `)}
+        >
+          <X
+            className="
+              tm:hidden tm:size-2.5
+              tm:group-hover:block
+            "
+          />
+        </div>
+        <div
+          className={cn(`
+            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:text-[#353535]
+            tm:outline-1 tm:-outline-offset-1 tm:bg-[#f2ca44] tm:outline-[#eebb0d]
+          `)}
+        >
+          <Minus
+            className="
+              tm:hidden tm:size-2.5
+              tm:group-hover:block
+            "
+          />
+        </div>
+        <div
+          className={cn(`
+            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:text-[#353535]
+            tm:outline-1 tm:-outline-offset-1 tm:bg-[#65c466] tm:outline-[#49ba4b]
+          `)}
+        >
+          <Maximize2
+            className="
+              tm:hidden tm:size-2
+              tm:group-hover:block
+            "
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function WebHeader() {
   const resizableService = useDependency(ResizableService);
   const sideTabBarService = useDependency(SideTabBarService);
@@ -111,6 +163,7 @@ export function WebHeader() {
   const leftPercent = layout.left;
   const hasHeaderActions = headerActionComponents.length > 0;
   const sideTabBarWidth = isSidebarVisible ? SIDE_TAB_BAR_WIDTH_REM : 0;
+  const demo = isDemoMode();
 
   const handleLogout = () => {
     const fn = (window as unknown as { __termlnkWebLogout?: () => void }).__termlnkWebLogout;
@@ -136,6 +189,7 @@ export function WebHeader() {
             minWidth: 'max-content',
           }}
         >
+          {demo && <DecorativeTrafficLights />}
           {hasHeaderActions && (
             <div
               className="tm:flex tm:h-full tm:items-center tm:justify-center tm:gap-0.5 tm:px-2"
@@ -158,19 +212,21 @@ export function WebHeader() {
             {headerTrailingComponents.length > 0 && (
               <ComponentContainer components={headerTrailingComponents} />
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleLogout}
-                  aria-label={signOutLabel}
-                >
-                  <LogOut size={14} strokeWidth={1.5} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{signOutLabel}</TooltipContent>
-            </Tooltip>
+            {!demo && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleLogout}
+                    aria-label={signOutLabel}
+                  >
+                    <LogOut size={14} strokeWidth={1.5} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{signOutLabel}</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </div>

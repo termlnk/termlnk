@@ -22,12 +22,13 @@ type ShellState =
   | { kind: 'loading' }
   | { kind: 'holder_error'; message: string }
   | { kind: 'login_required' }
-  | { kind: 'authenticated' };
+  | { kind: 'authenticated'; demo: boolean };
 
 interface IStatusResponse {
   holderStatus: 'pending' | 'unlocked' | 'error';
   holderError: string | null;
   authenticated: boolean;
+  demo?: boolean;
 }
 
 const STATUS_PATH = '/__termlnk-web/status';
@@ -83,7 +84,9 @@ async function fetchStatus(): Promise<ShellState> {
       message: body.holderError ?? `Master key holder is in "${body.holderStatus}" state. Check server-side configuration.`,
     };
   }
-  return body.authenticated ? { kind: 'authenticated' } : { kind: 'login_required' };
+  return body.authenticated
+    ? { kind: 'authenticated', demo: body.demo ?? false }
+    : { kind: 'login_required' };
 }
 
 export function WebShell() {
@@ -108,7 +111,7 @@ export function WebShell() {
   }, []);
 
   const handleLoggedIn = useCallback(() => {
-    setState({ kind: 'authenticated' });
+    setState({ kind: 'authenticated', demo: false });
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -130,7 +133,7 @@ export function WebShell() {
   if (state.kind === 'login_required') {
     return <LoginView onSuccess={handleLoggedIn} />;
   }
-  return <Workbench onLogout={handleLogout} />;
+  return <Workbench onLogout={handleLogout} demo={state.demo} />;
 }
 
 function GateShell({ children }: { children: React.ReactNode }) {
@@ -398,9 +401,10 @@ function LoginView({ onSuccess }: ILoginViewProps) {
 
 interface IWorkbenchProps {
   onLogout: () => void;
+  demo: boolean;
 }
 
-function Workbench({ onLogout }: IWorkbenchProps) {
+function Workbench({ onLogout, demo }: IWorkbenchProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const coreRef = useRef<Core | null>(null);
 
@@ -417,14 +421,14 @@ function Workbench({ onLogout }: IWorkbenchProps) {
     };
   }, []);
 
-  // Expose logout on a global hook so UI plugins can wire a menu item without a fresh
-  // DI service.
   useEffect(() => {
-    (window as unknown as { __termlnkWebLogout?: () => void }).__termlnkWebLogout = onLogout;
+    (window as unknown as { __termlnkWebLogout?: () => void }).__termlnkWebLogout = demo ? undefined : onLogout;
+    (window as unknown as { __TERMLNK_DEMO?: boolean }).__TERMLNK_DEMO = demo;
     return () => {
       delete (window as unknown as { __termlnkWebLogout?: () => void }).__termlnkWebLogout;
+      delete (window as unknown as { __TERMLNK_DEMO?: boolean }).__TERMLNK_DEMO;
     };
-  }, [onLogout]);
+  }, [onLogout, demo]);
 
   // tm:size-full only sets width/height (no color vars), so it is safe even
   // before ThemeService has injected the Base46 palette.
