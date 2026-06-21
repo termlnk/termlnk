@@ -27,14 +27,14 @@ import { RPCPlugin } from '@termlnk/rpc';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { SettingsUIPlugin } from '@termlnk/settings-ui';
 import { SFTPUIPlugin } from '@termlnk/sftp-ui';
-import { SnippetUIPlugin } from '@termlnk/snippet-ui';
 import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { SharedTerminalUIPlugin } from '@termlnk/shared-terminal-ui';
+import { SnippetUIPlugin } from '@termlnk/snippet-ui';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
 import { TerminalUIPlugin } from '@termlnk/terminal-ui';
-import { chadracula } from '@termlnk/themes';
+import { termlnkDark } from '@termlnk/themes';
 import { UIPlugin } from '@termlnk/ui';
 import { WebRendererPlugin } from '@termlnk/web-renderer';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
@@ -63,7 +63,7 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
 
   const defaultOptions: Partial<ICoreConfig> = merge(
     {
-      theme: chadracula,
+      theme: termlnkDark,
       logLevel: LogLevel.INFO,
       locale: LocaleType.EN_US,
       locales: { enUS, zhCN, jaJP, koKR, zhTW },

@@ -37,7 +37,7 @@ import { SharedTerminalPlugin } from '@termlnk/shared-terminal';
 import { SharedTerminalCorePlugin } from '@termlnk/shared-terminal-core';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncCorePlugin } from '@termlnk/sync-core';
-import { chadracula } from '@termlnk/themes';
+import { termlnkDark } from '@termlnk/themes';
 import { app, protocol } from 'electron';
 import { dirname, join, relative } from 'pathe';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
@@ -267,7 +267,7 @@ app.whenReady().then(async () => {
   await dbAdaptor.initialize();
 
   const core = new Core({
-    theme: chadracula,
+    theme: termlnkDark,
     logLevel: LogLevel.INFO,
     locale: LocaleType.EN_US,
     locales: { enUS, zhCN, jaJP, koKR, zhTW },

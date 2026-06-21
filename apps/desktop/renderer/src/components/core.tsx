@@ -36,7 +36,7 @@ import { SyncPlugin } from '@termlnk/sync';
 import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
 import { TerminalUIPlugin } from '@termlnk/terminal-ui';
-import { chadracula } from '@termlnk/themes';
+import { termlnkDark } from '@termlnk/themes';
 import { UIPlugin } from '@termlnk/ui';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
 import '@termlnk/design/global.css';
@@ -63,7 +63,7 @@ export function createCore(ref: string | HTMLElement, options?: Partial<ICreateT
 
   const defaultOptions: Partial<ICoreConfig> = merge(
     {
-      theme: chadracula,
+      theme: termlnkDark,
       logLevel: LogLevel.INFO,
       locale: LocaleType.EN_US,
       locales: { enUS, zhCN, jaJP, koKR, zhTW },
