@@ -1,0 +1,6 @@
+services:
+  termlnk-web:
+    build:
+      context: ../../..
+      dockerfile: apps/web/Dockerfile
+    image: termlnk-web:local

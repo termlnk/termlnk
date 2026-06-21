@@ -1,0 +1,49 @@
+services:
+  termlnk-web:
+    image: ghcr.io/termlnk/termlnk-web:${TERMLNK_WEB_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      TERMLNK_MASTER_PASSWORD_FILE: /run/secrets/master_password
+      TERMLNK_WEB_HOST: "0.0.0.0"
+      TERMLNK_WEB_PORT: "3000"
+      TERMLNK_WEB_DEMO: "${TERMLNK_WEB_DEMO:-}"
+    secrets:
+      - master_password
+    volumes:
+      - vault:/data
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["tls"]
+    restart: unless-stopped
+    depends_on:
+      - termlnk-web
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      TERMLNK_WEB_DOMAIN: ${TERMLNK_WEB_DOMAIN:-}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ -z "$$TERMLNK_WEB_DOMAIN" ]; then
+          echo "ERROR: TERMLNK_WEB_DOMAIN must be set when bringing up the tls profile (e.g. ./install.sh --tls my.example.com)" >&2
+          exit 1
+        fi
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+secrets:
+  master_password:
+    file: ./master_password.secret
+
+volumes:
+  vault:
+  caddy_data:
+  caddy_config:
