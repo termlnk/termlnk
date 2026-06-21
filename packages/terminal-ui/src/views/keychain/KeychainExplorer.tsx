@@ -206,7 +206,14 @@ function KeychainRow({ icon, title, subtitle, badge, onEdit, onDelete }: IKeycha
         "
       >
         <Button variant="ghost" size="icon-xs" onClick={(e) => { e.stopPropagation(); onEdit(); }}><Pencil size={13} /></Button>
-        <Button variant="ghost" size="icon-xs" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="tm:hover:bg-red/10 tm:hover:text-red"><Trash2 size={13} /></Button>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="tm:hover:bg-red/10 tm:hover:text-red"
+        >
+          <Trash2 size={13} />
+        </Button>
       </div>
     </li>
   );
