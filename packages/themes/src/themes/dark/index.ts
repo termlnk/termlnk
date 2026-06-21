@@ -61,6 +61,7 @@ export { rxyhn } from './rxyhn';
 export { solarizedDark } from './solarized-dark';
 export { solarizedOsaka } from './solarized-osaka';
 export { sweetPastel } from './sweet-pastel';
+export { termlnkDark } from './termlnk-dark';
 export { tokyoDark } from './tokyo-dark';
 export { tokyoNight } from './tokyo-night';
 export { tomorrowNight } from './tomorrow-night';

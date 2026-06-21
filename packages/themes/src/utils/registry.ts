@@ -18,8 +18,10 @@ import * as dark from '../themes/dark';
 import * as light from '../themes/light';
 
 export const ALL_THEMES: ITheme[] = [
-  ...Object.values(dark),
-  ...Object.values(light),
+  dark.termlnkDark,
+  ...Object.values(dark).filter((t) => t !== dark.termlnkDark),
+  light.termlnkLight,
+  ...Object.values(light).filter((t) => t !== light.termlnkLight),
 ];
 
 export const THEME_MAP = new Map<string, ITheme>(

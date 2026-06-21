@@ -65,6 +65,7 @@ export {
   solarizedDark,
   solarizedOsaka,
   sweetPastel,
+  termlnkDark,
   tokyoDark,
   tokyoNight,
   tomorrowNight,
@@ -90,6 +91,7 @@ export {
   oneNordLight,
   penumbraLight,
   rosePineDawn,
+  termlnkLight,
 } from './themes/light';
 
 export type { IBase16Colors, IBase30Colors, ICustomTheme, ITheme, IXtermTheme, ThemeType } from './types';

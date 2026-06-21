@@ -27,3 +27,4 @@ export { oneLight } from './one-light';
 export { oneNordLight } from './one-nord-light';
 export { penumbraLight } from './penumbra-light';
 export { rosePineDawn } from './rose-pine-dawn';
+export { termlnkLight } from './termlnk-light';
