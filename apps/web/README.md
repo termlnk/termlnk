@@ -16,24 +16,59 @@ The web edition of [Termlnk](https://github.com/termlnk/termlnk). Same DI contai
 
 ## 30-second deploy
 
-The image is prebuilt and published to GHCR (multi-arch amd64 / arm64) — no need to clone the whole monorepo or compile locally. A minimal deployment only needs the `apps/web/` directory (`docker-compose.yml` / `install.sh` / `Caddyfile`).
+The image is prebuilt and published to GHCR (multi-arch amd64 / arm64) — no need to clone the whole monorepo or compile locally.
+
+### One-line remote install
 
 ```bash
-cd apps/web
+# HTTP only (localhost:3000)
+curl -fSL https://raw.githubusercontent.com/termlnk/termlnk/main/apps/web/deploy/install.sh | bash
 
-# One-click: generate a strong master password -> pull the image -> start -> health-check
-./install.sh
+# With automatic HTTPS (Caddy + Let's Encrypt)
+curl -fSL https://raw.githubusercontent.com/termlnk/termlnk/main/apps/web/deploy/install.sh \
+  | bash -s -- --tls termlnk.example.com
 
-# With automatic HTTPS (built-in caddy + Let's Encrypt):
-./install.sh --tls termlnk.example.com
+# Demo mode (no login, for website embed)
+curl -fSL https://raw.githubusercontent.com/termlnk/termlnk/main/apps/web/deploy/install.sh \
+  | bash -s -- --demo --tls demo.termlnk.com
+```
+
+### Local install (from the repo)
+
+```bash
+cd apps/web/deploy
+./install.sh                                 # HTTP on 127.0.0.1:3000
+./install.sh --tls termlnk.example.com       # automatic HTTPS
+./install.sh --demo                          # demo mode, HTTP
+./install.sh --demo --tls demo.termlnk.com   # demo mode, HTTPS
 ```
 
 `install.sh` writes the randomly generated master password into `master_password.secret` (mode 600, already gitignored) and injects it as a **docker secret** — it never appears in the container environment or `docker inspect` output. **Back up this password immediately**: losing it makes the vault permanently unrecoverable (same semantics as a password manager such as Bitwarden).
 
-Manual equivalent:
+### Lifecycle management (deploy.sh)
+
+After install, `deploy.sh` is the single entry point for all operations:
 
 ```bash
-cd apps/web
+./deploy.sh start          # start all services (idempotent)
+./deploy.sh stop           # stop all services
+./deploy.sh restart        # recreate containers
+./deploy.sh status         # docker compose ps
+./deploy.sh logs           # tail logs
+
+./deploy.sh update         # pull latest image and restart
+./deploy.sh backup         # copy SQLite vault to ./backups/
+./deploy.sh restore <file> # restore vault from backup (DESTRUCTIVE)
+
+./deploy.sh shell          # open a shell in the container
+./deploy.sh uninstall      # tear down (volumes preserved)
+./deploy.sh uninstall --purge  # tear down + delete data volumes (DESTRUCTIVE)
+```
+
+Manual equivalent (without `install.sh`):
+
+```bash
+cd apps/web/deploy
 printf '%s' 'choose-a-strong-passphrase' > master_password.secret
 chmod 600 master_password.secret
 docker compose up -d
@@ -46,11 +81,49 @@ Open `http://127.0.0.1:3000` in a browser, sign in with the master password, and
 ### Build from source (air-gapped / custom image)
 
 ```bash
-cd apps/web
+cd apps/web/deploy
 docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
-This invokes `apps/web/Dockerfile` with the repo root as build context (`context: ../..`) in a three-stage build. The first build takes ~5–10 minutes (node-pty must be compiled from source because it ships no Linux prebuild).
+This invokes `apps/web/Dockerfile` with the repo root as build context (`context: ../../..`) in a three-stage build. The first build takes ~5–10 minutes (node-pty must be compiled from source because it ships no Linux prebuild).
+
+## Demo mode
+
+Demo mode bypasses browser authentication and adds decorative macOS-style traffic lights to the header — designed for embedding as a live showcase on the [Termlnk website](https://www.termlnk.com).
+
+### What changes in demo mode
+
+| Feature | Normal | Demo |
+|---------|--------|------|
+| Login screen | Master password required | Skipped — direct to workbench |
+| Traffic lights | Hidden (browser has no window chrome) | Shown (decorative, always active, no click response) |
+| Sign-out button | Visible | Hidden |
+| tRPC auth gate | Session cookie required | Open (no cookie needed) |
+| Master password | Still required (vault encryption) | Still required (vault encryption) |
+
+### Enable demo mode
+
+**Via install.sh:**
+
+```bash
+./install.sh --demo --tls demo.termlnk.com
+```
+
+**Via environment variable:**
+
+```bash
+# In .env or docker-compose environment
+TERMLNK_WEB_DEMO=true
+```
+
+**Via deploy.sh (edit .env then restart):**
+
+```bash
+# Edit .env: set TERMLNK_WEB_DEMO=true
+./deploy.sh restart
+```
+
+> ⚠ **Never enable demo mode on a deployment that stores real SSH credentials.** Demo mode makes the app publicly accessible without authentication.
 
 ## Reverse-proxy production setup
 
@@ -116,6 +189,7 @@ Every `TERMLNK_*` variable can be injected via the `environment:` section of `do
 |----------|---------|-------------|
 | `TERMLNK_MASTER_PASSWORD_FILE` | _empty_ | Path to the master-password file (**preferred in production**; docker / k8s secrets, value never enters the container environment; a single trailing newline is stripped). Takes precedence over the next row |
 | `TERMLNK_MASTER_PASSWORD` | _empty_ | Master password inline (mutually exclusive with `_FILE`; convenient for local dev, never write it to any file that enters git) |
+| `TERMLNK_WEB_DEMO` | _empty_ | Set to `true` to enable demo mode (bypasses login, shows traffic lights). See [Demo mode](#demo-mode) |
 | `TERMLNK_WEB_PORT` | `3000` | HTTP / WS listen port |
 | `TERMLNK_WEB_HOST` | `0.0.0.0` in the image / `127.0.0.1` in the process | Listen address |
 | `TERMLNK_WEB_TLS_CERT` | _empty_ | Direct TLS certificate (mutually exclusive with a reverse proxy) |
@@ -143,8 +217,9 @@ The image declares `/data` as a named volume:
 ## Upgrading
 
 ```bash
-cd apps/web
-docker compose pull            # pull the new image; or pin TERMLNK_WEB_TAG=vX.Y.Z
+./deploy.sh update
+# or manually:
+docker compose pull
 docker compose up -d
 ```
 
@@ -158,6 +233,7 @@ The `/data` volume survives upgrades; on startup the new image automatically app
 - ✅ The `/data` volume (which contains the SQLite vault file) is never placed in a public backup.
 - ✅ Don't run on a shared host — termlnk-web holds the vault key, which is equivalent to root login.
 - ✅ When using the prebuilt image, pin `TERMLNK_WEB_TAG` to a specific version (e.g. `v0.1.0`) to avoid silently pulling a newer version with breaking changes.
+- ✅ Demo mode is **never** enabled on a deployment that stores real SSH credentials.
 
 ## FAQ
 
