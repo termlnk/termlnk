@@ -1,7 +1,7 @@
 {
   "name": "@termlnk/shared",
   "type": "module",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Some infrastructures for termlnk",
   "author": "telan <telanflow@gmail.com>",

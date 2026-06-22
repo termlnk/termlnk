@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/react-native-russh",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Self-vendored React Native binding for Rust russh + russh-sftp via uniffi-bindgen-react-native. Replaces the NMSSH/JSch bridge in termlnk-mobile.",
   "author": "telan <telanflow@gmail.com>",

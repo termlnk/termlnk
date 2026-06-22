@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/snippet-ui",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": false,
   "description": "Snippet UI plugin for termlnk - snippet management panel, editor, and execution",
   "author": "telan <telanflow@gmail.com>",

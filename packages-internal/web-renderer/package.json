@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/web-renderer",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Web-private renderer plugin: tRPC httpBatchLink + wsLink wiring and web placeholders for Electron-only DI tokens. Not published — consumed only by apps/web/renderer.",
   "author": "telan <telanflow@gmail.com>",
