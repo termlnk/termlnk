@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to (re)build, e.g. v0.1.0'
-        required: true
+        description: 'Release tag to (re)build, e.g. v0.1.0 (leave empty to build from branch)'
+        required: false
         type: string
 
 concurrency:
@@ -43,13 +43,10 @@ jobs:
       - name: Resolve ref
         id: ref
         shell: bash
-        # Pass via env to avoid GHA expression interpolation into the shell —
-        # only repo-write users can trigger workflow_dispatch, but the pattern
-        # is still a script-injection footgun worth removing.
         env:
           INPUT_TAG: ${{ inputs.tag }}
         run: |
-          if [ "${{ github.event_name }}" = 'workflow_dispatch' ]; then
+          if [ "${{ github.event_name }}" = 'workflow_dispatch' ] && [ -n "$INPUT_TAG" ]; then
             echo "ref=refs/tags/${INPUT_TAG}" >> "$GITHUB_OUTPUT"
           else
             echo "ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
@@ -118,10 +115,16 @@ jobs:
         env:
           INPUT_TAG: ${{ inputs.tag }}
         run: |
-          if [ "${{ github.event_name }}" = 'workflow_dispatch' ]; then
+          if [ "${{ github.event_name }}" = 'workflow_dispatch' ] && [ -n "$INPUT_TAG" ]; then
             echo "tag=${INPUT_TAG}" >> "$GITHUB_OUTPUT"
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = 'workflow_dispatch' ]; then
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            echo "branch=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Download digests
@@ -156,9 +159,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}},value=${{ steps.tag.outputs.tag }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag.outputs.tag }}
-            type=raw,value=latest,enable=${{ !contains(steps.tag.outputs.tag, '-') }}
+            type=semver,pattern={{version}},value=${{ steps.tag.outputs.tag }},enable=${{ steps.tag.outputs.is_release == 'true' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.tag.outputs.tag }},enable=${{ steps.tag.outputs.is_release == 'true' }}
+            type=raw,value=latest,enable=${{ steps.tag.outputs.is_release == 'true' && !contains(steps.tag.outputs.tag, '-') }}
+            type=raw,value=${{ steps.tag.outputs.branch }},enable=${{ steps.tag.outputs.is_release == 'false' }}
             type=sha,format=short
 
       - name: Create and push multi-arch manifest
