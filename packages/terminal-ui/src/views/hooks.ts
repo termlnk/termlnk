@@ -263,16 +263,14 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
       ? setupResizeObserver(terminalRef.current, fitAddon)
       : () => {};
 
-    // The initial fit() above measures cell height with whatever font is
-    // available right now. The terminal font (JetBrains Mono) is a web font
-    // loaded asynchronously, so a cold-start fit can run against a fallback
-    // font whose smaller line height over-counts rows — once the real font
-    // swaps in, the grid ends up taller than the container and its bottom
-    // rows get clipped. Re-fit when fonts finish loading to recompute rows.
+    // Re-fit after web fonts load — the initial fit() uses fallback-font
+    // cell metrics which over-count rows. Invalidate xterm's CharSizeService
+    // cache first, otherwise fit() computes identical dimensions and no-ops.
     let disposeFontsListener: IDisposable | null = null;
     if (autoFit) {
       disposeFontsListener = fromFontFaceSetEvent('loadingdone', () => {
         try {
+          invalidateXtermFontMetrics(term);
           fitAddon.fit();
         } catch { }
       });
@@ -471,6 +469,17 @@ function createLegacyTerminalInputBinding(
   return {
     dispose: () => undefined,
   };
+}
+
+// Invalidate xterm's cached font metrics by toggling fontSize.
+// CharSizeService only re-measures on fontFamily/fontSize option changes,
+// not on web font load — without this, fit() reads stale cell dimensions.
+function invalidateXtermFontMetrics(term: Terminal): void {
+  const size = term.options.fontSize;
+  if (typeof size === 'number') {
+    term.options.fontSize = size + 1;
+    term.options.fontSize = size;
+  }
 }
 
 function setupResizeObserver(container: HTMLDivElement, fitAddon: FitAddon): () => void {
