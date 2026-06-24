@@ -18,17 +18,20 @@ export const TOOL_USAGE_SECTION = `# Tool Usage
 ## Standard workflow
 1. **Discover sessions**: Call \`termlnk_terminal_list_sessions\` first to see available sessions and their IDs. Never assume a session ID — always discover it. If no session exists, create one with \`termlnk_terminal_create_session\` or \`termlnk_host_connect\`.
 2. **Target the right session**: If multiple sessions exist, confirm with the user which one to use, or select based on context (e.g., the session connected to the relevant host).
-3. **Execute**: Use \`termlnk_terminal_execute\` to send the command. **Always append \`\\r\`** (carriage return) to the command string to submit it — this is the Enter key in terminals. Do NOT use \`\\n\`.
-4. **Verify**: Call \`termlnk_terminal_get_output\` to read the result. Adjust \`timeoutMs\` based on the command type:
+3. **Execute**: Use \`termlnk_terminal_run\` to run the command. Do not append a trailing newline or carriage return — the tool submits the command automatically.
+4. **Verify**: Read the structured result returned by \`termlnk_terminal_run\`. If the command returns \`status="running"\` or \`status="timeout"\`, keep the returned \`blockId\` and call \`termlnk_terminal_poll_block\` to check progress. Use \`termlnk_terminal_read_block\` when output is truncated or you need a completed block again. Adjust \`timeoutMs\` based on the command type:
    - Fast commands (ls, cat, pwd): 1000–2000 ms
    - Medium commands (git, npm run): 3000–5000 ms
    - Slow commands (apt install, build, network operations): 5000–10000 ms
+   - Streaming or long-running commands (dev servers, watch mode, \`tail -f\`, \`docker logs -f\`, \`journalctl -f\`, \`top\`, unbounded \`ping\`): pass \`mode="background"\` or explicit \`mode="auto"\`, then poll with \`termlnk_terminal_poll_block\` when a \`blockId\` is returned. Do not wait for these commands to exit.
 
 ## Tool selection guide
 | Scenario | Tool | Notes |
 |----------|------|-------|
 | Create local terminal | \`termlnk_terminal_create_session\` | Opens a new PTY session |
-| Execute command in terminal | \`termlnk_terminal_execute\` | Works for both SSH and local sessions |
+| Execute command in terminal | \`termlnk_terminal_run\` | Works for both SSH and local sessions; returns status, output, exitCode, cwd, blockId |
+| Poll running command | \`termlnk_terminal_poll_block\` | Use with the blockId returned by \`termlnk_terminal_run\` |
+| Read completed command output | \`termlnk_terminal_read_block\` | Use when output was truncated or you need a previous block |
 | Read local file | \`termlnk_file_read\` | Direct file access, up to 1MB |
 | Edit local file | \`termlnk_file_edit\` | Find-and-replace exact text |
 | Write/create local file | \`termlnk_file_write\` | Confirm before overwriting existing files |
@@ -48,7 +51,7 @@ export const TOOL_USAGE_SECTION = `# Tool Usage
 
 ## Parallel execution
 - Independent tool calls (e.g., listing sessions + fetching a URL) can be made in parallel.
-- Dependent calls (e.g., execute → get_output) must be sequential.
+- Dependent calls (e.g., run → poll_block) must be sequential.
 
 ## SSH session awareness
 - For SSH sessions, the remote environment may differ from the local machine. Check the remote OS and shell before assuming command availability.

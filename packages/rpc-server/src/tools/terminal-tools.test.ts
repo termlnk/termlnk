@@ -230,6 +230,103 @@ describe('termlnk_terminal_run', () => {
     expect(parsed.blockId).toBeTruthy();
     expect(parsed.hint).toContain('poll_block');
   });
+
+  it('keeps likely streaming commands in foreground for legacy calls', async () => {
+    const { tools, dataStream, writeCalls } = createHarness('sess-legacy-fg');
+    const run = tools.termlnk_terminal_run;
+
+    const resultPromise = run.handler({
+      sessionId: 'sess-legacy-fg',
+      command: 'pnpm dev',
+      timeoutMs: 1000,
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(writeCalls).toEqual(['pnpm dev\r']);
+
+    emitBytes(dataStream, `${osc633('A')}${osc633('B')}${osc633('E;pnpm\\x20dev')}${osc633('C')}ready\n`);
+
+    const result = await resultPromise;
+    const parsed = parseResult((result.content[0] as { text: string }).text);
+
+    expect(parsed.status).toBe('timeout');
+    expect(parsed.output).toContain('ready');
+    expect(parsed.blockId).toBeTruthy();
+  });
+
+  it('auto-backgrounds likely streaming commands when mode=auto is explicit', async () => {
+    const { tools, dataStream, writeCalls } = createHarness('sess-auto-bg');
+    const run = tools.termlnk_terminal_run;
+
+    const resultPromise = run.handler({
+      sessionId: 'sess-auto-bg',
+      command: 'pnpm dev',
+      mode: 'auto',
+      timeoutMs: 120000,
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(writeCalls).toEqual(['pnpm dev\r']);
+
+    emitBytes(dataStream, `${osc633('A')}${osc633('B')}${osc633('E;pnpm\\x20dev')}${osc633('C')}`);
+
+    const result = await resultPromise;
+    const parsed = parseResult((result.content[0] as { text: string }).text);
+
+    expect(parsed.status).toBe('running');
+    expect(parsed.mode).toBe('auto-background');
+    expect(parsed.blockId).toBeTruthy();
+  });
+
+  it('returns a heuristic timeout snapshot when auto-background cannot track a command block', async () => {
+    vi.useFakeTimers();
+    try {
+      const { tools, dataStream } = createHarness('sess-auto-heu');
+      const run = tools.termlnk_terminal_run;
+
+      const resultPromise = run.handler({
+        sessionId: 'sess-auto-heu',
+        command: 'pnpm dev',
+        mode: 'auto',
+        timeoutMs: 6000,
+      });
+      await vi.advanceTimersByTimeAsync(0);
+
+      emitBytes(dataStream, 'pnpm dev\nready\n');
+      await vi.advanceTimersByTimeAsync(6000);
+
+      const result = await resultPromise;
+      const parsed = parseResult((result.content[0] as { text: string }).text);
+
+      expect(parsed.status).toBe('heuristic_timeout');
+      expect(parsed.mode).toBe('auto-background');
+      expect(parsed.output).toContain('ready');
+      expect(parsed.blockId).toBeUndefined();
+      expect(parsed.hint).toContain('best-effort snapshot');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('mode=foreground still waits for likely streaming commands', async () => {
+    const { tools, dataStream } = createHarness('sess-fg');
+    const run = tools.termlnk_terminal_run;
+
+    const resultPromise = run.handler({
+      sessionId: 'sess-fg',
+      command: 'tail -f /var/log/foo',
+      mode: 'foreground',
+      timeoutMs: 1000,
+    });
+    await new Promise((r) => setTimeout(r, 0));
+
+    emitBytes(dataStream, `${osc633('A')}${osc633('B')}${osc633('E;tail')}${osc633('C')}line1\n`);
+
+    const result = await resultPromise;
+    const parsed = parseResult((result.content[0] as { text: string }).text);
+
+    expect(parsed.status).toBe('timeout');
+    expect(parsed.output).toContain('line1');
+    expect(parsed.blockId).toBeTruthy();
+  });
 });
 
 describe('termlnk_terminal_list_blocks / read_block / poll_block', () => {

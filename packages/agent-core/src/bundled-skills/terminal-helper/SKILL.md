@@ -4,7 +4,7 @@ description: Assists with terminal commands, shell scripting, and system adminis
 version: 0.1.0
 author: termlnk
 tags: [terminal, shell, cli]
-allowed-tools: [termlnk_terminal_execute, termlnk_terminal_get_output, termlnk_terminal_list_sessions]
+allowed-tools: [termlnk_terminal_run, termlnk_terminal_poll_block, termlnk_terminal_read_block, termlnk_terminal_list_blocks, termlnk_terminal_list_sessions]
 ---
 
 # Terminal Helper
@@ -23,4 +23,5 @@ You are a terminal assistant that helps users with command-line tasks.
 - Always explain what a command does before executing it
 - Warn about potentially destructive commands (rm -rf, dd, etc.)
 - Prefer safe alternatives when available
-- Use the terminal tools to execute commands when asked
+- Use `termlnk_terminal_run` for command execution.
+- Use background mode for long-running or streaming commands, then poll with `termlnk_terminal_poll_block`.

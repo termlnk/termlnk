@@ -25,6 +25,27 @@ import { filter, firstValueFrom, take, timeout } from 'rxjs';
 import { stripAnsi } from '../common/ansi-strip';
 import { OutputBufferManager } from '../common/output-buffer';
 
+type TerminalRunMode = 'auto' | 'foreground' | 'background';
+
+const BLOCK_START_TIMEOUT_MS = 5000;
+
+interface IRunModeResolution {
+  mode: TerminalRunMode;
+  explicitMode: boolean;
+}
+
+interface IHeuristicResultOptions {
+  status: string;
+  sessionId: string;
+  command: string;
+  rawOutput: string;
+  outputPreviewLines: number;
+  timeoutMs: number;
+  commandBlockService: ICommandBlockService;
+  hint: string;
+  mode?: string;
+}
+
 export interface ITerminalToolDeps {
   sshToolService: ISSHToolService;
   logService: ILogService;
@@ -247,7 +268,7 @@ function createRunTool(
     name: 'termlnk_terminal_run',
     label: 'Run Terminal Command',
     category: 'terminal',
-    description: 'Run a command in a terminal session and return a structured result (exit code, ANSI-stripped output, cwd, duration, blockId). Set waitForExit=false for streaming/long-running commands — get a blockId immediately and poll with termlnk_terminal_poll_block. If outputTruncated is true, fetch more via termlnk_terminal_read_block. For destructive commands (rm -rf, dd, mkfs, DROP TABLE, shutdown, git push --force, ...) confirm with the user first.',
+    description: 'Run a command in a terminal session and return a structured result (exit code, ANSI-stripped output, cwd, duration, blockId). Use mode=auto, mode=background, or waitForExit=false for long-running commands — get a blockId when shell integration can track the command, then poll with termlnk_terminal_poll_block. If outputTruncated is true, fetch more via termlnk_terminal_read_block. For destructive commands (rm -rf, dd, mkfs, DROP TABLE, shutdown, git push --force, ...) confirm with the user first.',
     isDestructive: true,
     inputSchema: {
       type: 'object',
@@ -256,7 +277,12 @@ function createRunTool(
         command: { type: 'string', description: 'Command to execute. Do NOT include a trailing newline — it is added automatically.' },
         timeoutMs: { type: 'number', description: 'Max ms to wait. Default 15000, max 120000. On timeout, returns partial output + blockId.', default: 15000 },
         outputPreviewLines: { type: 'number', description: 'Max lines of output returned inline. Default 200.', default: 200 },
-        waitForExit: { type: 'boolean', description: 'Set false for streaming/long-running. Default true.', default: true },
+        mode: {
+          type: 'string',
+          description: 'Execution mode. auto backgrounds known streaming commands; foreground waits for command exit; background returns after command start. Omit to preserve legacy foreground behavior.',
+          enum: ['auto', 'foreground', 'background'],
+        },
+        waitForExit: { type: 'boolean', description: 'Backward-compatible alias. false maps to mode=background when mode is omitted.', default: true },
       },
       required: ['sessionId', 'command'],
     },
@@ -278,11 +304,14 @@ function createRunTool(
         const command = String(args.command ?? '');
         const timeoutMs = Math.min(Math.max(Number(args.timeoutMs) || 15000, 1000), 120000);
         const outputPreviewLines = Math.min(Math.max(Number(args.outputPreviewLines) || 200, 1), 10000);
-        const waitForExit = args.waitForExit !== false;
 
         if (!sessionId || !command) {
           return jsonError('Both sessionId and command are required.');
         }
+
+        const { mode, explicitMode } = resolveRunMode(args.mode, args.waitForExit);
+        const autoBackgrounded = mode === 'auto' && explicitMode && isLikelyStreamingCommand(command);
+        const waitForExit = mode === 'foreground' || (mode === 'auto' && !autoBackgrounded);
 
         if (!commandBlockService.isAttached(sessionId)) {
           const sshData$ = sshToolService.getSessionData$(sessionId);
@@ -310,7 +339,7 @@ function createRunTool(
             commandBlockService.blockStarted$.pipe(
               filter((e) => e.sessionId === sessionId),
               take(1),
-              timeout(5000)
+              timeout(BLOCK_START_TIMEOUT_MS)
             )
           ).then((e) => e.blockId)
           : null;
@@ -335,10 +364,27 @@ function createRunTool(
               blockId,
               sessionId,
               command,
+              mode: autoBackgrounded ? 'auto-background' : 'background',
               hint: `Command started in background. Poll with termlnk_terminal_poll_block (blockId=${blockId}).`,
             });
           } catch {
-            return jsonError('Command did not emit an OSC 633;C start event within 5s. Shell integration may be inactive on this session.');
+            if (heuristicData$) {
+              const remainingTimeoutMs = Math.max(0, timeoutMs - BLOCK_START_TIMEOUT_MS);
+              const rawOutput = await outputBuffers.drainBuffer(sessionId, heuristicData$, remainingTimeoutMs);
+              return formatHeuristicResult({
+                status: 'heuristic_timeout',
+                sessionId,
+                command,
+                mode: autoBackgrounded ? 'auto-background' : 'background',
+                rawOutput,
+                outputPreviewLines,
+                timeoutMs,
+                commandBlockService,
+                hint: 'No OSC 633 command block was emitted for this background command. Returned a best-effort snapshot; poll_block cannot track it.',
+              });
+            }
+
+            return jsonError('Command did not emit an OSC 633 start event within 5s. Shell integration may be inactive on this session.');
           }
         }
 
@@ -362,22 +408,16 @@ function createRunTool(
 
           if (heuristicData$) {
             const rawOutput = await outputBuffers.drainBuffer(sessionId, heuristicData$, 0);
-            const clean = stripAnsi(rawOutput).replace(commandEchoPattern(command), '');
-            const truncated = truncateToLines(clean.trimStart(), outputPreviewLines);
             const osc633Events = commandBlockService.getOsc633EventCount(sessionId);
             const shellIntegrationActive = osc633Events > 0;
-            return jsonOk({
+            return formatHeuristicResult({
               status: 'heuristic_completed',
               sessionId,
               command,
-              output: truncated.text,
-              outputTotalBytes: rawOutput.length,
-              outputTruncated: truncated.truncated,
-              shellIntegrated: false,
-              shellIntegrationActive,
-              osc633EventCount: osc633Events,
-              exitCode: null,
-              durationMs: timeoutMs,
+              rawOutput,
+              outputPreviewLines,
+              timeoutMs,
+              commandBlockService,
               hint: shellIntegrationActive
                 ? `Shell integration produced ${osc633Events} OSC 633 events but no command-end (D) within ${timeoutMs}ms. Returned a best-effort snapshot.`
                 : 'No OSC 633 events observed — shell integration likely did not take effect (unsupported shell, overridden PS1, or script not sourced). Returned a best-effort snapshot.',
@@ -630,6 +670,57 @@ function createPollBlockTool(
 // Helpers
 // ---------------------------------------------------------------------------
 
+function resolveRunMode(mode: unknown, waitForExit: unknown): IRunModeResolution {
+  if (mode === 'auto' || mode === 'foreground' || mode === 'background') {
+    return { mode, explicitMode: true };
+  }
+  if (waitForExit === false) {
+    return { mode: 'background', explicitMode: false };
+  }
+  return { mode: 'auto', explicitMode: false };
+}
+
+function isLikelyStreamingCommand(command: string): boolean {
+  const normalized = command.trim().replace(/\s+/g, ' ');
+  if (!normalized) {
+    return false;
+  }
+
+  const lower = normalized.toLowerCase();
+  const patterns = [
+    /\b(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?(?:dev|serve|watch)\b/,
+    /\b(?:pnpm|npm|yarn|bun)\s+start\b/,
+    /\bturbo\s+(?:dev|watch)\b/,
+    /\b(?:vite|nodemon)\b/,
+    /\bnext\s+dev\b/,
+    /\bwebpack(?:\s+serve)?\b.*(?:--watch|\s-w\b)/,
+    /\brollup\b.*(?:--watch|\s-w\b)/,
+    /\btsc\b.*(?:--watch|\s-w\b)/,
+    /\btsx\s+watch\b/,
+    /\btail\b.*(?:^|[\s-])f\b/,
+    /\bdocker\s+(?:compose\s+)?logs\b.*(?:^|[\s-])f\b/,
+    /\bjournalctl\b.*(?:^|[\s-])f\b/,
+    /\bwatch\s+/,
+    /\b(?:top|htop|btop)\b/,
+    /\byes\b/,
+    /\bwhile\s+true\b/,
+    /\bfor\s*;\s*;\b/,
+  ];
+
+  if (patterns.some((pattern) => pattern.test(lower))) {
+    return true;
+  }
+
+  return isUnboundedPing(lower);
+}
+
+function isUnboundedPing(command: string): boolean {
+  if (!/\bping\b/.test(command)) {
+    return false;
+  }
+  return !/(?:^|\s)-(?:c|n)\s*\d+\b/.test(command);
+}
+
 function resolveHeuristicDataStream(
   sessionId: string,
   sshToolService: ISSHToolService,
@@ -699,6 +790,28 @@ function formatBlockResult(block: ITerminalCommand, maxPreviewLines: number, fro
     shellIntegrated: block.shellIntegrated ?? true,
     isRunning: fromPoll ? false : undefined,
     ...(wasTruncated ? { truncationHint: hintSuffix } : {}),
+  });
+}
+
+function formatHeuristicResult(options: IHeuristicResultOptions): IAgentToolResult {
+  const clean = stripAnsi(options.rawOutput).replace(commandEchoPattern(options.command), '');
+  const truncated = truncateToLines(clean.trimStart(), options.outputPreviewLines);
+  const osc633Events = options.commandBlockService.getOsc633EventCount(options.sessionId);
+
+  return jsonOk({
+    status: options.status,
+    sessionId: options.sessionId,
+    command: options.command,
+    mode: options.mode,
+    output: truncated.text,
+    outputTotalBytes: options.rawOutput.length,
+    outputTruncated: truncated.truncated,
+    shellIntegrated: false,
+    shellIntegrationActive: osc633Events > 0,
+    osc633EventCount: osc633Events,
+    exitCode: null,
+    durationMs: options.timeoutMs,
+    hint: options.hint,
   });
 }
 
