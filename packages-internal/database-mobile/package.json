@@ -39,7 +39,7 @@
     "drizzle-orm": "1.0.0-rc.3",
     "expo-secure-store": "^56.0.4",
     "expo-sqlite": "^56.0.4",
-    "nanoid": "^5.1.11"
+    "nanoid": "^5.1.16"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",

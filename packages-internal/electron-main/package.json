@@ -32,11 +32,11 @@
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@termlnk/sync": "workspace:*",
-    "electron": "41.7.1",
+    "electron": "41.9.0",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "^0.79.6",
+    "@earendil-works/pi-agent-core": "^0.80.2",
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
     "@sinclair/typebox": "^0.34.49",
     "@termlnk/agent": "workspace:*",
@@ -60,10 +60,10 @@
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "@types/semver": "^7.7.1",
-    "electron": "41.7.1",
+    "electron": "41.9.0",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.1.0",
     "vitest": "^4.1.9"
   }
 }

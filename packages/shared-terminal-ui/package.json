@@ -60,7 +60,7 @@
     "@termlnk/shared-terminal": "workspace:*",
     "@termlnk/terminal-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "lucide-react": "^1.17.0",
+    "lucide-react": "^1.21.0",
     "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
     "rxjs": ">=7.0.0"
   },
@@ -70,15 +70,15 @@
     "@termlnk/shared-terminal": "workspace:*",
     "@termlnk/terminal-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "@xterm/addon-fit": "^0.12.0-beta.219",
-    "@xterm/xterm": "^6.1.0-beta.219",
-    "lucide-react": "^1.17.0"
+    "@xterm/addon-fit": "^0.12.0-beta.287",
+    "@xterm/xterm": "^6.1.0-beta.287",
+    "lucide-react": "^1.21.0"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.1.0",
     "vitest": "^4.1.9"
   }
 }

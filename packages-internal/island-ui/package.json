@@ -31,7 +31,7 @@
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
     "@termlnk/settings-ui": "workspace:*",
-    "lucide-react": "^1.17.0",
+    "lucide-react": "^1.21.0",
     "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
     "rxjs": ">=7.0.0"
   },
@@ -42,13 +42,13 @@
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
     "@termlnk/settings-ui": "workspace:*",
-    "lucide-react": "^1.17.0"
+    "lucide-react": "^1.21.0"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.1.0",
     "vitest": "^4.1.9"
   }
 }
