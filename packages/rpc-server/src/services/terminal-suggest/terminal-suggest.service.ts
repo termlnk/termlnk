@@ -16,7 +16,6 @@
 import type { ITerminalSuggestConfig, ITerminalSuggestion, ITerminalSuggestionPhaseEvent, ITerminalSuggestService, TerminalSuggestionKind } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import type { ICommandBlockService } from '../shell-integration/command-block.service';
-import { completeSimple } from '@earendil-works/pi-ai';
 import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_TERMINAL_SUGGEST_CONFIG, ILLMProviderService } from '@termlnk/agent';
 import { IConfigService, ILogService, RxDisposable } from '@termlnk/core';
 import { ISSHSessionService, ITerminalSessionNotifyService } from '@termlnk/rpc';
@@ -392,7 +391,7 @@ export class TerminalSuggestService extends RxDisposable implements ITerminalSug
     const { model, apiKey } = resolved;
 
     try {
-      const result = await completeSimple(
+      const result = await this._llmProviderService.completeSimple(
         model,
         {
           systemPrompt,

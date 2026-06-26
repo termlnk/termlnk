@@ -13,13 +13,22 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Api, KnownProvider, Model } from '@earendil-works/pi-ai';
+import type { Api, AssistantMessage, AssistantMessageEventStream, Context, KnownProvider, Model, ProviderStreams, SimpleStreamOptions } from '@earendil-works/pi-ai';
 import type { ICustomModelDefinition, ILLMProvider, ILLMProviderService, IModelOption, IModelOverrides, IModelUserConfig, IProviderGroup, IProviderUserConfig } from '@termlnk/agent';
 import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity } from '@termlnk/database';
 import type { Observable } from 'rxjs';
-import { completeSimple, getModels, getProviders } from '@earendil-works/pi-ai';
+import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messages.lazy';
+import { azureOpenAIResponsesApi } from '@earendil-works/pi-ai/api/azure-openai-responses.lazy';
+import { bedrockConverseStreamApi } from '@earendil-works/pi-ai/api/bedrock-converse-stream.lazy';
+import { googleGenerativeAIApi } from '@earendil-works/pi-ai/api/google-generative-ai.lazy';
+import { googleVertexApi } from '@earendil-works/pi-ai/api/google-vertex.lazy';
+import { mistralConversationsApi } from '@earendil-works/pi-ai/api/mistral-conversations.lazy';
+import { openAICodexResponsesApi } from '@earendil-works/pi-ai/api/openai-codex-responses.lazy';
+import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy';
+import { openAIResponsesApi } from '@earendil-works/pi-ai/api/openai-responses.lazy';
+import { getBuiltinModels, getBuiltinProviders } from '@earendil-works/pi-ai/providers/all';
 import { AGENT_PLUGIN_CONFIG_KEY, AI_STORAGE_PROVIDERS_KEY, formatProviderDisplayName, getDefaultProviderBaseUrl, getDefaultProviderSort, UNSUPPORTED_MODEL_SYNC_PROVIDERS } from '@termlnk/agent';
-import { Disposable, Inject } from '@termlnk/core';
+import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository, ProviderRepository } from '@termlnk/database';
 import { BehaviorSubject, combineLatest, map } from 'rxjs';
 import { applyModelOverride, buildModelFromCustomDef, toModelOption } from './utils';
@@ -27,6 +36,18 @@ import { applyModelOverride, buildModelFromCustomDef, toModelOption } from './ut
 const MODEL_SYNC_TIMEOUT_MS = 12000;
 const MODEL_TEST_TIMEOUT_MS = 10000;
 const MODEL_TEST_PROMPT = 'hi';
+
+const API_STREAMS: Record<string, () => ProviderStreams> = {
+  'openai-completions': openAICompletionsApi,
+  'openai-responses': openAIResponsesApi,
+  'azure-openai-responses': azureOpenAIResponsesApi,
+  'openai-codex-responses': openAICodexResponsesApi,
+  'anthropic-messages': anthropicMessagesApi,
+  'bedrock-converse-stream': bedrockConverseStreamApi,
+  'google-generative-ai': googleGenerativeAIApi,
+  'google-vertex': googleVertexApi,
+  'mistral-conversations': mistralConversationsApi,
+};
 
 interface IModelListResponse {
   data?: Array<{ id?: string }>;
@@ -88,7 +109,8 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
   constructor(
     @Inject(ProviderRepository) private readonly _providerRepository: ProviderRepository,
-    @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository
+    @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository,
+    @ILogService private readonly _logService: ILogService
   ) {
     super();
 
@@ -109,13 +131,13 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     try {
       await this._migrateFromLegacy();
     } catch (error) {
-      console.error('[LLMProviderService] Legacy migration failed:', error);
+      this._logService.error('[LLMProviderService] Legacy migration failed:', error);
     }
 
     try {
       await this._loadFromDatabase();
     } catch (error) {
-      console.error('[LLMProviderService] Failed to load from database:', error);
+      this._logService.error('[LLMProviderService] Failed to load from database:', error);
     }
 
     this._rebuildAndPublish();
@@ -126,7 +148,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
         this._activeModelId$.next(activeModelId);
       }
     } catch (error) {
-      console.error('[LLMProviderService] Failed to load active model:', error);
+      this._logService.error('[LLMProviderService] Failed to load active model:', error);
     }
 
     this._initialized = true;
@@ -204,7 +226,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     };
 
     // Determine if this is a builtin provider
-    const builtinProviders = new Set(getProviders());
+    const builtinProviders = new Set(getBuiltinProviders());
     const isBuiltin = builtinProviders.has(providerId as KnownProvider);
 
     await this._providerRepository.upsertProvider({
@@ -259,7 +281,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     }
 
     // Save fetched models as custom models for this provider
-    const builtinProviders = new Set(getProviders());
+    const builtinProviders = new Set(getBuiltinProviders());
     if (!builtinProviders.has(providerId as KnownProvider)) {
       for (const modelId of modelIds) {
         const compositeId = `${providerId}/${modelId}`;
@@ -303,7 +325,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     const mergedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 
     const startedAt = Date.now();
-    const result = await completeSimple(
+    const result = await this.completeSimple(
       model,
       { messages: [{ role: 'user', content: MODEL_TEST_PROMPT, timestamp: startedAt }] },
       { apiKey, maxTokens: 1, signal: mergedSignal, timeoutMs: MODEL_TEST_TIMEOUT_MS }
@@ -418,6 +440,18 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     return provider?.models.find((m) => m.id === modelId) ?? null;
   }
 
+  streamSimple(model: Model<Api>, context: Context, options?: SimpleStreamOptions): AssistantMessageEventStream {
+    const factory = API_STREAMS[model.api];
+    if (!factory) {
+      throw new Error(`Unsupported API type: "${model.api}"`);
+    }
+    return factory().streamSimple(model, context, options);
+  }
+
+  async completeSimple(model: Model<Api>, context: Context, options?: SimpleStreamOptions): Promise<AssistantMessage> {
+    return this.streamSimple(model, context, options).result();
+  }
+
   override dispose(): void {
     this._providers$.complete();
     this._activeModelId$.complete();
@@ -433,13 +467,13 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
     // 1. Built-in providers from pi-ai
     try {
-      for (const providerName of getProviders()) {
+      for (const providerName of getBuiltinProviders()) {
         processedProviderIds.add(providerName);
         const userConfig = providerConfigs.get(providerName);
 
         let builtinModels: Model<Api>[];
         try {
-          builtinModels = getModels(providerName as any) as Model<Api>[];
+          builtinModels = getBuiltinModels(providerName as any) as Model<Api>[];
         } catch {
           builtinModels = [];
         }
@@ -605,7 +639,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
         return;
       }
 
-      const builtinProviders = new Set(getProviders());
+      const builtinProviders = new Set(getBuiltinProviders());
 
       for (const legacy of legacyProviders) {
         const isBuiltin = builtinProviders.has(legacy.provider as KnownProvider);
@@ -750,7 +784,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     if (mapped) return mapped;
 
     try {
-      const models = getModels(providerId as any);
+      const models = getBuiltinModels(providerId as any);
       const candidate = models.find((model: any) => typeof model?.baseUrl === 'string' && model.baseUrl.trim().length > 0)?.baseUrl;
       return candidate ? this._normalizeBaseUrl(candidate) : undefined;
     } catch {

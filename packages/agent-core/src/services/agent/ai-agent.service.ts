@@ -14,12 +14,11 @@
  */
 
 import type { AgentEvent, AgentTool } from '@earendil-works/pi-agent-core';
-import type { Api, AssistantMessage, Model, UserMessage } from '@earendil-works/pi-ai';
+import type { AssistantMessage, Model, UserMessage } from '@earendil-works/pi-ai';
 import type { AgentStatus, IAgentToolPermissionRequest, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import type { IPendingDeliveryMode } from '../../common/pending-message-queue';
 import { Agent } from '@earendil-works/pi-agent-core';
-import { getModel, streamSimple } from '@earendil-works/pi-ai';
 import { DEFAULT_COMPACT_CONFIG, DEFAULT_THINKING_LEVEL, IAgentToolPermissionService, ILLMProviderService, normalizeCompactConfig } from '@termlnk/agent';
 import { Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
@@ -29,6 +28,7 @@ import { buildCompactUserPrompt, buildSummaryUserMessage, formatMessagesForCompa
 import { getLatestContextTokens, shouldAutoCompact } from '../compact/compact-token';
 import { invokeWithUserIntent } from '../permission/permission-guarded-tool';
 import { appendErrorPart, appendTextDelta, appendThinkingDelta, finalizeToolPart, getErrorFromParts, getTextFromParts, getToolPartsFromParts, upsertToolPartInputDelta } from './message-parts';
+import { buildFallbackModel } from '../llm-provider/utils';
 
 const COMPACT_MAX_OUTPUT_TOKENS = 20000;
 const MAX_RETRY_ATTEMPTS = 3;
@@ -538,35 +538,15 @@ export class AIAgentService extends Disposable implements IAIAgentService {
   setModel(provider: string, modelId: string): void {
     this.ensureNotDisposed();
 
-    // First try to resolve from LLMProviderService (includes overrides)
     const resolved = this._llmProviderService.resolveModel(provider, modelId);
+    const providerConfig = this._llmProviderService.getProviderConfig(provider);
+
     if (resolved) {
       this._model = resolved;
     } else {
-      // Fallback to pi-ai direct lookup
-      try {
-        this._model = getModel(provider as any, modelId as any);
-      } catch {
-        // Last resort: construct a fallback model with provider config
-        const providerConfig = this._llmProviderService.getProviderConfig(provider);
-        this._model = {
-          id: modelId,
-          name: modelId,
-          api: (providerConfig?.api ?? 'openai-completions') as Api,
-          provider,
-          baseUrl: providerConfig?.baseUrl ?? '',
-          reasoning: false,
-          input: ['text'],
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-          contextWindow: 128000,
-          maxTokens: 16384,
-          headers: providerConfig?.headers,
-        } as Model<any>;
-      }
+      this._model = buildFallbackModel(provider, modelId, providerConfig ?? undefined);
     }
 
-    // Sync API key from provider config
-    const providerConfig = this._llmProviderService.getProviderConfig(provider);
     if (providerConfig?.apiKey) {
       this._apiKeys.set(provider, providerConfig.apiKey);
     }
@@ -808,7 +788,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     const prompt = buildCompactUserPrompt(messagesToSummarize, instructions);
     let summary = '';
 
-    const stream = streamSimple(
+    const stream = this._llmProviderService.streamSimple(
       this._model,
       { messages: [{ role: 'user', content: prompt, timestamp: Date.now() }] },
       {
@@ -898,7 +878,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       const prompt = `Generate a concise title (max 20 characters) for this conversation. Reply with ONLY the title, no quotes or extra text.\n\nUser: ${userContent.substring(0, 200)}\nAssistant: ${assistantContent.substring(0, 200)}`;
 
       let title = '';
-      const stream = streamSimple(
+      const stream = this._llmProviderService.streamSimple(
         this._model,
         { messages: [{ role: 'user', content: prompt, timestamp: Date.now() }] },
         {
@@ -1018,7 +998,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         tools: this._tools,
         messages: this._savedAgentMessages,
       },
-      streamFn: streamSimple,
+      streamFn: (model, context, options) => this._llmProviderService.streamSimple(model, context, options),
       getApiKey: async (provider: string) => {
         return this._apiKeys.get(provider);
       },

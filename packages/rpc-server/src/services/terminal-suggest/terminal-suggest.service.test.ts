@@ -23,11 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TerminalSuggestService } from './terminal-suggest.service';
 
-// pi-ai is mocked so the service does not attempt real network calls.
 const completeSimpleMock = vi.fn<(...args: unknown[]) => Promise<AssistantMessage>>();
-vi.mock('@earendil-works/pi-ai', () => ({
-  completeSimple: (...args: unknown[]) => completeSimpleMock(...args),
-}));
 
 interface IBlockStartedEvent {
   sessionId: string;
@@ -143,6 +139,9 @@ class FakeLLMProviderService {
   getActiveModel(): typeof this._activeModel {
     return this._activeModel;
   }
+
+  completeSimple = (...args: unknown[]) => completeSimpleMock(...args);
+  streamSimple = vi.fn();
 
   // Other methods on ILLMProviderService — service does not call them.
   // Cast in setup as any to satisfy the DI typing.

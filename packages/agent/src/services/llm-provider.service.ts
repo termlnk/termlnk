@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Api, Model } from '@earendil-works/pi-ai';
+import type { Api, AssistantMessage, AssistantMessageEventStream, Context, Model, SimpleStreamOptions } from '@earendil-works/pi-ai';
 import type { Observable } from 'rxjs';
 import type { ICustomModelDefinition, IModelOption, IModelOverrides, IProviderGroup, IProviderUserConfig } from '../models/provider';
 import { createIdentifier } from '@termlnk/core';
@@ -45,6 +45,9 @@ export interface ILLMProviderService {
   removeCustomModel(providerId: string, modelId: string): Promise<void>;
 
   resolveModel(providerId: string, modelId: string): Model<Api> | null;
+
+  streamSimple(model: Model<Api>, context: Context, options?: SimpleStreamOptions): AssistantMessageEventStream;
+  completeSimple(model: Model<Api>, context: Context, options?: SimpleStreamOptions): Promise<AssistantMessage>;
 }
 
 export const ILLMProviderService = createIdentifier<ILLMProviderService>('agent.provider-config-service');

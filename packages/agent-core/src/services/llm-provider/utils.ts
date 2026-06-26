@@ -74,6 +74,17 @@ export function buildModelFromCustomDef(
 }
 
 /**
+ * Build a minimal fallback Model<Api> when resolveModel returns null.
+ */
+export function buildFallbackModel(
+  providerId: string,
+  modelId: string,
+  providerConfig: IProviderUserConfig | undefined
+): Model<Api> {
+  return buildModelFromCustomDef(providerId, providerConfig, { id: modelId, name: modelId });
+}
+
+/**
  * 将 Model<Api> 转为 UI 层的 IModelOption
  */
 export function toModelOption(providerId: string, model: Model<Api>, enabled: boolean): IModelOption {
