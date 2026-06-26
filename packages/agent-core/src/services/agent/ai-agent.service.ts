@@ -36,6 +36,7 @@ const RETRY_BASE_DELAY_MS = 2000;
 // 502 excluded: usually a structural rejection (gateway forwarded an invalid
 // request), not a transient failure — retrying the same body wastes time.
 const RETRYABLE_ERROR_PATTERN = /overloaded|rate.?limit|too many requests|429|500|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i;
+const OVERFLOW_ERROR_PATTERN = /prompt.?too.?long|context.?length|max.?context|token.?limit|too many tokens|maximum context|exceeds.*context|input.*too.*large|request too large/i;
 
 function buildUserMessageParts(content: string, images?: IImageAttachment[]): IMessagePart[] {
   const parts: IMessagePart[] = [];
@@ -126,6 +127,9 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
   // Carried across abort() → _ensureAgent() to preserve conversation context
   private _savedAgentMessages: any[] = [];
+
+  // Context overflow recovery: only attempt once per agent run to avoid loops
+  private _overflowRecoveryAttempted = false;
 
   // Track the last assistant message for retry detection
   private _lastAssistantEvent: (AgentEvent & { type: 'message_end' }) | null = null;
@@ -271,7 +275,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       if (this._agent !== agent) {
         return;
       }
-      console.error('[AIAgentService] prompt error:', error);
+      this._logService.error('[AIAgentService] prompt error:', error);
       this._finalizeWithError(error?.message ?? 'An unexpected error occurred.');
     }
   }
@@ -291,7 +295,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       try {
         await this._replaceSessionMessages(sessionId, nextMessages);
       } catch (err) {
-        console.error('[AIAgentService] cancelPending persist failed:', err);
+        this._logService.error('[AIAgentService] cancelPending persist failed:', err);
       }
     }
 
@@ -368,7 +372,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       try {
         await this._replaceSessionMessages(sessionId, kept);
       } catch (err) {
-        console.error('[AIAgentService] Truncate persist failed:', err);
+        this._logService.error('[AIAgentService] Truncate persist failed:', err);
       }
     }
     this._cancelRetry();
@@ -475,7 +479,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._currentSessionId$.next(sessionId);
 
     // Restore Agent state from the most recent compact-summary (if any)
-    const lastHidden = [...messages].reverse().find((m) => m.hiddenInUI && m.role === 'user');
+    const lastHidden = messages.findLast((m) => m.hiddenInUI && m.role === 'user');
     if (lastHidden) {
       this._savedAgentMessages = [{
         role: 'user',
@@ -695,7 +699,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       // Persist replacement: [boundary, hidden-summary-user, ...toKeep]
       await this._replaceSessionMessages(sessionId, [boundaryMessage, summaryUserMessage, ...toKeep]);
     } catch (err) {
-      console.error('[AIAgentService] compactConversation failed:', err);
+      this._logService.error('[AIAgentService] compactConversation failed:', err);
       throw err;
     } finally {
       this._isCompacting$.next(false);
@@ -768,7 +772,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         const userContent = getTextFromParts(messages[0]?.parts ?? []);
         const assistantContent = getTextFromParts(message.parts);
         this._generateSessionTitle(sessionId, userContent, assistantContent).catch((err) => {
-          console.error('[AIAgentService] Failed to generate session title:', err);
+          this._logService.error('[AIAgentService] Failed to generate session title:', err);
         });
       }
     } catch (error) {
@@ -777,7 +781,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         this._resetCurrentSessionState();
         return;
       }
-      console.error('[AIAgentService] Failed to persist message:', error);
+      this._logService.error('[AIAgentService] Failed to persist message:', error);
     }
   }
 
@@ -857,7 +861,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     }
     queueMicrotask(() => {
       this.compactConversation({ trigger: 'auto' }).catch((err) => {
-        console.error('[AIAgentService] Auto compact failed:', err);
+        this._logService.error('[AIAgentService] Auto compact failed:', err);
       });
     });
   }
@@ -892,7 +896,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
       await this._chatRepository.renameSession(sessionId, title);
     } catch (error) {
-      console.error('[AIAgentService] Title generation failed, using fallback:', error);
+      this._logService.error('[AIAgentService] Title generation failed, using fallback:', error);
       await this._chatRepository.renameSession(sessionId, this._truncateTitle(userContent));
     }
   }
@@ -1338,6 +1342,13 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
     this._isStreaming$.next(false);
 
+    // Context overflow recovery: auto-compact and retry (once per run)
+    if (lastAssistant && !this._aborted && this._isContextOverflowError(lastAssistant)) {
+      this._recoverFromOverflow();
+      this._lastAssistantEvent = null;
+      return;
+    }
+
     if (lastAssistant && !this._aborted && this._isRetryableError(lastAssistant)) {
       this._attemptRetry();
       this._lastAssistantEvent = null;
@@ -1348,6 +1359,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._resolveRetryPromise();
     this._lastAssistantEvent = null;
     this._aborted = false;
+    this._overflowRecoveryAttempted = false;
 
     if (this._status$.getValue() !== 'error') {
       this._status$.next('idle');
@@ -1365,7 +1377,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._retryAttempt++;
 
     if (this._retryAttempt > MAX_RETRY_ATTEMPTS) {
-      console.warn(`[AIAgentService] Max retry attempts (${MAX_RETRY_ATTEMPTS}) exceeded.`);
+      this._logService.warn(`[AIAgentService] Max retry attempts (${MAX_RETRY_ATTEMPTS}) exceeded.`);
       this._retryAttempt = 0;
       this._resolveRetryPromise();
       this._status$.next('error');
@@ -1373,7 +1385,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     }
 
     const delayMs = RETRY_BASE_DELAY_MS * (2 ** (this._retryAttempt - 1));
-    console.warn(`[AIAgentService] Retryable error detected, attempt ${this._retryAttempt}/${MAX_RETRY_ATTEMPTS}, waiting ${delayMs}ms...`);
+    this._logService.warn(`[AIAgentService] Retryable error detected, attempt ${this._retryAttempt}/${MAX_RETRY_ATTEMPTS}, waiting ${delayMs}ms...`);
 
     if (this._agent) {
       const messages = this._agent.state.messages;
@@ -1407,7 +1419,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       }
 
       this._agent.continue().catch((err: any) => {
-        console.error('[AIAgentService] Retry continue() failed:', err);
+        this._logService.error('[AIAgentService] Retry continue() failed:', err);
         this._retryAttempt = 0;
         this._resolveRetryPromise();
         this._finalizeWithError(err?.message ?? 'Retry failed.');
@@ -1484,6 +1496,55 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._messageCompleted$.next(errorMessage);
     this._isStreaming$.next(false);
     this._status$.next('error');
+  }
+
+  private _isContextOverflowError(message: AssistantMessage): boolean {
+    if (message.stopReason !== 'error' || !message.errorMessage) {
+      return false;
+    }
+    return OVERFLOW_ERROR_PATTERN.test(message.errorMessage);
+  }
+
+  private _recoverFromOverflow(): void {
+    if (this._overflowRecoveryAttempted) {
+      this._logService.warn('[AIAgentService] Overflow recovery already attempted; skipping to avoid loop.');
+      this._resolveRetryPromise();
+      return;
+    }
+    this._overflowRecoveryAttempted = true;
+
+    this._logService.warn('[AIAgentService] Context overflow detected, attempting auto-compact recovery...');
+
+    const currentMessages = this._messages$.getValue();
+    if (currentMessages.length > 0) {
+      const lastMsg = currentMessages.at(-1);
+      if (lastMsg && lastMsg.role === 'assistant' && messageHasError(lastMsg)) {
+        this._messages$.next(currentMessages.slice(0, -1));
+      }
+    }
+
+    this._ensureRetryPromise();
+
+    this.compactConversation({ trigger: 'auto' })
+      .then(() => {
+        if (this._aborted) {
+          this._resolveRetryPromise();
+          return;
+        }
+        const agent = this._ensureAgent();
+        this._isStreaming$.next(true);
+        this._status$.next('thinking');
+        agent.continue().catch((err: any) => {
+          this._logService.error('[AIAgentService] Overflow recovery retry failed:', err);
+          this._resolveRetryPromise();
+          this._finalizeWithError(err?.message ?? 'Overflow recovery retry failed.');
+        });
+      })
+      .catch((err) => {
+        this._logService.error('[AIAgentService] Overflow recovery compact failed:', err);
+        this._resolveRetryPromise();
+        this._finalizeWithError(err?.message ?? 'Context overflow recovery failed.');
+      });
   }
 
   private async _consumeStreamAsText(stream: AssistantMessageEventStream): Promise<string> {
