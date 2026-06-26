@@ -14,7 +14,7 @@
  */
 
 import type { AgentEvent, AgentTool } from '@earendil-works/pi-agent-core';
-import type { AssistantMessage, Model, UserMessage } from '@earendil-works/pi-ai';
+import type { AssistantMessage, AssistantMessageEventStream, Model, UserMessage } from '@earendil-works/pi-ai';
 import type { AgentStatus, IAgentToolPermissionRequest, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import type { IPendingDeliveryMode } from '../../common/pending-message-queue';
@@ -24,7 +24,7 @@ import { Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core
 import { ChatRepository } from '@termlnk/database';
 import { BehaviorSubject, combineLatest, map, Subject } from 'rxjs';
 import { PendingMessageQueue } from '../../common/pending-message-queue';
-import { buildCompactUserPrompt, buildSummaryUserMessage, formatMessagesForCompaction } from '../compact/compact-prompt';
+import { buildCompactUserPrompt, buildSummaryUserMessage, formatMessagesForCompaction, SUMMARIZATION_SYSTEM_PROMPT } from '../compact/compact-prompt';
 import { getLatestContextTokens, shouldAutoCompact } from '../compact/compact-token';
 import { invokeWithUserIntent } from '../permission/permission-guarded-tool';
 import { appendErrorPart, appendTextDelta, appendThinkingDelta, finalizeToolPart, getErrorFromParts, getTextFromParts, getToolPartsFromParts, upsertToolPartInputDelta } from './message-parts';
@@ -642,12 +642,16 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       return;
     }
 
+    // Extract previous summary for iterative compaction
+    const lastBoundary = allMessages.findLast((m) => m.role === 'compact_boundary');
+    const previousSummary = lastBoundary?.compactMetadata?.summary;
+
     this._isCompacting$.next(true);
     const previousStatus = this._status$.getValue();
     this._status$.next('compacting');
 
     try {
-      const summary = await this._generateSummary(toSummarize, options.instructions);
+      const summary = await this._generateSummary(toSummarize, options.instructions, previousSummary);
       const preTokens = getLatestContextTokens(allMessages);
 
       const compactMetadata: ICompactMetadata = {
@@ -779,38 +783,32 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
   private async _generateSummary(
     messagesToSummarize: IChatMessage[],
-    instructions?: string
+    instructions?: string,
+    previousSummary?: string
   ): Promise<string> {
     if (!this._model) {
       throw new Error('[AIAgentService] No model configured; cannot compact.');
     }
 
-    const prompt = buildCompactUserPrompt(messagesToSummarize, instructions);
-    let summary = '';
+    const prompt = buildCompactUserPrompt(messagesToSummarize, instructions, previousSummary);
 
     const stream = this._llmProviderService.streamSimple(
       this._model,
-      { messages: [{ role: 'user', content: prompt, timestamp: Date.now() }] },
+      {
+        systemPrompt: SUMMARIZATION_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
+      },
       {
         maxTokens: COMPACT_MAX_OUTPUT_TOKENS,
         apiKey: this._apiKeys.get(this._model.provider),
       }
     );
 
-    for await (const event of stream) {
-      if (event.type === 'text_delta') {
-        summary += event.delta;
-      } else if (event.type === 'error') {
-        const errorMessage = (event as any).error?.errorMessage ?? 'Compaction stream failed';
-        throw new Error(errorMessage);
-      }
-    }
-
-    const trimmed = summary.trim();
-    if (!trimmed) {
+    const summary = await this._consumeStreamAsText(stream);
+    if (!summary) {
       throw new Error('[AIAgentService] Compaction produced an empty summary.');
     }
-    return trimmed;
+    return summary;
   }
 
   private _buildAgentSummaryContent(
@@ -877,7 +875,6 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     try {
       const prompt = `Generate a concise title (max 20 characters) for this conversation. Reply with ONLY the title, no quotes or extra text.\n\nUser: ${userContent.substring(0, 200)}\nAssistant: ${assistantContent.substring(0, 200)}`;
 
-      let title = '';
       const stream = this._llmProviderService.streamSimple(
         this._model,
         { messages: [{ role: 'user', content: prompt, timestamp: Date.now() }] },
@@ -887,13 +884,8 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         }
       );
 
-      for await (const event of stream) {
-        if (event.type === 'text_delta') {
-          title += event.delta;
-        }
-      }
-
-      title = title.trim().replace(/^["']|["']$/g, '');
+      let title = await this._consumeStreamAsText(stream);
+      title = title.replace(/^["']|["']$/g, '');
       if (!title) {
         title = this._truncateTitle(userContent);
       }
@@ -1492,5 +1484,18 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._messageCompleted$.next(errorMessage);
     this._isStreaming$.next(false);
     this._status$.next('error');
+  }
+
+  private async _consumeStreamAsText(stream: AssistantMessageEventStream): Promise<string> {
+    let text = '';
+    for await (const event of stream) {
+      if (event.type === 'text_delta') {
+        text += event.delta;
+      } else if (event.type === 'error') {
+        const errorMessage = event.error?.errorMessage ?? 'Stream failed';
+        throw new Error(errorMessage);
+      }
+    }
+    return text.trim();
   }
 }

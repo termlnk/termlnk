@@ -15,7 +15,7 @@
 
 import type { IChatMessage, IToolPart } from '@termlnk/agent';
 
-const NO_TOOLS_PREAMBLE = 'You are producing a conversation summary. DO NOT invoke any tools. DO NOT attempt to continue any pending work. Your output must be plain text only.\n\n';
+export const SUMMARIZATION_SYSTEM_PROMPT = 'You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. Do NOT invoke any tools. ONLY output the structured summary.';
 
 const BASE_COMPACT_PROMPT = `Your task is to create a detailed summary of the conversation so far. Read through the entire conversation and produce a structured summary covering the following sections. Be precise and concrete — use real filenames, symbols, values, and quotes from the actual conversation rather than paraphrasing.
 
@@ -51,16 +51,36 @@ const BASE_COMPACT_PROMPT = `Your task is to create a detailed summary of the co
 
 Write the sections in order. Use clear Markdown headings. Keep the summary exhaustive on load-bearing detail and terse on pleasantries.`;
 
-const NO_TOOLS_TRAILER = '\n\nRemember: output the summary only. No tool calls, no follow-up questions.';
+const UPDATE_COMPACT_PROMPT = `The messages below are NEW conversation messages to incorporate into the existing summary provided in <previous-summary> tags.
 
-export function getCompactPrompt(customInstructions?: string): string {
-  let prompt = NO_TOOLS_PREAMBLE + BASE_COMPACT_PROMPT;
+Update the existing structured summary with new information. RULES:
+- PRESERVE all existing information from the previous summary
+- ADD new progress, decisions, and context from the new messages
+- UPDATE section 7 (Pending Tasks): move completed items out, add new ones
+- UPDATE section 8 (Current Work): reflect the latest state
+- PRESERVE exact file paths, function names, and error messages
+- If something is no longer relevant, you may remove it
+
+Use the same 9-section format as the original summary. Keep each section concise.`;
+
+const COMPACT_TRAILER = '\n\nRemember: output the summary only. No tool calls, no follow-up questions.';
+
+function buildPromptWithInstructions(base: string, customInstructions?: string): string {
+  let prompt = base;
   const trimmed = customInstructions?.trim();
   if (trimmed) {
     prompt += `\n\nAdditional Instructions:\n${trimmed}`;
   }
-  prompt += NO_TOOLS_TRAILER;
+  prompt += COMPACT_TRAILER;
   return prompt;
+}
+
+export function getCompactPrompt(customInstructions?: string): string {
+  return buildPromptWithInstructions(BASE_COMPACT_PROMPT, customInstructions);
+}
+
+export function getUpdateCompactPrompt(customInstructions?: string): string {
+  return buildPromptWithInstructions(UPDATE_COMPACT_PROMPT, customInstructions);
 }
 
 function formatToolCalls(calls: IToolPart[]): string {
@@ -133,11 +153,27 @@ export function formatMessagesForCompaction(messages: IChatMessage[]): string {
 
 export function buildCompactUserPrompt(
   messages: IChatMessage[],
-  customInstructions?: string
+  customInstructions?: string,
+  previousSummary?: string
 ): string {
   const transcript = formatMessagesForCompaction(messages);
-  const instructions = getCompactPrompt(customInstructions);
-  return `${instructions}\n\n---\n\n<conversation>\n${transcript}\n</conversation>`;
+  const instructions = previousSummary
+    ? getUpdateCompactPrompt(customInstructions)
+    : getCompactPrompt(customInstructions);
+
+  let prompt = `${instructions}\n\n---\n\n<conversation>\n${transcript}\n</conversation>`;
+
+  if (previousSummary) {
+    prompt += `\n\n<previous-summary>\n${previousSummary}\n</previous-summary>`;
+  }
+
+  const fileOps = extractFileOperationsFromMessages(messages);
+  const fileOpsBlock = formatFileOperations(fileOps);
+  if (fileOpsBlock) {
+    prompt += `\n\n${fileOpsBlock}`;
+  }
+
+  return prompt;
 }
 
 export function buildSummaryUserMessage(summary: string, customInstructions?: string): string {
@@ -145,4 +181,56 @@ export function buildSummaryUserMessage(summary: string, customInstructions?: st
     ? `\n\nThe user's original compaction instructions were: ${customInstructions.trim()}`
     : '';
   return `This session is being continued from a previous conversation that was compacted. The summary below covers the earlier portion of the conversation.${instructionsBlock}\n\n<previous-conversation-summary>\n${summary.trim()}\n</previous-conversation-summary>\n\nContinue the conversation from where it left off, using the summary as context. Do not re-ask the user anything already answered in the summary.`;
+}
+
+interface IFileOperations {
+  readFiles: Set<string>;
+  modifiedFiles: Set<string>;
+}
+
+const READ_TOOL_PATTERNS = /^(termlnk_file_read|termlnk_sftp_read|mcp_.*_read|read)$/;
+const WRITE_TOOL_PATTERNS = /^(termlnk_file_write|termlnk_file_edit|termlnk_sftp_write|termlnk_sftp_edit|write|edit)$/;
+
+function extractPathFromToolInput(input: Record<string, unknown>): string | undefined {
+  const candidate = input.path ?? input.file_path ?? input.filePath;
+  return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
+}
+
+export function extractFileOperationsFromMessages(messages: IChatMessage[]): IFileOperations {
+  const ops: IFileOperations = { readFiles: new Set(), modifiedFiles: new Set() };
+
+  for (const msg of messages) {
+    for (const part of msg.parts) {
+      if (part.type !== 'tool') {
+        continue;
+      }
+      const filePath = extractPathFromToolInput(part.input ?? {});
+      if (!filePath) {
+        continue;
+      }
+      if (WRITE_TOOL_PATTERNS.test(part.toolName)) {
+        ops.modifiedFiles.add(filePath);
+      } else if (READ_TOOL_PATTERNS.test(part.toolName)) {
+        ops.readFiles.add(filePath);
+      }
+    }
+  }
+
+  return ops;
+}
+
+export function formatFileOperations(ops: IFileOperations): string {
+  const blocks: string[] = [];
+
+  if (ops.readFiles.size > 0) {
+    const entries = [...ops.readFiles].sort().map((f) => `- ${f}`).join('\n');
+    blocks.push(`<read-files>\n${entries}\n</read-files>`);
+  }
+
+  if (ops.modifiedFiles.size > 0) {
+    const entries = [...ops.modifiedFiles].sort().map((f) => `- ${f}`).join('\n');
+    blocks.push(`<modified-files>\n${entries}\n</modified-files>`);
+  }
+
+  return blocks.join('\n\n');
 }
