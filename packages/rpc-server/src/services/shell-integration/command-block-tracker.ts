@@ -27,8 +27,8 @@ const ST = '\\';
 const DEFAULT_MAX_OUTPUT_BYTES = 512 * 1024;
 const DEFAULT_MAX_OSC_PAYLOAD = 8192;
 
-type ParseState = 'ground' | 'escape' | 'osc-id' | 'osc-payload';
-type FlowState = 'idle' | 'at-prompt' | 'after-prompt-end' | 'executing';
+export type ParseState = 'ground' | 'escape' | 'osc-id' | 'osc-payload';
+export type FlowState = 'idle' | 'at-prompt' | 'after-prompt-end' | 'executing';
 
 interface IPendingBlock {
   id: string;
@@ -105,6 +105,9 @@ export class CommandBlockTracker extends Disposable {
   private readonly _blockStarted$ = new Subject<IBlockStartedEvent>();
   readonly blockStarted$: Observable<IBlockStartedEvent> = this._blockStarted$.asObservable();
 
+  private readonly _promptReached$ = new Subject<{ sessionId: string }>();
+  readonly promptReached$: Observable<{ sessionId: string }> = this._promptReached$.asObservable();
+
   private readonly _query$ = new Subject<INaturalLanguageQueryEvent>();
   readonly query$: Observable<INaturalLanguageQueryEvent> = this._query$.asObservable();
   private _querySeq = 0;
@@ -162,6 +165,10 @@ export class CommandBlockTracker extends Disposable {
     return this._osc633EventCount;
   }
 
+  get flowState(): FlowState {
+    return this._flowState;
+  }
+
   getBlocks(): ITerminalCommand[] {
     return this._blocks.slice();
   }
@@ -202,6 +209,7 @@ export class CommandBlockTracker extends Disposable {
   override dispose(): void {
     this._blockFinished$.complete();
     this._blockStarted$.complete();
+    this._promptReached$.complete();
     this._query$.complete();
     this._envChanged$.complete();
     this._blocks.length = 0;
@@ -306,10 +314,12 @@ export class CommandBlockTracker extends Disposable {
     switch (event.type) {
       case 'A':
         this._flowState = 'at-prompt';
+        this._promptReached$.next({ sessionId: this._sessionId });
         break;
 
       case 'B':
         this._flowState = 'after-prompt-end';
+        this._promptReached$.next({ sessionId: this._sessionId });
         break;
 
       case 'E':

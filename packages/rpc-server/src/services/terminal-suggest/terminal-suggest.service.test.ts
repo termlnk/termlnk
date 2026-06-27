@@ -40,6 +40,7 @@ class FakeCommandBlockService implements ICommandBlockService {
   blockFinished$ = new Subject<ITerminalCommand>();
   blockStarted$ = new Subject<IBlockStartedEvent>();
   query$ = new Subject<INaturalLanguageQueryEvent>();
+  promptReached$ = new Subject<{ sessionId: string }>();
   envChanged$ = new Subject<{ sessionId: string; env: { remoteOS: string; remoteShell: string; remoteDistro: string } }>();
   private _cwd = new Map<string, string>();
   private _env = new Map<string, { remoteOS: string; remoteShell: string; remoteDistro: string }>();
@@ -97,6 +98,10 @@ class FakeCommandBlockService implements ICommandBlockService {
 
   getOsc633EventCount(): number {
     return 0;
+  }
+
+  getFlowState(): null {
+    return null;
   }
 }
 

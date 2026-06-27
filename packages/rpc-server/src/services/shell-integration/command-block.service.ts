@@ -16,7 +16,7 @@
 import type { ITerminalCommand } from '@termlnk/terminal';
 import type { Buffer } from 'node:buffer';
 import type { Observable, Subscription } from 'rxjs';
-import type { IBlockStartedEvent, INaturalLanguageQueryEvent, IPendingBlockSnapshot, IRawRemoteEnv, IRawRemoteEnvChange } from './command-block-tracker';
+import type { FlowState, IBlockStartedEvent, INaturalLanguageQueryEvent, IPendingBlockSnapshot, IRawRemoteEnv, IRawRemoteEnvChange } from './command-block-tracker';
 import { createIdentifier, Disposable, ILogService } from '@termlnk/core';
 import { Subject } from 'rxjs';
 import { CommandBlockTracker } from './command-block-tracker';
@@ -38,6 +38,8 @@ export interface ICommandBlockService {
    * Carries the decoded UTF-8 query plus a per-session monotonic seq.
    */
   readonly query$: Observable<INaturalLanguageQueryEvent>;
+  /** Emits when the shell reaches a prompt (OSC 633;A or B). */
+  readonly promptReached$: Observable<{ sessionId: string }>;
   /**
    * Attach a command block tracker to a terminal session's raw data stream.
    * Safe to call multiple times for the same sessionId — subsequent calls are
@@ -75,6 +77,8 @@ export interface ICommandBlockService {
    * remote shell never emitted an OSC 633 event (injection didn't take).
    */
   getOsc633EventCount(sessionId: string): number;
+  /** Current flow state of the command block tracker for a session. */
+  getFlowState(sessionId: string): FlowState | null;
 }
 
 export const ICommandBlockService = createIdentifier<ICommandBlockService>('rpc-server.command-block.service');
@@ -84,6 +88,7 @@ interface ISessionEntry {
   dataSub: Subscription;
   blockSub: Subscription;
   startedSub: Subscription;
+  promptSub: Subscription;
   querySub: Subscription;
   envSub: Subscription;
 }
@@ -99,6 +104,9 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
 
   private readonly _query$ = new Subject<INaturalLanguageQueryEvent>();
   readonly query$: Observable<INaturalLanguageQueryEvent> = this._query$.asObservable();
+
+  private readonly _promptReached$ = new Subject<{ sessionId: string }>();
+  readonly promptReached$: Observable<{ sessionId: string }> = this._promptReached$.asObservable();
 
   private readonly _envChanged$ = new Subject<IRawRemoteEnvChange>();
   readonly envChanged$: Observable<IRawRemoteEnvChange> = this._envChanged$.asObservable();
@@ -150,6 +158,10 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
       this._blockStarted$.next(event);
     });
 
+    const promptSub = tracker.promptReached$.subscribe((event) => {
+      this._promptReached$.next(event);
+    });
+
     const querySub = tracker.query$.subscribe((event) => {
       this._query$.next(event);
     });
@@ -158,7 +170,7 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
       this._envChanged$.next(event);
     });
 
-    this._sessions.set(sessionId, { tracker, dataSub, blockSub, startedSub, querySub, envSub });
+    this._sessions.set(sessionId, { tracker, dataSub, blockSub, startedSub, promptSub, querySub, envSub });
   }
 
   detachSession(sessionId: string): void {
@@ -169,6 +181,7 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     entry.dataSub.unsubscribe();
     entry.blockSub.unsubscribe();
     entry.startedSub.unsubscribe();
+    entry.promptSub.unsubscribe();
     entry.querySub.unsubscribe();
     entry.envSub.unsubscribe();
     entry.tracker.dispose();
@@ -208,6 +221,10 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     return this._sessions.get(sessionId)?.tracker.osc633EventCount ?? 0;
   }
 
+  getFlowState(sessionId: string): FlowState | null {
+    return this._sessions.get(sessionId)?.tracker.flowState ?? null;
+  }
+
   override dispose(): void {
     for (const sessionId of Array.from(this._sessions.keys())) {
       this.detachSession(sessionId);
@@ -215,6 +232,7 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     this._sessions.clear();
     this._blockFinished$.complete();
     this._blockStarted$.complete();
+    this._promptReached$.complete();
     this._query$.complete();
     this._envChanged$.complete();
     super.dispose();
