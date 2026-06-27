@@ -125,6 +125,15 @@ export class AIAgentService extends Disposable implements IAIAgentService {
   // Tool execution result tracking — keyed by toolCallId, snapshots final outcome
   private _toolResults = new Map<string, { isError: boolean; output: IToolOutput }>();
 
+  // Deferred finalization for messages with tool calls. pi-agent-core emits
+  // message_end BEFORE tool_execution_end, so we must wait for all tool results
+  // before finalizing the assistant message.
+  private _deferredFinalization: {
+    assistantMsg: AssistantMessage;
+    usage: IChatUsage | undefined;
+    toolCallIds: Set<string>;
+  } | null = null;
+
   // Carried across abort() → _ensureAgent() to preserve conversation context
   private _savedAgentMessages: any[] = [];
 
@@ -377,6 +386,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     }
     this._cancelRetry();
     this._toolResults.clear();
+    this._deferredFinalization = null;
     this._currentMessage$.next(null);
     this._destroyAgent();
     this._savedAgentMessages = [];
@@ -401,6 +411,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     // still dispatched by the destroyed instance.
     this._savedAgentMessages = [...this._agent.state.messages];
     this._lastAssistantEvent = null;
+    this._deferredFinalization = null;
     this._destroyAgent();
 
     const current = this._currentMessage$.getValue();
@@ -427,6 +438,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._isStreaming$.next(false);
     this._status$.next('idle');
     this._toolResults.clear();
+    this._deferredFinalization = null;
     this._cancelRetry();
     this._pendingQueue.clear();
     this._messageCounter = 0;
@@ -453,6 +465,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     // Clear current state
     this._cancelRetry();
     this._toolResults.clear();
+    this._deferredFinalization = null;
     this._pendingQueue.clear();
     this._isStreaming$.next(false);
     this._status$.next('idle');
@@ -730,6 +743,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._currentMessage$.next(null);
     this._messageCounter = 0;
     this._toolResults.clear();
+    this._deferredFinalization = null;
     this._pendingQueue.clear();
     this._isStreaming$.next(false);
     this._status$.next('idle');
@@ -1167,42 +1181,63 @@ export class AIAgentService extends Disposable implements IAIAgentService {
       }
       : undefined;
 
+    // pi-agent-core emits message_end BEFORE tool_execution_end. If this
+    // message contains tool calls whose results have not yet arrived, defer
+    // finalization so _handleToolExecutionEnd can fill them in first.
+    const pendingToolCallIds = new Set<string>();
+    for (const block of assistantMsg.content) {
+      if (block.type === 'toolCall' && !this._toolResults.has(block.id)) {
+        pendingToolCallIds.add(block.id);
+      }
+    }
+
+    if (pendingToolCallIds.size > 0) {
+      this._deferredFinalization = { assistantMsg, usage, toolCallIds: pendingToolCallIds };
+
+      // Rebuild parts from canonical content so inputs are finalized, but keep
+      // the message as streaming so tool_execution_end can update it in-place.
+      const rebuiltParts = this._rebuildPartsFromAssistant(assistantMsg, current.parts);
+      this._currentMessage$.next({ ...current, parts: rebuiltParts });
+      return;
+    }
+
+    // No pending tool calls — finalize immediately.
+    this._finalizeAssistantMessage(current, assistantMsg, usage);
+  }
+
+  /**
+   * Finalize a deferred assistant message after the last pending tool result
+   * arrives. Called from _handleToolExecutionEnd.
+   */
+  private _finalizeDeferredMessage(): void {
+    const deferred = this._deferredFinalization;
+    if (!deferred) {
+      return;
+    }
+    this._deferredFinalization = null;
+
+    const current = this._currentMessage$.getValue();
+    if (!current) {
+      return;
+    }
+
+    this._finalizeAssistantMessage(current, deferred.assistantMsg, deferred.usage);
+  }
+
+  /**
+   * Shared finalization: rebuild parts, persist, emit, clean up.
+   */
+  private _finalizeAssistantMessage(
+    current: IChatMessage,
+    assistantMsg: AssistantMessage,
+    usage: IChatUsage | undefined
+  ): void {
     // Rebuild parts from final assistant.content blocks (canonical source).
     // For tool calls we prefer the result we just tracked, but fall back to
     // any output already attached to the live streaming part — that path
     // catches results that flowed through finalizeToolPart but never made it
     // into _toolResults (or were lost across rebuild boundaries).
-    const finalParts: IMessagePart[] = [];
-    const existingToolParts = new Map<string, IToolPart>();
-    for (const p of current.parts) {
-      if (p.type === 'tool') {
-        existingToolParts.set(p.toolCallId, p);
-      }
-    }
-    for (const block of assistantMsg.content) {
-      if (block.type === 'text') {
-        finalParts.push({ type: 'text', text: block.text });
-      } else if (block.type === 'thinking') {
-        finalParts.push({ type: 'thinking', thinking: block.thinking });
-      } else if (block.type === 'toolCall') {
-        const tracked = this._toolResults.get(block.id);
-        const existing = existingToolParts.get(block.id);
-        const output = tracked?.output ?? existing?.output;
-        const isError = tracked?.isError
-          ?? (existing?.state === 'output-error' || existing?.output?.isError === true);
-        const toolPart: IToolPart = {
-          type: 'tool',
-          toolCallId: block.id,
-          toolName: block.name,
-          state: output
-            ? (isError ? 'output-error' : 'output-available')
-            : 'input-available',
-          input: block.arguments ?? {},
-          output,
-        };
-        finalParts.push(toolPart);
-      }
-    }
+    const finalParts = this._rebuildPartsFromAssistant(assistantMsg, current.parts);
 
     // If final content is empty (e.g. abort), keep streaming parts but finalize tool states
     let parts = finalParts.length > 0 ? finalParts : current.parts;
@@ -1247,6 +1282,48 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     if (!messageHasError(completedMessage)) {
       this._maybeAutoCompact();
     }
+  }
+
+  /**
+   * Rebuild IMessagePart[] from the canonical AssistantMessage.content blocks,
+   * attaching any available tool results from _toolResults or existing streaming parts.
+   */
+  private _rebuildPartsFromAssistant(
+    assistantMsg: AssistantMessage,
+    existingParts: IMessagePart[]
+  ): IMessagePart[] {
+    const result: IMessagePart[] = [];
+    const existingToolParts = new Map<string, IToolPart>();
+    for (const p of existingParts) {
+      if (p.type === 'tool') {
+        existingToolParts.set(p.toolCallId, p);
+      }
+    }
+    for (const block of assistantMsg.content) {
+      if (block.type === 'text') {
+        result.push({ type: 'text', text: block.text });
+      } else if (block.type === 'thinking') {
+        result.push({ type: 'thinking', thinking: block.thinking });
+      } else if (block.type === 'toolCall') {
+        const tracked = this._toolResults.get(block.id);
+        const existing = existingToolParts.get(block.id);
+        const output = tracked?.output ?? existing?.output;
+        const isError = tracked?.isError
+          ?? (existing?.state === 'output-error' || existing?.output?.isError === true);
+        const toolPart: IToolPart = {
+          type: 'tool',
+          toolCallId: block.id,
+          toolName: block.name,
+          state: output
+            ? (isError ? 'output-error' : 'output-available')
+            : 'input-available',
+          input: block.arguments ?? {},
+          output,
+        };
+        result.push(toolPart);
+      }
+    }
+    return result;
   }
 
   /**
@@ -1304,7 +1381,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
 
     // Live-update the streaming message so UI reflects the tool result immediately.
     // If no matching IToolPart exists yet (e.g. tool fired before any toolcall_delta),
-    // skip — message_end will rebuild parts from the canonical assistantMsg.content.
+    // skip — _finalizeDeferredMessage will rebuild parts from the canonical content.
     const current = this._currentMessage$.getValue();
     if (current) {
       const nextParts = finalizeToolPart(current.parts, event.toolCallId, {
@@ -1315,11 +1392,21 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         this._currentMessage$.next({ ...current, parts: nextParts });
       }
     }
+
+    // Check if this was the last pending tool call for a deferred message.
+    if (this._deferredFinalization) {
+      this._deferredFinalization.toolCallIds.delete(event.toolCallId);
+      if (this._deferredFinalization.toolCallIds.size === 0) {
+        this._finalizeDeferredMessage();
+      }
+    }
   }
 
   private _handleAgentEnd(_event: AgentEvent & { type: 'agent_end' }): void {
     const lastAssistant = this._lastAssistantEvent?.message as AssistantMessage | undefined;
     const apiError = lastAssistant?.stopReason === 'error' ? lastAssistant.errorMessage : undefined;
+
+    this._deferredFinalization = null;
 
     // Safety: if streaming is still active when agent ends, force cleanup
     const current = this._currentMessage$.getValue();
