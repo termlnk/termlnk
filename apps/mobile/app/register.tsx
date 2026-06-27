@@ -16,15 +16,15 @@
 import type { LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Stack, useRouter } from 'expo-router';
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react-native';
+import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthService } from '../src/core/core-context';
 import { useThemeColors } from '../src/theme/theme-provider';
 import { cn } from '../src/ui/cn';
 import { PrimaryButton } from '../src/ui/form';
-import { LogoMark } from '../src/ui/logo-mark';
+const appIcon = require('../assets/icon.png');
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -103,40 +103,20 @@ export default function Register() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       className="flex-1 bg-surface"
     >
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ title: 'Sign up' }} />
       <ScrollView
         contentContainerClassName="grow"
         contentContainerStyle={{
-          paddingTop: insets.top + 10,
+          paddingTop: 10,
           paddingBottom: insets.bottom + 24,
           paddingHorizontal: 20,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            className="h-10 w-10 items-center justify-center rounded-full bg-surface-raised active:opacity-80"
-            style={{
-              shadowColor: '#000',
-              shadowOpacity: 0.08,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 2,
-            }}
-          >
-            <ArrowLeft size={21} color={colors.content} />
-          </Pressable>
-          <Text className="text-[15px] font-semibold text-content-secondary">Sign up</Text>
-          <View className="h-10 w-10" />
-        </View>
-
         <View className="flex-1 justify-center py-6">
           <View className="mb-7 items-center">
-            <LogoMark size={76} />
+            <Image source={appIcon} className="h-[76px] w-[76px] rounded-2xl" />
             <Text className="mt-5 text-center text-[30px] font-bold leading-[34px] text-content">
               Create account
             </Text>

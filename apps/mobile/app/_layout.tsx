@@ -47,7 +47,7 @@ export default function RootLayout() {
                 headerStyle: { backgroundColor: surface },
                 headerTintColor: content,
                 headerShadowVisible: false,
-                headerBackTitle: '',
+                headerBackButtonDisplayMode: 'minimal',
                 contentStyle: { backgroundColor: surface },
               }}
             >
