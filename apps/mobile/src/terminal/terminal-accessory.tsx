@@ -32,7 +32,7 @@ interface ITermColors {
   readonly keyActive: string;
   readonly text: string;
   readonly muted: string;
-  readonly green: string;
+  readonly accent: string;
   readonly pillBg: string;
   readonly border: string;
 }
@@ -43,8 +43,8 @@ const TERM_FALLBACK: ITermColors = {
   keyActive: '#30374a',
   text: '#c8ccd4',
   muted: '#6b727f',
-  green: '#34d399',
-  pillBg: '#15392b',
+  accent: '#61afef',
+  pillBg: '#61afef26',
   border: '#2a3140',
 };
 
@@ -66,8 +66,8 @@ function colorsFromThemeName(name: string): ITermColors {
     keyActive: b.one_bg2,
     text: b.white,
     muted: b.grey,
-    green: b.green,
-    pillBg: `${b.green}26`,
+    accent: b.blue,
+    pillBg: `${b.blue}26`,
     border: b.line,
   };
 }
@@ -147,10 +147,10 @@ function HostBar({ hostLabel, onBack, onClose, onToggleKeyboard, collapsed, onTo
         className="mx-2 h-9 flex-1 flex-row items-center rounded-lg px-3"
         style={{ backgroundColor: TERM.pillBg }}
       >
-        <TerminalSquare size={16} color={TERM.green} />
-        <Text className="ml-2 flex-1 text-[14px] font-medium" style={{ color: TERM.green }} numberOfLines={1}>{hostLabel}</Text>
+        <TerminalSquare size={16} color={TERM.accent} />
+        <Text className="ml-2 flex-1 text-[14px] font-medium" style={{ color: TERM.accent }} numberOfLines={1}>{hostLabel}</Text>
         <Pressable onPress={onClose} hitSlop={8} className="active:opacity-60">
-          <CircleX size={16} color={TERM.green} />
+          <CircleX size={16} color={TERM.accent} />
         </Pressable>
       </View>
       <ToolButton icon={Plus} onPress={() => Alert.alert('New session', 'Opening additional sessions is coming soon.')} />
@@ -282,9 +282,9 @@ function SnippetsPanel({ onKey }: { onKey: (seq: string) => void }) {
     return (
       <View className="flex-1 items-center justify-center px-8">
         <View className="h-16 w-16 items-center justify-center rounded-2xl" style={{ backgroundColor: TERM.key }}>
-          <Braces size={28} color={TERM.green} />
+          <Braces size={28} color={TERM.accent} />
         </View>
-        <Text className="mt-4 text-center text-[16px] font-semibold" style={{ color: TERM.green }}>There are no snippets</Text>
+        <Text className="mt-4 text-center text-[16px] font-semibold" style={{ color: TERM.accent }}>There are no snippets</Text>
         <Text className="mt-2 text-center text-[13px] leading-5" style={{ color: TERM.muted }}>
           Save your frequently used commands as Snippets for easy execution in the future.
         </Text>
@@ -293,7 +293,7 @@ function SnippetsPanel({ onKey }: { onKey: (seq: string) => void }) {
           className="mt-5 w-full items-center rounded-xl py-3 active:opacity-70"
           style={{ backgroundColor: TERM.key }}
         >
-          <Text className="text-[15px] font-medium" style={{ color: TERM.green }}>Create snippet</Text>
+          <Text className="text-[15px] font-medium" style={{ color: TERM.accent }}>Create snippet</Text>
         </Pressable>
       </View>
     );
@@ -498,7 +498,7 @@ function TabIcon({ icon: Icon, active, onPress }: { icon: LucideIcon; active: bo
       className="h-10 w-10 items-center justify-center rounded-xl active:opacity-70"
       style={{ backgroundColor: active ? TERM.keyActive : 'transparent' }}
     >
-      <Icon size={20} color={active ? TERM.green : TERM.text} />
+      <Icon size={20} color={active ? TERM.accent : TERM.text} />
     </Pressable>
   );
 }
