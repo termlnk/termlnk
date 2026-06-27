@@ -37,12 +37,7 @@ export class McpToolsController extends Disposable {
 
   private _registerTools(): void {
     try {
-      let ptySessionService: IPTYSessionService | undefined;
-      try {
-        ptySessionService = this._injector.get(IPTYSessionService);
-      } catch {
-        this._logService.log('[McpToolsController]', 'PTY session service not available');
-      }
+      const ptySessionService = this._injector.get(IPTYSessionService);
 
       const terminalDisposables = registerTerminalTools(
         {
@@ -57,25 +52,17 @@ export class McpToolsController extends Disposable {
         this.disposeWithMe(d);
       }
 
-      const hostDisposables = registerHostTools(
-        this._toolRegistryService,
-        this._sshToolService,
-        this._logService
-      );
+      const hostDisposables = registerHostTools(this._toolRegistryService, this._injector);
       for (const d of hostDisposables) {
         this.disposeWithMe(d);
       }
 
-      const fileDisposables = registerFileTools(
-        this._toolRegistryService,
-        this._injector,
-        this._logService
-      );
+      const fileDisposables = registerFileTools(this._toolRegistryService, this._injector);
       for (const d of fileDisposables) {
         this.disposeWithMe(d);
       }
 
-      this._logService.log('[McpToolsController]', 'Built-in host/terminal/file tools registered.');
+      this._logService.debug('[McpToolsController]', 'Built-in host/terminal/file tools registered.');
     } catch (err) {
       this._logService.warn('[McpToolsController]', 'Failed to register MCP tools:', err);
     }

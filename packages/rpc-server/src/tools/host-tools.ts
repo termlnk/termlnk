@@ -14,23 +14,20 @@
  */
 
 import type { IAgentTool, IAgentToolRegistryService, IAgentToolResult } from '@termlnk/agent';
-import type { IDisposable, ILogService } from '@termlnk/core';
-import type { ISSHToolService } from '@termlnk/rpc';
+import type { IDisposable, Injector } from '@termlnk/core';
+import { ILogService } from '@termlnk/core';
+import { ISSHToolService } from '@termlnk/rpc';
 
-export function registerHostTools(
-  toolRegistry: IAgentToolRegistryService,
-  sshToolService: ISSHToolService,
-  logService: ILogService
-): IDisposable[] {
+export function registerHostTools(toolRegistry: IAgentToolRegistryService, injector: Injector): IDisposable[] {
   return [
-    toolRegistry.registerTool(createListHostsTool(sshToolService, logService)),
+    toolRegistry.registerTool(createListHostsTool(injector)),
   ];
 }
 
-function createListHostsTool(
-  sshToolService: ISSHToolService,
-  logService: ILogService
-): IAgentTool {
+function createListHostsTool(injector: Injector): IAgentTool {
+  const sshToolService = injector.get(ISSHToolService);
+  const logService = injector.get(ILogService);
+
   return {
     name: 'termlnk_host_list',
     label: 'Host List',
