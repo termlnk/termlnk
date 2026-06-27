@@ -25,16 +25,19 @@ import { filter, firstValueFrom, take, timeout } from 'rxjs';
 import { stripAnsi } from '../common/ansi-strip';
 import { OutputBufferManager } from '../common/output-buffer';
 
-type TerminalRunMode = 'auto' | 'foreground' | 'background';
+export type TerminalRunMode = 'auto' | 'foreground' | 'background';
 
-const BLOCK_START_TIMEOUT_MS = 5000;
+export const BLOCK_START_TIMEOUT_MS = 5000;
+export const PROMPT_WAIT_TIMEOUT_MS = 3000;
+export const RECOVERY_PROMPT_TIMEOUT_MS = 5000;
+export const MAX_RECOVERY_ATTEMPTS = 2;
 
-interface IRunModeResolution {
+export interface IRunModeResolution {
   mode: TerminalRunMode;
   explicitMode: boolean;
 }
 
-interface IHeuristicResultOptions {
+export interface IHeuristicResultOptions {
   status: string;
   sessionId: string;
   command: string;
@@ -257,6 +260,36 @@ function createCloseSessionTool(
 // Command-block tools (shell integration via OSC 633)
 // ---------------------------------------------------------------------------
 
+async function attemptBlockRecovery(
+  sessionId: string,
+  commandBlockService: ICommandBlockService,
+  sshToolService: ISSHToolService,
+  logService: ILogService,
+  ptySessionService?: IPTYSessionService
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= MAX_RECOVERY_ATTEMPTS; attempt++) {
+    logService.log('[TerminalTools]', `Session ${sessionId}: sending Ctrl+C to recover shell (attempt ${attempt}/${MAX_RECOVERY_ATTEMPTS}).`);
+
+    // Arm the subscription BEFORE sending Ctrl+C so no prompt event is missed
+    const promptPromise = firstValueFrom(
+      commandBlockService.promptReached$.pipe(
+        filter((e) => e.sessionId === sessionId),
+        take(1),
+        timeout(RECOVERY_PROMPT_TIMEOUT_MS)
+      )
+    ).then(() => true).catch(() => false);
+
+    await writeCommandToSession(sessionId, '\x03', sshToolService, ptySessionService);
+
+    const promptArrived = await promptPromise;
+    if (promptArrived) {
+      logService.log('[TerminalTools]', `Session ${sessionId}: shell prompt recovered after Ctrl+C.`);
+      return true;
+    }
+  }
+  return false;
+}
+
 function createRunTool(
   commandBlockService: ICommandBlockService,
   sshToolService: ISSHToolService,
@@ -264,6 +297,8 @@ function createRunTool(
   outputBuffers: OutputBufferManager,
   ptySessionService?: IPTYSessionService
 ): IAgentTool {
+  const promptCheckedSessions = new Set<string>();
+
   return {
     name: 'termlnk_terminal_run',
     label: 'Run Terminal Command',
@@ -313,10 +348,12 @@ function createRunTool(
         const autoBackgrounded = mode === 'auto' && explicitMode && isLikelyStreamingCommand(command);
         const waitForExit = mode === 'foreground' || (mode === 'auto' && !autoBackgrounded);
 
+        let justAttached = false;
         if (!commandBlockService.isAttached(sessionId)) {
           const sshData$ = sshToolService.getSessionData$(sessionId);
           if (sshData$) {
             commandBlockService.attachSession(sessionId, sshData$);
+            justAttached = true;
           }
         }
 
@@ -324,6 +361,29 @@ function createRunTool(
         const heuristicData$ = resolveHeuristicDataStream(sessionId, sshToolService, ptySessionService);
         if (heuristicData$) {
           outputBuffers.ensureBuffering(sessionId, heuristicData$);
+        }
+
+        // Wait for shell prompt readiness on sessions we just attached for the
+        // first time. Only runs once per session — prevents 14s blocking on
+        // sessions that never produce OSC 633 events.
+        if (justAttached && !promptCheckedSessions.has(sessionId) && commandBlockService.getOsc633EventCount(sessionId) === 0) {
+          promptCheckedSessions.add(sessionId);
+
+          const flowState = commandBlockService.getFlowState(sessionId);
+          if (flowState !== 'at-prompt' && flowState !== 'after-prompt-end') {
+            const promptReady = await firstValueFrom(
+              commandBlockService.promptReached$.pipe(
+                filter((e) => e.sessionId === sessionId),
+                take(1),
+                timeout(PROMPT_WAIT_TIMEOUT_MS)
+              )
+            ).then(() => true).catch(() => false);
+
+            if (!promptReady) {
+              logService.log('[TerminalTools]', `Session ${sessionId}: no shell prompt within ${PROMPT_WAIT_TIMEOUT_MS}ms, attempting recovery.`);
+              await attemptBlockRecovery(sessionId, commandBlockService, sshToolService, logService, ptySessionService);
+            }
+          }
         }
 
         const finishedPromise = firstValueFrom(
