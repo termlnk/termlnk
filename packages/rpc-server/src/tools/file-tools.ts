@@ -14,10 +14,13 @@
  */
 
 import type { IAgentTool, IAgentToolRegistryService, IAgentToolResult } from '@termlnk/agent';
-import type { IDisposable, ILogService, Injector } from '@termlnk/core';
+import type { IDisposable, Injector } from '@termlnk/core';
 import { Buffer } from 'node:buffer';
 import { appendFile, readFile, stat, writeFile } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
+import { ILogService } from '@termlnk/core';
+import { ISSHSessionService, SFTPSessionStatus } from '@termlnk/rpc';
+import { filter, firstValueFrom, take, timeout } from 'rxjs';
 import { ISFTPSessionService } from '../services/sftp/sftp-session.service';
 
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
@@ -25,19 +28,95 @@ const MAX_FILE_SIZE = 1024 * 1024; // 1MB
 /**
  * Unified file tools — local fs when sessionId is omitted, SFTP when sessionId is supplied.
  */
-export function registerFileTools(
-  toolRegistry: IAgentToolRegistryService,
-  injector: Injector,
-  logService: ILogService
-): IDisposable[] {
+export function registerFileTools(toolRegistry: IAgentToolRegistryService, injector: Injector): IDisposable[] {
+  const sftpSessionCache = new Map<string, Promise<string>>();
+
   return [
-    toolRegistry.registerTool(createFileReadTool(injector, logService)),
-    toolRegistry.registerTool(createFileEditTool(injector, logService)),
-    toolRegistry.registerTool(createFileWriteTool(injector, logService)),
+    toolRegistry.registerTool(createFileReadTool(injector, sftpSessionCache)),
+    toolRegistry.registerTool(createFileEditTool(injector, sftpSessionCache)),
+    toolRegistry.registerTool(createFileWriteTool(injector, sftpSessionCache)),
   ];
 }
 
-function createFileReadTool(injector: Injector, logService: ILogService): IAgentTool {
+const SFTP_READY_TIMEOUT_MS = 30000;
+
+async function resolveSftpSessionId(sessionId: string, injector: Injector, cache: Map<string, Promise<string>>): Promise<string> {
+  const sftpService = injector.get(ISFTPSessionService);
+
+  if (sftpService.getSession(sessionId)) {
+    return sessionId;
+  }
+
+  if (!cache.has(sessionId)) {
+    const promise = createSftpSessionForSSH(sessionId, injector).catch((err) => {
+      cache.delete(sessionId);
+      throw err;
+    });
+    cache.set(sessionId, promise);
+  }
+
+  let sftpSessionId: string;
+  try {
+    sftpSessionId = await cache.get(sessionId)!;
+  } catch {
+    cache.delete(sessionId);
+    throw new Error(`Failed to resolve SFTP session for "${sessionId}". Retry the file operation.`);
+  }
+
+  if (!sftpService.getSession(sftpSessionId)) {
+    cache.delete(sessionId);
+    throw new Error('Auto-created SFTP session is no longer active. Retry the file operation.');
+  }
+
+  return sftpSessionId;
+}
+
+async function createSftpSessionForSSH(sessionId: string, injector: Injector): Promise<string> {
+  const sftpService = injector.get(ISFTPSessionService);
+  const sshSessionService = injector.get(ISSHSessionService);
+  const logService = injector.get(ILogService);
+  const sshSession = sshSessionService.getSession(sessionId);
+  if (!sshSession) {
+    throw new Error(`Session "${sessionId}" not found. It is neither an active SFTP session nor an SSH terminal session.`);
+  }
+
+  const hostId: string = sshSession.hostId;
+  logService.log('[FileTools]', `Auto-creating SFTP session for SSH session ${sessionId} (host: ${hostId}).`);
+
+  const sftpSessionId = await sftpService.createSession(hostId);
+
+  try {
+    const sftpSession = sftpService.getSession(sftpSessionId);
+    if (!sftpSession) {
+      throw new Error('SFTP session was created but immediately lost.');
+    }
+
+    const finalStatus = await firstValueFrom(
+      sftpSession.status$.pipe(
+        filter((s: SFTPSessionStatus) =>
+          s === SFTPSessionStatus.READY
+          || s === SFTPSessionStatus.ERROR
+          || s === SFTPSessionStatus.AUTH_FAILED
+          || s === SFTPSessionStatus.CLOSED
+        ),
+        take(1),
+        timeout(SFTP_READY_TIMEOUT_MS)
+      )
+    );
+
+    if (finalStatus !== SFTPSessionStatus.READY) {
+      throw new Error(`SFTP session failed to connect (status: ${finalStatus}).`);
+    }
+  } catch (err) {
+    await sftpService.closeSession(sftpSessionId).catch(() => {});
+    throw err;
+  }
+
+  return sftpSessionId;
+}
+
+function createFileReadTool(injector: Injector, sftpSessionCache: Map<string, Promise<string>>): IAgentTool {
+  const logService = injector.get(ILogService);
   return {
     name: 'termlnk_file_read',
     label: 'File Read',
@@ -49,7 +128,7 @@ function createFileReadTool(injector: Injector, logService: ILogService): IAgent
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Absolute path to the file.' },
-        sessionId: { type: 'string', description: 'SFTP session ID. Omit to read a local file.' },
+        sessionId: { type: 'string', description: 'Terminal session ID (SSH or SFTP). Omit to read a local file.' },
         encoding: { type: 'string', description: 'Text encoding. Default: utf-8.' },
         startLine: { type: 'number', description: '1-based start line (inclusive). Optional.' },
         endLine: { type: 'number', description: '1-based end line (inclusive). Optional.' },
@@ -73,8 +152,9 @@ function createFileReadTool(injector: Injector, logService: ILogService): IAgent
         let resolvedPath: string;
 
         if (sessionId) {
+          const sftpId = await resolveSftpSessionId(sessionId, injector, sftpSessionCache);
           const sftp = injector.get(ISFTPSessionService);
-          buffer = await sftp.readFile(sessionId, filePath);
+          buffer = await sftp.readFile(sftpId, filePath);
           totalSize = buffer.byteLength;
           resolvedPath = filePath;
           if (totalSize > MAX_FILE_SIZE) {
@@ -118,7 +198,8 @@ function createFileReadTool(injector: Injector, logService: ILogService): IAgent
   };
 }
 
-function createFileEditTool(injector: Injector, logService: ILogService): IAgentTool {
+function createFileEditTool(injector: Injector, sftpSessionCache: Map<string, Promise<string>>): IAgentTool {
+  const logService = injector.get(ILogService);
   return {
     name: 'termlnk_file_edit',
     label: 'File Edit',
@@ -129,7 +210,7 @@ function createFileEditTool(injector: Injector, logService: ILogService): IAgent
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Absolute path to the file.' },
-        sessionId: { type: 'string', description: 'SFTP session ID. Omit to edit a local file.' },
+        sessionId: { type: 'string', description: 'Terminal session ID (SSH or SFTP). Omit to edit a local file.' },
         oldText: { type: 'string', description: 'Exact text to find (must match exactly).' },
         newText: { type: 'string', description: 'Replacement text.' },
       },
@@ -149,9 +230,11 @@ function createFileEditTool(injector: Injector, logService: ILogService): IAgent
         let original: string;
         let resolvedPath: string;
 
-        if (sessionId) {
+        const sftpId = sessionId ? await resolveSftpSessionId(sessionId, injector, sftpSessionCache) : null;
+
+        if (sftpId) {
           const sftp = injector.get(ISFTPSessionService);
-          const buffer = await sftp.readFile(sessionId, filePath);
+          const buffer = await sftp.readFile(sftpId, filePath);
           if (buffer.byteLength > MAX_FILE_SIZE) {
             return jsonError(`File is too large (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB). Maximum is 1MB.`);
           }
@@ -193,9 +276,9 @@ function createFileEditTool(injector: Injector, logService: ILogService): IAgent
         // Preserve original line endings if file used CRLF
         const finalContent = original.includes('\r\n') ? newContent.replace(/\n/g, '\r\n') : newContent;
 
-        if (sessionId) {
+        if (sftpId) {
           const sftp = injector.get(ISFTPSessionService);
-          await sftp.writeFile(sessionId, filePath, Buffer.from(finalContent, 'utf-8'));
+          await sftp.writeFile(sftpId, filePath, Buffer.from(finalContent, 'utf-8'));
         } else {
           await writeFile(resolvedPath, finalContent, 'utf-8');
         }
@@ -209,7 +292,8 @@ function createFileEditTool(injector: Injector, logService: ILogService): IAgent
   };
 }
 
-function createFileWriteTool(injector: Injector, logService: ILogService): IAgentTool {
+function createFileWriteTool(injector: Injector, sftpSessionCache: Map<string, Promise<string>>): IAgentTool {
+  const logService = injector.get(ILogService);
   return {
     name: 'termlnk_file_write',
     label: 'File Write',
@@ -220,7 +304,7 @@ function createFileWriteTool(injector: Injector, logService: ILogService): IAgen
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Absolute path to the file.' },
-        sessionId: { type: 'string', description: 'SFTP session ID. Omit to write a local file.' },
+        sessionId: { type: 'string', description: 'Terminal session ID (SSH or SFTP). Omit to write a local file.' },
         content: { type: 'string', description: 'Content to write.' },
         append: { type: 'boolean', description: 'Append to existing file instead of overwriting (local only). Default: false.' },
       },
@@ -244,8 +328,9 @@ function createFileWriteTool(injector: Injector, logService: ILogService): IAgen
         let resolvedPath: string;
 
         if (sessionId) {
+          const sftpId = await resolveSftpSessionId(sessionId, injector, sftpSessionCache);
           const sftp = injector.get(ISFTPSessionService);
-          await sftp.writeFile(sessionId, filePath, Buffer.from(content, 'utf-8'));
+          await sftp.writeFile(sftpId, filePath, Buffer.from(content, 'utf-8'));
           resolvedPath = filePath;
         } else {
           resolvedPath = resolve(filePath);
