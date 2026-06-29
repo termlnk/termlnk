@@ -18,7 +18,7 @@
   },
   "include": [
     "src/**/*",
-    "app/**/*",
+    "src/router/**/*",
     "*.ts",
     "*.tsx",
     ".expo/types/**/*.ts",

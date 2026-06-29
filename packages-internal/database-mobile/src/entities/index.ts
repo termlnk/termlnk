@@ -13,6 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
+export * from './ai-chat-message';
+export * from './ai-chat-session';
+export * from './ai-custom-model';
+export * from './ai-provider';
+export * from './ai-provider-model';
 export * from './config-kv';
 export * from './host';
 export * from './identity';

@@ -22,11 +22,13 @@
   "peerDependencies": {
     "@termlnk/core": "workspace:*",
     "@termlnk/database-mobile": "workspace:*",
+    "@termlnk/sync": "workspace:*",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
     "@termlnk/core": "workspace:*",
     "@termlnk/database-mobile": "workspace:*",
+    "@termlnk/sync": "workspace:*",
     "expo-secure-store": "^56.0.4"
   },
   "devDependencies": {

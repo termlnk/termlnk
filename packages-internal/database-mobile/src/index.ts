@@ -15,6 +15,17 @@
 
 export { DATABASE_MOBILE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IDatabaseMobileConfig } from './controllers/config.schema';
+export { generateId } from './entities/base';
+export { aiChatMessageEntity } from './entities/ai-chat-message';
+export type { IAiChatMessageEntity, IAiChatMessageEntityInsert } from './entities/ai-chat-message';
+export { aiChatSessionEntity } from './entities/ai-chat-session';
+export type { IAiChatSessionEntity, IAiChatSessionEntityInsert } from './entities/ai-chat-session';
+export { aiProviderEntity } from './entities/ai-provider';
+export type { IAiProviderEntity, IAiProviderEntityInsert } from './entities/ai-provider';
+export { aiProviderModelEntity } from './entities/ai-provider-model';
+export type { IAiProviderModelEntity, IAiProviderModelEntityInsert } from './entities/ai-provider-model';
+export { aiCustomModelEntity } from './entities/ai-custom-model';
+export type { IAiCustomModelEntity, IAiCustomModelEntityInsert } from './entities/ai-custom-model';
 export type { IPortForwardingRuleEntity, IPortForwardingRuleEntityInsert, PortForwardingType } from './entities/port-forwarding-rule';
 export type { ISnippetEntity, ISnippetEntityInsert, IMobileSnippetType } from './entities/snippet';
 export { DEFAULT_SNIPPET_ROOT } from './entities/snippet';
@@ -25,6 +36,7 @@ export { IMobileHostRepository, MobileHostRepository } from './services/mobile-h
 export { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository, MobileIdentityRepository, MobileKnownHostRepository, MobileSshKeyRepository } from './services/mobile-keychain-repositories';
 export { IMobilePortForwardingRuleRepository, MobilePortForwardingRuleRepository } from './services/mobile-port-forwarding-rule-repository';
 export { DEFAULT_PREFERENCES, IMobilePreferencesService, MobilePreferencesService } from './services/mobile-preferences.service';
+export { MobileProviderRepository } from './services/mobile-provider-repository';
 export { IMobileSnippetRepository, MobileSnippetRepository } from './services/mobile-snippet-repository';
 export type { IMobilePreferences, TerminalCursorStyle } from './services/mobile-preferences.service';
 export { IMobileSecretCipherService, MobileSecretCipherService } from './services/mobile-secret-cipher.service';

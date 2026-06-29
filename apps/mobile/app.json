@@ -19,7 +19,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "io.termlnk.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos to attach images to messages"
       }
     },
     "android": {
@@ -30,11 +31,12 @@
       }
     },
     "plugins": [
-      "expo-router",
+      ["expo-router", { "root": "./src/router" }],
       "expo-secure-store",
       "expo-local-authentication",
       "expo-document-picker",
       "expo-file-system",
+      "expo-image-picker",
       "expo-notifications",
       "react-native-libsodium",
       [

@@ -15,6 +15,14 @@
 
 export { AGENT_MOBILE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IAgentMobileConfig } from './controllers/config.schema';
+export type { IChatUsage, IErrorPart, IImagePart, IMobileChatMessage, IMobileImageAttachment, IMobileMessagePart, IMobileSendMessageOptions, ITextPart, IThinkingPart, MobileAgentStatus, MobileChatRole, MobileThinkingLevel } from './models/message';
+export type { IKnownModelSeed, IKnownProviderTemplate, IMobileModelConfig, IMobileProviderConfig, IMobileProviderGroup, MobileApiType } from './models/provider';
+export { KNOWN_PROVIDER_TEMPLATES } from './models/provider';
+export type { IMobileChatSession } from './models/session';
 export { AGENT_MOBILE_PLUGIN_NAME, AgentMobilePlugin } from './plugin';
-export { IMobileAiService, MobileAiService } from './services/mobile-ai.service';
-export type { AiRole, IAiMessage } from './services/mobile-ai.service';
+export { IMobileChatService } from './services/chat.service';
+export type { IMobileChatService as IMobileChatServiceType } from './services/chat.service';
+export { IMobileProviderService } from './services/provider.service';
+export type { IMobileProviderService as IMobileProviderServiceType } from './services/provider.service';
+export { IMobileSessionService } from './services/session.service';
+export type { IMobileSessionService as IMobileSessionServiceType } from './services/session.service';

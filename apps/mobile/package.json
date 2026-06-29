@@ -59,6 +59,8 @@
     "expo-document-picker": "^56.0.4",
     "expo-file-system": "^56.0.8",
     "expo-haptics": "^56.0.3",
+    "expo-image-manipulator": "^56.0.19",
+    "expo-image-picker": "~56.0.18",
     "expo-linking": "^56.0.14",
     "expo-local-authentication": "^56.0.4",
     "expo-notifications": "^56.0.18",

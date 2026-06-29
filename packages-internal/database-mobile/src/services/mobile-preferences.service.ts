@@ -43,6 +43,7 @@ export interface IMobilePreferences {
   readonly biometricLock: boolean;
   readonly aiBaseUrl: string;
   readonly aiModel: string;
+  readonly aiActiveModelId: string;
   // Dismissable "set up this host for AI" card on the host form.
   readonly aiAgentCardDismissed: boolean;
   // Keyboard / session toggles — stored but not yet acted on.
@@ -69,6 +70,7 @@ export const DEFAULT_PREFERENCES: IMobilePreferences = {
   biometricLock: false,
   aiBaseUrl: 'https://api.openai.com/v1',
   aiModel: 'gpt-4o-mini',
+  aiActiveModelId: '',
   aiAgentCardDismissed: false,
   useOptionAsMeta: true,
   cjkInput: false,

@@ -17,17 +17,15 @@ import type { Dependency, Injector } from '@termlnk/core';
 import type { IAgentMobileConfig } from './controllers/config.schema';
 import { IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
 import { AGENT_MOBILE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
-import { IMobileAiService, MobileAiService } from './services/mobile-ai.service';
+import { IMobileChatService, MobileChatService } from './services/chat.service';
+import { IMobileProviderService, MobileProviderService } from './services/provider.service';
+import { IMobileSessionService, MobileSessionService } from './services/session.service';
 
 export const AGENT_MOBILE_PLUGIN_NAME = 'AGENT_MOBILE_PLUGIN';
 
 export class AgentMobilePlugin extends Plugin {
   static override pluginName = AGENT_MOBILE_PLUGIN_NAME;
 
-  // Fields are declared and assigned explicitly rather than via TS parameter
-  // properties: the mobile Babel pipeline cannot combine a parameter decorator
-  // with a parameter property (see apps/mobile/babel.config.js), so a decorated
-  // constructor param must be a plain identifier with an explicit `this._x = x`.
   protected readonly _injector: Injector;
   private readonly _config: IAgentMobileConfig;
   private readonly _configService: IConfigService;
@@ -46,7 +44,9 @@ export class AgentMobilePlugin extends Plugin {
 
   override onStarting(): void {
     const dependencies: Dependency[] = [
-      [IMobileAiService, { useClass: MobileAiService }],
+      [IMobileProviderService, { useClass: MobileProviderService }],
+      [IMobileChatService, { useClass: MobileChatService }],
+      [IMobileSessionService, { useClass: MobileSessionService }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }

@@ -17,15 +17,15 @@ import type { IAuthService, IUserAccount } from '@termlnk/auth';
 import type { Core } from '@termlnk/core';
 import type { ReactNode } from 'react';
 import type { Observable } from 'rxjs';
-import { IMobileAiService } from '@termlnk/agent-mobile';
+import { IMobileChatService, IMobileProviderService, IMobileSessionService } from '@termlnk/agent-mobile';
 import { AuthState, IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { IBiometricService } from '@termlnk/auth-mobile';
 import { Quantity } from '@termlnk/core';
 import { IMobileHostRepository, IMobileIdentityRepository, IMobileKnownHostRepository, IMobilePreferencesService, IMobileSnippetRepository, IMobileSshKeyRepository, IRecentSessionsRepository } from '@termlnk/database-mobile';
+import { IMobilePortForwardingService } from '@termlnk/port-forwarding-mobile';
 import { IMobileSftpClientFactory } from '@termlnk/sftp-mobile';
 import { IMobileSyncService } from '@termlnk/sync-mobile';
 import { IMobileConnectionService, IMobileSshClientService } from '@termlnk/terminal-mobile';
-import { IMobilePortForwardingService } from '@termlnk/port-forwarding-mobile';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createMobileCore } from './create-mobile-core';
 
@@ -135,9 +135,19 @@ export function usePreferencesService(): IMobilePreferencesService {
   return useMemo(() => core.getInjector().get(IMobilePreferencesService), [core]);
 }
 
-export function useAiService(): IMobileAiService {
+export function useProviderService(): IMobileProviderService {
   const { core } = useCoreContext();
-  return useMemo(() => core.getInjector().get(IMobileAiService), [core]);
+  return useMemo(() => core.getInjector().get(IMobileProviderService), [core]);
+}
+
+export function useChatService(): IMobileChatService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileChatService), [core]);
+}
+
+export function useSessionService(): IMobileSessionService {
+  const { core } = useCoreContext();
+  return useMemo(() => core.getInjector().get(IMobileSessionService), [core]);
 }
 
 export function useSshClientService(): IMobileSshClientService {
