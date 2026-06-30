@@ -25,23 +25,12 @@ import { ScreenContainer } from '../../components/ui/screen-container';
 import { ScreenHeader } from '../../components/ui/screen-header';
 import { useSshKeyRepository } from '../../core/core-context';
 
-function detectAlgorithm(pem: string): ISshKeyAlgorithm {
-  if (pem.includes('BEGIN RSA') || pem.includes('ssh-rsa')) {
-    return 'rsa';
-  }
-  if (pem.includes('BEGIN EC') || pem.includes('ecdsa-')) {
-    return 'ecdsa';
-  }
-  return 'ed25519';
-}
-
 export default function NewKeyRoute() {
   const router = useRouter();
   const keyRepo = useSshKeyRepository();
 
   const [label, setLabel] = useState('');
   const [privateKey, setPrivateKey] = useState('');
-  const [publicKey, setPublicKey] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [certificate, setCertificate] = useState('');
   const [busy, setBusy] = useState(false);
@@ -62,18 +51,20 @@ export default function NewKeyRoute() {
     }
     setBusy(true);
     try {
-      const check = RnRussh.validatePrivateKey(privateKey.trim());
+      const check = RnRussh.validatePrivateKey(privateKey.trim(), passphrase || undefined);
       if (!check.valid) {
         Alert.alert('Invalid key', check.error.message ?? 'The private key could not be parsed.');
         setBusy(false);
         return;
       }
-      const algorithm = detectAlgorithm(privateKey.trim());
+      const { material } = check;
       await keyRepo.importKey({
         label: label.trim(),
-        algorithm,
-        privateKey: privateKey.trim(),
-        publicKey: publicKey.trim() || null,
+        algorithm: material.algorithm as ISshKeyAlgorithm,
+        bits: material.bits,
+        privateKey: material.privateKey,
+        publicKey: material.publicKey,
+        fingerprint: material.fingerprintSha256,
         certificate: certificate.trim() || null,
         passphrase: passphrase || null,
         savePassphrase: !!passphrase,
@@ -100,7 +91,6 @@ export default function NewKeyRoute() {
           <FormSection>
             <TextField label="Label" value={label} onChangeText={setLabel} placeholder="Required" />
             <TextField label="Private Key" value={privateKey} onChangeText={setPrivateKey} placeholder="Required" multiline />
-            <TextField label="Public Key" value={publicKey} onChangeText={setPublicKey} multiline />
             <PasswordField label="Passphrase" value={passphrase} onChangeText={setPassphrase} placeholder="Passphrase" />
             <TextField label="Certificate" value={certificate} onChangeText={setCertificate} multiline last />
           </FormSection>

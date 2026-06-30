@@ -110,7 +110,7 @@ export default function GenerateKeyRoute() {
     try {
       await RnRussh.uniffiInitAsync();
       const hasPassphrase = passphrase.trim().length > 0;
-      const pem = RnRussh.generateKeyPair(algorithm, {
+      const material = RnRussh.generateKeyPair(algorithm, {
         ...(hasPassphrase
           ? {
             passphrase: passphrase.trim(),
@@ -124,7 +124,10 @@ export default function GenerateKeyRoute() {
       await keyRepo.importKey({
         label: finalLabel,
         algorithm,
-        privateKey: pem,
+        bits: material.bits,
+        privateKey: material.privateKey,
+        publicKey: material.publicKey,
+        fingerprint: material.fingerprintSha256,
         passphrase: hasPassphrase ? passphrase.trim() : null,
         savePassphrase: hasPassphrase && savePassphrase,
         source: 'generated',
