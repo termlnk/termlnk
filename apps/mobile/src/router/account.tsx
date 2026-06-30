@@ -77,7 +77,7 @@ export default function AccountScreen() {
           <NavRow
             leading={<IconTile icon={LockKeyhole} tone="known" />}
             title="Change Password"
-            onPress={SOON('Change Password')}
+            onPress={() => router.push('/change-password')}
           />
           <NavRow
             leading={<IconTile icon={Smartphone} tone="snippets" />}

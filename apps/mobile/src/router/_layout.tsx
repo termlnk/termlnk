@@ -63,6 +63,7 @@ export default function RootLayout() {
                 <Stack.Screen name="ai-add-provider" options={{ title: 'Add Provider' }} />
                 <Stack.Screen name="ai-provider-detail" />
                 <Stack.Screen name="account" options={{ headerShown: false }} />
+                <Stack.Screen name="change-password" options={{ headerShown: false }} />
                 <Stack.Screen name="devices" options={{ headerShown: false }} />
                 <Stack.Screen name="settings" options={{ headerShown: false }} />
                 <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
