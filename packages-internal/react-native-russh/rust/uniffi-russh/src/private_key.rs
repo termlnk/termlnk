@@ -3,8 +3,9 @@ use russh::keys::ssh_key::{
     self,
     private::{Ed25519Keypair, KeypairData, RsaKeypair},
     Cipher as SshCipher,
+    HashAlg,
 };
-use russh::keys::{Algorithm, EcdsaCurve};
+use russh::keys::{Algorithm, EcdsaCurve, PublicKeyBase64};
 
 use crate::utils::SshError;
 
@@ -18,11 +19,49 @@ pub enum KeyType {
     Ed448,
 }
 
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct GeneratedKeyMaterial {
+    pub private_key: String,
+    pub public_key: String,
+    pub fingerprint_sha256: String,
+    pub algorithm: String,
+    pub bits: Option<u32>,
+}
+
+fn extract_key_material(
+    key: &russh::keys::PrivateKey,
+    bits: Option<u32>,
+    private_key_pem: String,
+) -> GeneratedKeyMaterial {
+    let pk = key.public_key();
+    let algorithm = pk.algorithm().to_string();
+    let base64 = pk.public_key_base64();
+    let public_key = format!("{algorithm} {base64}");
+    let fingerprint_sha256 = format!("{}", pk.fingerprint(HashAlg::Sha256));
+    GeneratedKeyMaterial {
+        private_key: private_key_pem,
+        public_key,
+        fingerprint_sha256,
+        algorithm,
+        bits,
+    }
+}
+
 #[uniffi::export]
-pub fn validate_private_key(private_key_content: String) -> Result<String, SshError> {
-    // Normalize and parse once; return canonical OpenSSH string.
-    let (canonical, _parsed) = normalize_openssh_ed25519_seed_key(&private_key_content)?;
-    Ok(canonical)
+pub fn validate_private_key(
+    private_key_content: String,
+    passphrase: Option<String>,
+) -> Result<GeneratedKeyMaterial, SshError> {
+    let (canonical, parsed) = match &passphrase {
+        Some(pass) if !pass.is_empty() => {
+            let raw = ssh_key::PrivateKey::from_openssh(&private_key_content)?;
+            let decrypted = raw.decrypt(pass.as_bytes())?;
+            let decrypted_pem = decrypted.to_openssh(ssh_key::LineEnding::LF)?.to_string();
+            normalize_openssh_ed25519_seed_key(&decrypted_pem)?
+        }
+        _ => normalize_openssh_ed25519_seed_key(&private_key_content)?,
+    };
+    Ok(extract_key_material(&parsed, None, canonical))
 }
 
 fn parse_cipher(name: &str) -> SshCipher {
@@ -50,30 +89,51 @@ pub fn generate_key_pair(
     rounds: Option<u32>,
     ecdsa_curve: Option<String>,
     rsa_bits: Option<u32>,
-) -> Result<String, SshError> {
+) -> Result<GeneratedKeyMaterial, SshError> {
     let mut rng = rand::rng();
+    let bits: Option<u32>;
     let key = match key_type {
         KeyType::Rsa => {
-            let bits = rsa_bits.unwrap_or(2048) as usize;
-            let key_data = KeypairData::from(RsaKeypair::random(&mut rng, bits)?);
+            let b = rsa_bits.unwrap_or(2048);
+            bits = Some(b);
+            let key_data = KeypairData::from(RsaKeypair::random(&mut rng, b as usize)?);
             ssh_key::PrivateKey::new(key_data, "")?
         }
         KeyType::Ecdsa => {
             let curve = ecdsa_curve.as_deref().map(parse_ecdsa_curve).unwrap_or(EcdsaCurve::NistP256);
+            bits = Some(match curve {
+                EcdsaCurve::NistP256 => 256,
+                EcdsaCurve::NistP384 => 384,
+                EcdsaCurve::NistP521 => 521,
+            });
             russh::keys::PrivateKey::random(
                 &mut rng,
                 Algorithm::Ecdsa { curve },
             )?
         }
-        KeyType::Ed25519 => russh::keys::PrivateKey::random(&mut rng, Algorithm::Ed25519)?,
+        KeyType::Ed25519 => {
+            bits = None;
+            russh::keys::PrivateKey::random(&mut rng, Algorithm::Ed25519)?
+        }
         KeyType::Ed448 => return Err(SshError::UnsupportedKeyType),
+    };
+
+    // Extract public key material before (potentially) encrypting the private key.
+    // Scoped so the borrow on `key` is released before encrypt_with() consumes it.
+    let (algorithm, public_key, fingerprint_sha256) = {
+        let pk = key.public_key();
+        let algo = pk.algorithm().to_string();
+        let b64 = pk.public_key_base64();
+        let pubkey = format!("{algo} {b64}");
+        let fp = format!("{}", pk.fingerprint(HashAlg::Sha256));
+        (algo, pubkey, fp)
     };
 
     let should_encrypt = passphrase
         .as_ref()
         .is_some_and(|p| !p.is_empty());
 
-    if should_encrypt {
+    let private_key_pem = if should_encrypt {
         let pass = passphrase.unwrap();
         let c = cipher.as_deref().map(parse_cipher).unwrap_or(SshCipher::Aes256Ctr);
         let r = rounds.unwrap_or(16);
@@ -82,14 +142,22 @@ pub fn generate_key_pair(
         let kdf = ssh_key::Kdf::Bcrypt { salt, rounds: r };
         let checkint = rng.next_u32();
         let encrypted = key.encrypt_with(c, kdf, checkint, pass.as_bytes())?;
-        Ok(encrypted
+        encrypted
             .to_openssh(ssh_key::LineEnding::LF)?
-            .to_string())
+            .to_string()
     } else {
-        Ok(key
+        key
             .to_openssh(ssh_key::LineEnding::LF)?
-            .to_string())
-    }
+            .to_string()
+    };
+
+    Ok(GeneratedKeyMaterial {
+        private_key: private_key_pem,
+        public_key,
+        fingerprint_sha256,
+        algorithm,
+        bits,
+    })
 }
 
 // Best-effort fix for OpenSSH ed25519 keys that store only a 32-byte seed in
@@ -227,7 +295,7 @@ mod tests {
     #[test]
     fn validate_private_key_rejects_invalid_constant() {
         let invalid_key = "this is not a private key".to_string();
-        let result = validate_private_key(invalid_key);
+        let result = validate_private_key(invalid_key, None);
         assert!(result.is_err(), "Expected Err for invalid key content");
     }
 
@@ -243,8 +311,12 @@ viCQKMmFp2+9/5MOVEEnAAAAF3Rlc3QtZWQyNTUxOUBmcmVzc2guY29tAQIDBAUG
 -----END OPENSSH PRIVATE KEY-----
 "
         .to_string();
-        let result = validate_private_key(valid_key);
+        let result = validate_private_key(valid_key, None);
         assert!(result.is_ok(), "Expected Ok for valid key content");
+        let material = result.unwrap();
+        assert_eq!(material.algorithm, "ssh-ed25519");
+        assert!(!material.public_key.is_empty());
+        assert!(material.fingerprint_sha256.starts_with("SHA256:"));
     }
     #[test]
     fn validate_private_key_accepts_2() {
@@ -258,7 +330,7 @@ yBLQgBonGVgvnJ645o0yAAAADmV0aGFuQEV0aGFuLVBDAQIDBAUGBw==
 -----END OPENSSH PRIVATE KEY-----
 "
         .to_string();
-        let result = validate_private_key(valid_key);
+        let result = validate_private_key(valid_key, None);
         assert!(result.is_ok(), "Expected Ok for valid key content");
     }
     #[test]
@@ -273,7 +345,7 @@ FZYRr/AT/8hRct4v1h68AAAAAAECAwQF
 -----END OPENSSH PRIVATE KEY-----
 "
         .to_string();
-        let result = validate_private_key(valid_key);
+        let result = validate_private_key(valid_key, None);
         assert!(result.is_ok(), "Expected Ok for valid key content");
     }
     #[test]
@@ -283,7 +355,7 @@ FZYRr/AT/8hRct4v1h68AAAAAAECAwQF
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZWQyNTUxOQAAACCh5IbLI9ypdFzNW8WvezgBrzJT/2mT9BKSdZScB4EYoQAAAJB8YyoafGMqGgAAAAtzc2gtZWQyNTUxOQAAACCh5IbLI9ypdFzNW8WvezgBrzJT/2mT9BKSdZScB4EYoQAAAECpYzHTSiKC2iehjck1n8GAp5mdGuB2J5vV+9U3MAvthKHkhssj3Kl0XM1bxa97OAGvMlP/aZP0EpJ1lJwHgRihAAAAAAECAwQFBgcICQoLDA0=
 -----END OPENSSH PRIVATE KEY-----
 ".to_string();
-        let result = validate_private_key(valid_key);
+        let result = validate_private_key(valid_key, None);
         assert!(result.is_ok(), "Expected Ok for valid key content");
     }
 }

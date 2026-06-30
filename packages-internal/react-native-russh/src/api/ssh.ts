@@ -330,6 +330,24 @@ export function connect(opts: IConnectOptions): Promise<ISshConnection> {
   });
 }
 
+export interface IGeneratedKeyMaterial {
+  privateKey: string;
+  publicKey: string;
+  fingerprintSha256: string;
+  algorithm: string;
+  bits: number | null;
+}
+
+function toKeyMaterial(raw: { privateKey: string; publicKey: string; fingerprintSha256: string; algorithm: string; bits?: number | null }): IGeneratedKeyMaterial {
+  return {
+    privateKey: raw.privateKey,
+    publicKey: raw.publicKey,
+    fingerprintSha256: raw.fingerprintSha256,
+    algorithm: raw.algorithm,
+    bits: raw.bits ?? null,
+  };
+}
+
 export function generateKeyPair(
   type: 'rsa' | 'ecdsa' | 'ed25519',
   options?: {
@@ -339,13 +357,13 @@ export function generateKeyPair(
     ecdsaCurve?: string;
     rsaBits?: number;
   },
-): string {
+): IGeneratedKeyMaterial {
   const map: Record<typeof type, GeneratedRussh.KeyType> = {
     rsa: GeneratedRussh.KeyType.Rsa,
     ecdsa: GeneratedRussh.KeyType.Ecdsa,
     ed25519: GeneratedRussh.KeyType.Ed25519,
   };
-  return callRusshSync(() =>
+  return toKeyMaterial(callRusshSync(() =>
     GeneratedRussh.generateKeyPair(
       map[type],
       options?.passphrase ?? undefined,
@@ -354,15 +372,16 @@ export function generateKeyPair(
       options?.ecdsaCurve ?? undefined,
       options?.rsaBits ?? undefined,
     ),
-  );
+  ));
 }
 
 export function validatePrivateKey(
-  key: string
-): { valid: true; error?: never } | { valid: false; error: IRusshError } {
+  key: string,
+  passphrase?: string,
+): { valid: true; material: IGeneratedKeyMaterial } | { valid: false; error: IRusshError } {
   try {
-    GeneratedRussh.validatePrivateKey(key);
-    return { valid: true };
+    const raw = GeneratedRussh.validatePrivateKey(key, passphrase ?? undefined);
+    return { valid: true, material: toKeyMaterial(raw) };
   } catch (e) {
     return { valid: false, error: toRusshError(e) };
   }

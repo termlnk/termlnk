@@ -35,6 +35,7 @@ export type {
 } from './types';
 export type { ISshConnection, ISshShell } from './ssh';
 export type { ISftpSession } from './sftp';
+export type { IGeneratedKeyMaterial } from './ssh';
 export type {
   ForwardTunnelStatus,
   IDynamicForwardConfig,
