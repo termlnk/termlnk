@@ -111,6 +111,7 @@ const FRIENDLY_MESSAGES: Readonly<Record<AuthErrorCode, string>> = {
   server_error: 'Server error. Please try again later.',
   token_expired: 'Your session has expired. Please sign in again.',
   wrong_encryption_password: 'Incorrect encryption password.',
+  wrong_current_password: 'The current password is incorrect.',
   unknown: 'Something went wrong. Please try again.',
 };
 
@@ -334,10 +335,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
   // identity-login event (login) or a vault-unlock event (unlockVault), so a wrong password
   // during unlock does not flip the identity authState$ to Error.
   private async _performSrpLogin(email: string, password: string): Promise<ISrpVerifyResponseBody> {
-    const initResp = await this._fetchAuthFreeJson<ISrpInitResponseBody>(
-      '/auth/srp/init',
-      { email } satisfies ISrpInitRequestBody
-    );
+    const initResp = await this._fetchSrpInit(email);
 
     const masterKey = await this._masterKey.derive(password, {
       email,
@@ -657,6 +655,61 @@ export class HttpAuthService extends Disposable implements IAuthService {
       this._lastError$.next({ code: surfaced.code, message: surfaced.message });
       throw surfaced;
     }
+  }
+
+  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
+    const user = this._currentUser$.getValue();
+    if (!user) {
+      throw new AuthError('unknown', 'cannot change password before signing in');
+    }
+    this._lastError$.next(null);
+
+    // Step 1: verify the old password via a full SRP handshake. On success the
+    // master key is re-derived to the same value (no-op); on failure the key is
+    // locked and the user must re-enter the correct password to continue.
+    try {
+      await this._performSrpLogin(user.email, oldPassword);
+    } catch (err) {
+      this._masterKey.lock();
+      const authError = err instanceof AuthError ? err : this._classifyError(err);
+      const surfaced = authError.code === 'invalid_credentials'
+        ? new AuthError('wrong_current_password', friendlyMessageFor('wrong_current_password'))
+        : authError;
+      this._lastError$.next({ code: surfaced.code, message: surfaced.message });
+      throw surfaced;
+    }
+
+    // Step 2: derive the new master key and enroll new SRP credentials.
+    const newArgon2SaltB64 = bytesToBase64(randomBytes(ARGON2_RANDOM_SALT_LENGTH));
+    const newMasterKey = await this._masterKey.derive(newPassword, {
+      email: user.email,
+      saltB64: newArgon2SaltB64,
+    });
+    const newAuthKeyHex = bytesToHex(newMasterKey.authKey);
+    const enrollment = this._srp.enroll(user.email, newAuthKeyHex);
+
+    // Step 3: upload the new SRP credentials. The server revokes all other devices.
+    try {
+      await this._fetchAuthorizedJson('POST /auth/password/change', '/auth/password/change', {
+        argon2SaltB64: newArgon2SaltB64,
+        srpSalt: enrollment.srpSalt,
+        srpVerifier: enrollment.srpVerifier,
+      });
+    } catch (err) {
+      // Roll back to the old key so the session remains usable.
+      await this._masterKey.derive(oldPassword, {
+        email: user.email,
+        saltB64: (await this._fetchSrpInit(user.email)).argon2SaltB64,
+      });
+      throw err instanceof AuthError ? err : this._classifyError(err);
+    }
+  }
+
+  private async _fetchSrpInit(email: string): Promise<ISrpInitResponseBody> {
+    return this._fetchAuthFreeJson<ISrpInitResponseBody>(
+      '/auth/srp/init',
+      { email } satisfies ISrpInitRequestBody
+    );
   }
 
   private async _completeAuthSession(resp: {

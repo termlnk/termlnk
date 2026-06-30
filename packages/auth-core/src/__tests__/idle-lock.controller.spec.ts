@@ -110,6 +110,7 @@ class FakeAuthService implements IAuthService {
   async pollGoogleWebSignIn(): Promise<'pending' | 'complete' | 'expired'> { throw new Error('not used'); }
   async setupEncryptionPassword(): Promise<void> { throw new Error('not used'); }
   async unlockVault(): Promise<void> { throw new Error('not used'); }
+  async changePassword(): Promise<void> { throw new Error('not used'); }
   async getServerCapabilities() { return { googleOAuth: false }; }
 }
 

@@ -140,6 +140,10 @@ export class AuthService extends Disposable implements IAuthService {
     await this._client.unlockVault.mutate({ password });
   }
 
+  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
+    await this._client.changePassword.mutate({ oldPassword, newPassword });
+  }
+
   // Driven by the main-process deep-link handler; the renderer never invokes it.
   // The web shell uses begin/pollGoogleWebSignIn instead (relay code is claimed
   // server-side), so this stays main-process-only.

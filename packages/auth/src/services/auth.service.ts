@@ -124,6 +124,12 @@ export interface IAuthService {
   // entered password, verify against the server's key-check value, install the key.
   // Throws AuthError('wrong_encryption_password') on mismatch.
   unlockVault(password: string): Promise<void>;
+
+  // Change the account password. Verifies the old password via SRP, derives a new
+  // master key from the new password, and updates the server's SRP credential.
+  // Other devices are revoked and must re-login with the new password.
+  // Throws AuthError('wrong_current_password') if the old password is incorrect.
+  changePassword(oldPassword: string, newPassword: string): Promise<void>;
 }
 
 export const IAuthService = createIdentifier<IAuthService>('auth.auth-service');
