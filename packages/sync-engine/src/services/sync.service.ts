@@ -17,7 +17,7 @@ import type { IDisposable } from '@termlnk/core';
 import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncMutation, ISyncService, ISyncStats, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { Disposable, generateRandomId, ILogService, toDisposable } from '@termlnk/core';
-import { ISyncConfigRepository, ISyncCryptoService, ISyncCursorRepository, ISyncOutboxService, ISyncRowMetaRepository, ISyncTransportService, NON_SYNCABLE_CONFIG_KEYS, SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SYNC_USER_ENABLED_FIELD, SynchroniserStatus, SyncState } from '@termlnk/sync';
+import { ISyncConfigRepository, ISyncCryptoService, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxService, ISyncRowMetaRepository, ISyncTransportService, NON_SYNCABLE_CONFIG_KEYS, SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SYNC_USER_ENABLED_FIELD, SynchroniserStatus, SyncState } from '@termlnk/sync';
 import { BehaviorSubject, debounceTime, distinctUntilChanged, filter, interval, merge, Subject, Subscription } from 'rxjs';
 
 const CLIENT_ID_FIELD = 'clientId';
@@ -82,6 +82,7 @@ export class SyncService extends Disposable implements ISyncService {
     @ISyncCursorRepository private readonly _cursors: ISyncCursorRepository,
     @ISyncConfigRepository private readonly _configRepo: ISyncConfigRepository,
     @ISyncRowMetaRepository private readonly _rowMetaRepo: ISyncRowMetaRepository,
+    @ISyncFieldMetaRepository private readonly _fieldMetaRepo: ISyncFieldMetaRepository,
     @ILogService private readonly _logService: ILogService
   ) {
     super();
@@ -263,6 +264,26 @@ export class SyncService extends Disposable implements ISyncService {
       await this._cursors.delete(resource);
     }
     this._pullTrigger$.next();
+  }
+
+  async rekeyAndResync(): Promise<void> {
+    if (!this._enabled$.getValue()) {
+      return;
+    }
+    // Stop the runtime pipeline (WS disconnect, cancel push/pull loops).
+    await this.stopRuntime();
+
+    // Wipe all sync state so the re-enable cycle treats every local row as brand-new.
+    for (const resource of SYNC_RESOURCES) {
+      await this._rowMetaRepo.deleteResource(resource);
+      await this._fieldMetaRepo.deleteResource(resource);
+      await this._cursors.delete(resource);
+      await this._outboxService.clearResource(resource);
+    }
+
+    // Re-enable triggers reconcile (will fail on old-key data — caught per-resource),
+    // then seedInitialSnapshots (no meta → seeds everything), then push (new encKey).
+    await this.enable();
   }
 
   private async _runPush(): Promise<void> {

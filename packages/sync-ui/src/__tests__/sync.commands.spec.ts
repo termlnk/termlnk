@@ -59,6 +59,8 @@ class FakeSyncService implements ISyncService {
     this.forceFullResyncCalls++;
   }
 
+  async rekeyAndResync(): Promise<void> {}
+
   register(_synchroniser: IResourceSynchroniser): IDisposable {
     return toDisposable(() => {});
   }

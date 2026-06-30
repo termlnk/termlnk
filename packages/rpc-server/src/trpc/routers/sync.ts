@@ -40,7 +40,7 @@ function requireSyncService(injector: Injector): ISyncService {
  * The real `SyncService` lives in the main process; the renderer's
  * `SyncClientService` mirrors state streams (`state$` / `stats$` /
  * `lastError$` / `enabled$`) and forwards commands (`enable` / `disable` /
- * `syncNow` / `forceFullResync`) through this router.
+ * `syncNow` / `forceFullResync` / `rekeyAndResync`) through this router.
  *
  * Not exposed:
  * - `register` / `dispose` / internal triggers — `SyncService`'s private API.
@@ -84,6 +84,11 @@ export const syncRouter = router({
   forceFullResync: publicProcedure.mutation(async ({ ctx }) => {
     const service = requireSyncService(ctx.injector);
     await service.forceFullResync();
+  }),
+
+  rekeyAndResync: publicProcedure.mutation(async ({ ctx }) => {
+    const service = requireSyncService(ctx.injector);
+    await service.rekeyAndResync();
   }),
 
   state$: publicProcedure.subscription(async function* ({ ctx }) {

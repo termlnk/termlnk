@@ -14,7 +14,7 @@
  */
 
 import type { ILogService, LogLevel } from '@termlnk/core';
-import type { ConfigRepository, ISyncCursorEntity, SyncCursorRepository, SyncRowMetaRepository } from '@termlnk/database';
+import type { ConfigRepository, ISyncCursorEntity, SyncCursorRepository, SyncFieldMetaRepository, SyncRowMetaRepository } from '@termlnk/database';
 import type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse, IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
 import { SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
@@ -192,6 +192,10 @@ class FakeRowMeta {
   }
 }
 
+class FakeFieldMeta {
+  async deleteResource(_resource: SyncResourceId): Promise<void> {}
+}
+
 class FakeCryptoService implements ISyncCryptoService {
   constructor(public available: boolean) {}
   encrypt(_plaintext: Uint8Array): Uint8Array {
@@ -279,6 +283,7 @@ interface ITestBed {
   cursors: FakeCursorRepo;
   config: FakeConfigRepo;
   rowMeta: FakeRowMeta;
+  fieldMeta: FakeFieldMeta;
   crypto: FakeCryptoService;
   service: SyncService;
 }
@@ -289,6 +294,7 @@ function createTestBed(opts: { cryptoAvailable?: boolean } = {}): ITestBed {
   const cursors = new FakeCursorRepo();
   const config = new FakeConfigRepo();
   const rowMeta = new FakeRowMeta();
+  const fieldMeta = new FakeFieldMeta();
   const crypto = new FakeCryptoService(opts.cryptoAvailable ?? true);
   const service = new SyncService(
     outbox,
@@ -297,9 +303,10 @@ function createTestBed(opts: { cryptoAvailable?: boolean } = {}): ITestBed {
     cursors as unknown as SyncCursorRepository,
     config as unknown as ConfigRepository,
     rowMeta as unknown as SyncRowMetaRepository,
+    fieldMeta as unknown as SyncFieldMetaRepository,
     new NoopLogService()
   );
-  return { outbox, transport, cursors, config, rowMeta, crypto, service };
+  return { outbox, transport, cursors, config, rowMeta, fieldMeta, crypto, service };
 }
 
 async function flushAsync(extraMs: number = 0): Promise<void> {

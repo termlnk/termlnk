@@ -45,6 +45,11 @@ export interface ISyncService {
 
   register(synchroniser: IResourceSynchroniser): IDisposable;
 
+  // Re-encrypt all synced data after a password change. Stops the runtime, clears all
+  // sync state (row/field meta, cursors, outbox), and re-enables — triggering a full
+  // re-push of local data encrypted with the new master key.
+  rekeyAndResync(): Promise<void>;
+
   // Sign-out path: tear down the runtime pipeline without flipping the persisted
   // userEnabled flag, so the next sign-in restores the toggle.
   stopRuntime(): Promise<void>;

@@ -123,6 +123,10 @@ export class SyncClientService extends Disposable implements ISyncService {
     await this._client.forceFullResync.mutate();
   }
 
+  async rekeyAndResync(): Promise<void> {
+    await this._client.rekeyAndResync.mutate();
+  }
+
   // Main-process semantics; reaching either over IPC is a routing bug.
   register(_synchroniser: IResourceSynchroniser): IDisposable {
     throw new Error('[SyncClientService] register() is main-process only');
