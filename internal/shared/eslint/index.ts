@@ -159,7 +159,6 @@ export const baseRules: Partial<Rules> = {
   'unicorn/prefer-includes': 'off',
   'prefer-arrow-callback': 'off',
   'no-restricted-globals': 'off',
-  'unicorn/prefer-string-starts-ends-with': 'warn',
 
   // Compatibility rules for legacy code - set to warn for gradual migration
   'unused-imports/no-unused-vars': 'warn',
@@ -168,8 +167,6 @@ export const baseRules: Partial<Rules> = {
   'ts/no-empty-object-type': 'warn',
   'ts/no-unsafe-function-type': 'off',
   'ts/no-unused-expressions': 'warn',
-  'unicorn/prefer-dom-node-text-content': 'warn',
-  'unicorn/prefer-number-properties': 'warn',
   'no-prototype-builtins': 'warn',
   'eslint-comments/no-unlimited-disable': 'off',
   'ts/prefer-ts-expect-error': 'off',
@@ -184,12 +181,9 @@ export const baseRules: Partial<Rules> = {
   'ts/no-this-alias': 'warn',
   'prefer-promise-reject-errors': 'warn',
   'no-new': 'warn',
-  'unicorn/error-message': 'warn',
   'ts/prefer-literal-enum-member': 'warn',
   'no-control-regex': 'warn',
   'ts/no-import-type-side-effects': 'warn',
-  'unicorn/number-literal-case': 'warn',
-  'unicorn/prefer-type-error': 'warn',
 };
 
 export const typescriptPreset = (): Linter.Config => {
@@ -225,6 +219,12 @@ export const typescriptPreset = (): Linter.Config => {
         },
       ],
       // 'ts/consistent-type-exports': 'warn',
+      'unicorn/prefer-string-starts-ends-with': 'warn',
+      'unicorn/prefer-dom-node-text-content': 'warn',
+      'unicorn/prefer-number-properties': 'warn',
+      'unicorn/error-message': 'warn',
+      'unicorn/number-literal-case': 'warn',
+      'unicorn/prefer-type-error': 'warn',
     },
     languageOptions: {
       parser: typescriptParser,
