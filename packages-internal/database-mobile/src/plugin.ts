@@ -16,15 +16,17 @@
 import type { Dependency } from '@termlnk/core';
 import type { IDatabaseMobileConfig } from './controllers/config.schema';
 import { IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
-import { IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IPortForwardingRuleSyncRepository, IProviderSyncRepository, ISnippetSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from '@termlnk/sync';
+import { IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IMcpServerSyncRepository, IPortForwardingRuleSyncRepository, IProviderSyncRepository, ISkillSyncRepository, ISnippetSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from '@termlnk/sync';
 import { DATABASE_MOBILE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { ExpoSqliteAdaptor, IDatabaseMobileAdaptorService } from './services/expo-sqlite-adaptor.service';
 import { IMobileHostRepository, MobileHostRepository } from './services/mobile-host-repository';
 import { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository, MobileIdentityRepository, MobileKnownHostRepository, MobileSshKeyRepository } from './services/mobile-keychain-repositories';
+import { MobileMcpServerRepository } from './services/mobile-mcp-server-repository';
 import { IMobilePortForwardingRuleRepository, MobilePortForwardingRuleRepository } from './services/mobile-port-forwarding-rule-repository';
 import { IMobilePreferencesService, MobilePreferencesService } from './services/mobile-preferences.service';
 import { MobileProviderRepository } from './services/mobile-provider-repository';
 import { IMobileSecretCipherService, MobileSecretCipherService } from './services/mobile-secret-cipher.service';
+import { MobileSkillRepository } from './services/mobile-skill-repository';
 import { IMobileSnippetRepository, MobileSnippetRepository } from './services/mobile-snippet-repository';
 import { MobileSyncConfigRepository, MobileSyncCursorRepository, MobileSyncFieldMetaRepository, MobileSyncOutboxRepository, MobileSyncRowMetaRepository } from './services/mobile-sync-repositories';
 import { IRecentSessionsRepository, RecentSessionsRepository } from './services/recent-sessions-repository';
@@ -61,6 +63,10 @@ export class DatabaseMobilePlugin extends Plugin {
       [IMobileSnippetRepository, { useClass: MobileSnippetRepository }],
       [IMobilePreferencesService, { useClass: MobilePreferencesService }],
       [IProviderSyncRepository, { useClass: MobileProviderRepository }],
+      // mcp_server / skill have no mobile UI consumer yet; the repos exist so the shared
+      // McpSynchroniser / SkillSynchroniser can pass rows straight through to SQLite.
+      [IMcpServerSyncRepository, { useClass: MobileMcpServerRepository }],
+      [ISkillSyncRepository, { useClass: MobileSkillRepository }],
 
       // Sync engine bookkeeping repos (moved here from sync-mobile)
       [ISyncOutboxRepository, { useClass: MobileSyncOutboxRepository }],

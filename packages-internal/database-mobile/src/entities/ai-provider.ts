@@ -25,7 +25,9 @@ export const aiProviderEntity = sqliteTable('ai_provider', {
   api: text('api'),
   apiKey: text('api_key'),
   baseUrl: text('base_url'),
-  headers: text('headers'),
+  // json mode mirrors the desktop schema so sync payloads carry decoded values on
+  // both ends; a raw-string column here made desktop double-encode on write-back.
+  headers: text('headers', { mode: 'json' }),
   sort: integer('sort').notNull().default(0),
   ...timestamps,
 });

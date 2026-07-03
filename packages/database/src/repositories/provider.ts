@@ -31,6 +31,20 @@ export interface IProviderChangeEvent {
   id: string;
 }
 
+// Sync payloads from older mobile builds carried JSON columns as raw strings
+// (mobile used plain text columns); writing those into a json-mode column would
+// stringify again and corrupt the value. Decode strings back before persisting.
+function decodeJsonColumn(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value ?? null;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 export class ProviderRepository extends Disposable implements IProviderSyncRepository {
   private readonly _changed$ = new Subject<IProviderChangeEvent>();
   readonly changed$ = this._changed$.asObservable();
@@ -73,9 +87,11 @@ export class ProviderRepository extends Disposable implements IProviderSyncRepos
 
   async upsertProvider(data: IAIProviderEntityInsert) {
     const encryptedApiKey = encryptIfNeeded(data.apiKey, this._cipher);
+    const headers = decodeJsonColumn(data.headers);
     const payload: IAIProviderEntityInsert = {
       ...data,
       apiKey: encryptedApiKey,
+      headers,
     };
     await this._db
       .insert(aiProviderEntity)
@@ -89,7 +105,7 @@ export class ProviderRepository extends Disposable implements IProviderSyncRepos
           api: data.api,
           apiKey: encryptedApiKey,
           baseUrl: data.baseUrl,
-          headers: data.headers,
+          headers,
           sort: data.sort,
           updatedAt: new Date().toISOString(),
         },
@@ -121,14 +137,15 @@ export class ProviderRepository extends Disposable implements IProviderSyncRepos
   }
 
   async upsertModelConfig(data: IAIProviderModelEntityInsert) {
+    const overrides = decodeJsonColumn(data.overrides);
     await this._db
       .insert(aiProviderModelEntity)
-      .values(data)
+      .values({ ...data, overrides })
       .onConflictDoUpdate({
         target: aiProviderModelEntity.id,
         set: {
           enabled: data.enabled,
-          overrides: data.overrides,
+          overrides,
           updatedAt: new Date().toISOString(),
         },
       });
@@ -161,9 +178,15 @@ export class ProviderRepository extends Disposable implements IProviderSyncRepos
   }
 
   async upsertCustomModel(data: IAICustomModelEntityInsert) {
+    // inputModes is NOT NULL here but nullable on older mobile schemas; fall back to
+    // the column default so a null payload converges instead of failing the insert.
+    const inputModes = decodeJsonColumn(data.inputModes) ?? ['text'];
+    const cost = decodeJsonColumn(data.cost);
+    const headers = decodeJsonColumn(data.headers);
+    const compat = decodeJsonColumn(data.compat);
     await this._db
       .insert(aiCustomModelEntity)
-      .values(data)
+      .values({ ...data, inputModes, cost, headers, compat })
       .onConflictDoUpdate({
         target: aiCustomModelEntity.id,
         set: {
@@ -171,12 +194,12 @@ export class ProviderRepository extends Disposable implements IProviderSyncRepos
           api: data.api,
           baseUrl: data.baseUrl,
           reasoning: data.reasoning,
-          inputModes: data.inputModes,
-          cost: data.cost,
+          inputModes,
+          cost,
           contextWindow: data.contextWindow,
           maxTokens: data.maxTokens,
-          headers: data.headers,
-          compat: data.compat,
+          headers,
+          compat,
           sort: data.sort,
           updatedAt: new Date().toISOString(),
         },

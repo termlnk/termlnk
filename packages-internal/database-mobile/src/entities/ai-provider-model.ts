@@ -22,7 +22,9 @@ export const aiProviderModelEntity = sqliteTable('ai_provider_model', {
   providerId: text('provider_id').notNull(),
   modelId: text('model_id').notNull(),
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
-  overrides: text('overrides'),
+  // json mode mirrors the desktop schema so sync payloads carry decoded values on
+  // both ends; a raw-string column here made desktop double-encode on write-back.
+  overrides: text('overrides', { mode: 'json' }),
   ...timestamps,
 }, (table) => [
   index('idx_provider_model_provider_id').on(table.providerId),

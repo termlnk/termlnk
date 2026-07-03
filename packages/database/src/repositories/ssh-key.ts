@@ -123,10 +123,16 @@ export class SshKeyRepository extends Disposable implements ISshKeySyncRepositor
   // Sync write path: applies a row verbatim. Skips update()'s "empty privateKey = keep"
   // and "savePassphrase=false clears passphrase" shortcuts, which would corrupt LWW.
   async syncUpsertRow(entity: ISshKeyEntity): Promise<void> {
+    // Peers with nullable columns (older mobile schemas) may ship null in fields this
+    // schema declares NOT NULL; coerce to safe defaults so applyPatch converges instead
+    // of failing the insert on every pull and silently dropping the key.
     const encrypted: ISshKeyEntity = {
       ...entity,
-      privateKey: encryptIfNeeded(entity.privateKey, this._cipher),
+      algorithm: entity.algorithm ?? 'ed25519',
+      privateKey: encryptIfNeeded(entity.privateKey ?? '', this._cipher),
+      publicKey: entity.publicKey ?? '',
       passphrase: encryptIfNeeded(entity.passphrase, this._cipher),
+      source: entity.source ?? 'imported',
     };
     const existing = await this._db
       .select({ id: sshKeyEntity.id })

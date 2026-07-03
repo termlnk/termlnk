@@ -81,10 +81,7 @@ export class MobilePortForwardingRuleRepository extends Disposable implements IM
 
   async getByHostId(hostId: string): Promise<IPortForwardingRuleEntity[]> {
     const db = await this._adaptor.ready();
-    return db.select().from(portForwardingRuleEntity)
-      .where(eq(portForwardingRuleEntity.hostId, hostId))
-      .orderBy(asc(portForwardingRuleEntity.sort), asc(portForwardingRuleEntity.id))
-      .all();
+    return db.select().from(portForwardingRuleEntity).where(eq(portForwardingRuleEntity.hostId, hostId)).orderBy(asc(portForwardingRuleEntity.sort), asc(portForwardingRuleEntity.id)).all();
   }
 
   async saveRule(
@@ -114,9 +111,7 @@ export class MobilePortForwardingRuleRepository extends Disposable implements IM
 
   async getList(): Promise<ISyncEntityRow[]> {
     const db = await this._adaptor.ready();
-    return db.select().from(portForwardingRuleEntity)
-      .orderBy(asc(portForwardingRuleEntity.sort), asc(portForwardingRuleEntity.id))
-      .all();
+    return db.select().from(portForwardingRuleEntity).orderBy(asc(portForwardingRuleEntity.sort), asc(portForwardingRuleEntity.id)).all();
   }
 
   async syncUpsertRow(entity: ISyncEntityRow): Promise<void> {

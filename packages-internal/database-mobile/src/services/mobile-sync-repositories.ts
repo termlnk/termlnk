@@ -203,9 +203,7 @@ export class MobileSyncRowMetaRepository extends Disposable implements ISyncRowM
 
   async get(resource: SyncResourceId, entityId: string): Promise<ISyncRowMeta | null> {
     const db = await this._adaptor.ready();
-    const r = db.select().from(syncRowMetaEntity)
-      .where(and(eq(syncRowMetaEntity.resource, resource), eq(syncRowMetaEntity.entityId, entityId)))
-      .get();
+    const r = db.select().from(syncRowMetaEntity).where(and(eq(syncRowMetaEntity.resource, resource), eq(syncRowMetaEntity.entityId, entityId))).get();
     return r
       ? { resource: r.resource, entityId: r.entityId, version: r.version, updatedAt: r.updatedAt }
       : null;
@@ -255,13 +253,11 @@ export class MobileSyncFieldMetaRepository extends Disposable implements ISyncFi
 
   async get(resource: SyncResourceId, entityId: string, field: string): Promise<ISyncFieldMeta | null> {
     const db = await this._adaptor.ready();
-    const r = db.select().from(syncFieldMetaEntity)
-      .where(and(
-        eq(syncFieldMetaEntity.resource, resource),
-        eq(syncFieldMetaEntity.entityId, entityId),
-        eq(syncFieldMetaEntity.field, field)
-      ))
-      .get();
+    const r = db.select().from(syncFieldMetaEntity).where(and(
+      eq(syncFieldMetaEntity.resource, resource),
+      eq(syncFieldMetaEntity.entityId, entityId),
+      eq(syncFieldMetaEntity.field, field)
+    )).get();
     return r
       ? { resource: r.resource, entityId: r.entityId, field: r.field, updatedAt: r.updatedAt }
       : null;
@@ -269,9 +265,7 @@ export class MobileSyncFieldMetaRepository extends Disposable implements ISyncFi
 
   async getByEntity(resource: SyncResourceId, entityId: string): Promise<ISyncFieldMeta[]> {
     const db = await this._adaptor.ready();
-    const rows = db.select().from(syncFieldMetaEntity)
-      .where(and(eq(syncFieldMetaEntity.resource, resource), eq(syncFieldMetaEntity.entityId, entityId)))
-      .all();
+    const rows = db.select().from(syncFieldMetaEntity).where(and(eq(syncFieldMetaEntity.resource, resource), eq(syncFieldMetaEntity.entityId, entityId))).all();
     return rows.map((r) => ({ resource: r.resource, entityId: r.entityId, field: r.field, updatedAt: r.updatedAt }));
   }
 
@@ -348,9 +342,10 @@ export class MobileSyncCursorRepository extends Disposable implements ISyncCurso
 
 // --- Config (key/subKey JSON) ------------------------------------------------------------
 
-// Minimal key/subKey config store. The sync engine persists clientId / lastClientMutId /
-// userEnabled here; the per-field LWW `config` resource itself is excluded from mobile sync
-// (v1), so `changed$` never drives the outbox — it exists only to satisfy the contract.
+// Minimal key/subKey config store backing the field-level LWW `config` resource. The sync
+// engine also persists its own state here (clientId / lastClientMutId / userEnabled) under
+// 'sync.config' — that key is in NON_SYNCABLE_CONFIG_KEYS, so ConfigSynchroniser filters it
+// (and the other device-bound keys) out of both the outbox and inbound patches.
 export class MobileSyncConfigRepository extends Disposable implements ISyncConfigRepository {
   private readonly _changed$ = new Subject<IConfigChangeEvent>();
   readonly changed$: Observable<IConfigChangeEvent> = this._changed$.asObservable();

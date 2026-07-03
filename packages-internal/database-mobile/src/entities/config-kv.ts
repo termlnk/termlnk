@@ -20,6 +20,7 @@ import { timestamps } from './base';
 // Key-value JSON store shared by:
 //   - MobilePreferencesService (key='mobile.prefs', value=serialized IMobilePreferences)
 //   - SyncEngine state via ISyncConfigRepository (clientId / lastClientMutId / userEnabled)
+//   - the field-level LWW `config` sync resource (desktop plugin config keys land here)
 export const configEntity = sqliteTable('config', {
   key: text('key').primaryKey().notNull(),
   valueJson: text('value_json').notNull(),

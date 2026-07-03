@@ -25,12 +25,14 @@ export const aiCustomModelEntity = sqliteTable('ai_custom_model', {
   api: text('api'),
   baseUrl: text('base_url'),
   reasoning: integer('reasoning', { mode: 'boolean' }).notNull().default(false),
-  inputModes: text('input_modes'),
-  cost: text('cost'),
+  // json mode + NOT NULL default mirror the desktop schema so sync payloads carry
+  // decoded values and a mobile row can never push null into desktop's NOT NULL column.
+  inputModes: text('input_modes', { mode: 'json' }).notNull().default(['text']),
+  cost: text('cost', { mode: 'json' }),
   contextWindow: integer('context_window').notNull().default(128000),
   maxTokens: integer('max_tokens').notNull().default(16384),
-  headers: text('headers'),
-  compat: text('compat'),
+  headers: text('headers', { mode: 'json' }),
+  compat: text('compat', { mode: 'json' }),
   sort: integer('sort').notNull().default(0),
   ...timestamps,
 }, (table) => [

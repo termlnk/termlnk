@@ -16,8 +16,8 @@
 import type { ILogService } from '@termlnk/core';
 import type { IProviderChangeEvent, IProviderSyncRepository, ISyncEntityRow } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
-import { Disposable, ILogService as ILogServiceId, Inject } from '@termlnk/core';
 import { base64ToBytes, bytesToBase64 } from '@termlnk/auth';
+import { Disposable, ILogService as ILogServiceId, Inject } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
 import { Subject } from 'rxjs';
 import { aiCustomModelEntity } from '../entities/ai-custom-model';
@@ -28,6 +28,22 @@ import { IMobileSecretCipherService } from './mobile-secret-cipher.service';
 
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
+
+// JSON columns use drizzle json mode (stringify on write, parse on read) to stay
+// symmetric with the desktop schema. Sync payloads normally carry these fields
+// decoded, but payloads produced by older mobile builds — and local callers that
+// still pre-stringify — hand us raw JSON strings; decode them so the json-mode
+// column does not double-encode.
+function decodeJsonColumn(value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value ?? null;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
 
 export class MobileProviderRepository extends Disposable implements IProviderSyncRepository {
   private readonly _changed$ = new Subject<IProviderChangeEvent>();
@@ -91,7 +107,7 @@ export class MobileProviderRepository extends Disposable implements IProviderSyn
         api: row.api as string | null ?? null,
         apiKey: encryptedApiKey,
         baseUrl: row.baseUrl as string | null ?? null,
-        headers: typeof row.headers === 'string' ? row.headers : row.headers != null ? JSON.stringify(row.headers) : null,
+        headers: decodeJsonColumn(row.headers),
         sort: (row.sort as number) ?? 0,
       })
       .onConflictDoUpdate({
@@ -103,7 +119,7 @@ export class MobileProviderRepository extends Disposable implements IProviderSyn
           api: row.api as string | null ?? null,
           apiKey: encryptedApiKey,
           baseUrl: row.baseUrl as string | null ?? null,
-          headers: typeof row.headers === 'string' ? row.headers : row.headers != null ? JSON.stringify(row.headers) : null,
+          headers: decodeJsonColumn(row.headers),
           sort: (row.sort as number) ?? 0,
           updatedAt: new Date().toISOString(),
         },
@@ -135,13 +151,13 @@ export class MobileProviderRepository extends Disposable implements IProviderSyn
         providerId: row.providerId as string,
         modelId: row.modelId as string,
         enabled: row.enabled as boolean ?? false,
-        overrides: typeof row.overrides === 'string' ? row.overrides : row.overrides != null ? JSON.stringify(row.overrides) : null,
+        overrides: decodeJsonColumn(row.overrides),
       })
       .onConflictDoUpdate({
         target: aiProviderModelEntity.id,
         set: {
           enabled: row.enabled as boolean ?? false,
-          overrides: typeof row.overrides === 'string' ? row.overrides : row.overrides != null ? JSON.stringify(row.overrides) : null,
+          overrides: decodeJsonColumn(row.overrides),
           updatedAt: new Date().toISOString(),
         },
       })
@@ -173,12 +189,12 @@ export class MobileProviderRepository extends Disposable implements IProviderSyn
         api: row.api as string | null ?? null,
         baseUrl: row.baseUrl as string | null ?? null,
         reasoning: row.reasoning as boolean ?? false,
-        inputModes: typeof row.inputModes === 'string' ? row.inputModes : row.inputModes != null ? JSON.stringify(row.inputModes) : null,
-        cost: typeof row.cost === 'string' ? row.cost : row.cost != null ? JSON.stringify(row.cost) : null,
+        inputModes: decodeJsonColumn(row.inputModes) ?? ['text'],
+        cost: decodeJsonColumn(row.cost),
         contextWindow: (row.contextWindow as number) ?? 128000,
         maxTokens: (row.maxTokens as number) ?? 16384,
-        headers: typeof row.headers === 'string' ? row.headers : row.headers != null ? JSON.stringify(row.headers) : null,
-        compat: typeof row.compat === 'string' ? row.compat : row.compat != null ? JSON.stringify(row.compat) : null,
+        headers: decodeJsonColumn(row.headers),
+        compat: decodeJsonColumn(row.compat),
         sort: (row.sort as number) ?? 0,
       })
       .onConflictDoUpdate({
@@ -188,12 +204,12 @@ export class MobileProviderRepository extends Disposable implements IProviderSyn
           api: row.api as string | null ?? null,
           baseUrl: row.baseUrl as string | null ?? null,
           reasoning: row.reasoning as boolean ?? false,
-          inputModes: typeof row.inputModes === 'string' ? row.inputModes : row.inputModes != null ? JSON.stringify(row.inputModes) : null,
-          cost: typeof row.cost === 'string' ? row.cost : row.cost != null ? JSON.stringify(row.cost) : null,
+          inputModes: decodeJsonColumn(row.inputModes) ?? ['text'],
+          cost: decodeJsonColumn(row.cost),
           contextWindow: (row.contextWindow as number) ?? 128000,
           maxTokens: (row.maxTokens as number) ?? 16384,
-          headers: typeof row.headers === 'string' ? row.headers : row.headers != null ? JSON.stringify(row.headers) : null,
-          compat: typeof row.compat === 'string' ? row.compat : row.compat != null ? JSON.stringify(row.compat) : null,
+          headers: decodeJsonColumn(row.headers),
+          compat: decodeJsonColumn(row.compat),
           sort: (row.sort as number) ?? 0,
           updatedAt: new Date().toISOString(),
         },

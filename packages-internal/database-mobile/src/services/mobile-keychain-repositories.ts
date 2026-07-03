@@ -418,17 +418,20 @@ export class MobileSshKeyRepository extends Disposable implements IMobileSshKeyR
   }
 
   private async _toSyncRow(row: ISshKeyEntity): Promise<ISyncEntityRow> {
+    // Desktop declares algorithm/privateKey/publicKey/source NOT NULL; coerce this
+    // schema's nullable columns to safe defaults so a mobile row never produces a
+    // payload the peer rejects on insert (which would silently drop the key there).
     return {
       id: row.id,
       label: row.label,
-      algorithm: row.algorithm,
+      algorithm: row.algorithm ?? 'ed25519',
       bits: row.bits,
       privateKey: (await this._tryDecrypt(row.id, 'privateKey', row.privateKeyCt)) ?? '',
-      publicKey: row.publicKey,
+      publicKey: row.publicKey ?? '',
       certificate: row.certificate,
       passphrase: await this._tryDecrypt(row.id, 'passphrase', row.passphraseCt),
       savePassphrase: row.savePassphrase,
-      source: row.source,
+      source: row.source ?? 'imported',
       publicKeyFingerprint: row.publicKeyFingerprint,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

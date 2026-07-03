@@ -31,9 +31,7 @@ export const bytesBlob = customType<{ data: Uint8Array; driverData: Uint8Array }
 
 export const createdAt = () => text('created_at').notNull().$defaultFn(() => new Date().toISOString());
 
-export const updatedAt = () => text('updated_at').notNull()
-  .$defaultFn(() => new Date().toISOString())
-  .$onUpdate(() => new Date().toISOString());
+export const updatedAt = () => text('updated_at').notNull().$defaultFn(() => new Date().toISOString()).$onUpdate(() => new Date().toISOString());
 
 export const timestamps = {
   createdAt: createdAt(),
