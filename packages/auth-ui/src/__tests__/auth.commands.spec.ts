@@ -54,6 +54,7 @@ class FakeAuthService implements IAuthService {
   async setupEncryptionPassword(): Promise<void> {}
   async unlockVault(): Promise<void> {}
   async changePassword(): Promise<void> {}
+  async resumePendingPasswordChange(): Promise<void> {}
   async getServerCapabilities() { return { googleOAuth: false }; }
 }
 

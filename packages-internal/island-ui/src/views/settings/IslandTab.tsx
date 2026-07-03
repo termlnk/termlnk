@@ -20,7 +20,7 @@ import { IConfigManagerService } from '@termlnk/rpc-client';
 import { Volume1, Volume2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SOUND_CONFIG_KEY_TO_URL } from '../../assets/sound-urls';
-import { ISLAND_SETTINGS_CONFIG_KEY, normalizeIslandSettings } from './island-settings.types';
+import { AGENT_CORE_PLUGIN_CONFIG_KEY, normalizeIslandSettings } from './island-settings.types';
 import { SoundEventRow } from './SoundEventRow';
 
 export function IslandTab() {
@@ -35,7 +35,7 @@ export function IslandTab() {
     (updates: Partial<IIslandSettings>) => {
       setSettings((prev) => {
         const next = normalizeIslandSettings({ ...prev, ...updates });
-        void configManagerService.setField(ISLAND_SETTINGS_CONFIG_KEY, 'settings', next);
+        void configManagerService.setField(AGENT_CORE_PLUGIN_CONFIG_KEY, 'islandSettings', next);
         return next;
       });
     },
@@ -46,7 +46,7 @@ export function IslandTab() {
     (updates: Partial<IIslandSoundConfig>) => {
       setSettings((prev) => {
         const next = normalizeIslandSettings({ ...prev, sound: { ...prev.sound, ...updates } });
-        void configManagerService.setField(ISLAND_SETTINGS_CONFIG_KEY, 'settings', next);
+        void configManagerService.setField(AGENT_CORE_PLUGIN_CONFIG_KEY, 'islandSettings', next);
         return next;
       });
     },
@@ -64,7 +64,7 @@ export function IslandTab() {
           ...prev,
           sound: { ...prev.sound, [eventKey]: { ...currentEvent, ...updates } },
         });
-        void configManagerService.setField(ISLAND_SETTINGS_CONFIG_KEY, 'settings', next);
+        void configManagerService.setField(AGENT_CORE_PLUGIN_CONFIG_KEY, 'islandSettings', next);
         return next;
       });
     },
@@ -120,7 +120,7 @@ export function IslandTab() {
 
   useEffect(() => {
     let active = true;
-    configManagerService.getField<IIslandSettings>(ISLAND_SETTINGS_CONFIG_KEY, 'settings')
+    configManagerService.getField<IIslandSettings>(AGENT_CORE_PLUGIN_CONFIG_KEY, 'islandSettings')
       .then((stored) => {
         if (active) {
           setSettings(normalizeIslandSettings(stored));

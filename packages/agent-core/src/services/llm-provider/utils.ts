@@ -17,16 +17,26 @@ import type { Api, Model } from '@earendil-works/pi-ai';
 import type { ICustomModelDefinition, IModelOption, IModelOverrides, IProviderUserConfig } from '@termlnk/agent';
 
 /**
- * 将用户覆盖合并到 Model<Api> — 对齐 pi-coding-agent 的 applyModelOverride
+ * Merge user overrides into a Model<Api> — mirrors pi-coding-agent applyModelOverride.
  */
 export function applyModelOverride(model: Model<Api>, override: IModelOverrides): Model<Api> {
   const result = { ...model };
 
-  if (override.name !== undefined) result.name = override.name;
-  if (override.reasoning !== undefined) result.reasoning = override.reasoning;
-  if (override.input !== undefined) result.input = override.input;
-  if (override.contextWindow !== undefined) result.contextWindow = override.contextWindow;
-  if (override.maxTokens !== undefined) result.maxTokens = override.maxTokens;
+  if (override.name !== undefined) {
+    result.name = override.name;
+  }
+  if (override.reasoning !== undefined) {
+    result.reasoning = override.reasoning;
+  }
+  if (override.input !== undefined) {
+    result.input = override.input;
+  }
+  if (override.contextWindow !== undefined) {
+    result.contextWindow = override.contextWindow;
+  }
+  if (override.maxTokens !== undefined) {
+    result.maxTokens = override.maxTokens;
+  }
 
   if (override.cost) {
     result.cost = {
@@ -49,7 +59,7 @@ export function applyModelOverride(model: Model<Api>, override: IModelOverrides)
 }
 
 /**
- * 从 ICustomModelDefinition 构造 pi-ai Model<Api>
+ * Construct a pi-ai Model<Api> from ICustomModelDefinition.
  */
 export function buildModelFromCustomDef(
   providerId: string,
@@ -85,7 +95,7 @@ export function buildFallbackModel(
 }
 
 /**
- * 将 Model<Api> 转为 UI 层的 IModelOption
+ * Convert a Model<Api> to IModelOption for the UI layer.
  */
 export function toModelOption(providerId: string, model: Model<Api>, enabled: boolean): IModelOption {
   return {

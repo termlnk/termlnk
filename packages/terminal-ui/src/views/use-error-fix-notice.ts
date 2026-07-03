@@ -16,7 +16,7 @@
 import type { Terminal } from '@xterm/xterm';
 import type { RefObject } from 'react';
 import { useDependency } from '@termlnk/design';
-import { IAIAgentClientService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 import { useEffect } from 'react';
 
 /**
@@ -68,7 +68,7 @@ export interface IUseErrorFixNoticeOptions {
 
 export function useErrorFixNotice(options: IUseErrorFixNoticeOptions): void {
   const { sessionId, xtermRef } = options;
-  const aiAgentService = useDependency(IAIAgentClientService);
+  const aiAgentService = useDependency(IAIAgentMessagingService);
 
   useEffect(() => {
     const sub = aiAgentService.terminalSuggestion$.subscribe((suggestion) => {

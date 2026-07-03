@@ -21,6 +21,7 @@ import { join } from 'node:path';
 import { AGENT_PLUGIN_CONFIG_KEY, SKILL_CONFIG_KEY, SKILL_USER_DIR } from '@termlnk/agent';
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository, SkillRepository } from '@termlnk/database';
+import { NETWORK_PLUGIN_CONFIG_KEY } from '@termlnk/network';
 import { resolveConfigPath } from '@termlnk/rpc';
 import { resolveSkillAbsolutePath } from './skill-path.utils';
 import { buildProxyEnvVars, buildSkillRepositoryLocalPath, cloneGitHubRepository, getSkillRepositoryScanRoot, normalizeGitHubRepositoryInput } from './skill-repository.utils';
@@ -163,7 +164,7 @@ export class SkillInstallerService extends Disposable implements ISkillInstaller
   }
 
   private async _getProxyEnvVars(): Promise<Record<string, string> | undefined> {
-    const proxy = await this._configRepository.getField<IProxyConfig>('network.config', 'proxy');
+    const proxy = await this._configRepository.getField<IProxyConfig>(NETWORK_PLUGIN_CONFIG_KEY, 'proxy');
     if (!proxy?.enabled) {
       return;
     }

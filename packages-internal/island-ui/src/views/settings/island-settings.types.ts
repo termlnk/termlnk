@@ -15,9 +15,11 @@
 
 import type { IIslandSettings, IIslandSoundConfig, IIslandSoundEventConfig } from '@termlnk/island';
 import { isMacintosh } from '@termlnk/core';
-import { ISLAND_SETTINGS_CONFIG_KEY, normalizeIslandSoundConfig } from '@termlnk/island';
+import { normalizeIslandSoundConfig } from '@termlnk/island';
 
-export { ISLAND_SETTINGS_CONFIG_KEY };
+// Canonical definition in @termlnk/agent, re-exported from @termlnk/agent-core.
+// Island settings are persisted under this key with subKey 'islandSettings'.
+export { AGENT_CORE_PLUGIN_CONFIG_KEY } from '@termlnk/agent';
 export type { IIslandSettings, IIslandSoundConfig, IIslandSoundEventConfig };
 
 /** Outer-settings default: island is only enabled by default on macOS. */

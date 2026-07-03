@@ -17,7 +17,7 @@ import type { IExtensionDescription, IRegistryExtensionMetadata } from '@termlnk
 import { createIdentifier, Disposable } from '@termlnk/core';
 import { IRPCClientService } from '../rpc-client.service';
 
-export interface IExtensionClientService {
+export interface IExtensionManagementService {
   scanExtensions(): Promise<IExtensionDescription[]>;
   scanLocalExtension(absolutePath: string): Promise<IExtensionDescription>;
   readExtensionFile(extensionId: string, filePath: string): Promise<string>;
@@ -36,9 +36,9 @@ export interface IExtensionClientService {
   getRegistryFeatured(): Promise<IRegistryExtensionMetadata[]>;
 }
 
-export const IExtensionClientService = createIdentifier<IExtensionClientService>('rpc-client.extension-client-service');
+export const IExtensionManagementService = createIdentifier<IExtensionManagementService>('rpc-client.extension-management-service');
 
-export class ExtensionClientService extends Disposable implements IExtensionClientService {
+export class ExtensionManagementService extends Disposable implements IExtensionManagementService {
   constructor(
     @IRPCClientService private readonly _rpcClientService: IRPCClientService
   ) {

@@ -17,7 +17,7 @@ import type { IRegistryExtensionMetadata } from '@termlnk/extension';
 import { LocaleService } from '@termlnk/core';
 import { cn, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle, Input, useDependency } from '@termlnk/design';
 import { IExtensionService } from '@termlnk/extension';
-import { IExtensionClientService } from '@termlnk/rpc-client';
+import { IExtensionManagementService } from '@termlnk/rpc-client';
 import { Search, Store } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExtensionMarketplaceCard } from './ExtensionMarketplaceCard';
@@ -25,7 +25,7 @@ import { ExtensionMarketplaceCard } from './ExtensionMarketplaceCard';
 export function ExtensionMarketplace() {
   const localeService = useDependency(LocaleService);
   const extensionService = useDependency(IExtensionService);
-  const extensionClientService = useDependency(IExtensionClientService);
+  const extensionManagementService = useDependency(IExtensionManagementService);
 
   const [items, setItems] = useState<IRegistryExtensionMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +50,7 @@ export function ExtensionMarketplace() {
     setLoading(true);
     setLoadError(null);
     try {
-      const featured = await extensionClientService.getRegistryFeatured();
+      const featured = await extensionManagementService.getRegistryFeatured();
       setItems(featured);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -59,7 +59,7 @@ export function ExtensionMarketplace() {
     } finally {
       setLoading(false);
     }
-  }, [extensionClientService]);
+  }, [extensionManagementService]);
 
   useEffect(() => {
     void loadFeatured();

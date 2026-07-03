@@ -15,13 +15,14 @@
 
 import type { AgentSessionStatus, ExternalAgentType, IAgentHookEvent, IAgentMonitorService, IExternalAgentSession } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
-import type { IIslandSettingsStored } from './agent-monitor.utils';
+import type { IIslandSettingsStored } from '../../controllers/config.schema';
 import process from 'node:process';
 import { AGENT_DISPLAY_NAMES } from '@termlnk/agent';
 import { Disposable, ILogService, Inject, INotificationService, isMacintosh, toDisposable } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { BehaviorSubject, filter, Subject } from 'rxjs';
-import { ISLAND_SETTINGS_CONFIG_KEY, isNeedsInputNotification, resolveSource, SESSION_IDLE_GC_MS, truncate, ZOMBIE_CHECK_INTERVAL_MS } from './agent-monitor.utils';
+import { AGENT_CORE_PLUGIN_CONFIG_KEY } from '../../controllers/config.schema';
+import { isNeedsInputNotification, resolveSource, SESSION_IDLE_GC_MS, truncate, ZOMBIE_CHECK_INTERVAL_MS } from './agent-monitor.utils';
 import { applyTodoTool, TODO_TOOL_NAMES } from './todos';
 import { TOOL_FORMATTERS } from './tool-descriptions';
 
@@ -96,7 +97,10 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
 
     this.disposeWithMe(
       this._configRepository.changed$
-        .pipe(filter((event) => event.key === ISLAND_SETTINGS_CONFIG_KEY))
+        .pipe(filter((event) =>
+          event.key === AGENT_CORE_PLUGIN_CONFIG_KEY
+          && (event.subKey === 'islandSettings' || event.subKey === undefined)
+        ))
         .subscribe(() => {
           void this._refreshIslandEnabled();
         })
@@ -106,7 +110,7 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
   private async _refreshIslandEnabled(): Promise<void> {
     try {
       const stored = await this._configRepository
-        .getField<IIslandSettingsStored>(ISLAND_SETTINGS_CONFIG_KEY, 'settings');
+        .getField<IIslandSettingsStored>(AGENT_CORE_PLUGIN_CONFIG_KEY, 'islandSettings');
       // Default to enabled on macOS (matches DEFAULT_ISLAND_SETTINGS in settings-ui).
       this._islandEnabled = stored?.enabled !== false;
     } catch {

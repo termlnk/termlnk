@@ -20,7 +20,7 @@ import { AGENT_PLUGIN_CONFIG_KEY, AGENT_TERMINAL_SUGGEST_CONFIG_SUB_KEY, DEFAULT
 import { LocaleService, platform } from '@termlnk/core';
 import { Card, CardContent, CardHeader, cn, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, useDependency, useObservable } from '@termlnk/design';
 import { IConfigManagerService, IProviderConfigService } from '@termlnk/rpc-client';
-import { createMissingShellOption, DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LETTER_SPACING, DEFAULT_PERSISTENCE_SCROLLBACK, DEFAULT_TERMINAL_RENDERER_ENGINE, getDefaultLocalTerminalConfig, IPTYService, normalizeLocalTerminalConfig, normalizeShellIntegrationConfig, resolveLegacyShellValue, SHELL_INTEGRATION_CONFIG_KEY, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
+import { createMissingShellOption, DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LETTER_SPACING, DEFAULT_PERSISTENCE_SCROLLBACK, DEFAULT_TERMINAL_RENDERER_ENGINE, getDefaultLocalTerminalConfig, IPTYService, normalizeLocalTerminalConfig, normalizeShellIntegrationConfig, resolveLegacyShellValue, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_TERMINAL_FONT_FAMILIES, PERSISTENCE_SCROLLBACK_MAX, PERSISTENCE_SCROLLBACK_MIN, TERMINAL_FONT_SIZE_MAX, TERMINAL_FONT_SIZE_MIN, TERMINAL_LETTER_SPACING_MAX, TERMINAL_LETTER_SPACING_MIN } from '../../../config/config';
 
@@ -278,7 +278,7 @@ export function TerminalTab(): ReactElement {
           ...prev,
           ssh: { ...prev.ssh, ...patch },
         });
-        void configManagerService.set(SHELL_INTEGRATION_CONFIG_KEY, next).catch(() => { });
+        void configManagerService.setField(TERMINAL_PLUGIN_CONFIG_KEY, 'shellIntegration', next).catch(() => { });
         return next;
       });
     },
@@ -328,7 +328,9 @@ export function TerminalTab(): ReactElement {
     const loadLocalTerminalShellOptions = async () => {
       try {
         const options = await ptyService.getLocalTerminalShellOptions();
-        if (!active) return;
+        if (!active) {
+          return;
+        }
         setAvailableLocalTerminalShellOptions(options);
       } catch {
         if (active) {
@@ -349,7 +351,7 @@ export function TerminalTab(): ReactElement {
 
     const loadShellIntegration = async () => {
       try {
-        const stored = await configManagerService.get<Partial<IShellIntegrationConfig>>(SHELL_INTEGRATION_CONFIG_KEY);
+        const stored = await configManagerService.getField<Partial<IShellIntegrationConfig>>(TERMINAL_PLUGIN_CONFIG_KEY, 'shellIntegration');
         if (!active) {
           return;
         }
@@ -453,7 +455,9 @@ export function TerminalTab(): ReactElement {
 
       try {
         const fonts = await queryLocalFonts();
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         const families = fonts
           .map((font) => font.family)

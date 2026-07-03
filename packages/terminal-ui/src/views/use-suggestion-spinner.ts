@@ -16,7 +16,7 @@
 import type { Terminal } from '@xterm/xterm';
 import type { RefObject } from 'react';
 import { useDependency } from '@termlnk/design';
-import { IAIAgentClientService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useRef } from 'react';
 
 /**
@@ -71,7 +71,7 @@ export interface IUseSuggestionSpinnerResult {
 }
 
 /**
- * Renderer-side spinner driven by `IAIAgentClientService.terminalSuggestionPhase$`.
+ * Renderer-side spinner driven by `IAIAgentMessagingService.terminalSuggestionPhase$`.
  *
  * - Subscribes filtered by sessionId; tracks active requestIds in a Set so
  *   superseded requests don't race-stop the indicator.
@@ -81,7 +81,7 @@ export interface IUseSuggestionSpinnerResult {
  */
 export function useSuggestionSpinner(options: IUseSuggestionSpinnerOptions): IUseSuggestionSpinnerResult {
   const { sessionId, xtermRef } = options;
-  const aiAgentService = useDependency(IAIAgentClientService);
+  const aiAgentService = useDependency(IAIAgentMessagingService);
 
   // Active request ids. Spinner runs iff this set is non-empty. Stored in a
   // ref so the subscription handler and notifyUserInput observe the latest

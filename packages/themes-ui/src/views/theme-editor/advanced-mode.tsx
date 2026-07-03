@@ -106,7 +106,9 @@ export function AdvancedMode(props: IAdvancedModeProps) {
   const [activeTab, setActiveTab] = useState<TabType>('ui');
 
   const handleBase30Change = useCallback((key: keyof IBase30Colors, value: string) => {
-    if (!onThemeChange) return;
+    if (!onThemeChange) {
+      return;
+    }
 
     onThemeChange({
       ...theme,
@@ -118,7 +120,9 @@ export function AdvancedMode(props: IAdvancedModeProps) {
   }, [theme, onThemeChange]);
 
   const handleBase16Change = useCallback((key: keyof IBase16Colors, value: string) => {
-    if (!onThemeChange) return;
+    if (!onThemeChange) {
+      return;
+    }
 
     onThemeChange({
       ...theme,

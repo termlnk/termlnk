@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IBackupClientService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
+import type { IBackupFileService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
 import { AuthState, IAuthService } from '@termlnk/auth';
 import { IConfirmService, ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Button, cn, useDependency, useObservable } from '@termlnk/design';
-import { IBackupClientService as IBackupClientServiceId } from '@termlnk/sync';
+import { IBackupFileService as IBackupFileServiceId } from '@termlnk/sync';
 import { CheckCircle2Icon, DownloadIcon, LockIcon, TriangleAlertIcon, UploadIcon } from 'lucide-react';
 import { useState } from 'react';
 
@@ -28,14 +28,14 @@ type BackupActionStatus =
   | { kind: 'success-import'; result: IBackupImportFileResult }
   | { kind: 'error'; message: string };
 
-// Encrypted backup export/import card. Returns null when IBackupClientService is unbound;
+// Encrypted backup export/import card. Returns null when IBackupFileService is unbound;
 // disables buttons until the user is authenticated (master key is required to seal/open
 // the backup). Backup bytes never cross IPC — the renderer only sees a path + summary.
 // Import currently uses `replace` mode; `merge` is gated on the LWW engine.
 export function BackupCard() {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
-  const backupClient = useDependency(IBackupClientServiceId, Quantity.OPTIONAL);
+  const backupClient = useDependency(IBackupFileServiceId, Quantity.OPTIONAL);
   const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
 
   const authState = useObservable<AuthState>(
@@ -154,7 +154,7 @@ function BackupStatusLine({ status }: { status: BackupActionStatus }) {
 
 interface IImportTriggerProps {
   readonly disabled: boolean;
-  readonly backupClient: IBackupClientService;
+  readonly backupClient: IBackupFileService;
   readonly setStatus: (status: BackupActionStatus) => void;
   readonly logService: ILogService;
 }
@@ -195,7 +195,7 @@ function ImportTrigger({ disabled, backupClient, setStatus, logService }: IImpor
 }
 
 async function runExport(
-  client: IBackupClientService,
+  client: IBackupFileService,
   setStatus: (status: BackupActionStatus) => void,
   logService: ILogService
 ): Promise<void> {
@@ -214,7 +214,7 @@ async function runExport(
 }
 
 async function runImport(
-  client: IBackupClientService,
+  client: IBackupFileService,
   setStatus: (status: BackupActionStatus) => void,
   logService: ILogService
 ): Promise<void> {

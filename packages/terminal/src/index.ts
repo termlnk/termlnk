@@ -17,7 +17,7 @@ export type { CursorStyle, IEncodingGroup, IEncodingItem, ILocalTerminalConfig, 
 export { createMissingShellOption, DEFAULT_CONNECT_HEARTBEAT, DEFAULT_CONNECT_TIMEOUT, DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_ENCODE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_HOST_ROOT, DEFAULT_LETTER_SPACING, DEFAULT_LOCAL_TERMINAL_SHELL, DEFAULT_PERSISTENCE_SCROLLBACK, DEFAULT_TERM_TYPE, DEFAULT_TERMINAL_RENDERER_ENGINE, DEFAULT_TERMINAL_WORD_SEPARATOR, DEFAULT_WINDOW_TRANSPARENCY_OPACITY, DEFAULT_WINDOWS_LOCAL_TERMINAL_SHELL, ENCODING_GROUPS, getDefaultLocalTerminalConfig, getShellExecutableName, normalizeLocalTerminalConfig, resolveLegacyShellValue } from './config/config';
 export { DEFAULT_TERMINAL_INPUT_CONFIG, TERMINAL_INPUT_CONFIG_KEY } from './config/input-config';
 export type { ITerminalInputConfig } from './config/input-config';
-export { DEFAULT_SHELL_INTEGRATION_CONFIG, normalizeShellIntegrationConfig, SHELL_INTEGRATION_CONFIG_KEY } from './config/shell-integration-config';
+export { DEFAULT_SHELL_INTEGRATION_CONFIG, normalizeShellIntegrationConfig } from './config/shell-integration-config';
 export type { IShellIntegrationConfig, ISSHShellIntegrationConfig } from './config/shell-integration-config';
 export type { ITerminalConfig } from './controllers/config.schema';
 export { TERMINAL_PLUGIN_CONFIG_KEY } from './controllers/config.schema';

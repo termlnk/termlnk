@@ -14,7 +14,7 @@
  */
 
 import type { Nullable } from '@termlnk/core';
-import { createIdentifier, Disposable, DisposableCollection, toDisposable } from '@termlnk/core';
+import { createIdentifier, Disposable, DisposableCollection, ILogService, Optional, toDisposable } from '@termlnk/core';
 import { Observable } from 'rxjs';
 import { share } from 'rxjs/operators';
 
@@ -51,6 +51,12 @@ export interface ISocket {
  * This service create a WebSocket connection to a remote server.
  */
 export class WebSocketService extends Disposable implements ISocketService {
+  constructor(
+    @Optional(ILogService) private readonly _logService?: ILogService
+  ) {
+    super();
+  }
+
   createSocket(URL: string): Nullable<ISocket> {
     try {
       const connection = new WebSocket(URL);
@@ -89,7 +95,7 @@ export class WebSocketService extends Disposable implements ISocketService {
 
       return webSocket;
     } catch (e) {
-      console.error(e);
+      this._logService?.error(e);
       return null;
     }
   }

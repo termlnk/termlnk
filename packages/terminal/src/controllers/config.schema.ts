@@ -15,6 +15,7 @@
 
 import type { DependencyOverride } from '@termlnk/core';
 import type { ILocalTerminalConfig, ITerminalAppearanceConfig, IWindowTransparencyConfig } from '../config/config';
+import type { IShellIntegrationConfig } from '../config/shell-integration-config';
 
 export const TERMINAL_PLUGIN_CONFIG_KEY = 'terminal.config';
 
@@ -25,6 +26,8 @@ export interface ITerminalConfig {
   appearance?: ITerminalAppearanceConfig;
   localTerminal?: ILocalTerminalConfig;
   transparency?: IWindowTransparencyConfig;
+  /** Shell integration config (OSC 633 auto-injection, heuristic fallback). */
+  shellIntegration?: IShellIntegrationConfig;
 }
 
 export const defaultPluginConfig: ITerminalConfig = {};

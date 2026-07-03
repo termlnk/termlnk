@@ -15,7 +15,7 @@
 
 import { LocaleService } from '@termlnk/core';
 import { Button, useDependency } from '@termlnk/design';
-import { IAIAgentClientService, IChatSessionService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService, IChatSessionService } from '@termlnk/rpc-client';
 import { ResizableService, TooltipWrapper } from '@termlnk/ui';
 import { ArrowLeft, History, Plus, Trash2, X } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
@@ -28,7 +28,7 @@ interface IChatHeaderProps {
 }
 
 export function ChatHeader({ showHistory, onToggleHistory, sessionTitle }: IChatHeaderProps) {
-  const aiAgentService = useDependency(IAIAgentClientService);
+  const aiAgentService = useDependency(IAIAgentMessagingService);
   const chatSessionService = useDependency(IChatSessionService);
   const resizableService = useDependency(ResizableService);
   const localeService = useDependency(LocaleService);

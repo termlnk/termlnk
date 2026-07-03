@@ -13,14 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
-import type { BackupImportMode, IBackupClientService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
+import type { BackupImportMode, IBackupFileService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
 import { IRPCClientService } from '../rpc-client.service';
 
 // Renderer-side facade: pure tRPC forwarding. The backup payload bytes never cross IPC —
 // the main-process route uses the file dialog and fs APIs, returning only a summary
 // (path, counts). Even a transient appearance of ciphertext in the renderer's IPC channel
 // would be unnecessary exposure.
-export class BackupClientService implements IBackupClientService {
+export class BackupFileService implements IBackupFileService {
   constructor(
     @IRPCClientService private readonly _rpcClientService: IRPCClientService
   ) {}

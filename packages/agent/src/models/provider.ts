@@ -16,37 +16,37 @@
 import type { Api, Model } from '@earendil-works/pi-ai';
 
 /**
- * LLM 提供商运行时对象
+ * LLM provider runtime object.
  *
- * 内置提供商: 模型来自 pi-ai getModels()，运行时合并用户配置
- * 自定义提供商: 模型定义存储在数据库，运行时构造 Model<Api> 对象
+ * Built-in provider: models come from pi-ai getModels(), merged with user config at runtime.
+ * Custom provider: model definitions stored in DB, Model<Api> constructed at runtime.
  */
 export interface ILLMProvider {
-  /** 提供商 ID，内置使用 KnownProvider 值，自定义使用 nanoid */
+  /** Provider ID — KnownProvider value for built-in, nanoid for custom */
   id: string;
-  /** 显示名称 */
+  /** Display name */
   name: string;
-  /** 是否启用 */
+  /** Whether enabled */
   enabled: boolean;
-  /** 是否为 pi-ai 内置提供商 */
+  /** Whether this is a pi-ai built-in provider */
   builtin: boolean;
-  /** API 接口类型 */
+  /** API type */
   api: Api;
-  /** API 密钥 */
+  /** API key */
   apiKey?: string;
-  /** API 基础地址（覆盖 pi-ai 默认值） */
+  /** API base URL (overrides pi-ai default) */
   baseUrl?: string;
-  /** 自定义请求头 */
+  /** Custom request headers */
   headers?: Record<string, string>;
-  /** 排序权重（越小越靠前） */
+  /** Sort weight (lower = higher priority) */
   sort: number;
-  /** 模型列表 — 直接使用 pi-ai 的 Model<Api> 类型 */
+  /** Model list — uses pi-ai Model<Api> type directly */
   models: Model<Api>[];
 }
 
 /**
- * 提供商用户配置（数据库持久化 + RPC 传输）
- * 仅存储用户修改的字段，不含 pi-ai 内置数据
+ * Provider user config (DB-persisted + RPC transport).
+ * Only stores user-modified fields; no pi-ai built-in data.
  */
 export interface IProviderUserConfig {
   providerId: string;
@@ -60,7 +60,7 @@ export interface IProviderUserConfig {
 }
 
 /**
- * 模型用户配置（数据库持久化 + RPC 传输）
+ * Model user config (DB-persisted + RPC transport).
  */
 export interface IModelUserConfig {
   providerId: string;
@@ -70,8 +70,8 @@ export interface IModelUserConfig {
 }
 
 /**
- * 模型参数覆盖 — 对齐 pi-coding-agent ModelOverride
- * 仅包含用户可自定义的字段，合并到 Model<Api> 上
+ * Model parameter overrides — mirrors pi-coding-agent ModelOverride.
+ * Only user-customizable fields, merged onto Model<Api>.
  */
 export interface IModelOverrides {
   name?: string;
@@ -85,8 +85,8 @@ export interface IModelOverrides {
 }
 
 /**
- * 自定义模型完整定义 — 对齐 pi-coding-agent ModelDefinitionSchema
- * 用于不在 pi-ai 内置列表中的自定义模型，运行时构造为 Model<Api>
+ * Full custom model definition — mirrors pi-coding-agent ModelDefinitionSchema.
+ * For models not in the pi-ai built-in list; constructed into Model<Api> at runtime.
  */
 export interface ICustomModelDefinition {
   id: string;
@@ -103,11 +103,11 @@ export interface ICustomModelDefinition {
 }
 
 /**
- * UI 层 - 模型选项
- * 从 Model<Api> 提取 UI 需要的字段，避免传输完整 Model 对象
+ * UI layer model option.
+ * Extracts only the fields the UI needs from Model<Api> to avoid transferring the full object.
  */
 export interface IModelOption {
-  /** 全局唯一 ID: '{providerId}/{modelId}' */
+  /** Globally unique ID: '{providerId}/{modelId}' */
   id: string;
   name: string;
   providerId: string;
@@ -120,7 +120,7 @@ export interface IModelOption {
 }
 
 /**
- * UI 层 - 提供商分组（RPC 传输用轻量类型）
+ * UI layer provider group (lightweight type for RPC transport).
  */
 export interface IProviderGroup {
   id: string;

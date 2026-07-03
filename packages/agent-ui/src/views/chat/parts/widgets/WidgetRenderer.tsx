@@ -15,7 +15,7 @@
 
 import { IThemeService } from '@termlnk/core';
 import { useDependency, useObservable } from '@termlnk/design';
-import { IAIAgentClientService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { assembleDocument, assembleShellDocument, buildThemeCss, STREAM_DEBOUNCE_MS } from '../../../../services/generative-ui/shell-template';
 
@@ -38,7 +38,7 @@ export const WidgetRenderer = memo(function WidgetRenderer({
   isStreaming = false,
 }: IWidgetRendererProps) {
   const themeService = useDependency(IThemeService);
-  const aiAgentClient = useDependency(IAIAgentClientService);
+  const aiAgentClient = useDependency(IAIAgentMessagingService);
   const currentTheme = useObservable(themeService.currentTheme$, themeService.currentTheme);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);

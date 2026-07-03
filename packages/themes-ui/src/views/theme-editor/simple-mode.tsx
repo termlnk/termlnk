@@ -18,19 +18,20 @@ import { useCallback } from 'react';
 import { ColorPicker } from './color-picker';
 
 export interface SimpleModeProps {
-  /** 当前主题 */
+  /** Current theme */
   theme: ITheme;
-  /** 主题变更回调 */
+  /** Theme change callback */
   onThemeChange?: (theme: ITheme) => void;
 }
 
 /**
- * 简单模式编辑器
- * 编辑 4 个关键颜色：背景、前景、强调色、边框
+ * Simple mode editor — edit 4 key colors: background, foreground, accent, border.
  */
 export function SimpleMode({ theme, onThemeChange }: SimpleModeProps) {
   const handleColorChange = useCallback((key: keyof IBase30Colors, value: string) => {
-    if (!onThemeChange) return;
+    if (!onThemeChange) {
+      return;
+    }
 
     onThemeChange({
       ...theme,

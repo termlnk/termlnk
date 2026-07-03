@@ -26,15 +26,15 @@ export interface ITrzszCallbacks {
   onProgress(event: FileTransferEvent): void;
 }
 
-/** 进度事件节流间隔（毫秒） */
+/** Progress event throttle interval (ms) */
 const PROGRESS_THROTTLE_MS = 200;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 /**
- * Electron 的 fs 模块会将 .asar 文件当作目录处理，导致 trzsz 无法读取。
- * 传输期间禁用此行为，传输结束后恢复。
+ * Electron's fs module treats .asar files as directories, preventing trzsz from reading them.
+ * Disable this during transfer and restore afterward.
  */
 function setNoAsar(value: boolean): void {
   if (typeof process !== 'undefined') {
@@ -57,7 +57,9 @@ export function createTrzszMiddleware(
 
   const filter = new TrzszFilter({
     writeToTerminal: (data: string | ArrayBuffer | Uint8Array | Blob) => {
-      if (_disposed || _isScanning) return;
+      if (_disposed || _isScanning) {
+        return;
+      }
       if (typeof data === 'string') {
         writeToTerminal(encoder.encode(data));
       } else if (data instanceof Uint8Array) {
@@ -67,11 +69,13 @@ export function createTrzszMiddleware(
       }
     },
     sendToServer: (data: string | Uint8Array) => {
-      // _isScanning: 正在扫描服务端输出（feedFromSession 空闲路径），
-      //   此时 ZMODEM 二进制数据也会经过 processServerOutput，
-      //   必须抑制以防止向 SSH 通道注入数据破坏 ZMODEM 协议。
-      // _isScanningInput: 正在扫描终端输入（feedFromTerminal 空闲路径）。
-      if (_disposed || _isScanning || _isScanningInput) return;
+      // _isScanning: scanning server output (feedFromSession idle path) —
+      //   ZMODEM binary data also passes through processServerOutput here,
+      //   must suppress to prevent injecting data into the SSH channel and breaking ZMODEM.
+      // _isScanningInput: scanning terminal input (feedFromTerminal idle path).
+      if (_disposed || _isScanning || _isScanningInput) {
+        return;
+      }
       writeToChannel(typeof data === 'string' ? encoder.encode(data) : new Uint8Array(data));
     },
     chooseSendFiles: async (directory?: boolean) => {
@@ -83,7 +87,7 @@ export function createTrzszMiddleware(
           _state$.next('idle');
           return undefined;
         }
-        // 禁用 Electron ASAR 处理，让 .asar 文件作为普通文件被读取
+        // Disable Electron ASAR handling so .asar files are read as plain files
         setNoAsar(true);
         callbacks.onProgress({
           type: FileTransferEventType.STARTED,
@@ -122,10 +126,10 @@ export function createTrzszMiddleware(
     terminalColumns: terminalColumns(),
   });
 
-  // 拦截 TrzszFilter 内部的 TextProgressBar 以获取结构化进度数据。
-  // TrzszFilter.createProgressBar() 在传输开始时创建 TextProgressBar，
-  // TextProgressBar 实现 ProgressCallback 接口 (onNum/onName/onSize/onStep/onDone)。
-  // 我们 wrap 这些回调来发射 FileTransferEvent。
+  // Intercept TrzszFilter's internal TextProgressBar to capture structured progress data.
+  // TrzszFilter.createProgressBar() creates a TextProgressBar at transfer start;
+  // TextProgressBar implements ProgressCallback (onNum/onName/onSize/onStep/onDone).
+  // We wrap these callbacks to emit FileTransferEvent.
   const _progress = { fileCount: 0, fileIdx: 0, fileName: '', fileSize: 0, lastTime: 0 };
 
   const filterAny = filter as any;
@@ -134,7 +138,9 @@ export function createTrzszMiddleware(
     origCreateProgressBar.call(this, noProgress, tmuxPaneColumns);
 
     const progressBar = this.textProgressBar;
-    if (!progressBar) return;
+    if (!progressBar) {
+      return;
+    }
 
     _progress.fileCount = 0;
     _progress.fileIdx = 0;
@@ -167,7 +173,7 @@ export function createTrzszMiddleware(
 
     progressBar.onStep = (step: number) => {
       const now = Date.now();
-      // 节流：最多每 200ms 发射一次进度事件，但 100% 时总是发射
+      // Throttle: emit at most once per 200ms, but always emit at 100%
       if (now - _progress.lastTime >= PROGRESS_THROTTLE_MS || step >= _progress.fileSize) {
         _progress.lastTime = now;
         callbacks.onProgress({
@@ -190,7 +196,7 @@ export function createTrzszMiddleware(
   };
 
   /**
-   * 重置传输状态并恢复 Electron ASAR 处理。
+   * Reset transfer state and restore Electron ASAR handling.
    */
   function resetTransferState(): void {
     setNoAsar(false);
@@ -199,8 +205,8 @@ export function createTrzszMiddleware(
   }
 
   /**
-   * 检测传输完成：TrzszFilter 在传输结束后将内部 trzszTransfer 设为 null，
-   * 导致 isTransferringFiles() 从 true 变为 false。
+   * Detect transfer completion: TrzszFilter sets its internal trzszTransfer to null
+   * after transfer ends, causing isTransferringFiles() to flip from true to false.
    */
   function checkTransferCompletion(): void {
     const isTransferring = filter.isTransferringFiles();
@@ -219,14 +225,14 @@ export function createTrzszMiddleware(
   }
 
   /**
-   * 检测快速失败：传输已发起（state='active'、'started' 事件已发射）
-   * 但在任何数据交换之前就失败了（例如文件不可读）。
-   * 此时 _wasTransferring 从未被设为 true，checkTransferCompletion 无法检测。
+   * Detect early failure: transfer was initiated (state='active', 'started' event emitted)
+   * but failed before any data exchange (e.g. unreadable file).
+   * _wasTransferring was never set to true, so checkTransferCompletion cannot detect this.
    *
-   * 此检测在 feedFromSession/feedFromTerminal 中、扫描逻辑之后调用。
-   * 不会误判：在 chooseSendFiles 返回和传输设置完成之间，
-   * TrzszFilter 的 trzszTransfer 已经被创建（isTransferringFiles=true），
-   * feedFromSession 会进入第一个分支而不会到达此检测点。
+   * Called in feedFromSession/feedFromTerminal after the scanning logic.
+   * No false positives: between chooseSendFiles returning and transfer setup completing,
+   * TrzszFilter's trzszTransfer is already created (isTransferringFiles=true),
+   * so feedFromSession enters the first branch and never reaches this check.
    */
   function checkTransferFailure(): void {
     if (_state$.getValue() === 'active' && !filter.isTransferringFiles() && !_wasTransferring) {
@@ -248,9 +254,11 @@ export function createTrzszMiddleware(
     state$: _state$.asObservable(),
 
     feedFromSession(data: Uint8Array): Uint8Array | null {
-      if (_disposed) return data;
+      if (_disposed) {
+        return data;
+      }
 
-      // 活跃传输：TrzszFilter 通过回调消费所有数据
+      // Active transfer: TrzszFilter consumes all data via callbacks
       if (filter.isTransferringFiles()) {
         _wasTransferring = true;
         try {
@@ -260,33 +268,35 @@ export function createTrzszMiddleware(
         return null;
       }
 
-      // 传输刚结束（从上一次 feedFromSession 到现在之间完成）
+      // Transfer just ended (completed between the last feedFromSession and now)
       checkTransferCompletion();
 
-      // 空闲：扫描 trzsz 魔术字节，但抑制 writeToTerminal 回调
-      // 让原始二进制数据流向下游中间件（zmodem）
+      // Idle: scan for trzsz magic bytes, but suppress writeToTerminal callback
+      // so raw binary data flows to downstream middleware (zmodem)
       _isScanning = true;
       try {
         filter.processServerOutput(decoder.decode(data));
       } catch {}
       _isScanning = false;
 
-      // 如果 trzsz 在此调用期间激活，消费数据
+      // If trzsz activated during this call, consume data
       if (filter.isTransferringFiles()) {
         return null;
       }
 
-      // 检测快速失败（传输在协议交换前就失败）
+      // Detect early failure (transfer failed before protocol exchange)
       checkTransferFailure();
 
-      // 传递原始二进制数据（保留 ZMODEM 魔术字节）
+      // Pass raw binary data through (preserving ZMODEM magic bytes)
       return data;
     },
 
     feedFromTerminal(data: Uint8Array): Uint8Array | null {
-      if (_disposed) return data;
+      if (_disposed) {
+        return data;
+      }
 
-      // 活跃传输：TrzszFilter 通过回调消费所有输入
+      // Active transfer: TrzszFilter consumes all input via callbacks
       if (filter.isTransferringFiles()) {
         _wasTransferring = true;
         try {
@@ -298,17 +308,17 @@ export function createTrzszMiddleware(
 
       checkTransferCompletion();
 
-      // 空闲：扫描状态跟踪，抑制 sendToServer 回调
+      // Idle: scan state tracking, suppress sendToServer callback
       _isScanningInput = true;
       try {
         filter.processTerminalInput(decoder.decode(data));
       } catch {}
       _isScanningInput = false;
 
-      // 检测快速失败
+      // Detect early failure
       checkTransferFailure();
 
-      // 传递数据给下游中间件
+      // Pass data to downstream middleware
       return data;
     },
 

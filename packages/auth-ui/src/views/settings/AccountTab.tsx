@@ -16,7 +16,7 @@
 import { IAuthService, VaultState } from '@termlnk/auth';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Card, CardContent, CardDescription, CardHeader, cn, useDependency, useObservable } from '@termlnk/design';
-import { IBackupClientService } from '@termlnk/sync';
+import { IBackupFileService } from '@termlnk/sync';
 import { BackupCard } from '@termlnk/sync-ui';
 import { CheckCircle2Icon } from 'lucide-react';
 import { useCallback, useState } from 'react';
@@ -27,7 +27,7 @@ export function AccountTab() {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
   const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
-  const backupClient = useDependency(IBackupClientService, Quantity.OPTIONAL);
+  const backupClient = useDependency(IBackupFileService, Quantity.OPTIONAL);
 
   const vaultState = useObservable<VaultState>(
     authClient?.vaultState$ ?? null,

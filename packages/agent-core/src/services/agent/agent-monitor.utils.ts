@@ -25,13 +25,6 @@ export const ZOMBIE_CHECK_INTERVAL_MS = 30_000;
  */
 export const SESSION_IDLE_GC_MS = 10 * 60 * 1000;
 
-/** Config key shared with settings-ui for the Dynamic Island settings. */
-export const ISLAND_SETTINGS_CONFIG_KEY = 'island.settings';
-
-export interface IIslandSettingsStored {
-  enabled?: boolean;
-}
-
 /**
  * Derive where an agent session is running from the sessionId on the event.
  *

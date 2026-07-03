@@ -15,11 +15,11 @@
 
 import type { ITheme } from '@termlnk/core';
 import type { IContributedTheme, IContributionPoint, IExtensionDescription } from '@termlnk/extension';
-import type { IExtensionClientService } from '@termlnk/rpc-client';
+import type { IExtensionManagementService } from '@termlnk/rpc-client';
 import type { z } from 'zod';
 import { createIdentifier, Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { contributedThemesSchema } from '@termlnk/extension';
-import { IExtensionClientService as IExtensionClientServiceId } from '@termlnk/rpc-client';
+import { IExtensionManagementService as IExtensionManagementServiceId } from '@termlnk/rpc-client';
 import { BehaviorSubject } from 'rxjs';
 
 /**
@@ -79,7 +79,7 @@ export class ThemesPoint implements IContributionPoint<IContributedTheme[]> {
   readonly schema: z.ZodType<IContributedTheme[]> = contributedThemesSchema;
 
   constructor(
-    @IExtensionClientServiceId private readonly _extensionClient: IExtensionClientService,
+    @IExtensionManagementServiceId private readonly _extensionClient: IExtensionManagementService,
     @IExtensionThemeRegistry private readonly _themeRegistry: IExtensionThemeRegistry,
     @ILogService private readonly _logService: ILogService
   ) {}

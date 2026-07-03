@@ -16,11 +16,11 @@
 export { RPC_CLIENT_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IRPCClientConfig } from './controllers/config.schema';
 export { RPC_CLIENT_PLUGIN_NAME, RPCClientPlugin } from './plugin';
-export { AIAgentClientService, IAIAgentClientService } from './services/ai/ai-agent-client.service';
+export { AIAgentMessagingService, IAIAgentMessagingService } from './services/ai/ai-agent-messaging.service';
 export { ChatSessionClientService, IChatSessionService } from './services/ai/chat-session-client.service';
 export { IProviderConfigService, ProviderConfigClientService } from './services/ai/provider-config-client.service';
 export { ConfigManagerService, IConfigManagerService } from './services/config/config-manager.service';
-export { ExtensionClientService, IExtensionClientService } from './services/extension/extension-client.service';
+export { ExtensionManagementService, IExtensionManagementService } from './services/extension/extension-management.service';
 export { FileTransferService } from './services/file-transfer/file-transfer.service';
 export { HostManagerService, IHostManagerService } from './services/host/host-manager.service';
 export { IKeychainManagerService, KeychainManagerService } from './services/keychain/keychain-manager.service';

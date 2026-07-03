@@ -14,7 +14,7 @@
  */
 
 import type { IAccessor, ICommand } from '@termlnk/core';
-import { IAIAgentClientService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 
 export interface IRetryMessageParams {
   messageId: string;
@@ -26,7 +26,7 @@ export const RetryMessageCommand: ICommand<IRetryMessageParams, boolean> = {
     if (!params?.messageId) {
       return false;
     }
-    const agentClient = accessor.get(IAIAgentClientService);
+    const agentClient = accessor.get(IAIAgentMessagingService);
     await agentClient.retryMessage(params.messageId);
     return true;
   },

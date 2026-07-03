@@ -55,7 +55,7 @@ export interface IBackupService {
 export const IBackupService = createIdentifier<IBackupService>('sync.backup-service');
 
 // Backup byte streams never cross IPC: the file dialog and disk I/O run in the main
-// process. The renderer "Export" button calls IBackupClientService.exportToFile() — Uint8Array
+// process. The renderer "Export" button calls IBackupFileService.exportToFile() — Uint8Array
 // never goes upstream or downstream.
 export interface IBackupExportFileResult {
   readonly filePath: string;
@@ -72,9 +72,9 @@ export interface IBackupImportFileResult {
 
 // Renderer-side facade: wraps the file dialog and disk I/O around IBackupService.
 // Returns null when the user cancels the dialog; throws on selected-path failure.
-export interface IBackupClientService {
+export interface IBackupFileService {
   exportToFile(): Promise<IBackupExportFileResult | null>;
   importFromFile(mode: BackupImportMode): Promise<IBackupImportFileResult | null>;
 }
 
-export const IBackupClientService = createIdentifier<IBackupClientService>('sync.backup-client-service');
+export const IBackupFileService = createIdentifier<IBackupFileService>('sync.backup-file-service');

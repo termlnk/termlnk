@@ -13,7 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-export type { INetworkConfig } from './controllers/config.schema';
+export type { INetworkConfig, INetworkProxyConfig } from './controllers/config.schema';
+export { NETWORK_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export { NetworkPlugin } from './plugin';
 export { DefaultFetchProvider, IFetchProvider } from './services/http/fetch-provider/fetch-provider.service';
 export { HTTPHeaders } from './services/http/headers';

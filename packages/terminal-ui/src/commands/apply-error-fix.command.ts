@@ -14,7 +14,7 @@
  */
 
 import type { IAccessor, ICommand } from '@termlnk/core';
-import { IAIAgentClientService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 import { ITerminalUIService } from '../services/terminal/terminal-ui.service';
 
 /**
@@ -26,7 +26,7 @@ export const ApplyErrorFixCommand: ICommand = {
   id: 'terminal-ui.command.apply-error-fix',
   handler: (accessor: IAccessor) => {
     const terminalUIService = accessor.get(ITerminalUIService);
-    const aiAgentService = accessor.get(IAIAgentClientService);
+    const aiAgentService = accessor.get(IAIAgentMessagingService);
     const sessionId = terminalUIService.getActiveSessionId();
     if (!sessionId) {
       return false;

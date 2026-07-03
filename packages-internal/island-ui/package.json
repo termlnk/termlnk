@@ -25,6 +25,7 @@
     "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
+    "@termlnk/agent": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/island": "workspace:*",
@@ -36,6 +37,7 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
+    "@termlnk/agent": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/island": "workspace:*",

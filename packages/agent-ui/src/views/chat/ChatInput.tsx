@@ -18,7 +18,7 @@ import type { IAttachedFile } from './ChatFilePreview';
 import type { IChatSlashCommandPanelHandle } from './ChatSlashCommandPanel';
 import { generateRandomId, LocaleService } from '@termlnk/core';
 import { Button, cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
-import { IAIAgentClientService, IProviderConfigService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService, IProviderConfigService } from '@termlnk/rpc-client';
 import { Gauge, Paperclip, Send } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { map } from 'rxjs';
@@ -61,7 +61,7 @@ function readFileAsBase64(file: File): Promise<string> {
 const COMPACT_COMMAND_PATTERN = /^\/compact(?:\s+([\s\S]*))?$/;
 
 export function ChatInput() {
-  const aiAgentService = useDependency(IAIAgentClientService);
+  const aiAgentService = useDependency(IAIAgentMessagingService);
   const providerConfigService = useDependency(IProviderConfigService);
   const localeService = useDependency(LocaleService);
   const activeModel = useObservable(providerConfigService.activeModel$, null);

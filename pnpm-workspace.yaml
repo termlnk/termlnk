@@ -83,14 +83,14 @@ overrides:
   js-cookie: ^3.0.7
   qs: ^6.15.2
   # scoped to the vulnerable 5.0.x line; other majors (1.x/2.x) stay untouched
-  'brace-expansion@>=5.0.0 <5.0.6': ^5.0.6
+  brace-expansion@>=5.0.0 <5.0.6: ^5.0.6
   # uuid GHSA-w5hq-g745-h8pq (v3/v5/v6 buf bounds): patched only in >=11.1.1.
   # uuid 7.0.3 (expo>xcode, mobile build) and 8.3.2 (drizzle>@types/mssql>tedious>
   # @azure/msal-node, optional mssql driver) are left as-is: a 4-major bump on these
   # transitive deps risks breakage, both consumers use v4 (not the affected v3/v5/v6
   # +buf path), and neither is reachable from the desktop app (sqlite, not mssql).
-  'uuid@>=11.0.0 <11.1.1': ^11.1.1
-  'uuid@>=13.0.0 <13.0.1': ^13.0.1
+  uuid@>=11.0.0 <11.1.1: ^11.1.1
+  uuid@>=13.0.0 <13.0.1: ^13.0.1
 
 allowUnusedPatches: true
 patchedDependencies:

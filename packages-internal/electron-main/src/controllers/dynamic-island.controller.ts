@@ -17,7 +17,7 @@ import type { IPendingInteractionPayload } from '@termlnk/agent';
 import type { IElectronMainConfig } from './config.schema';
 import process from 'node:process';
 import { is } from '@electron-toolkit/utils';
-import { IAgentHookServerService } from '@termlnk/agent';
+import { IAgentHookServerService, AGENT_CORE_PLUGIN_CONFIG_KEY } from '@termlnk/agent';
 import { Disposable, IConfigService, ILifecycleService, ILogService, Inject, LifecycleStages, toDisposable } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { IWindowManagerService, WindowEvent } from '@termlnk/electron';
@@ -25,9 +25,6 @@ import { IIslandStateService, ISLAND_WINDOW_HEIGHT, ISLAND_WINDOW_WIDTH } from '
 import { BrowserWindow, powerMonitor, screen } from 'electron';
 import { distinctUntilChanged, filter, map } from 'rxjs';
 import { ELECTRON_MAIN_PLUGIN_CONFIG_KEY } from './config.schema';
-
-/** Config key for island settings (shared with settings-ui) */
-const ISLAND_SETTINGS_CONFIG_KEY = 'island.settings';
 
 interface IIslandSettingsStored {
   enabled?: boolean;
@@ -76,7 +73,10 @@ export class DynamicIslandController extends Disposable {
 
     this.disposeWithMe(
       this._configRepository.changed$.pipe(
-        filter((event) => event.key === ISLAND_SETTINGS_CONFIG_KEY)
+        filter((event) =>
+          event.key === AGENT_CORE_PLUGIN_CONFIG_KEY
+          && (event.subKey === 'islandSettings' || event.subKey === undefined)
+        )
       ).subscribe(() => {
         void this._onConfigChanged();
       })
@@ -85,7 +85,7 @@ export class DynamicIslandController extends Disposable {
 
   private async _loadConfigEnabled(): Promise<void> {
     await this._lifecycleService.onStage(LifecycleStages.Ready);
-    const stored = await this._configRepository.getField<IIslandSettingsStored>(ISLAND_SETTINGS_CONFIG_KEY, 'settings');
+    const stored = await this._configRepository.getField<IIslandSettingsStored>(AGENT_CORE_PLUGIN_CONFIG_KEY, 'islandSettings');
     this._isEnabled = stored?.enabled !== false;
     this._logService.log('[DynamicIsland]', `Config loaded, enabled=${this._isEnabled}`);
 
@@ -95,7 +95,7 @@ export class DynamicIslandController extends Disposable {
   }
 
   private async _onConfigChanged(): Promise<void> {
-    const stored = await this._configRepository.getField<IIslandSettingsStored>(ISLAND_SETTINGS_CONFIG_KEY, 'settings');
+    const stored = await this._configRepository.getField<IIslandSettingsStored>(AGENT_CORE_PLUGIN_CONFIG_KEY, 'islandSettings');
     const wasEnabled = this._isEnabled;
     this._isEnabled = stored?.enabled !== false;
 

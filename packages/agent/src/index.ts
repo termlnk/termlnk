@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-export { AGENT_COMPACT_CONFIG_SUB_KEY, AGENT_CORE_CONFIG_KEY, AI_PLUGIN_NAME, AI_STORAGE_PROVIDERS_KEY, DEFAULT_THINKING_LEVEL } from './common/constants';
+export { AGENT_COMPACT_CONFIG_SUB_KEY, AGENT_CORE_PLUGIN_CONFIG_KEY, AI_PLUGIN_NAME, AI_STORAGE_PROVIDERS_KEY, DEFAULT_THINKING_LEVEL } from './common/constants';
 export { PROMPT_DYNAMIC_BOUNDARY, PROMPT_PRIORITY, PROMPT_SECTION } from './common/prompt-constants';
 export { PLATFORM_SSH_SECTION } from './common/prompt-sections';
 export { compareProviders, DEFAULT_PROVIDER_BASE_URL, DEFAULT_PROVIDER_SORT, formatProviderDisplayName, getDefaultProviderBaseUrl, getDefaultProviderSort, PROVIDER_DISPLAY_NAME, UNSUPPORTED_MODEL_SYNC_PROVIDERS } from './common/provider-metadata';
@@ -59,8 +59,6 @@ export type { IShadowedRule } from './services/permission-rule.service';
 export { IPermissionRuleService } from './services/permission-rule.service';
 export { IPlatformContextService } from './services/platform-context.service';
 export type { IActiveSessionContext, IPlatformContext, IRemoteSessionEnv, PlatformType, ShellType } from './services/platform-context.service';
-export { ITerminalSessionEnvService } from './services/terminal-session-env.service';
-export type { IRemoteSessionEnvChange } from './services/terminal-session-env.service';
 export type { IProviderChatRequest, IProviderDefinition, IProviderModelInfo, IRegisteredProvider, ProviderSdkType } from './services/provider-registry.service';
 export { IProviderRegistryService } from './services/provider-registry.service';
 export type { IRiskAssessment } from './services/risk-assessment.service';
@@ -72,5 +70,7 @@ export { ISkillStateService } from './services/skill-state.service';
 export { ISkillService } from './services/skill.service';
 export { ISystemPromptService } from './services/system-prompt.service';
 export type { IPromptSectionRegistration } from './services/system-prompt.service';
+export { ITerminalSessionEnvService } from './services/terminal-session-env.service';
+export type { IRemoteSessionEnvChange } from './services/terminal-session-env.service';
 export { ITerminalSuggestService } from './services/terminal-suggest.service';
 export { defaultFieldFor, matchPattern, matchRule } from './utils/permission-matcher';

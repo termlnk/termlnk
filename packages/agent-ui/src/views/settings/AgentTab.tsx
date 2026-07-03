@@ -14,7 +14,7 @@
  */
 
 import type { ICompactConfig } from '@termlnk/agent';
-import { AGENT_COMPACT_CONFIG_SUB_KEY, AGENT_CORE_CONFIG_KEY, COMPACT_CONFIG_MAX_KEEP_RECENT, COMPACT_CONFIG_MAX_THRESHOLD_PERCENT, COMPACT_CONFIG_MIN_KEEP_RECENT, COMPACT_CONFIG_MIN_THRESHOLD_PERCENT, DEFAULT_COMPACT_CONFIG, normalizeCompactConfig } from '@termlnk/agent';
+import { AGENT_COMPACT_CONFIG_SUB_KEY, AGENT_CORE_PLUGIN_CONFIG_KEY, COMPACT_CONFIG_MAX_KEEP_RECENT, COMPACT_CONFIG_MAX_THRESHOLD_PERCENT, COMPACT_CONFIG_MIN_KEEP_RECENT, COMPACT_CONFIG_MIN_THRESHOLD_PERCENT, DEFAULT_COMPACT_CONFIG, normalizeCompactConfig } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { Card, CardContent, CardHeader, Checkbox, cn, Input, Slider, useDependency } from '@termlnk/design';
 import { IConfigManagerService } from '@termlnk/rpc-client';
@@ -32,7 +32,7 @@ export function AgentTab() {
   useEffect(() => {
     let active = true;
     configManagerService
-      .getField<ICompactConfig>(AGENT_CORE_CONFIG_KEY, AGENT_COMPACT_CONFIG_SUB_KEY)
+      .getField<ICompactConfig>(AGENT_CORE_PLUGIN_CONFIG_KEY, AGENT_COMPACT_CONFIG_SUB_KEY)
       .then((stored) => {
         if (!active) {
           return;
@@ -54,7 +54,7 @@ export function AgentTab() {
       const normalized = normalizeCompactConfig(next);
       setConfig(normalized);
       setKeepRecentInput(String(normalized.keepRecentMessages));
-      void configManagerService.setField(AGENT_CORE_CONFIG_KEY, AGENT_COMPACT_CONFIG_SUB_KEY, normalized);
+      void configManagerService.setField(AGENT_CORE_PLUGIN_CONFIG_KEY, AGENT_COMPACT_CONFIG_SUB_KEY, normalized);
     },
     [configManagerService]
   );

@@ -19,6 +19,6 @@ export const AI_STORAGE_PROVIDERS_KEY = 'ai:providers';
 
 export const DEFAULT_THINKING_LEVEL = 'high';
 
-export const AGENT_CORE_CONFIG_KEY = 'agent-core.config';
+export const AGENT_CORE_PLUGIN_CONFIG_KEY = 'agent-core.config';
 
 export const AGENT_COMPACT_CONFIG_SUB_KEY = 'compact';

@@ -62,9 +62,8 @@ export const CESP_SOUND_CATEGORIES: readonly CespEventCategory[] = [
 
 // ---------------------------------------------------------------------------
 // Island settings schema (shared by island-ui runtime + settings-ui panel)
+// Persisted under AGENT_CORE_PLUGIN_CONFIG_KEY ('agent-core.config') / subKey 'islandSettings'.
 // ---------------------------------------------------------------------------
-
-export const ISLAND_SETTINGS_CONFIG_KEY = 'island.settings';
 
 export interface IIslandSoundEventConfig {
   enabled: boolean;
@@ -104,7 +103,7 @@ export const DEFAULT_ISLAND_SOUND_CONFIG: IIslandSoundConfig = {
   rapidSubmitDetection: { enabled: true },
 };
 
-/** Outer settings payload persisted under {@link ISLAND_SETTINGS_CONFIG_KEY}. */
+/** Outer settings payload persisted under `agent-core.config` / `islandSettings`. */
 export interface IIslandSettings {
   enabled: boolean;
   sound: IIslandSoundConfig;

@@ -17,7 +17,7 @@ import type { IExtensionDescription } from '@termlnk/extension';
 import { LocaleService } from '@termlnk/core';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger, useDependency } from '@termlnk/design';
 import { IExtensionService } from '@termlnk/extension';
-import { IExtensionClientService } from '@termlnk/rpc-client';
+import { IExtensionManagementService } from '@termlnk/rpc-client';
 import { Download, FolderOpen, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { ExtensionListItem } from './ExtensionListItem';
@@ -28,7 +28,7 @@ type ExtensionTab = 'installed' | 'marketplace';
 
 export function ExtensionExplorer() {
   const extensionService = useDependency(IExtensionService);
-  const extensionClientService = useDependency(IExtensionClientService);
+  const extensionManagementService = useDependency(IExtensionManagementService);
   const localeService = useDependency(LocaleService);
 
   const [extensions, setExtensions] = useState<IExtensionDescription[]>([]);
@@ -49,7 +49,7 @@ export function ExtensionExplorer() {
 
   const handleLoadLocal = useCallback(async () => {
     try {
-      const result = await extensionClientService.showOpenDirectoryDialog(
+      const result = await extensionManagementService.showOpenDirectoryDialog(
         localeService.t('extension-ui.action.selectDirectory')
       );
 
@@ -61,7 +61,7 @@ export function ExtensionExplorer() {
     } catch (err) {
       console.error('[ExtensionExplorer] Failed to load local extension:', err);
     }
-  }, [extensionClientService, extensionService, localeService]);
+  }, [extensionManagementService, extensionService, localeService]);
 
   const handleRefresh = useCallback(async () => {
     try {

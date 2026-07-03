@@ -22,17 +22,17 @@ import { ThemePreview } from './theme-preview';
 export type EditorMode = 'simple' | 'advanced';
 
 export interface IThemeEditorProps {
-  /** 当前编辑的主题 */
+  /** Current theme being edited */
   theme: ITheme;
-  /** 主题变更回调 */
+  /** Theme change callback */
   onThemeChange?: (theme: ITheme) => void;
-  /** 初始编辑模式 */
+  /** Initial editor mode */
   initialMode?: EditorMode;
-  /** 保存回调 */
+  /** Save callback */
   onSave?: (theme: ITheme) => void;
-  /** 重置回调 */
+  /** Reset callback */
   onReset?: () => void;
-  /** 自定义类名 */
+  /** Custom class name */
   className?: string;
 }
 
@@ -54,7 +54,7 @@ export function ThemeEditor(props: IThemeEditorProps) {
         ${className}
       `}
     >
-      {/* 头部 */}
+      {/* Header */}
       <div className="tm:flex tm:items-center tm:justify-between">
         <div>
           <h3 className="tm:text-lg tm:font-medium tm:text-base05">
@@ -65,7 +65,7 @@ export function ThemeEditor(props: IThemeEditorProps) {
           </p>
         </div>
 
-        {/* 模式切换 */}
+        {/* Mode toggle */}
         <div className="tm:flex tm:rounded-lg tm:bg-one-bg tm:p-1">
           <button
             type="button"
@@ -102,9 +102,9 @@ export function ThemeEditor(props: IThemeEditorProps) {
         </div>
       </div>
 
-      {/* 主内容区 */}
+      {/* Main content */}
       <div className="tm:flex tm:gap-6">
-        {/* 左侧：颜色编辑器 */}
+        {/* Left: color editor */}
         <div className="tm:min-w-0 tm:flex-1">
           {mode === 'simple'
             ? (
@@ -121,7 +121,7 @@ export function ThemeEditor(props: IThemeEditorProps) {
             )}
         </div>
 
-        {/* 右侧：预览 */}
+        {/* Right: preview */}
         <div className="tm:w-80 tm:shrink-0">
           <div className="tm:sticky tm:top-4">
             <h4 className="tm:mb-3 tm:text-sm tm:font-medium tm:text-base05">
@@ -132,7 +132,7 @@ export function ThemeEditor(props: IThemeEditorProps) {
         </div>
       </div>
 
-      {/* 底部操作栏 */}
+      {/* Footer actions */}
       {(onSave || onReset) && (
         <div className="tm:flex tm:justify-end tm:gap-3 tm:border-t tm:border-line tm:pt-4">
           {onReset && (

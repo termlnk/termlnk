@@ -21,7 +21,7 @@ export { toPermissionViewModel } from './common/permission-view-model';
 export type { IPermissionViewModel } from './common/permission-view-model';
 export { ISLAND_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export type { IIslandPluginConfig } from './controllers/config.schema';
-export { CESP_SOUND_CATEGORIES, CespEventCategory, DEFAULT_ISLAND_SOUND_CONFIG, ISLAND_SETTINGS_CONFIG_KEY, normalizeIslandSoundConfig } from './models/cesp';
+export { CESP_SOUND_CATEGORIES, CespEventCategory, DEFAULT_ISLAND_SOUND_CONFIG, normalizeIslandSoundConfig } from './models/cesp';
 export type { ICespEvent, IIslandSettings, IIslandSoundConfig, IIslandSoundEventConfig } from './models/cesp';
 export { animationPriority, AnimationState, phaseToAnimationState, SessionPhase, sessionToAnimationState, statusToPhase } from './models/island';
 export type { IIslandSession } from './models/island';

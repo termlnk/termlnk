@@ -14,7 +14,7 @@
  */
 
 import type { IAccessor, ICommand } from '@termlnk/core';
-import { IAIAgentClientService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 
 export interface IEditUserMessageParams {
   messageId: string;
@@ -27,7 +27,7 @@ export const EditUserMessageCommand: ICommand<IEditUserMessageParams, boolean> =
     if (!params?.messageId || !params.content) {
       return false;
     }
-    const agentClient = accessor.get(IAIAgentClientService);
+    const agentClient = accessor.get(IAIAgentMessagingService);
     await agentClient.editUserMessage(params.messageId, params.content);
     return true;
   },

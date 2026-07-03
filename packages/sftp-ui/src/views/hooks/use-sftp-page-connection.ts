@@ -14,6 +14,7 @@
  */
 
 import type { SFTPSessionEvent, SFTPSessionStatus } from '@termlnk/rpc';
+import { ILogService } from '@termlnk/core';
 import { useDependency } from '@termlnk/design';
 import { ISFTPService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -30,23 +31,28 @@ export type SFTPPageConnectionState =
 
 export function useSFTPPageConnection(hostId: string | null) {
   const sftpService = useDependency(ISFTPService);
+  const logService = useDependency(ILogService);
   const [state, setState] = useState<SFTPPageConnectionState>({ phase: 'idle' });
   const backendSessionIdRef = useRef<string | null>(null);
   const disposedRef = useRef(false);
 
   const connect = useCallback(async (password?: string) => {
-    if (!hostId) return;
+    if (!hostId) {
+      return;
+    }
     try {
       setState({ phase: 'connecting', status: 'connecting' as SFTPSessionStatus });
       const bsId = await sftpService.createSession(hostId, password);
       if (disposedRef.current) {
-        sftpService.closeSession(bsId).catch(console.error);
+        sftpService.closeSession(bsId).catch((err) => logService.error(err));
         return;
       }
       backendSessionIdRef.current = bsId;
 
       const statusSub = sftpService.status$(bsId).subscribe((status) => {
-        if (disposedRef.current) return;
+        if (disposedRef.current) {
+          return;
+        }
         if (status === 'ready') {
           setState({ phase: 'ready', backendSessionId: bsId });
         } else if (status === 'closed') {
@@ -59,7 +65,9 @@ export function useSFTPPageConnection(hostId: string | null) {
       });
 
       const eventSub = sftpService.event$(bsId).subscribe((event: SFTPSessionEvent) => {
-        if (disposedRef.current) return;
+        if (disposedRef.current) {
+          return;
+        }
         if (event.type === 'keyboard_interactive') {
           setState({ phase: 'password', prompts: event.prompts });
         } else if (event.type === 'auth_failed') {
@@ -76,14 +84,17 @@ export function useSFTPPageConnection(hostId: string | null) {
         eventSub.unsubscribe();
       };
     } catch (err) {
-      if (disposedRef.current) return;
+      if (disposedRef.current) {
+        return;
+      }
       const message = err instanceof Error ? err.message : String(err);
       setState({ phase: 'error', message });
     }
-  }, [hostId, sftpService]);
-
+  }, [hostId, sftpService, logService]);
   const retry = useCallback(async (password: string) => {
-    if (!backendSessionIdRef.current) return;
+    if (!backendSessionIdRef.current) {
+      return;
+    }
     try {
       setState({ phase: 'connecting', status: 'connecting' as SFTPSessionStatus });
       await sftpService.retrySession(backendSessionIdRef.current, password);
@@ -94,24 +105,26 @@ export function useSFTPPageConnection(hostId: string | null) {
   }, [sftpService]);
 
   const respondKeyboardInteractive = useCallback(async (responses: string[]) => {
-    if (!backendSessionIdRef.current) return;
+    if (!backendSessionIdRef.current) {
+      return;
+    }
     setState({ phase: 'connecting', status: 'authenticating' as SFTPSessionStatus });
     await sftpService.respondKeyboardInteractive(backendSessionIdRef.current, responses);
   }, [sftpService]);
 
   const disconnect = useCallback(async () => {
     if (backendSessionIdRef.current) {
-      await sftpService.closeSession(backendSessionIdRef.current).catch(console.error);
+      await sftpService.closeSession(backendSessionIdRef.current).catch((err) => logService.error(err));
       backendSessionIdRef.current = null;
     }
     setState({ phase: 'idle' });
-  }, [sftpService]);
+  }, [sftpService, logService]);
 
   useEffect(() => {
     if (!hostId) {
       // Disconnect old session when host changes to null
       if (backendSessionIdRef.current) {
-        sftpService.closeSession(backendSessionIdRef.current).catch(console.error);
+        sftpService.closeSession(backendSessionIdRef.current).catch((err) => logService.error(err));
         backendSessionIdRef.current = null;
       }
       setState({ phase: 'idle' });
@@ -122,7 +135,7 @@ export function useSFTPPageConnection(hostId: string | null) {
 
     // Disconnect old session when host changes
     if (backendSessionIdRef.current) {
-      sftpService.closeSession(backendSessionIdRef.current).catch(console.error);
+      sftpService.closeSession(backendSessionIdRef.current).catch((err) => logService.error(err));
       backendSessionIdRef.current = null;
     }
 
@@ -132,11 +145,11 @@ export function useSFTPPageConnection(hostId: string | null) {
       disposedRef.current = true;
       cleanupPromise?.then((cleanup) => cleanup?.());
       if (backendSessionIdRef.current) {
-        sftpService.closeSession(backendSessionIdRef.current).catch(console.error);
+        sftpService.closeSession(backendSessionIdRef.current).catch((err) => logService.error(err));
         backendSessionIdRef.current = null;
       }
     };
-  }, [hostId, connect, sftpService]);
+  }, [hostId, connect, sftpService, logService]);
 
   return {
     state,

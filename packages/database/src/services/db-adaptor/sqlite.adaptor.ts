@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Nullable } from '@termlnk/core';
+import type { ILogService, Nullable } from '@termlnk/core';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { Database, IDBAdaptorService } from '../db-adaptor.service';
 import { mkdirSync } from 'node:fs';
@@ -29,11 +29,13 @@ export interface ISQLiteDatabaseOptions {
   filename?: string;
   migrationsFolder?: string;
   migrationsTable?: string;
+  logService?: ILogService;
 }
 
 export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
   private _sqlite: Nullable<BetterSqlite3.Database>;
   private _db: Nullable<Database>;
+  private readonly _logService: ILogService | undefined;
   private readonly _migrationsFolder: Nullable<string>;
   private readonly _migrationsTable: string;
 
@@ -42,6 +44,7 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
   ) {
     super();
 
+    this._logService = _options.logService;
     this._migrationsFolder = _options.migrationsFolder;
     this._migrationsTable = _options.migrationsTable || DEFAULT_DRIZZLE_MIGRATIONS_TABLE;
   }
@@ -93,7 +96,7 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
 
   private _migration(): void {
     if (!this._migrationsFolder) {
-      console.warn('[SQLiteAdaptor] No migrations folder specified. Skipping migration.');
+      this._logService?.warn('[SQLiteAdaptor] No migrations folder specified. Skipping migration.');
       return;
     }
 
@@ -103,7 +106,7 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
         migrationsTable: this._migrationsTable,
       });
     } catch (error) {
-      console.error('[SQLiteAdaptor] Migration failed:', error);
+      this._logService?.error('[SQLiteAdaptor] Migration failed:', error);
       throw new Error(`Database migration failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -140,7 +143,7 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
 
     const freeMb = (freeBytes / 1024 / 1024).toFixed(1);
     const ratioPct = Math.round(freeRatio * 100);
-    console.warn(
+    this._logService?.warn(
       `[SQLiteAdaptor] Compacting database: ${freelistCount}/${pageCount} pages free `
       + `(~${freeMb} MB, ${ratioPct}%). Running VACUUM.`
     );
@@ -150,9 +153,9 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
       // VACUUM honors the auto_vacuum pragma set above, so legacy
       // auto_vacuum=NONE databases are flipped to INCREMENTAL on the same pass.
       sqlite.exec('VACUUM');
-      console.log(`[SQLiteAdaptor] VACUUM finished in ${Date.now() - startedAt}ms.`);
+      this._logService?.log(`[SQLiteAdaptor] VACUUM finished in ${Date.now() - startedAt}ms.`);
     } catch (error) {
-      console.error('[SQLiteAdaptor] VACUUM failed:', error);
+      this._logService?.error('[SQLiteAdaptor] VACUUM failed:', error);
     }
   }
 }

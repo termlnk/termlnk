@@ -14,7 +14,7 @@
  */
 
 import type { IDisposable } from '@termlnk/core';
-import { Disposable, toDisposable } from '@termlnk/core';
+import { Disposable, ILogService, Optional, toDisposable } from '@termlnk/core';
 import { createElement, useEffect, useRef } from 'react';
 
 type ComponentFramework = string;
@@ -36,7 +36,9 @@ export class ComponentManagerService extends Disposable {
   private _components: ComponentList = new Map();
   private _componentsReverse = new Map<ComponentType, string>();
 
-  constructor() {
+  constructor(
+    @Optional(ILogService) private readonly _logService?: ILogService
+  ) {
     super();
   }
 
@@ -44,7 +46,7 @@ export class ComponentManagerService extends Disposable {
     const { framework = 'react' } = options || {};
 
     if (this._components.has(name)) {
-      console.warn(`Component ${name} already exists.`);
+      this._logService?.warn(`Component ${name} already exists.`);
     }
 
     this._components.set(name, {
@@ -84,11 +86,15 @@ export class ComponentManagerService extends Disposable {
   }
 
   get(name: string) {
-    if (!name) return;
+    if (!name) {
+      return;
+    }
 
     const value = this._components.get(name);
 
-    if (!value) return;
+    if (!value) {
+      return;
+    }
 
     const frameworkHandler = this._handler[value.framework];
 

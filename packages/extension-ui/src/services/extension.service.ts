@@ -17,7 +17,7 @@ import type { IContributionRegistry, IExtensionChangeEvent, IExtensionDescriptio
 import type { Observable } from 'rxjs';
 import { Disposable, ILogService, Inject, Injector } from '@termlnk/core';
 import { ExtensionStatus, IContributionRegistry as IContributionRegistryId, IExtensionHostService as IExtensionHostServiceId, IExtensionLifecycleService as IExtensionLifecycleServiceId, IPermissionService as IPermissionServiceId, parseActivationEvent } from '@termlnk/extension';
-import { IExtensionClientService } from '@termlnk/rpc-client';
+import { IExtensionManagementService } from '@termlnk/rpc-client';
 import { Subject } from 'rxjs';
 
 export class ExtensionService extends Disposable implements IExtensionService {
@@ -30,7 +30,7 @@ export class ExtensionService extends Disposable implements IExtensionService {
   constructor(
     @Inject(Injector) private readonly _injector: Injector,
     @ILogService private readonly _logService: ILogService,
-    @IExtensionClientService private readonly _extensionClientService: IExtensionClientService,
+    @IExtensionManagementService private readonly _extensionManagementService: IExtensionManagementService,
     @IExtensionHostServiceId private readonly _hostService: IExtensionHostService,
     @IContributionRegistryId private readonly _contributionRegistry: IContributionRegistry,
     @IExtensionLifecycleServiceId private readonly _lifecycleService: IExtensionLifecycleService,
@@ -48,25 +48,25 @@ export class ExtensionService extends Disposable implements IExtensionService {
     this._logService.log('[ExtensionService]', 'Initializing extension system...');
 
     // 1. Scan installed extensions via backend
-    const descriptions = await this._extensionClientService.scanExtensions();
+    const descriptions = await this._extensionManagementService.scanExtensions();
     this._logService.log('[ExtensionService]', `Found ${descriptions.length} extension(s)`);
 
     // 2. Scan dev extension paths via backend
-    const devPaths = await this._extensionClientService.getDevPaths();
+    const devPaths = await this._extensionManagementService.getDevPaths();
     for (const devPath of devPaths) {
       try {
-        const devDesc = await this._extensionClientService.scanLocalExtension(devPath);
+        const devDesc = await this._extensionManagementService.scanLocalExtension(devPath);
         if (!descriptions.some((d) => d.id === devDesc.id)) {
           descriptions.push(devDesc);
         }
       } catch (err) {
         this._logService.warn('[ExtensionService]', `Failed to scan dev extension at ${devPath}`, err);
-        await this._extensionClientService.removeDevPath(devPath);
+        await this._extensionManagementService.removeDevPath(devPath);
       }
     }
 
     // 3. Load disabled state from backend
-    const disabledIds = await this._extensionClientService.getDisabledExtensions();
+    const disabledIds = await this._extensionManagementService.getDisabledExtensions();
     const disabledSet = new Set(disabledIds);
 
     for (const desc of descriptions) {
@@ -139,7 +139,7 @@ export class ExtensionService extends Disposable implements IExtensionService {
       return;
     }
 
-    await this._extensionClientService.enable(extensionId);
+    await this._extensionManagementService.enable(extensionId);
 
     if (desc.manifest.contributes) {
       this._contributionRegistry.registerContributions(desc);
@@ -158,7 +158,7 @@ export class ExtensionService extends Disposable implements IExtensionService {
     await this._deactivateIfActive(desc);
     this._contributionRegistry.unregisterContributions(extensionId);
 
-    await this._extensionClientService.disable(extensionId);
+    await this._extensionManagementService.disable(extensionId);
     this._setStatus(desc, ExtensionStatus.Disabled);
     this._onChange$.next({ extensionId, kind: 'disabled' });
   }
@@ -174,7 +174,7 @@ export class ExtensionService extends Disposable implements IExtensionService {
 
     if (!desc.isDev) {
       try {
-        await this._extensionClientService.removeExtension(extensionId);
+        await this._extensionManagementService.removeExtension(extensionId);
       } catch (err) {
         this._logService.error('[ExtensionService]', `Failed to remove extension files for ${extensionId}`, err);
       }
@@ -189,7 +189,7 @@ export class ExtensionService extends Disposable implements IExtensionService {
   async loadLocalExtension(path: string): Promise<void> {
     this._logService.log('[ExtensionService]', `Loading local extension from: ${path}`);
 
-    const desc = await this._extensionClientService.scanLocalExtension(path);
+    const desc = await this._extensionManagementService.scanLocalExtension(path);
 
     const existing = this._extensions.get(desc.id);
     if (existing) {
@@ -199,8 +199,8 @@ export class ExtensionService extends Disposable implements IExtensionService {
 
     this._extensions.set(desc.id, desc);
     this._seedPermissions(desc);
-    await this._extensionClientService.addDevPath(path);
-    await this._extensionClientService.enable(desc.id);
+    await this._extensionManagementService.addDevPath(path);
+    await this._extensionManagementService.enable(desc.id);
 
     this._setStatus(desc, ExtensionStatus.Installed);
 
@@ -216,9 +216,9 @@ export class ExtensionService extends Disposable implements IExtensionService {
     const { extensionId, npmPackage, version } = input;
     this._logService.log('[ExtensionService]', `Installing remote extension ${extensionId} from ${npmPackage}@${version}`);
 
-    await this._extensionClientService.npmInstall(npmPackage, version, extensionId);
+    await this._extensionManagementService.npmInstall(npmPackage, version, extensionId);
 
-    const installed = await this._extensionClientService.scanExtensions();
+    const installed = await this._extensionManagementService.scanExtensions();
     const desc = installed.find((d) => d.id === extensionId);
     if (!desc) {
       throw new Error(`Installed extension not found after rescan: ${extensionId}`);
@@ -250,7 +250,7 @@ export class ExtensionService extends Disposable implements IExtensionService {
 
     await this._deactivateIfActive(desc);
     this._contributionRegistry.unregisterContributions(extensionId);
-    await this._extensionClientService.removeDevPath(desc.extensionPath);
+    await this._extensionManagementService.removeDevPath(desc.extensionPath);
     this._extensions.delete(extensionId);
     this._permissionService.clear(extensionId);
     this._lifecycleService.remove(extensionId);
@@ -270,8 +270,8 @@ export class ExtensionService extends Disposable implements IExtensionService {
 
     try {
       const newDesc = desc.isDev
-        ? await this._extensionClientService.scanLocalExtension(desc.extensionPath)
-        : (await this._extensionClientService.scanExtensions()).find((d) => d.id === extensionId);
+        ? await this._extensionManagementService.scanLocalExtension(desc.extensionPath)
+        : (await this._extensionManagementService.scanExtensions()).find((d) => d.id === extensionId);
 
       if (!newDesc) {
         this._setStatus(desc, ExtensionStatus.Error, 'Extension not found after re-scan');

@@ -43,7 +43,7 @@ export class ThemeService extends Disposable implements IThemeService {
   constructor() {
     super();
 
-    // themeType$ 派生自 currentTheme$
+    // Derived from currentTheme$
     this.themeType$ = this._currentTheme$.pipe(
       map((theme) => theme?.type ?? 'dark')
     );
@@ -54,8 +54,8 @@ export class ThemeService extends Disposable implements IThemeService {
   }
 
   /**
-   * 设置当前主题。
-   * @param theme - 要设置的主题，null 表示使用默认主题。
+   * Set the current theme.
+   * @param theme - The theme to apply, or null to use the default.
    */
   setTheme(theme: ITheme | null): void {
     this._currentTheme$.next(theme);

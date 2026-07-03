@@ -15,9 +15,10 @@
 
 import type { ICespEvent, IIslandSettings, IIslandSoundConfig, IIslandSoundEventConfig } from '@termlnk/island';
 import { createIdentifier, Disposable, ILogService, toDisposable } from '@termlnk/core';
-import { CespEventCategory, DEFAULT_ISLAND_SOUND_CONFIG, ISLAND_SETTINGS_CONFIG_KEY, normalizeIslandSoundConfig } from '@termlnk/island';
+import { CespEventCategory, DEFAULT_ISLAND_SOUND_CONFIG, normalizeIslandSoundConfig } from '@termlnk/island';
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { BehaviorSubject, filter } from 'rxjs';
+import { AGENT_CORE_PLUGIN_CONFIG_KEY } from '@termlnk/agent';
 import { CESP_SOUND_ASSET_URLS } from '../assets/sound-urls';
 import { SOUND_DEBOUNCE_MS } from '../common/constants';
 import { IIslandUIStateService } from './island-state.service';
@@ -78,7 +79,8 @@ export class IslandSoundService extends Disposable implements IIslandSoundServic
     void this._loadConfig();
     this.disposeWithMe(
       this._configManagerService.onChanged$().pipe(
-        filter((event) => event.key === ISLAND_SETTINGS_CONFIG_KEY)
+        filter((event) => event.key === AGENT_CORE_PLUGIN_CONFIG_KEY
+          && (event.subKey === 'islandSettings' || event.subKey === undefined))
       ).subscribe(() => {
         void this._loadConfig();
       })
@@ -88,8 +90,8 @@ export class IslandSoundService extends Disposable implements IIslandSoundServic
   private async _loadConfig(): Promise<void> {
     try {
       const settings = await this._configManagerService.getField<IIslandSettings>(
-        ISLAND_SETTINGS_CONFIG_KEY,
-        'settings'
+        AGENT_CORE_PLUGIN_CONFIG_KEY,
+        'islandSettings'
       );
       const soundConfig = normalizeIslandSoundConfig(settings?.sound);
       this._soundConfig$.next(soundConfig);

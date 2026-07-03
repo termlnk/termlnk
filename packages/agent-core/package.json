@@ -52,6 +52,7 @@
     "@termlnk/agent": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
+    "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "rxjs": ">=7.0.0",
     "socks": "^2.8.9"
@@ -64,6 +65,7 @@
     "@termlnk/agent": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
+    "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "partial-json": "^0.1.7",
     "socks": "^2.8.9",
@@ -74,7 +76,6 @@
     "@termlnk/macos-utils": "workspace:*"
   },
   "devDependencies": {
-    "@termlnk/network": "workspace:*",
     "@termlnk/shared": "workspace:*",
     "@termlnk/terminal": "workspace:*",
     "rxjs": "^7.8.2",

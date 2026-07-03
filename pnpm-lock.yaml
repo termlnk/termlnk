@@ -1253,6 +1253,9 @@ importers:
 
   packages-internal/island-ui:
     dependencies:
+      '@termlnk/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
       '@termlnk/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -1592,6 +1595,9 @@ importers:
       '@termlnk/database':
         specifier: workspace:*
         version: link:../database
+      '@termlnk/network':
+        specifier: workspace:*
+        version: link:../network
       '@termlnk/rpc':
         specifier: workspace:*
         version: link:../rpc
@@ -1608,9 +1614,6 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@termlnk/network':
-        specifier: workspace:*
-        version: link:../network
       '@termlnk/shared':
         specifier: workspace:*
         version: link:../../internal/shared
@@ -10022,8 +10025,8 @@ packages:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
 
-  deslop-js@0.5.8:
-    resolution: {integrity: sha512-Vq9D2x4dAIW24zcH55DTrl3/vi13UNKfXgw0yj7ULTssZ6KOdw/oyBHtlvE94KFC9yYEhgFTrGjaqqZKvV9pwA==}
+  deslop-js@0.6.2:
+    resolution: {integrity: sha512-3+wV56jJd4zx6Mob2nQ4B8nIF4J12Xc2iCagNE9kdVTzMbNEIe99vwfaxrgdFC+RQ1NHXfjUkR3C4HVYnLLSfg==}
 
   destr@2.0.5:
     resolution: {integrity: sha512-ugFTXCtDZunbzasqBxrK93Ik/DRYsO6S/fedkWEMKqt04xZ4csmnmwGDBAb07QWNaGMAmnTIemsYZCksjATwsA==}
@@ -13419,8 +13422,8 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
-  oxlint-plugin-react-doctor@0.5.8:
-    resolution: {integrity: sha512-L0jveKAMbqF1qAqA2Ksu8aH0/Q8FDQxLwXmHYgALa2XlsxEUuamJ+1Da2MhPWJ2ahn+ekFbnWK20qixxD+fw6A==}
+  oxlint-plugin-react-doctor@0.6.2:
+    resolution: {integrity: sha512-8+YU8hwSPmS2dglPxLGRTSpaSHA5A2L0x7zU/7G+dp9V779jrpHiYMhJ5Ga9JUa0VtECHfpY+xUOYSt1IEP3YA==}
     engines: {node: ^20.19.0 || >=22.13.0}
 
   oxlint@1.66.0:
@@ -13981,8 +13984,8 @@ packages:
   react-devtools-core@6.1.5:
     resolution: {integrity: sha512-ePrwPfxAnB+7hgnEr8vpKxL9cmnp7F322t8oqcPshbIQQhDKgFDW4tjhF2wjVbdXF9O/nyuy3sQWd9JGpiLPvA==}
 
-  react-doctor@0.5.8:
-    resolution: {integrity: sha512-gDXDQ+48KeFq2jkVgsUhQ67oQ+kUMdnIaA+YeS9VXXZFXSg9wxY5dDxurEpILSh8RwO06W8p6uCnTR+wn5B/GA==}
+  react-doctor@0.6.2:
+    resolution: {integrity: sha512-uPFyoWhRvAG6vc7uLVbf2wg7ox0R8y+SgOAhAfAcs1soP4sIPwl4gEuWCNbAir/QIGcb5xrwFJvCM30WmgmeUg==}
     engines: {node: ^20.19.0 || >=22.13.0}
     hasBin: true
 
@@ -15375,6 +15378,11 @@ packages:
 
   typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
 
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
@@ -24139,14 +24147,14 @@ snapshots:
 
   dequal@2.0.3: {}
 
-  deslop-js@0.5.8:
+  deslop-js@0.6.2:
     dependencies:
       '@oxc-project/types': 0.132.0
       fast-glob: 3.3.3
       minimatch: 10.2.5
       oxc-parser: 0.132.0
       oxc-resolver: 11.20.0
-      typescript: 6.0.3
+      typescript: 5.9.3
 
   destr@2.0.5: {}
 
@@ -28626,7 +28634,7 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.35.0
       '@oxfmt/binding-win32-x64-msvc': 0.35.0
 
-  oxlint-plugin-react-doctor@0.5.8:
+  oxlint-plugin-react-doctor@0.6.2:
     dependencies:
       '@typescript-eslint/types': 8.62.0
       eslint-scope: 9.1.2
@@ -29259,24 +29267,25 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  react-doctor@0.5.8(eslint@10.5.0(jiti@2.7.0)):
+  react-doctor@0.6.2(eslint@10.5.0(jiti@2.7.0)):
     dependencies:
       '@babel/code-frame': 7.29.7
       '@sentry/node': 10.58.0
       agent-install: 0.0.5
       conf: 15.1.0
       confbox: 0.2.4
-      deslop-js: 0.5.8
+      deslop-js: 0.6.2
       eslint-plugin-react-hooks: 7.1.1(eslint@10.5.0(jiti@2.7.0))
       jiti: 2.7.0
       magicast: 0.5.3
       oxlint: 1.66.0
-      oxlint-plugin-react-doctor: 0.5.8
+      oxlint-plugin-react-doctor: 0.6.2
       prompts: 2.4.2
-      typescript: 6.0.3
+      typescript: 5.9.3
       vscode-languageserver: 9.0.1
       vscode-languageserver-textdocument: 1.0.12
       vscode-uri: 3.1.0
+      yaml: 2.9.0
     transitivePeerDependencies:
       - '@opentelemetry/exporter-trace-otlp-http'
       - eslint
@@ -29734,7 +29743,7 @@ snapshots:
       preact: 10.29.2
       prompts: 2.4.2
       react: 19.2.7
-      react-doctor: 0.5.8(eslint@10.5.0(jiti@2.7.0))
+      react-doctor: 0.6.2(eslint@10.5.0(jiti@2.7.0))
       react-dom: 19.2.7(react@19.2.7)
       react-grab: 0.1.47(react@19.2.7)
     optionalDependencies:
@@ -31165,6 +31174,8 @@ snapshots:
       reflect.getprototypeof: 1.0.10
 
   typedarray@0.0.6: {}
+
+  typescript@5.9.3: {}
 
   typescript@6.0.3: {}
 

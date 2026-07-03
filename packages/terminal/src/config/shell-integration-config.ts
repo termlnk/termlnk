@@ -18,11 +18,9 @@
  * and heuristic fallback for AI agent command-block tracking.
  *
  * Written by the settings UI, read by rpc-server services (SSH session,
- * AI terminal tools). Persisted via ConfigRepository under the key
- * `SHELL_INTEGRATION_CONFIG_KEY`.
+ * AI terminal tools). Persisted via ConfigRepository under
+ * TERMINAL_PLUGIN_CONFIG_KEY ('terminal.config') / subKey 'shellIntegration'.
  */
-
-export const SHELL_INTEGRATION_CONFIG_KEY = 'shellIntegration';
 
 export interface ISSHShellIntegrationConfig {
   /**

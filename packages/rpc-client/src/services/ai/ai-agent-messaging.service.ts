@@ -20,7 +20,7 @@ import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { map, shareReplay } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
 
-export interface IAIAgentClientService {
+export interface IAIAgentMessagingService {
   readonly messages$: Observable<IChatMessage[]>;
   readonly isStreaming$: Observable<boolean>;
   readonly status$: Observable<AgentStatus>;
@@ -55,9 +55,9 @@ export interface IAIAgentClientService {
   applyTerminalErrorFix(sessionId: string): Promise<boolean>;
 }
 
-export const IAIAgentClientService = createIdentifier<IAIAgentClientService>('rpc-client.ai-agent-client-service');
+export const IAIAgentMessagingService = createIdentifier<IAIAgentMessagingService>('rpc-client.ai-agent-messaging-service');
 
-export class AIAgentClientService extends Disposable implements IAIAgentClientService {
+export class AIAgentMessagingService extends Disposable implements IAIAgentMessagingService {
   private readonly _state$: Observable<IAIAgentState>;
 
   readonly messages$: Observable<IChatMessage[]>;

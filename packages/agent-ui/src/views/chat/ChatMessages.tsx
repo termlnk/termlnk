@@ -16,7 +16,7 @@
 import type { IChatMessage, IMessagePart } from '@termlnk/agent';
 import { LocaleService } from '@termlnk/core';
 import { useDependency, useObservable } from '@termlnk/design';
-import { IAIAgentClientService } from '@termlnk/rpc-client';
+import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { map } from 'rxjs';
 import { ChatMessageBubble } from './ChatMessageBubble';
@@ -33,7 +33,7 @@ function hasVisibleStreamingContent(parts: IMessagePart[]): boolean {
 }
 
 export function ChatMessages() {
-  const aiAgentService = useDependency(IAIAgentClientService);
+  const aiAgentService = useDependency(IAIAgentMessagingService);
   const localeService = useDependency(LocaleService);
   const messages = useObservable(aiAgentService.messages$, []);
   const currentMessage = useObservable(aiAgentService.currentMessage$, null);

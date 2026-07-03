@@ -21,16 +21,16 @@ import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWith
 import { IFileTransferService, INotifyService, IPortForwardingService, RPCPlugin } from '@termlnk/rpc';
 import { IDevicePairingService, IInviteService, IRemoteSessionService, ISharedSessionService } from '@termlnk/shared-terminal';
 import { ISnippetService } from '@termlnk/snippet';
-import { IBackupClientService, ISyncService } from '@termlnk/sync';
+import { IBackupFileService, ISyncService } from '@termlnk/sync';
 import { IPTYService } from '@termlnk/terminal';
 import { defaultPluginConfig, RPC_CLIENT_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
-import { AIAgentClientService, IAIAgentClientService } from './services/ai/ai-agent-client.service';
+import { AIAgentMessagingService, IAIAgentMessagingService } from './services/ai/ai-agent-messaging.service';
 import { ChatSessionClientService, IChatSessionService } from './services/ai/chat-session-client.service';
 import { IProviderConfigService, ProviderConfigClientService } from './services/ai/provider-config-client.service';
 import { AuthService } from './services/auth/auth.service';
 import { ConfigManagerService, IConfigManagerService } from './services/config/config-manager.service';
 import { DevicePairingService } from './services/device-pairing/device-pairing.service';
-import { ExtensionClientService, IExtensionClientService } from './services/extension/extension-client.service';
+import { ExtensionManagementService, IExtensionManagementService } from './services/extension/extension-management.service';
 import { FileTransferService } from './services/file-transfer/file-transfer.service';
 import { HostManagerService, IHostManagerService } from './services/host/host-manager.service';
 import { InviteService } from './services/invite/invite.service';
@@ -48,7 +48,7 @@ import { SharedSessionService } from './services/shared-session/shared-session.s
 import { SkillService } from './services/skill/skill.service';
 import { SnippetClientService } from './services/snippet/snippet.service';
 import { ISSHService, SSHService } from './services/ssh/ssh.service';
-import { BackupClientService } from './services/sync/backup-client.service';
+import { BackupFileService } from './services/sync/backup-file.service';
 import { SyncClientService } from './services/sync/sync-client.service';
 import { ITerminalSessionBackupService, TerminalSessionBackupService } from './services/terminal-session-backup/terminal-session-backup.service';
 
@@ -85,13 +85,13 @@ export class RPCClientPlugin extends Plugin {
 
   private _registerDependencies() {
     const dependencies: Dependency[] = [
-      [IAIAgentClientService, { useClass: AIAgentClientService }],
+      [IAIAgentMessagingService, { useClass: AIAgentMessagingService }],
       [IAuthService, { useClass: AuthService }],
       [IChatSessionService, { useClass: ChatSessionClientService }],
       [IProviderConfigService, { useClass: ProviderConfigClientService }],
       [IConfigManagerService, { useClass: ConfigManagerService }],
       [IDevicePairingService, { useClass: DevicePairingService }],
-      [IExtensionClientService, { useClass: ExtensionClientService }],
+      [IExtensionManagementService, { useClass: ExtensionManagementService }],
       [IFileTransferService, { useClass: FileTransferService }],
       [IHostManagerService, { useClass: HostManagerService }],
       [IInviteService, { useClass: InviteService }],
@@ -110,7 +110,7 @@ export class RPCClientPlugin extends Plugin {
       [ISnippetService, { useClass: SnippetClientService }],
       [ISSHService, { useClass: SSHService }],
       [ISyncService, { useClass: SyncClientService }],
-      [IBackupClientService, { useClass: BackupClientService }],
+      [IBackupFileService, { useClass: BackupFileService }],
       [ITerminalSessionBackupService, { useClass: TerminalSessionBackupService }],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
