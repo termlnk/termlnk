@@ -281,11 +281,22 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
       return;
     }
 
+    // M3: disconnect()/dispose() may have arrived while awaiting the token.
+    // Proceeding would leak a socket + heartbeat interval that nobody cleans up.
+    if (this._stopped) {
+      return;
+    }
+
     const url = this._websocketUrl();
     // Pass token via RFC 6455 subprotocol so access logs do not record it.
     const ws = new this._webSocketCtor(url, [`Bearer.${token}`]);
 
+    // M4: Stale callbacks from a previous socket must not mutate state that now
+    // belongs to a newer socket. Every callback checks identity before acting.
     ws.addEventListener('open', () => {
+      if (this._ws !== ws) {
+        return;
+      }
       this._reconnectBackoff = INITIAL_RECONNECT_BACKOFF_MS;
       this._connected$.next(true);
       this._startHeartbeat();
@@ -293,10 +304,16 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
     });
 
     ws.addEventListener('message', (event) => {
+      if (this._ws !== ws) {
+        return;
+      }
       this._handleSocketMessage(event.data);
     });
 
     ws.addEventListener('close', () => {
+      if (this._ws !== ws) {
+        return;
+      }
       this._connected$.next(false);
       this._clearHeartbeat();
       this._ws = null;
@@ -306,6 +323,9 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
     });
 
     ws.addEventListener('error', (event) => {
+      if (this._ws !== ws) {
+        return;
+      }
       this._logService.warn('[HttpSyncTransportService] WebSocket error:', event);
       // Reconnect runs from `onclose`, which fires right after `onerror`.
     });

@@ -37,6 +37,11 @@ type CsiParserState =
 
 const ESC = '\u001B';
 const DEFAULT_MAX_PARAMS = 16;
+// Upper bound on accumulated param/intermediate bytes. Real CSI sequences rarely
+// exceed ~64 characters of params; 256 is generous. Matches the defensive posture
+// of the sibling DCS (8192) and OSC (8192) parsers -- CSI has a tighter budget
+// because its grammar is shorter and a runaway param byte stream is always invalid.
+const MAX_CSI_BUFFER_LENGTH = 256;
 
 /**
  * Returns true if the character code is a CSI private parameter prefix.
@@ -149,7 +154,12 @@ export class CsiStreamParser {
 
         case 'csi-param':
           if (isParamByte(ch)) {
-            this._paramBuffer += ch;
+            if (this._paramBuffer.length >= MAX_CSI_BUFFER_LENGTH) {
+              // Runaway param stream -- discard the malformed sequence.
+              this.reset();
+            } else {
+              this._paramBuffer += ch;
+            }
           } else if (isIntermediateByte(ch)) {
             this._intermediates += ch;
             this._state = 'csi-intermediate';
@@ -162,7 +172,12 @@ export class CsiStreamParser {
 
         case 'csi-intermediate':
           if (isIntermediateByte(ch)) {
-            this._intermediates += ch;
+            if (this._intermediates.length >= MAX_CSI_BUFFER_LENGTH) {
+              // Runaway intermediate stream -- discard the malformed sequence.
+              this.reset();
+            } else {
+              this._intermediates += ch;
+            }
           } else if (isFinalByte(ch)) {
             this._emit(ch, result);
           } else {
