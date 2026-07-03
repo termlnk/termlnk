@@ -49,6 +49,11 @@ export class PTYSessionService extends Disposable implements IPTYSessionService 
 
   async createSession(options: IPTYCreateSessionOptions = {}): Promise<string> {
     const sessionId = options.sessionId ?? v4();
+    // A client-provided id must not silently replace a live session: the old
+    // session's CLOSED subscription would later delete the new one by id.
+    if (this._sessions.has(sessionId)) {
+      throw new Error(`PTY session ${sessionId} already exists`);
+    }
     const shell = options.shell ?? await this._resolveDefaultShell();
     const sessionOptions = shell ? { ...options, shell } : options;
 

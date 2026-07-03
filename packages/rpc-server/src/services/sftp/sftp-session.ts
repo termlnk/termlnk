@@ -54,6 +54,9 @@ export class SFTPSession extends Disposable implements IDisposable {
   readonly event$ = this._event$.asObservable();
 
   private _sftp: Nullable<SFTPWrapper>;
+  // One socket reference per binding: close, retry and chain failure must
+  // not double-decrement the shared socket refcount.
+  private _socketRefReleased = false;
   private _socketDisposables = new DisposableCollection();
   private _chainDisposables = new DisposableCollection();
   private _pendingKeyboardInteractiveFinish: Nullable<KeyboardInteractiveCallback> = null;
@@ -94,14 +97,27 @@ export class SFTPSession extends Disposable implements IDisposable {
       this._sftp.end();
       this._sftp = null;
     }
-    this._sshSocketService.releaseSocket(this._socket.id);
+    this.releaseSocketRef();
     this._status$.next(SFTPSessionStatus.CLOSED);
+  }
+
+  /**
+   * Release this session's socket reference exactly once per socket binding.
+   * rebindSocket re-arms it for the newly acquired socket.
+   */
+  releaseSocketRef(): void {
+    if (this._socketRefReleased) {
+      return;
+    }
+    this._socketRefReleased = true;
+    this._sshSocketService.releaseSocket(this._socket.id);
   }
 
   rebindSocket(socket: ISSHSocket): void {
     this._socketDisposables.dispose();
     this._socketDisposables = new DisposableCollection();
     this._socket = socket;
+    this._socketRefReleased = false;
     this._sftp = null;
     this._ensureSocketStatusEvent();
     this._ensureInteractiveEvents();
@@ -343,7 +359,9 @@ export class SFTPSession extends Disposable implements IDisposable {
   // --- Internal ---
 
   private async _ensureSFTP(): Promise<SFTPWrapper> {
-    if (this._sftp) return this._sftp;
+    if (this._sftp) {
+      return this._sftp;
+    }
 
     if (this._socket.status !== SSHSocketStatus.READY) {
       throw new Error('SSH socket is not ready');
@@ -377,7 +395,9 @@ export class SFTPSession extends Disposable implements IDisposable {
     })));
 
     this._socketDisposables.add(toDisposable(this._socket.error$.subscribe(({ err }) => {
-      if (!err) return;
+      if (!err) {
+        return;
+      }
       const message = formatSocketError(err);
       const isAuthError = (err as any).level === 'client-authentication';
       if (isAuthError) {

@@ -63,7 +63,14 @@ export class SSHSession extends Disposable implements IDisposable {
   private _closeReason: 'auth_failed' | 'error' | undefined;
 
   private _channel: Nullable<ISSHChannel>;
+  // Set once close() is requested: blocks _ensureChannel from opening an
+  // orphan shell if the socket becomes ready after the session was closed.
+  private _closed = false;
+  // One socket reference per binding: multiple cleanup paths (channel close,
+  // explicit close, chain failure, retry) must not double-decrement refcount.
+  private _socketRefReleased = false;
   private readonly _middlewareStack = createTerminalMiddlewareStack();
+  private _channelDisposables = new DisposableCollection();
   private _socketDisposables = new DisposableCollection();
   private _x11Disposables = new DisposableCollection();
   private _chainDisposables = new DisposableCollection();
@@ -135,10 +142,12 @@ export class SSHSession extends Disposable implements IDisposable {
 
   private _init() {
     if (this._socket.status === SSHSocketStatus.READY) {
-      this._ensureChannel();
+      void this._ensureChannel();
     }
-    this._socketDisposables.add(toDisposable(this._socket.ready$.subscribe(async () => {
-      this._ensureChannel();
+    this._socketDisposables.add(toDisposable(this._socket.ready$.subscribe(() => {
+      // _ensureChannel never rejects: shell()/exec() failures are handled
+      // inside and surfaced through _error$/status$.
+      void this._ensureChannel();
     })));
     this._ensureSocketDiagnostics();
   }
@@ -207,11 +216,34 @@ export class SSHSession extends Disposable implements IDisposable {
   }
 
   async close(): Promise<void> {
-    if (!this._channel) {
+    if (this._closed) {
+      return;
+    }
+    this._closed = true;
+
+    if (this._channel) {
+      // Channel close$ handler completes the cleanup (CLOSED + socket release)
+      this._channel.close();
       return;
     }
 
-    this._channel.close();
+    // No channel yet (still connecting or already failed): clean up directly
+    // so the session reaches CLOSED and the socket reference is released.
+    this._connected$.next(false);
+    this.releaseSocketRef();
+    this._setStatus(SSHSessionStatus.CLOSED);
+  }
+
+  /**
+   * Release this session's socket reference exactly once per socket binding.
+   * rebindSocket re-arms it for the newly acquired socket.
+   */
+  releaseSocketRef(): void {
+    if (this._socketRefReleased) {
+      return;
+    }
+    this._socketRefReleased = true;
+    this._sshSocketService.releaseSocket(this._socket.id);
   }
 
   log(message: string): void {
@@ -246,8 +278,14 @@ export class SSHSession extends Disposable implements IDisposable {
     this._socketDisposables = new DisposableCollection();
     this._x11Disposables.dispose();
     this._x11Disposables = new DisposableCollection();
-    this._socket = socket;
+    // Detach and close any previous channel first: its close$ handler must
+    // not fire against the new socket binding and release the wrong reference.
+    this._channelDisposables.dispose();
+    this._channelDisposables = new DisposableCollection();
+    this._channel?.close();
     this._channel = null;
+    this._socket = socket;
+    this._socketRefReleased = false;
     this._ensureSocketStatusEvent();
     this._ensureInteractiveEvents();
     this._init();
@@ -272,7 +310,7 @@ export class SSHSession extends Disposable implements IDisposable {
   }
 
   private async _ensureChannel() {
-    if (this._channel) {
+    if (this._closed || this._channel) {
       return;
     }
 
@@ -289,41 +327,60 @@ export class SSHSession extends Disposable implements IDisposable {
       this._setupX11Forwarding();
     }
 
-    if (this._bootstrapCommand) {
-      this._channel = await this._socket.exec(
-        this._bootstrapCommand,
-        x11Enabled ? { pty: ptyOptions, x11: true } : { pty: ptyOptions }
-      );
-    } else {
-      this._channel = x11Enabled
-        ? await this._socket.shell(ptyOptions, { x11: true })
-        : await this._socket.shell(ptyOptions);
+    // shell()/exec() can reject (e.g. remote MaxSessions) — surface as ERROR
+    // instead of leaving the session stuck in OPENING_SHELL forever.
+    let channel: ISSHChannel;
+    try {
+      if (this._bootstrapCommand) {
+        channel = await this._socket.exec(
+          this._bootstrapCommand,
+          x11Enabled ? { pty: ptyOptions, x11: true } : { pty: ptyOptions }
+        );
+      } else {
+        channel = x11Enabled
+          ? await this._socket.shell(ptyOptions, { x11: true })
+          : await this._socket.shell(ptyOptions);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this._error$.next(message);
+      this._setStatus(SSHSessionStatus.ERROR);
+      this.log(`Failed to open channel: ${message}`);
+      return;
     }
+
+    if (this._closed) {
+      // close() raced the async channel open — do not adopt an orphan shell
+      channel.close();
+      return;
+    }
+    this._channel = channel;
 
     // resize() may update dimensions during await shell() — apply pending changes
     if (this._rows !== requestedRows || this._cols !== requestedCols) {
       this._channel.setWindow(this._rows, this._cols, 0, 0);
     }
 
-    this._channel.data$.subscribe((data) => {
+    this._channelDisposables.add(toDisposable(this._channel.data$.subscribe((data) => {
       const processed = this._middlewareStack.processFromSession(data);
       if (processed !== null) {
         this._data$.next(processed);
       }
-    });
-    this._channel.error$.subscribe((err) => {
+    })));
+    this._channelDisposables.add(toDisposable(this._channel.error$.subscribe((err) => {
       this._error$.next(new TextDecoder().decode(err));
       this._setStatus(SSHSessionStatus.ERROR);
-    });
+    })));
 
-    this._channel.close$.subscribe(() => {
+    this._channelDisposables.add(toDisposable(this._channel.close$.subscribe(() => {
       this._channel = null;
+      this._closed = true;
       this._x11Disposables.dispose();
-      this._setStatus(SSHSessionStatus.CLOSED);
       this._connected$.next(false);
       // Release socket reference when session closes
-      this._sshSocketService.releaseSocket(this._socket.id);
-    });
+      this.releaseSocketRef();
+      this._setStatus(SSHSessionStatus.CLOSED);
+    })));
 
     this._connected$.next(true);
     this._setStatus(SSHSessionStatus.READY);
@@ -390,7 +447,9 @@ export class SSHSession extends Disposable implements IDisposable {
     })));
 
     this._socketDisposables.add(toDisposable(this._socket.error$.subscribe(({ err }) => {
-      if (!err) return;
+      if (!err) {
+        return;
+      }
       const message = formatSocketError(err);
       const isAuthError = (err as any).level === 'client-authentication';
       if (isAuthError) {
@@ -500,6 +559,9 @@ export class SSHSession extends Disposable implements IDisposable {
       this._pendingHostKeyRespond = null;
     }
     this._middlewareStack.dispose();
+    this._channel?.close();
+    this._channel = null;
+    this._channelDisposables.dispose();
     this._x11Disposables.dispose();
     this._socketDisposables.dispose();
     this._chainDisposables.dispose();

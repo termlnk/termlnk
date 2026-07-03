@@ -21,7 +21,7 @@ import type { ISSHSocket } from '../ssh/ssh-socket';
 import { Disposable, ILogService, Inject, InjectSelf, Optional } from '@termlnk/core';
 import { ConfigRepository, HostRepository, SnippetRepository } from '@termlnk/database';
 import { IFileTransferService, ITerminalSessionNotifyService, SSHSessionStatus, SSHSocketStatus } from '@termlnk/rpc';
-import { getCredentialUsername, normalizeShellIntegrationConfig, SHELL_INTEGRATION_CONFIG_KEY } from '@termlnk/terminal';
+import { getCredentialUsername, normalizeShellIntegrationConfig, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
 import { filter, take } from 'rxjs';
 import { v4 } from 'uuid';
 import { resolveHostWithProxy } from '../proxy/resolve-effective-proxy';
@@ -59,6 +59,11 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
   async createSession(hostId: string, options: { sessionId?: string; rows?: number; cols?: number; password?: string }): Promise<string> {
     const { sessionId: providedSessionId, rows = 24, cols = 80, password } = options;
     const sessionId = providedSessionId ?? v4();
+    // A client-provided id must not silently replace a live session: the old
+    // session's CLOSED subscription would later delete the new one by id.
+    if (this._sessions.has(sessionId)) {
+      throw new Error(`Session ${sessionId} already exists`);
+    }
 
     const host = await this._hostRepository.getInfoById(hostId);
     if (!host) {
@@ -170,14 +175,22 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     if (chainHandle) {
       // Fire-and-forget: build the chain asynchronously, then connect the
       // target socket using the final hop tunnel as ConnectConfig.sock.
-      this._connectViaChain(session, socket, resolvedHost, password, multiplexerKey, chainHandle, true);
+      this._connectViaChain(session, socket, resolvedHost, password, chainHandle, true);
     } else if (socket.status === SSHSocketStatus.IDLE) {
-      const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
-        password,
-        onHostKeyPrompt: (info) => session.promptHostKey(info),
-      });
-      session.log(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
-      socket.connect(connectConfig);
+      try {
+        const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
+          password,
+          onHostKeyPrompt: (info) => session.promptHostKey(info),
+        });
+        session.log(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
+        socket.connect(connectConfig);
+      } catch (error) {
+        // The session is already registered — roll back map entry and socket
+        // refcount through the normal close path before rethrowing.
+        this._logService.error('[SSHSessionService] Failed to create connect config', error);
+        await session.close();
+        throw error instanceof Error ? error : new Error(String(error));
+      }
     }
 
     return sessionId;
@@ -200,7 +213,9 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     // Drop the previous socket and chain (refcounts release as the old handle
     // disposes), then build a fresh chain. Retry stays non-blocking; the
     // renderer observes progress through a new round of hop_progress events.
-    this._sshSocketService.releaseSocket(session.socketId);
+    // releaseSocketRef is idempotent per binding — a chain failure may have
+    // already released this reference.
+    session.releaseSocketRef();
 
     if (password.length > 0) {
       session.setPassword(password);
@@ -213,7 +228,7 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     session.rebindSocket(newSocket);
     if (chainHandle) {
       session.attachHostChain(chainHandle);
-      this._connectViaChain(session, newSocket, resolvedHost, password, multiplexerKey, chainHandle, false);
+      this._connectViaChain(session, newSocket, resolvedHost, password, chainHandle, false);
     } else {
       const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
         password,
@@ -294,12 +309,16 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     socket: ISSHSocket,
     host: IHost,
     password: string | undefined,
-    multiplexerKey: string,
     chainHandle: IHostChainHandle,
     log: boolean
   ): void {
     chainHandle.ready
       .then(async (finalSock) => {
+        // The session may have been closed (socket ref released, socket
+        // destroyed) while the chain was still building.
+        if (session.status === SSHSessionStatus.CLOSED) {
+          return;
+        }
         if (socket.status !== SSHSocketStatus.IDLE) {
           return;
         }
@@ -316,7 +335,7 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
       .catch((err) => {
         const error = err instanceof Error ? err : new Error(String(err));
         session.markChainFailed(error);
-        this._sshSocketService.releaseSocket(multiplexerKey);
+        session.releaseSocketRef();
       });
   }
 
@@ -338,8 +357,9 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
 
   private async _readShellIntegrationConfig(): Promise<IShellIntegrationConfig> {
     try {
-      const raw = await this._configRepository.get<Partial<IShellIntegrationConfig>>(
-        SHELL_INTEGRATION_CONFIG_KEY
+      const raw = await this._configRepository.getField<Partial<IShellIntegrationConfig>>(
+        TERMINAL_PLUGIN_CONFIG_KEY,
+        'shellIntegration'
       );
       return normalizeShellIntegrationConfig(raw);
     } catch {

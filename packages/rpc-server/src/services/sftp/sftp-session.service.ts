@@ -144,13 +144,21 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
     );
 
     if (chainHandle) {
-      this._connectViaChain(session, socket, resolvedHost, password, multiplexerKey, chainHandle);
+      this._connectViaChain(session, socket, resolvedHost, password, chainHandle);
     } else if (socket.status === SSHSocketStatus.IDLE) {
-      const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
-        password,
-      });
-      this._logService.debug(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
-      socket.connect(connectConfig);
+      try {
+        const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
+          password,
+        });
+        this._logService.debug(`Socket connect requested (timeout=${connectConfig.readyTimeout}ms).`);
+        socket.connect(connectConfig);
+      } catch (error) {
+        // The session is already registered — roll back map entry and socket
+        // refcount through the normal close path before rethrowing.
+        this._logService.error('[SFTPSessionService] Failed to create connect config', error);
+        await session.close();
+        throw error instanceof Error ? error : new Error(String(error));
+      }
     }
 
     return sessionId;
@@ -169,7 +177,9 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
 
     const resolvedHost = await resolveHostWithProxy(host as IHost, this._configRepository);
 
-    this._sshSocketService.releaseSocket(session.socketId);
+    // releaseSocketRef is idempotent per binding — a chain failure may have
+    // already released this reference.
+    session.releaseSocketRef();
     if (password.length > 0) {
       session.setPassword(password);
     }
@@ -181,7 +191,7 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
     session.rebindSocket(newSocket);
     if (chainHandle) {
       session.attachHostChain(chainHandle);
-      this._connectViaChain(session, newSocket, resolvedHost, password, multiplexerKey, chainHandle);
+      this._connectViaChain(session, newSocket, resolvedHost, password, chainHandle);
     } else {
       const connectConfig = await this._sshSocketService.createConnectConfig(resolvedHost, {
         password,
@@ -199,11 +209,15 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
     socket: ISSHSocket,
     host: IHost,
     password: string | undefined,
-    multiplexerKey: string,
     chainHandle: IHostChainHandle
   ): void {
     chainHandle.ready
       .then(async (finalSock) => {
+        // The session may have been closed (socket ref released, socket
+        // destroyed) while the chain was still building.
+        if (session.status === SFTPSessionStatus.CLOSED) {
+          return;
+        }
         if (socket.status !== SSHSocketStatus.IDLE) {
           return;
         }
@@ -217,7 +231,7 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
       .catch((err) => {
         const error = err instanceof Error ? err : new Error(String(err));
         session.markChainFailed(error);
-        this._sshSocketService.releaseSocket(multiplexerKey);
+        session.releaseSocketRef();
       });
   }
 
@@ -369,7 +383,9 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
 
   async cancelTransfer(transferId: string): Promise<void> {
     const task = this._transfers.get(transferId);
-    if (!task) return;
+    if (!task) {
+      return;
+    }
     this._cancelledTransfers.add(transferId);
     task.status = TransferStatus.CANCELLED;
     this._transferProgress$.next({ ...task });
@@ -383,14 +399,18 @@ export class SFTPSessionService extends Disposable implements ISFTPSessionServic
     destPath: string
   ): Promise<void> {
     const task = this._transfers.get(transferId);
-    if (!task) return;
+    if (!task) {
+      return;
+    }
 
     task.status = TransferStatus.TRANSFERRING;
     this._transferProgress$.next({ ...task });
 
     try {
       const onProgress = (transferred: number, total: number) => {
-        if (this._cancelledTransfers.has(transferId)) return;
+        if (this._cancelledTransfers.has(transferId)) {
+          return;
+        }
         task.transferredBytes = transferred;
         task.totalBytes = total;
         this._transferProgress$.next({ ...task });
