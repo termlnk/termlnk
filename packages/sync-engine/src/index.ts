@@ -24,6 +24,7 @@ export type { HttpFetchFn, HttpWebSocketCtor, IHttpSyncTransportConfig, IHttpWeb
 export { NoopSyncTransportService } from './services/noop-transport.service';
 export { SyncOutboxService } from './services/outbox.service';
 export { SyncService } from './services/sync.service';
+export { applyPatchItems } from './synchronisers/apply-patch';
 export { ConfigSynchroniser } from './synchronisers/config-synchroniser';
 export { HostSynchroniser } from './synchronisers/host-synchroniser';
 export { IdentitySynchroniser } from './synchronisers/identity-synchroniser';

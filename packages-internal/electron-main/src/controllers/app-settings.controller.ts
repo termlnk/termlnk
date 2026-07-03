@@ -161,11 +161,17 @@ export class AppSettingsController extends Disposable {
   private _setupCloseToTray(): void {
     this.disposeWithMe(
       this._windowManagerService.setCloseInterceptor((windowId) => {
-        if (this._windowManagerService.isQuitting) return false;
-        if (!this._settings.closeToTray || !this._trayService.isActive) return false;
+        if (this._windowManagerService.isQuitting) {
+          return false;
+        }
+        if (!this._settings.closeToTray || !this._trayService.isActive) {
+          return false;
+        }
 
         const window = BrowserWindow.fromId(windowId);
-        if (!window) return false;
+        if (!window) {
+          return false;
+        }
 
         window.hide();
 

@@ -13,7 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IUpdateInfo } from '@termlnk/core';
 import type { ReactNode } from 'react';
 import { IUpdaterService, LocaleService } from '@termlnk/core';
 import { Badge, Button, cn, LogoIcon, useDependency } from '@termlnk/design';

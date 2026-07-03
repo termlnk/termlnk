@@ -25,12 +25,20 @@ export default antfu(
         'apps/desktop/.gitignore',
         'apps/desktop/main/.gitignore',
         'apps/desktop/renderer/.gitignore',
+        'apps/mobile/.gitignore',
+        'packages-internal/react-native-russh/.gitignore',
       ],
       root: true,
     },
     ignores: [
       'mockdata/**/*.json',
       'pnpm-lock.yaml',
+      // Generated artefacts: drizzle migration snapshots and ubrn (uniffi) bindings
+      '**/src/migrations/**/snapshot.json',
+      'packages-internal/react-native-russh/src/generated/**',
+      'packages-internal/react-native-russh/src/index.tsx',
+      'packages-internal/react-native-russh/src/NativeReactNativeRussh.ts',
+      'packages-internal/react-native-russh/rust/**',
     ],
     stylistic: {
       indent: 2,

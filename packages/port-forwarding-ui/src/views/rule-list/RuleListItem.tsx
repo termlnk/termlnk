@@ -81,8 +81,8 @@ export function RuleListItem({ rule, selected, onSelect }: IRuleListItemProps) {
       onContextMenu={handleContextMenu}
       className={cn(`
         tm:group
-        tm:flex tm:flex-col tm:gap-2 tm:rounded-md tm:border tm:border-line/70 tm:bg-black tm:px-2.5
-        tm:py-2 tm:transition-[background-color,border-color,box-shadow]
+        tm:flex tm:flex-col tm:gap-2 tm:rounded-md tm:border tm:border-line/70 tm:bg-black tm:px-2.5 tm:py-2
+        tm:transition-[background-color,border-color,box-shadow]
         tm:hover:border-one-bg3 tm:hover:bg-one-bg2 tm:hover:shadow-xs
       `, {
         'tm:border-blue/45 tm:bg-one-bg2 tm:shadow-xs': selected,

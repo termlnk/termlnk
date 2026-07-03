@@ -14,12 +14,12 @@
  */
 
 import type { IPortForwardingRuleEntity } from '@termlnk/database';
-import type { IPortForwardingRule, IPortForwardingRuleCreateInput, IPortForwardingRuleUpdateInput, IPortForwardingRuntimeState, PortForwardingAuthEvent, PortForwardingHostKeyAction } from '@termlnk/rpc';
+import type { IPortForwardingRule, IPortForwardingRuleCreateInput, IPortForwardingRuleUpdateInput, IPortForwardingRuntimeState, IPortForwardingService, PortForwardingAuthEvent, PortForwardingHostKeyAction } from '@termlnk/rpc';
 import type { Observable } from 'rxjs';
 import type { IPortForwardingTunnel, IPortForwardingTunnelDeps } from './port-forwarding-tunnel';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository, HostRepository, PortForwardingRuleRepository } from '@termlnk/database';
-import { IPortForwardingService, PortForwardingTunnelStatus, PortForwardingType } from '@termlnk/rpc';
+import { PortForwardingTunnelStatus, PortForwardingType } from '@termlnk/rpc';
 import { BehaviorSubject, EMPTY, of, Subject } from 'rxjs';
 import { filter, startWith, switchMap } from 'rxjs/operators';
 import { ISSHHostChainService } from '../ssh/ssh-host-chain.service';
@@ -207,7 +207,7 @@ export class PortForwardingService extends Disposable implements IPortForwarding
       switchMap(() => {
         const tunnel = this._tunnels.get(ruleId);
         return tunnel ? tunnel.state$ : of(idle);
-      }),
+      })
     );
   }
 
@@ -218,7 +218,7 @@ export class PortForwardingService extends Disposable implements IPortForwarding
       switchMap(() => {
         const tunnel = this._tunnels.get(ruleId);
         return tunnel ? tunnel.authEvent$ : EMPTY;
-      }),
+      })
     );
   }
 

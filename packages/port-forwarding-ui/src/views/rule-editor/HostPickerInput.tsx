@@ -62,7 +62,9 @@ export function HostPickerInput({ hostId, label, onChange }: IHostPickerInputPro
   useEffect(() => {
     let alive = true;
     void hostManager.tree().then((tree) => {
-      if (alive) setHosts(flatten(tree));
+      if (alive) {
+        setHosts(flatten(tree));
+      }
     });
     return () => {
       alive = false;

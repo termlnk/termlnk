@@ -24,13 +24,17 @@ export type NullableDependencyPair<T> = [DependencyIdentifier<T>, DependencyItem
 export type DependencyOverride = NullableDependencyPair<any>[];
 
 export function mergeOverrideWithDependencies(dependencies: Dependency[], override?: DependencyOverride): Dependency[] {
-  if (!override) return dependencies;
+  if (!override) {
+    return dependencies;
+  }
 
   const result: Dependency[] = [];
   for (const dependency of dependencies) {
     const overrideItem = override.find(([identifier]) => identifier === dependency[0]);
     if (overrideItem) {
-      if (overrideItem[1] === null) continue;
+      if (overrideItem[1] === null) {
+        continue;
+      }
       result.push([dependency[0], overrideItem[1]]);
     } else {
       result.push(dependency);

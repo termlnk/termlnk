@@ -254,7 +254,9 @@ function normalizeHostAddress(value: string): string {
 }
 
 function normalizePrivateKey(value: string): string {
-  if (!value) return value;
+  if (!value) {
+    return value;
+  }
   let normalized = value.replace(/\r\n/g, '\n');
   if (!normalized.includes('\n') && normalized.includes('\\n')) {
     normalized = normalized.replace(/\\n/g, '\n');

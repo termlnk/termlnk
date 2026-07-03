@@ -103,14 +103,30 @@ export class PortForwardingRuleRepository extends Disposable implements IPortFor
 
   async update(id: string, patch: IPortForwardingRuleUpdate): Promise<IPortForwardingRuleEntity> {
     const updates: Partial<IPortForwardingRuleEntityInsert> = {};
-    if (patch.label !== undefined) updates.label = patch.label;
-    if (patch.type !== undefined) updates.type = patch.type;
-    if (patch.hostId !== undefined) updates.hostId = patch.hostId;
-    if (patch.bindAddress !== undefined) updates.bindAddress = patch.bindAddress;
-    if (patch.bindPort !== undefined) updates.bindPort = patch.bindPort;
-    if (patch.destinationAddress !== undefined) updates.destinationAddress = patch.destinationAddress;
-    if (patch.destinationPort !== undefined) updates.destinationPort = patch.destinationPort;
-    if (patch.sort !== undefined) updates.sort = patch.sort;
+    if (patch.label !== undefined) {
+      updates.label = patch.label;
+    }
+    if (patch.type !== undefined) {
+      updates.type = patch.type;
+    }
+    if (patch.hostId !== undefined) {
+      updates.hostId = patch.hostId;
+    }
+    if (patch.bindAddress !== undefined) {
+      updates.bindAddress = patch.bindAddress;
+    }
+    if (patch.bindPort !== undefined) {
+      updates.bindPort = patch.bindPort;
+    }
+    if (patch.destinationAddress !== undefined) {
+      updates.destinationAddress = patch.destinationAddress;
+    }
+    if (patch.destinationPort !== undefined) {
+      updates.destinationPort = patch.destinationPort;
+    }
+    if (patch.sort !== undefined) {
+      updates.sort = patch.sort;
+    }
 
     if (Object.keys(updates).length === 0) {
       const existing = await this.getById(id);

@@ -88,10 +88,14 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     this._activeModelId$,
   ]).pipe(
     map(([providers, modelId]) => {
-      if (!modelId) return null;
+      if (!modelId) {
+        return null;
+      }
       for (const provider of providers) {
         const model = provider.models.find((m) => m.id === modelId);
-        if (model) return model;
+        if (model) {
+          return model;
+        }
       }
       return null;
     })
@@ -102,7 +106,9 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     this.activeModel$,
   ]).pipe(
     map(([_providers, model]) => {
-      if (!model) return null;
+      if (!model) {
+        return null;
+      }
       return this._providerConfigs.get(model.providerId) ?? null;
     })
   );
@@ -126,7 +132,9 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
   }
 
   async initialize(): Promise<void> {
-    if (this._initialized) return;
+    if (this._initialized) {
+      return;
+    }
 
     try {
       await this._migrateFromLegacy();
@@ -344,10 +352,14 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
   getActiveModel(): IModelOption | null {
     const modelId = this._activeModelId$.getValue();
-    if (!modelId) return null;
+    if (!modelId) {
+      return null;
+    }
     for (const provider of this._providers$.getValue()) {
       const model = provider.models.find((m) => m.id === modelId);
-      if (model) return model;
+      if (model) {
+        return model;
+      }
     }
     return null;
   }
@@ -523,7 +535,9 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
     // 2. Custom providers (not in pi-ai)
     for (const [providerId, config] of providerConfigs) {
-      if (processedProviderIds.has(providerId)) continue;
+      if (processedProviderIds.has(providerId)) {
+        continue;
+      }
 
       const providerCustomModels = customModels
         .filter((cm) => cm.providerId === providerId)
@@ -735,7 +749,9 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
     for (let page = 0; page < 5; page++) {
       const params = new URLSearchParams({ key: resolvedApiKey, pageSize: '200' });
-      if (pageToken) params.set('pageToken', pageToken);
+      if (pageToken) {
+        params.set('pageToken', pageToken);
+      }
 
       const response = await this._fetchJson<IGoogleModelListResponse>(`${normalizedBaseUrl}/models?${params.toString()}`, {
         method: 'GET',
@@ -743,14 +759,20 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
       for (const model of response.models ?? []) {
         const supportedMethods = model.supportedGenerationMethods ?? [];
-        if (supportedMethods.length > 0 && !supportedMethods.includes('generateContent')) continue;
+        if (supportedMethods.length > 0 && !supportedMethods.includes('generateContent')) {
+          continue;
+        }
 
         const rawName = model.name ?? '';
         const id = rawName.replace(/^models\//, '').trim();
-        if (id) modelIds.add(id);
+        if (id) {
+          modelIds.add(id);
+        }
       }
 
-      if (!response.nextPageToken) break;
+      if (!response.nextPageToken) {
+        break;
+      }
       pageToken = response.nextPageToken;
     }
 
@@ -781,7 +803,9 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
 
   private _getDefaultBaseUrl(providerId: string): string | undefined {
     const mapped = getDefaultProviderBaseUrl(providerId);
-    if (mapped) return mapped;
+    if (mapped) {
+      return mapped;
+    }
 
     try {
       const models = getBuiltinModels(providerId as any);
@@ -824,7 +848,9 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     const deduped = new Set<string>();
     for (const modelId of modelIds) {
       const normalized = modelId.trim();
-      if (normalized) deduped.add(normalized);
+      if (normalized) {
+        deduped.add(normalized);
+      }
     }
     return [...deduped].sort((a, b) => a.localeCompare(b));
   }

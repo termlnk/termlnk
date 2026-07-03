@@ -268,7 +268,9 @@ function parseKeyValuePairs(data: string): Record<string, string> {
 
 function extractContentAfterLastColon(data: string): string {
   const lastColon = data.lastIndexOf(':');
-  if (lastColon <= 0) return '';
+  if (lastColon <= 0) {
+    return '';
+  }
 
   const afterLastColon = data.substring(lastColon + 1).trim();
   const contentMatch = afterLastColon.match(/^[^=]+=(.+)$/);
@@ -276,8 +278,12 @@ function extractContentAfterLastColon(data: string): string {
 }
 
 function parsePriority(urgency: string | undefined): ICreateNotificationParams['priority'] {
-  if (urgency === 'critical' || urgency === 'high') return 'urgent';
-  if (urgency === 'low') return 'low';
+  if (urgency === 'critical' || urgency === 'high') {
+    return 'urgent';
+  }
+  if (urgency === 'low') {
+    return 'low';
+  }
   return 'normal';
 }
 

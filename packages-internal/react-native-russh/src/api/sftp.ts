@@ -3,14 +3,21 @@
  *
  * Licensed under the PolyForm Noncommercial License 1.0.0 (the "License");
  * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://polyformproject.org/licenses/noncommercial/1.0.0
+ *
+ * Use of this software for any commercial purpose is prohibited.
+ * The software is provided "AS IS", WITHOUT WARRANTY OR CONDITION OF ANY KIND,
+ * either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
  */
 
 // Idiomatic TS wrapper for SftpSession. Upload/download return a *synchronous*
 // handle so the UI can paint a Cancel button immediately without awaiting
 // the long-running transfer; the underlying Rust call runs as `done` Promise.
 
-import * as GeneratedRussh from '../index';
-import { callRusshAsync, callRusshSync } from './errors';
+import type * as GeneratedRussh from '../index';
 import type {
   ISftpEntry,
   ISftpStat,
@@ -18,6 +25,7 @@ import type {
   ISftpTransferOptions,
   ISftpTransferProgress,
 } from './types';
+import { callRusshAsync, callRusshSync } from './errors';
 
 export interface ISftpSession {
   readonly sessionId: string;
@@ -32,12 +40,12 @@ export interface ISftpSession {
   upload: (
     localPath: string,
     remotePath: string,
-    opts?: ISftpTransferOptions,
+    opts?: ISftpTransferOptions
   ) => ISftpTransferHandle;
   download: (
     remotePath: string,
     localPath: string,
-    opts?: ISftpTransferOptions,
+    opts?: ISftpTransferOptions
   ) => ISftpTransferHandle;
   close: () => Promise<void>;
 }
@@ -85,8 +93,8 @@ function uuid(): string {
   // Set RFC 4122 version 4 + variant bits. The `?? 0` keeps strict
   // noUncheckedIndexedAccess happy — bytes[i] is always defined for i<16
   // but the typesystem doesn't know the Uint8Array length statically.
-  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
-  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+  bytes[6] = ((bytes[6] ?? 0) & 0x0F) | 0x40;
+  bytes[8] = ((bytes[8] ?? 0) & 0x3F) | 0x80;
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
@@ -96,7 +104,7 @@ function makeTransferHandle(
   remotePath: string,
   localPath: string,
   donePromise: Promise<GeneratedRussh.SftpTransferInfo>,
-  sftp: GeneratedRussh.SftpSessionLike,
+  sftp: GeneratedRussh.SftpSessionLike
 ): ISftpTransferHandle {
   return {
     transferId,
@@ -109,13 +117,13 @@ function makeTransferHandle(
         // discard the SftpTransferInfo — caller already has remotePath/localPath
         // and we expose total via progress callback. The handle's `done` is
         // void so a missing transfer doesn't leak Rust types into the UI.
-      }),
+      })
     ),
   };
 }
 
 function toProgressCallback(
-  onProgress: ((p: ISftpTransferProgress) => void) | undefined,
+  onProgress: ((p: ISftpTransferProgress) => void) | undefined
 ): GeneratedRussh.SftpProgressCallback | undefined {
   if (!onProgress) {
     return undefined;
@@ -146,7 +154,7 @@ export function wrapSftpSession(sftp: GeneratedRussh.SftpSessionLike): ISftpSess
         localPath,
         remotePath,
         opts?.chunkSize,
-        toProgressCallback(opts?.onProgress),
+        toProgressCallback(opts?.onProgress)
       );
       return makeTransferHandle(transferId, remotePath, localPath, donePromise, sftp);
     },
@@ -157,7 +165,7 @@ export function wrapSftpSession(sftp: GeneratedRussh.SftpSessionLike): ISftpSess
         remotePath,
         localPath,
         opts?.chunkSize,
-        toProgressCallback(opts?.onProgress),
+        toProgressCallback(opts?.onProgress)
       );
       return makeTransferHandle(transferId, remotePath, localPath, donePromise, sftp);
     },

@@ -17,7 +17,9 @@ import type { MenuConfig, MenuItemConfig } from './menu';
 import { BehaviorSubject, Observable, switchMap } from 'rxjs';
 
 export function mergeMenuConfigs<T = MenuConfig>(baseConfig: T, additionalConfig: MenuItemConfig | null): T {
-  if (!additionalConfig || !baseConfig) return baseConfig;
+  if (!additionalConfig || !baseConfig) {
+    return baseConfig;
+  }
 
   // Update properties directly if they exist in additionalConfig
   const properties: (keyof MenuItemConfig)[] = ['type', 'icon', 'title', 'tooltip'];

@@ -73,8 +73,12 @@ export function RenameInput({ currentName, onSubmit, onCancel }: IRenameInputPro
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSubmit();
-              if (e.key === 'Escape') onCancel();
+              if (e.key === 'Enter') {
+                handleSubmit();
+              }
+              if (e.key === 'Escape') {
+                onCancel();
+              }
             }}
           />
 

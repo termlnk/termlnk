@@ -57,22 +57,34 @@ export function setPanelDragData(
  */
 function hasType(types: readonly string[], type: string): boolean {
   // DOMStringList has `contains()`, frozen arrays have `includes()`
-  if (typeof (types as any).includes === 'function') return types.includes(type);
-  if (typeof (types as any).contains === 'function') return (types as any).contains(type);
+  if (typeof (types as any).includes === 'function') {
+    return types.includes(type);
+  }
+  if (typeof (types as any).contains === 'function') {
+    return (types as any).contains(type);
+  }
   return [...types].includes(type);
 }
 
 function detectDragSource(dataTransfer: DataTransfer): DragSourceType | null {
   const { types } = dataTransfer;
-  if (hasType(types, MIME_LOCAL)) return 'local';
-  if (hasType(types, MIME_REMOTE)) return 'remote';
-  if (hasType(types, 'Files')) return 'native';
+  if (hasType(types, MIME_LOCAL)) {
+    return 'local';
+  }
+  if (hasType(types, MIME_REMOTE)) {
+    return 'remote';
+  }
+  if (hasType(types, 'Files')) {
+    return 'native';
+  }
 
   // Fallback: check items for file kind (covers edge cases where 'Files' is missing from types)
   const { items } = dataTransfer;
   if (items && items.length > 0) {
     for (let i = 0; i < items.length; i++) {
-      if (items[i].kind === 'file') return 'native';
+      if (items[i].kind === 'file') {
+        return 'native';
+      }
     }
   }
 
@@ -83,9 +95,15 @@ function isAccepted(
   source: DragSourceType,
   opts: IPanelDropOptions
 ): boolean {
-  if (source === 'local' && opts.acceptLocal) return true;
-  if (source === 'remote' && opts.acceptRemote) return true;
-  if (source === 'native' && opts.acceptNative) return true;
+  if (source === 'local' && opts.acceptLocal) {
+    return true;
+  }
+  if (source === 'remote' && opts.acceptRemote) {
+    return true;
+  }
+  if (source === 'native' && opts.acceptNative) {
+    return true;
+  }
   return false;
 }
 
@@ -132,7 +150,9 @@ export function usePanelDrop(options: IPanelDropOptions): IPanelDropResult {
 
   const onDragEnter = useCallback((e: React.DragEvent) => {
     const source = detectDragSource(e.dataTransfer);
-    if (!source || !isAccepted(source, optsRef.current)) return;
+    if (!source || !isAccepted(source, optsRef.current)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current += 1;
@@ -144,7 +164,9 @@ export function usePanelDrop(options: IPanelDropOptions): IPanelDropResult {
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     const source = detectDragSource(e.dataTransfer);
-    if (!source || !isAccepted(source, optsRef.current)) return;
+    if (!source || !isAccepted(source, optsRef.current)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
@@ -159,7 +181,9 @@ export function usePanelDrop(options: IPanelDropOptions): IPanelDropResult {
 
   const onDragLeave = useCallback((e: React.DragEvent) => {
     const source = detectDragSource(e.dataTransfer);
-    if (!source || !isAccepted(source, optsRef.current)) return;
+    if (!source || !isAccepted(source, optsRef.current)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current -= 1;
@@ -172,7 +196,9 @@ export function usePanelDrop(options: IPanelDropOptions): IPanelDropResult {
 
   const onDrop = useCallback((e: React.DragEvent) => {
     const source = detectDragSource(e.dataTransfer);
-    if (!source || !isAccepted(source, optsRef.current)) return;
+    if (!source || !isAccepted(source, optsRef.current)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current = 0;

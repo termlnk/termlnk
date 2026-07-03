@@ -22,7 +22,9 @@ export const StopRuleCommand: ICommand<IRuleIdParams> = {
   id: 'port-forwarding-ui.command.stop-rule',
   handler: async (accessor: IAccessor, params?: IRuleIdParams): Promise<boolean> => {
     const ruleId = resolveRuleId(accessor, params);
-    if (!ruleId) return false;
+    if (!ruleId) {
+      return false;
+    }
     await accessor.get(IPortForwardingService).stopRule(ruleId);
     return true;
   },
@@ -32,7 +34,9 @@ export const RestartRuleCommand: ICommand<IRuleIdParams> = {
   id: 'port-forwarding-ui.command.restart-rule',
   handler: async (accessor: IAccessor, params?: IRuleIdParams): Promise<boolean> => {
     const ruleId = resolveRuleId(accessor, params);
-    if (!ruleId) return false;
+    if (!ruleId) {
+      return false;
+    }
     await accessor.get(IPortForwardingService).restartRule(ruleId);
     return true;
   },

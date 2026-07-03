@@ -13,8 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ISftpSession } from './sftp';
 import type { IDynamicForwardConfig, IForwardHandle, IForwardTunnelCallback, ILocalForwardConfig, IRemoteForwardConfig } from './port-forward';
+import type { ISftpSession } from './sftp';
 import type { IBufferReadResult, IBufferStats, IConnectOptions, IRusshError, IServerPublicKeyInfo, IShellListenerOptions, IStartShellOptions, ITerminalChunk, ShellCursor, ShellListenerEvent, SshConnectionProgress, StreamKind, TerminalType } from './types';
 import * as GeneratedRussh from '../index';
 import { callRusshAsync, callRusshSync, toRusshError } from './errors';
@@ -356,7 +356,7 @@ export function generateKeyPair(
     rounds?: number;
     ecdsaCurve?: string;
     rsaBits?: number;
-  },
+  }
 ): IGeneratedKeyMaterial {
   const map: Record<typeof type, GeneratedRussh.KeyType> = {
     rsa: GeneratedRussh.KeyType.Rsa,
@@ -370,14 +370,14 @@ export function generateKeyPair(
       options?.cipher ?? undefined,
       options?.rounds ?? undefined,
       options?.ecdsaCurve ?? undefined,
-      options?.rsaBits ?? undefined,
-    ),
+      options?.rsaBits ?? undefined
+    )
   ));
 }
 
 export function validatePrivateKey(
   key: string,
-  passphrase?: string,
+  passphrase?: string
 ): { valid: true; material: IGeneratedKeyMaterial } | { valid: false; error: IRusshError } {
   try {
     const raw = GeneratedRussh.validatePrivateKey(key, passphrase ?? undefined);

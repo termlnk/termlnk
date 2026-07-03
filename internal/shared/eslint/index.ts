@@ -39,7 +39,7 @@ export const baseRules: Partial<Rules> = {
   'e18e/prefer-array-to-sorted': 'off',
 
   // Code style and formatting rules
-  curly: ['error', 'multi-line'],
+  curly: ['error', 'all'],
   'antfu/if-newline': 'off',
   'no-param-reassign': ['off'],
   'eol-last': ['error', 'always'],

@@ -4,22 +4,22 @@ on:
   workflow_dispatch:
     inputs:
       keep:
-        description: 'Number of most-recent stable versions to keep'
+        description: Number of most-recent stable versions to keep
         required: false
         default: '2'
         type: string
       keep-prerelease:
-        description: 'Number of most-recent versions to keep per prerelease channel'
+        description: Number of most-recent versions to keep per prerelease channel
         required: false
         default: '2'
         type: string
       prefix:
-        description: 'R2 key prefix to prune'
+        description: R2 key prefix to prune
         required: false
-        default: 'desktop/'
+        default: desktop/
         type: string
       dry-run:
-        description: 'Only report what would be deleted (no deletion)'
+        description: Only report what would be deleted (no deletion)
         required: false
         default: true
         type: boolean

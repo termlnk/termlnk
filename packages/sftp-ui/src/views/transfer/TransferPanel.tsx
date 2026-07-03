@@ -23,7 +23,9 @@ interface ITransferPanelProps {
 }
 
 export function TransferPanel({ transfers, onCancel, onClearCompleted }: ITransferPanelProps) {
-  if (transfers.length === 0) return null;
+  if (transfers.length === 0) {
+    return null;
+  }
 
   const hasCompleted = transfers.some((t) => t.status === 'completed' || t.status === 'failed' || t.status === 'cancelled');
 

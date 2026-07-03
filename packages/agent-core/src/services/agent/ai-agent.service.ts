@@ -26,9 +26,9 @@ import { BehaviorSubject, combineLatest, map, Subject } from 'rxjs';
 import { PendingMessageQueue } from '../../common/pending-message-queue';
 import { buildCompactUserPrompt, buildSummaryUserMessage, formatMessagesForCompaction, SUMMARIZATION_SYSTEM_PROMPT } from '../compact/compact-prompt';
 import { getLatestContextTokens, shouldAutoCompact } from '../compact/compact-token';
+import { buildFallbackModel } from '../llm-provider/utils';
 import { invokeWithUserIntent } from '../permission/permission-guarded-tool';
 import { appendErrorPart, appendTextDelta, appendThinkingDelta, finalizeToolPart, getErrorFromParts, getTextFromParts, getToolPartsFromParts, upsertToolPartInputDelta } from './message-parts';
-import { buildFallbackModel } from '../llm-provider/utils';
 
 const COMPACT_MAX_OUTPUT_TOKENS = 20000;
 const MAX_RETRY_ATTEMPTS = 3;

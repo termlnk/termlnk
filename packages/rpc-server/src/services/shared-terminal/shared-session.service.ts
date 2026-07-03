@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState, IPairingService, IParticipant, IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService, IShareSessionOptions, ISharedSession, ISharedSessionInputPolicy, ISharedSessionService } from '@termlnk/shared-terminal';
+import type { IDriverState, IPairingService, IParticipant, IPtyMultiplexerService as IPtyMultiplexerServiceType, IRegisteredPty, IShareableSession, IShareDaemonService, ISharedSession, ISharedSessionInputPolicy, ISharedSessionService, IShareSessionOptions } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { IAuthService } from '@termlnk/auth';
 import { Disposable, ILogService, Optional } from '@termlnk/core';

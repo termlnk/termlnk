@@ -177,7 +177,9 @@ export class ShortcutService extends Disposable implements IShortcutService {
   registerShortcut(shortcut: IShortcutItem): IDisposable {
     // first map shortcut to a number, so it could be converted and fetched quickly
     const binding = this._getBindingFromItem(shortcut);
-    if (!binding) return toDisposable(() => {});
+    if (!binding) {
+      return toDisposable(() => {});
+    }
 
     const bindingSet = this._shortCutMapping.get(binding);
     if (bindingSet) {
@@ -226,7 +228,9 @@ export class ShortcutService extends Disposable implements IShortcutService {
 
   getShortcutDisplay(shortcut: IShortcutItem): string | null {
     const binding = this._getBindingFromItem(shortcut);
-    if (!binding) return null;
+    if (!binding) {
+      return null;
+    }
 
     const ctrlKey = binding & MetaKeys.CTRL_COMMAND;
     const shiftKey = binding & MetaKeys.SHIFT;

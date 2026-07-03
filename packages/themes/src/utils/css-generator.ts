@@ -103,7 +103,9 @@ export function injectTransparencyToDOM(theme: ITheme, opacity: number, prefix =
 
   for (const key of BG_COLOR_KEYS) {
     const value = theme.base_30[key as keyof typeof theme.base_30];
-    if (!value) continue;
+    if (!value) {
+      continue;
+    }
     const cssKey = key.replace(/_/g, '-');
     lines.push(`${prefix}-${cssKey}: color-mix(in srgb, ${value} ${percent}%, transparent);`);
   }

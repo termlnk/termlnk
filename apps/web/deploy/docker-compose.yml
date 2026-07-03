@@ -3,12 +3,12 @@ services:
     image: ghcr.io/termlnk/termlnk-web:${TERMLNK_WEB_TAG:-latest}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - '127.0.0.1:3000:3000'
     environment:
       TERMLNK_MASTER_PASSWORD_FILE: /run/secrets/master_password
-      TERMLNK_WEB_HOST: "0.0.0.0"
-      TERMLNK_WEB_PORT: "3000"
-      TERMLNK_WEB_DEMO: "${TERMLNK_WEB_DEMO:-}"
+      TERMLNK_WEB_HOST: 0.0.0.0
+      TERMLNK_WEB_PORT: '3000'
+      TERMLNK_WEB_DEMO: '${TERMLNK_WEB_DEMO:-}'
     secrets:
       - master_password
     volumes:
@@ -16,13 +16,13 @@ services:
 
   caddy:
     image: caddy:2-alpine
-    profiles: ["tls"]
+    profiles: [tls]
     restart: unless-stopped
     depends_on:
       - termlnk-web
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     environment:
       TERMLNK_WEB_DOMAIN: ${TERMLNK_WEB_DOMAIN:-}
     entrypoint:

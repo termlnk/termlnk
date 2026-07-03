@@ -132,7 +132,9 @@ export class InstanceService extends Disposable implements IInstanceService {
 
   setCurrentUnitForType(unitId: string): void {
     const result = this._getUnitById(unitId);
-    if (!result) throw new Error(`[InstanceService]: no document with unitId ${unitId}!`);
+    if (!result) {
+      throw new Error(`[InstanceService]: no document with unitId ${unitId}!`);
+    }
 
     this._currentUnits.set(result[1], result[0]);
     this._currentUnits$.next(this._currentUnits);
@@ -171,7 +173,9 @@ export class InstanceService extends Disposable implements IInstanceService {
 
   getUnit<T extends UnitModel = UnitModel>(id: string, type?: UnitType): Nullable<T> {
     const unit = this._getUnitById(id)?.[0] as Nullable<T>;
-    if (type && unit?.type !== type) return null;
+    if (type && unit?.type !== type) {
+      return null;
+    }
     return unit;
   }
 
@@ -181,7 +185,9 @@ export class InstanceService extends Disposable implements IInstanceService {
 
   get focused(): Nullable<UnitModel> {
     const id = this._focused$.getValue();
-    if (!id) return null;
+    if (!id) {
+      return null;
+    }
 
     return this._getUnitById(id)?.[0];
   }
@@ -212,7 +218,9 @@ export class InstanceService extends Disposable implements IInstanceService {
 
   disposeUnit(unitId: string): boolean {
     const result = this._getUnitById(unitId);
-    if (!result) return false;
+    if (!result) {
+      return false;
+    }
 
     const [unit, type] = result;
     const units = this._unitsMap.get(type)!;

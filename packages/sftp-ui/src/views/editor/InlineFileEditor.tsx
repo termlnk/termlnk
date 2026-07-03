@@ -40,14 +40,18 @@ export function InlineFileEditor({ sessionId, remotePath, filename, onClose }: I
 
     sftpService.readFile(sessionId, remotePath)
       .then((base64) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         const text = atob(base64);
         setContent(text);
         setOriginalContent(text);
         setLoading(false);
       })
       .catch((err) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setError(err instanceof Error ? err.message : String(err));
         setLoading(false);
       });
@@ -75,7 +79,9 @@ export function InlineFileEditor({ sessionId, remotePath, filename, onClose }: I
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
       e.preventDefault();
-      if (isDirty) handleSave();
+      if (isDirty) {
+        handleSave();
+      }
     }
     if (e.key === 'Escape') {
       onClose();

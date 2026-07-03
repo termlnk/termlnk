@@ -17,7 +17,7 @@ function addHermesV1Env(contents) {
   if (contents.includes(NETWORK_INSPECTOR_ENV_LINE)) {
     return contents.replace(
       NETWORK_INSPECTOR_ENV_LINE,
-      `${NETWORK_INSPECTOR_ENV_LINE}\n${HERMES_V1_ENV_LINE}`,
+      `${NETWORK_INSPECTOR_ENV_LINE}\n${HERMES_V1_ENV_LINE}`
     );
   }
 

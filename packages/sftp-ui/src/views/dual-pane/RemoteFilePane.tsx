@@ -84,7 +84,9 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
   }, [browser]);
 
   const deleteRemotePath = useCallback(async (remotePath: string, isDirectory: boolean) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     if (isDirectory) {
       const entries = await sftpService.list(sessionId, remotePath);
       for (const entry of entries) {
@@ -97,7 +99,9 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
   }, [sessionId, sftpService]);
 
   const handleDelete = useCallback(async (entry: IFileListEntry) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     const fullPath = `${browser.currentPath}/${entry.filename}`;
     try {
       await deleteRemotePath(fullPath, entry.isDirectory);
@@ -108,7 +112,9 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
   }, [sessionId, browser, deleteRemotePath, logService]);
 
   const handleRename = useCallback(async (oldName: string, newName: string) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     const oldPath = `${browser.currentPath}/${oldName}`;
     const newPath = `${browser.currentPath}/${newName}`;
     try {
@@ -121,7 +127,9 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
   }, [sessionId, browser, sftpService, logService]);
 
   const handleNewFolder = useCallback(async (name: string) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     const path = `${browser.currentPath}/${name}`;
     try {
       await sftpService.mkdir(sessionId, path);
@@ -133,7 +141,9 @@ export function RemoteFilePane({ sessionId, onTransferRequest, onUploadDrop, ref
   }, [sessionId, browser, sftpService, logService]);
 
   const handleChmod = useCallback(async (mode: number) => {
-    if (!sessionId || !permEntry) return;
+    if (!sessionId || !permEntry) {
+      return;
+    }
     const fullPath = `${browser.currentPath}/${permEntry.filename}`;
     try {
       await sftpService.chmod(sessionId, fullPath, mode);

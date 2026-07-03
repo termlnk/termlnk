@@ -45,11 +45,16 @@ function isDemoMode(): boolean {
 function DecorativeTrafficLights() {
   return (
     <div className="tm:flex tm:shrink-0 tm:items-center tm:pl-3">
-      <div className="tm:group tm:flex tm:items-center tm:gap-2">
+      <div
+        className="
+          tm:group
+          tm:flex tm:items-center tm:gap-2
+        "
+      >
         <div
           className={cn(`
-            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:text-[#353535]
-            tm:outline-1 tm:-outline-offset-1 tm:bg-[#ec6765] tm:outline-[#e73e3b]
+            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:bg-[#ec6765] tm:text-[#353535]
+            tm:outline-1 tm:-outline-offset-1 tm:outline-[#e73e3b]
           `)}
         >
           <X
@@ -61,8 +66,8 @@ function DecorativeTrafficLights() {
         </div>
         <div
           className={cn(`
-            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:text-[#353535]
-            tm:outline-1 tm:-outline-offset-1 tm:bg-[#f2ca44] tm:outline-[#eebb0d]
+            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:bg-[#f2ca44] tm:text-[#353535]
+            tm:outline-1 tm:-outline-offset-1 tm:outline-[#eebb0d]
           `)}
         >
           <Minus
@@ -74,8 +79,8 @@ function DecorativeTrafficLights() {
         </div>
         <div
           className={cn(`
-            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:text-[#353535]
-            tm:outline-1 tm:-outline-offset-1 tm:bg-[#65c466] tm:outline-[#49ba4b]
+            tm:flex tm:size-3.5 tm:items-center tm:justify-center tm:rounded-full tm:bg-[#65c466] tm:text-[#353535]
+            tm:outline-1 tm:-outline-offset-1 tm:outline-[#49ba4b]
           `)}
         >
           <Maximize2

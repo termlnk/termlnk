@@ -1,15 +1,15 @@
 {
   "extends": "@termlnk/shared/tsconfig/base",
   "compilerOptions": {
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "rootDir": "src",
     "paths": {
       "@/*": [
         "./src/*"
       ]
     },
-    "outDir": "lib/types",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "outDir": "lib/types"
   },
   "references": [
     {

@@ -24,7 +24,9 @@ export const EditRuleCommand: ICommand<IRuleIdParams> = {
   id: 'port-forwarding-ui.command.edit-rule',
   handler: (accessor: IAccessor, params?: IRuleIdParams): boolean => {
     const ruleId = resolveRuleId(accessor, params);
-    if (!ruleId) return false;
+    if (!ruleId) {
+      return false;
+    }
     accessor.get(IRuleDialogService).openEdit(ruleId);
     return true;
   },

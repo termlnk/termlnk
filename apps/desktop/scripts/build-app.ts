@@ -14,10 +14,10 @@
  */
 
 import type { CliOptions, Configuration } from 'electron-builder';
-import { Arch, build, DIR_TARGET, Platform } from 'electron-builder';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { Arch, build, DIR_TARGET, Platform } from 'electron-builder';
 import builderConfig from '../electron-builder';
 
 const DESKTOP_ROOT = resolve(import.meta.dirname, '..');
@@ -79,7 +79,7 @@ function getElectronVersion(): string {
   const packageJson = JSON.parse(readFileSync(resolve(DESKTOP_ROOT, 'package.json'), 'utf-8'));
   const version = packageJson.devDependencies?.electron;
   if (typeof version !== 'string') {
-    throw new Error('Cannot find electron in apps/desktop/package.json devDependencies.');
+    throw new TypeError('Cannot find electron in apps/desktop/package.json devDependencies.');
   }
 
   return version.replace(/^[^\d]*/, '');
@@ -115,54 +115,54 @@ function createStagedProjectConfig(): Configuration {
     }),
     mac: source.mac
       ? {
-          ...source.mac,
-          icon: rebaseOptionalPath(source.mac.icon),
-          entitlements: rebaseOptionalPath(source.mac.entitlements),
-          entitlementsInherit: rebaseOptionalPath(source.mac.entitlementsInherit),
-          entitlementsLoginHelper: rebaseOptionalPath(source.mac.entitlementsLoginHelper),
-          provisioningProfile: rebaseOptionalPath(source.mac.provisioningProfile),
-          binaries: rebaseOptionalPaths(source.mac.binaries),
-          requirements: rebaseOptionalPath(source.mac.requirements),
-        }
+        ...source.mac,
+        icon: rebaseOptionalPath(source.mac.icon),
+        entitlements: rebaseOptionalPath(source.mac.entitlements),
+        entitlementsInherit: rebaseOptionalPath(source.mac.entitlementsInherit),
+        entitlementsLoginHelper: rebaseOptionalPath(source.mac.entitlementsLoginHelper),
+        provisioningProfile: rebaseOptionalPath(source.mac.provisioningProfile),
+        binaries: rebaseOptionalPaths(source.mac.binaries),
+        requirements: rebaseOptionalPath(source.mac.requirements),
+      }
       : source.mac,
     mas: source.mas
       ? {
-          ...source.mas,
-          icon: rebaseOptionalPath(source.mas.icon),
-          entitlements: rebaseOptionalPath(source.mas.entitlements),
-          entitlementsInherit: rebaseOptionalPath(source.mas.entitlementsInherit),
-          entitlementsLoginHelper: rebaseOptionalPath(source.mas.entitlementsLoginHelper),
-          provisioningProfile: rebaseOptionalPath(source.mas.provisioningProfile),
-          binaries: rebaseOptionalPaths(source.mas.binaries),
-          requirements: rebaseOptionalPath(source.mas.requirements),
-        }
+        ...source.mas,
+        icon: rebaseOptionalPath(source.mas.icon),
+        entitlements: rebaseOptionalPath(source.mas.entitlements),
+        entitlementsInherit: rebaseOptionalPath(source.mas.entitlementsInherit),
+        entitlementsLoginHelper: rebaseOptionalPath(source.mas.entitlementsLoginHelper),
+        provisioningProfile: rebaseOptionalPath(source.mas.provisioningProfile),
+        binaries: rebaseOptionalPaths(source.mas.binaries),
+        requirements: rebaseOptionalPath(source.mas.requirements),
+      }
       : source.mas,
     dmg: source.dmg
       ? {
-          ...source.dmg,
-          background: rebaseOptionalPath(source.dmg.background),
-          badgeIcon: rebaseOptionalPath(source.dmg.badgeIcon),
-          icon: rebaseOptionalPath(source.dmg.icon),
-          license: rebaseLicense(source.dmg.license),
-        }
+        ...source.dmg,
+        background: rebaseOptionalPath(source.dmg.background),
+        badgeIcon: rebaseOptionalPath(source.dmg.badgeIcon),
+        icon: rebaseOptionalPath(source.dmg.icon),
+        license: rebaseLicense(source.dmg.license),
+      }
       : source.dmg,
     win: source.win
       ? {
-          ...source.win,
-          icon: rebaseOptionalPath(source.win.icon),
-        }
+        ...source.win,
+        icon: rebaseOptionalPath(source.win.icon),
+      }
       : source.win,
     linux: source.linux
       ? {
-          ...source.linux,
-          icon: rebaseOptionalStringPath(source.linux.icon),
-        }
+        ...source.linux,
+        icon: rebaseOptionalStringPath(source.linux.icon),
+      }
       : source.linux,
     releaseInfo: source.releaseInfo?.releaseNotesFile
       ? {
-          ...source.releaseInfo,
-          releaseNotesFile: rebasePath(source.releaseInfo.releaseNotesFile),
-        }
+        ...source.releaseInfo,
+        releaseNotesFile: rebasePath(source.releaseInfo.releaseNotesFile),
+      }
       : source.releaseInfo,
   };
 

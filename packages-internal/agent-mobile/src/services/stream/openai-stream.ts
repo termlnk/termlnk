@@ -51,7 +51,7 @@ export async function* streamOpenAICompletions(
   const resp = await fetch(`${baseUrl.replace(/\/+$/, '')}/chat/completions`, {
     method: 'POST',
     headers: {
-      'authorization': `Bearer ${apiKey}`,
+      authorization: `Bearer ${apiKey}`,
       'content-type': 'application/json',
       ...headers,
     },

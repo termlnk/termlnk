@@ -19,7 +19,7 @@ import type { Observable } from 'rxjs';
 import { Disposable, Inject } from '@termlnk/core';
 import { HostRepository } from '@termlnk/database';
 import { ISSHSessionService, SSHSessionStatus } from '@termlnk/rpc';
-import { HostType, getCredentialUsername } from '@termlnk/terminal';
+import { getCredentialUsername, HostType } from '@termlnk/terminal';
 
 export class SSHToolService extends Disposable implements ISSHToolService {
   constructor(
@@ -115,13 +115,17 @@ export class SSHToolService extends Disposable implements ISSHToolService {
 
   getSessionData$(sessionId: string): Observable<Uint8Array | string> | null {
     const session = this._sshSessionService.getSession(sessionId);
-    if (!session) return null;
+    if (!session) {
+      return null;
+    }
     return session.data$ as Observable<Uint8Array | string>;
   }
 
   getSessionStatus(sessionId: string): string | null {
     const session = this._sshSessionService.getSession(sessionId);
-    if (!session) return null;
+    if (!session) {
+      return null;
+    }
     return session.status;
   }
 }

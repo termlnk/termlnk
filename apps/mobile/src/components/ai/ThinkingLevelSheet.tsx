@@ -18,8 +18,8 @@ import { Ban, Check, Lightbulb, Sparkles } from 'lucide-react-native';
 import { useCallback } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemeColors } from '../../theme/theme-provider';
 import { hapticSelection } from '../../lib/haptics';
+import { useThemeColors } from '../../theme/theme-provider';
 
 interface ILevelOption {
   readonly level: MobileThinkingLevel;

@@ -38,7 +38,9 @@ export function TransferOverlay({ onCancel }: ITransferOverlayProps) {
     return () => sub.unsubscribe();
   }, [historyService]);
 
-  if (!visible || transfers.length === 0) return null;
+  if (!visible || transfers.length === 0) {
+    return null;
+  }
 
   const hasCompleted = transfers.some(
     (t) => t.status === 'completed' || t.status === 'failed' || t.status === 'cancelled'

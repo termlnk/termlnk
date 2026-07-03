@@ -29,7 +29,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // manually. apps/web/renderer/package.json itself stays at 0.0.0 (apps don't
 // publish), so the meaningful version lives at the repo root.
 const rootPkg = JSON.parse(
-  readFileSync(resolve(__dirname, '../../../package.json'), 'utf-8'),
+  readFileSync(resolve(__dirname, '../../../package.json'), 'utf-8')
 ) as { version: string };
 
 // Mirrors apps/desktop/configs/renderer.config.ts plugin chain. Differs only

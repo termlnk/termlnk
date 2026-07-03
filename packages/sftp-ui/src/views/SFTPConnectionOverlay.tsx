@@ -43,13 +43,17 @@ export function SFTPConnectionOverlay(props: ISFTPConnectionOverlayProps) {
   const hasError = state.phase === 'error';
 
   const handlePasswordSubmit = useCallback(() => {
-    if (!passwordValue) return;
+    if (!passwordValue) {
+      return;
+    }
     onPasswordSubmit?.(passwordValue);
     setPasswordValue('');
   }, [passwordValue, onPasswordSubmit]);
 
   const handleRetry = useCallback(() => {
-    if (!passwordValue) return;
+    if (!passwordValue) {
+      return;
+    }
     onRetry?.(passwordValue);
     setPasswordValue('');
   }, [passwordValue, onRetry]);
@@ -168,26 +172,44 @@ export function SFTPConnectionOverlay(props: ISFTPConnectionOverlayProps) {
 }
 
 function getActiveStep(state: SFTPPageConnectionState): number {
-  if (state.phase === 'ready') return 3;
+  if (state.phase === 'ready') {
+    return 3;
+  }
   if (state.phase === 'connecting') {
     const status = state.status;
-    if (status === 'opening_sftp') return 2;
-    if (status === 'authenticating') return 1;
+    if (status === 'opening_sftp') {
+      return 2;
+    }
+    if (status === 'authenticating') {
+      return 1;
+    }
     return 0;
   }
-  if (state.phase === 'password') return 1;
-  if (state.phase === 'error') return 0;
+  if (state.phase === 'password') {
+    return 1;
+  }
+  if (state.phase === 'error') {
+    return 0;
+  }
   return 0;
 }
 
 function getStepClassName(hasError: boolean, isActive: boolean, isDone: boolean): string {
-  if (hasError && isActive) return 'tm:border-red tm:bg-red/20 tm:text-red';
-  if (isDone || isActive) return 'tm:border-blue tm:bg-blue/20 tm:text-blue';
+  if (hasError && isActive) {
+    return 'tm:border-red tm:bg-red/20 tm:text-red';
+  }
+  if (isDone || isActive) {
+    return 'tm:border-blue tm:bg-blue/20 tm:text-blue';
+  }
   return 'tm:border-one-bg3 tm:bg-one-bg2 tm:text-grey-fg';
 }
 
 function getStepIcon(hasError: boolean, isActive: boolean, Icon: React.ComponentType<{ size: number; className?: string }>) {
-  if (hasError && isActive) return <ShieldAlert size={14} />;
-  if (isActive) return <Loader2 size={14} className="tm:animate-spin" />;
+  if (hasError && isActive) {
+    return <ShieldAlert size={14} />;
+  }
+  if (isActive) {
+    return <Loader2 size={14} className="tm:animate-spin" />;
+  }
   return <Icon size={14} />;
 }

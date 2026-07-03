@@ -13,14 +13,14 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ISnippetEntity } from '@termlnk/database';
 import type { ISSHSessionService } from '@termlnk/rpc';
 import type { ISnippet, ISnippetChangeEvent, ISnippetPackage, ISnippetService, ISnippetUpdate, SnippetItem, SnippetTree } from '@termlnk/snippet';
 import type { Observable } from 'rxjs';
-import type { ISnippetEntity } from '@termlnk/database';
 import { Disposable, Inject } from '@termlnk/core';
 import { SnippetRepository } from '@termlnk/database';
-import { SnippetType } from '@termlnk/snippet';
 import { ISSHSessionService as ISSHSessionServiceId } from '@termlnk/rpc';
+import { SnippetType } from '@termlnk/snippet';
 
 export class SnippetService extends Disposable implements ISnippetService {
   constructor(

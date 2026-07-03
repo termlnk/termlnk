@@ -89,5 +89,5 @@ const sizeKb = (Buffer.byteLength(bundleJs + xtermCss) / 1024).toFixed(1);
 const relPath = path.relative(MOBILE_ROOT, OUT);
 console.log(
   `[build-xterm-webview] wrote ${relPath} `
-  + `(xterm ${xtermVersion}, addon-fit ${addonFitVersion}, ${sizeKb} KB inlined)`,
+  + `(xterm ${xtermVersion}, addon-fit ${addonFitVersion}, ${sizeKb} KB inlined)`
 );

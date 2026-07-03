@@ -25,19 +25,19 @@ import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, View } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConnectionService, useHostRepository, useObservable, useSyncService } from '../../core/core-context';
 import { useHostChildren } from '../../hooks/use-host-tree';
+import { useSshEvent } from '../../hooks/use-ssh-event';
 import { takePendingGroupSelection } from '../../lib/group-selection';
+import { useThemeColors } from '../../theme/theme-provider';
 import { AuthFailedSheet } from '../terminal/auth-failed-sheet';
 import { HostKeySheet } from '../terminal/host-key-sheet';
-import { useSshEvent } from '../../hooks/use-ssh-event';
-import { useThemeColors } from '../../theme/theme-provider';
 import { Card } from '../ui/card';
-import { CreateHostEmptyState } from './create-host-empty-state';
 import { EmptyState } from '../ui/empty-state';
-import { HostRow } from './host-row';
 import { RoundButton } from '../ui/round-button';
 import { ScreenContainer } from '../ui/screen-container';
 import { ScreenHeader } from '../ui/screen-header';
 import { SearchField } from '../ui/search-field';
+import { CreateHostEmptyState } from './create-host-empty-state';
+import { HostRow } from './host-row';
 
 interface IHostListScreenProps {
   // 'root' for the Hosts landing page; a group id for nested screens.

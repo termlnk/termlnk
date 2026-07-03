@@ -109,7 +109,7 @@ export function DriverChangeOverlay({ sessionId }: IDriverChangeOverlayProps): R
     if (!toast) {
       return undefined;
     }
-    const timer = setTimeout(() => setToast(null), OVERLAY_TTL_MS);
+    const timer = setTimeout(setToast, OVERLAY_TTL_MS, null);
     return () => clearTimeout(timer);
   }, [toast]);
 

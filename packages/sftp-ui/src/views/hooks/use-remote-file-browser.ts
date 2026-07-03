@@ -44,7 +44,9 @@ export function useRemoteFileBrowser(sessionId: string | null) {
   });
 
   const navigate = useCallback(async (path: string) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     setState((prev) => ({ ...prev, loading: true, error: null, selectedFiles: new Set() }));
     try {
       let resolvedPath = path;
@@ -139,8 +141,12 @@ export function useRemoteFileBrowser(sessionId: string | null) {
 function sortEntries(entries: ISFTPFileEntry[], field: SortField, direction: SortDirection): ISFTPFileEntry[] {
   return entries.toSorted((a, b) => {
     // Directories always come first
-    if (a.isDirectory && !b.isDirectory) return -1;
-    if (!a.isDirectory && b.isDirectory) return 1;
+    if (a.isDirectory && !b.isDirectory) {
+      return -1;
+    }
+    if (!a.isDirectory && b.isDirectory) {
+      return 1;
+    }
 
     let cmp = 0;
     switch (field) {

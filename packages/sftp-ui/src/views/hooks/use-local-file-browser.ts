@@ -156,8 +156,12 @@ export function useLocalFileBrowser() {
 
 function sortLocalEntries(entries: ILocalFileEntry[], field: SortField, direction: SortDirection): ILocalFileEntry[] {
   return entries.toSorted((a, b) => {
-    if (a.isDirectory && !b.isDirectory) return -1;
-    if (!a.isDirectory && b.isDirectory) return 1;
+    if (a.isDirectory && !b.isDirectory) {
+      return -1;
+    }
+    if (!a.isDirectory && b.isDirectory) {
+      return 1;
+    }
 
     let cmp = 0;
     switch (field) {

@@ -35,7 +35,9 @@ export function ShortcutsTab() {
 
     for (const shortcut of shortcutService.getAllShortcuts()) {
       const display = shortcutService.getShortcutDisplay(shortcut);
-      if (!display) continue;
+      if (!display) {
+        continue;
+      }
 
       const groupKey = shortcut.group || 'other';
       let rows = grouped.get(groupKey);

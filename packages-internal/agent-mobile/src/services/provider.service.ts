@@ -294,7 +294,7 @@ export class MobileProviderService extends Disposable implements IMobileProvider
       const resp = await fetch(`${provider.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
         method: 'POST',
         headers: {
-          'authorization': `Bearer ${apiKey}`,
+          authorization: `Bearer ${apiKey}`,
           'content-type': 'application/json',
           ...provider.headers,
         },

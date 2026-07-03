@@ -48,7 +48,9 @@ export function createTerminalMiddlewareStack(): ITerminalMiddlewareStack {
     processFromSession(data: Uint8Array): Uint8Array | null {
       let current: Uint8Array | null = data;
       for (const middleware of _middlewares) {
-        if (current === null) break;
+        if (current === null) {
+          break;
+        }
         current = middleware.feedFromSession(current);
       }
       return current;
@@ -57,7 +59,9 @@ export function createTerminalMiddlewareStack(): ITerminalMiddlewareStack {
     processFromTerminal(data: Uint8Array): Uint8Array | null {
       let current: Uint8Array | null = data;
       for (const middleware of _middlewares) {
-        if (current === null) break;
+        if (current === null) {
+          break;
+        }
         current = middleware.feedFromTerminal(current);
       }
       return current;

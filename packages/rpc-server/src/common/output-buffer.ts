@@ -102,7 +102,9 @@ export class OutputBufferManager {
 
   private _resetInactivityTimer(sessionId: string): void {
     const buffer = this._buffers.get(sessionId);
-    if (!buffer) return;
+    if (!buffer) {
+      return;
+    }
 
     if (buffer.inactivityTimer !== null) {
       clearTimeout(buffer.inactivityTimer);
@@ -115,7 +117,9 @@ export class OutputBufferManager {
 
   private _cleanupBuffer(sessionId: string): void {
     const buffer = this._buffers.get(sessionId);
-    if (!buffer) return;
+    if (!buffer) {
+      return;
+    }
 
     buffer.subscription.unsubscribe();
     if (buffer.inactivityTimer !== null) {

@@ -244,7 +244,9 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
 
   /** Merge and write accumulated wire data chunks in a single write. */
   const flushChunks = (chunks: Uint8Array[]) => {
-    if (chunks.length === 0) return;
+    if (chunks.length === 0) {
+      return;
+    }
     if (chunks.length === 1) {
       writeToChannel(chunks[0]);
       return;
@@ -261,7 +263,9 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
 
   // Receiver pump (download)
   function pumpReceiver() {
-    if (!_receiver) return;
+    if (!_receiver) {
+      return;
+    }
 
     let loopCount = 0;
     while (loopCount++ < MAX_PUMP_LOOPS) {
@@ -288,7 +292,9 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
           // Async: ask user for save path
           callbacks.onDownloadRequest({ name: _recvFileName, size: _recvFileSize })
             .then((savePath) => {
-              if (_mode !== 'receiving' || !_receiver) return;
+              if (_mode !== 'receiving' || !_receiver) {
+                return;
+              }
 
               if (!savePath) {
                 // User cancelled download
@@ -365,7 +371,9 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
         }
       }
 
-      if (!didWork) break;
+      if (!didWork) {
+        break;
+      }
     }
   }
 
@@ -381,10 +389,14 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
   function feedReceiverFully(data: Uint8Array) {
     let remaining = data;
     for (let i = 0; i < MAX_PUMP_LOOPS && remaining.length > 0; i++) {
-      if (!_receiver || _mode !== 'receiving' || _waitingForUserInput) break;
+      if (!_receiver || _mode !== 'receiving' || _waitingForUserInput) {
+        break;
+      }
       const consumed = _receiver.feedIncoming(remaining);
       pumpReceiver();
-      if (consumed === 0) break;
+      if (consumed === 0) {
+        break;
+      }
       remaining = remaining.subarray(consumed);
     }
   }
@@ -427,7 +439,9 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
   };
 
   const pumpSender = () => {
-    if (!_sender) return;
+    if (!_sender) {
+      return;
+    }
 
     let loopCount = 0;
     while (loopCount++ < MAX_PUMP_LOOPS) {
@@ -441,14 +455,18 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
       if (_sendFileFd !== null && _sender) {
         for (let i = 0; i < MAX_PUMP_LOOPS; i++) {
           const request = _sender.pollFile();
-          if (!request) break;
+          if (!request) {
+            break;
+          }
           const { offset, len } = request;
           const chunk = Buffer.alloc(len);
           withNoAsar(() => fs.readSync(_sendFileFd!, chunk, 0, len, offset));
           _sender.feedFile(new Uint8Array(chunk));
           // Must drain immediately — feedFile throws if outgoing is not empty
           const encoded = _sender.drainOutgoing();
-          if (encoded.length > 0) chunks.push(encoded);
+          if (encoded.length > 0) {
+            chunks.push(encoded);
+          }
           _sendBytesTransferred = offset + len;
           didWork = true;
         }
@@ -533,7 +551,9 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
     state$: _state$.asObservable(),
 
     feedFromSession(data: Uint8Array): Uint8Array | null {
-      if (_disposed) return data;
+      if (_disposed) {
+        return data;
+      }
 
       // --- Active transfer ---
       if (_mode !== 'idle') {
@@ -594,7 +614,9 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
 
           callbacks.onUploadRequest()
             .then((files) => {
-              if (_mode !== 'sending' || !_sender) return;
+              if (_mode !== 'sending' || !_sender) {
+                return;
+              }
 
               if (!files || files.length === 0) {
                 writeToChannel(CANCEL_SEQUENCE);
@@ -617,7 +639,9 @@ export function createZModemMiddleware(callbacks: IZModemCallbacks, writeToChann
               const pending = _pendingData;
               _pendingData = [];
               for (let i = 0; i < pending.length; i++) {
-                if (_mode !== 'sending' || !_sender) break;
+                if (_mode !== 'sending' || !_sender) {
+                  break;
+                }
                 _sender.feedIncoming(pending[i]);
                 tuneSender(_sender);
               }

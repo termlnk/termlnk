@@ -39,7 +39,9 @@ export class FileTransferService extends Disposable implements IFileTransferServ
 
   initSession(sessionId: string): void {
     const session = this._sshSessionService.getSession(sessionId);
-    if (!session) return;
+    if (!session) {
+      return;
+    }
 
     this._reinitMiddlewares(sessionId, session);
     this._logService.log('[FileTransfer]', `Initialized middlewares for session ${sessionId}`);

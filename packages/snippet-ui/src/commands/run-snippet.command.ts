@@ -48,8 +48,8 @@ export const RunSnippetCommand: ICommand<ISnippetCommandParams> = {
       await firstValueFrom(
         sshService.status$(sessionId).pipe(
           filter((status) => status === 'ready'),
-          take(1),
-        ),
+          take(1)
+        )
       );
       await snippetService.run(sessionId, snippet.content);
     }

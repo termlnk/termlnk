@@ -277,7 +277,9 @@ export class HostRepository extends Disposable implements IHostSyncRepository {
 
   async move(id: string, targetPid: string, targetSort: number): Promise<void> {
     const host = await this.getInfoById(id);
-    if (!host) return undefined;
+    if (!host) {
+      return undefined;
+    }
 
     const sourcePid = host.pid;
     const sourceSort = host.sort;
@@ -645,7 +647,9 @@ export class HostRepository extends Disposable implements IHostSyncRepository {
       )
     ).all();
 
-    if (descendants.length === 0) return;
+    if (descendants.length === 0) {
+      return;
+    }
 
     for (const descendant of descendants) {
       const newTree = newParentTree + descendant.tree.substring(oldParentTree.length);

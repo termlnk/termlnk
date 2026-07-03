@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig",
-  "exclude": ["scripts", "lib"],
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["scripts", "lib"]
 }

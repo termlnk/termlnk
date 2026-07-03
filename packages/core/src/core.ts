@@ -75,10 +75,18 @@ export class Core implements IDisposable {
     const logService = this._injector.get(ILogService);
 
     const { theme, locale, locales, logLevel } = config;
-    if (theme) themeService.setTheme(theme);
-    if (locales) localeService.load(locales);
-    if (locale) localeService.setLocale(locale);
-    if (logLevel) logService.setLogLevel(logLevel);
+    if (theme) {
+      themeService.setTheme(theme);
+    }
+    if (locales) {
+      localeService.load(locales);
+    }
+    if (locale) {
+      localeService.setLocale(locale);
+    }
+    if (logLevel) {
+      logService.setLogLevel(logLevel);
+    }
   }
 
   private get _pluginService(): PluginService {

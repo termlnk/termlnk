@@ -159,12 +159,24 @@ export class NotificationService extends Disposable implements INotificationServ
       : null;
 
     return this._notifications$.value.filter((n) => {
-      if (sources && !sources.includes(n.source)) return false;
-      if (types && !types.includes(n.type)) return false;
-      if (filter.read !== undefined && n.read !== filter.read) return false;
-      if (filter.groupId && n.groupId !== filter.groupId) return false;
-      if (filter.startTime && n.timestamp < filter.startTime) return false;
-      if (filter.endTime && n.timestamp > filter.endTime) return false;
+      if (sources && !sources.includes(n.source)) {
+        return false;
+      }
+      if (types && !types.includes(n.type)) {
+        return false;
+      }
+      if (filter.read !== undefined && n.read !== filter.read) {
+        return false;
+      }
+      if (filter.groupId && n.groupId !== filter.groupId) {
+        return false;
+      }
+      if (filter.startTime && n.timestamp < filter.startTime) {
+        return false;
+      }
+      if (filter.endTime && n.timestamp > filter.endTime) {
+        return false;
+      }
       return true;
     });
   }

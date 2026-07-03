@@ -60,7 +60,7 @@ class ErrorInvalidArgType extends Error {
   constructor(name: string, expected: string, actual: unknown) {
     // determiner: 'must be' or 'must not be'
     let determiner;
-    if (typeof expected === 'string' && expected.indexOf('not ') === 0) {
+    if (typeof expected === 'string' && expected.startsWith('not ')) {
       determiner = 'must not be';
       expected = expected.replace(/^not /, '');
     } else {

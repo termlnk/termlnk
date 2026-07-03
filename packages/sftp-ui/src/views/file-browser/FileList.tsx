@@ -86,7 +86,9 @@ export function FileList(props: IFileListProps) {
   }
 
   const handleRowDragStart = (e: DragEvent, entry: IFileListEntry, isSelected: boolean) => {
-    if (!draggable || !onDragStart) return;
+    if (!draggable || !onDragStart) {
+      return;
+    }
     if (isSelected && selectedFiles.size > 1) {
       const draggedEntries = entries.filter((en) => selectedFiles.has(en.filename));
       onDragStart(e, draggedEntries);
@@ -142,7 +144,9 @@ export function FileList(props: IFileListProps) {
               onDoubleClick={() => onDoubleClick(entry)}
               onContextMenu={(e) => {
                 e.preventDefault();
-                if (!isSelected) onSelect(entry.filename, false);
+                if (!isSelected) {
+                  onSelect(entry.filename, false);
+                }
                 onContextMenu?.(e, entry);
               }}
             >
@@ -168,13 +172,19 @@ export function FileList(props: IFileListProps) {
 }
 
 function getFileIcon(entry: IFileListEntry) {
-  if (entry.isSymlink) return <Link2 size={14} className="tm:shrink-0 tm:text-cyan" />;
-  if (entry.isDirectory) return <Folder size={14} className="tm:shrink-0 tm:text-yellow" />;
+  if (entry.isSymlink) {
+    return <Link2 size={14} className="tm:shrink-0 tm:text-cyan" />;
+  }
+  if (entry.isDirectory) {
+    return <Folder size={14} className="tm:shrink-0 tm:text-yellow" />;
+  }
   return <File size={14} className="tm:shrink-0 tm:text-grey-fg" />;
 }
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) {
+    return '0 B';
+  }
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const val = bytes / 1024 ** i;
@@ -182,14 +192,18 @@ function formatSize(bytes: number): string {
 }
 
 function formatDate(timestamp: number): string {
-  if (!timestamp) return '--';
+  if (!timestamp) {
+    return '--';
+  }
   const d = new Date(timestamp * 1000);
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function formatPermissions(mode: number): string {
-  if (!mode) return '---';
+  if (!mode) {
+    return '---';
+  }
   const perms = mode & 0o777;
   const chars = 'rwx';
   let result = '';

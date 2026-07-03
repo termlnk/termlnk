@@ -153,7 +153,9 @@ export function InterfaceTab() {
     const loadSettings = async () => {
       try {
         const stored = await configManagerService.get<IUIConfig>(UI_PLUGIN_CONFIG_KEY);
-        if (!active) return;
+        if (!active) {
+          return;
+        }
         setSettings(normalizeSettings(stored?.fontFamily, stored?.fontSize));
       } catch {
         if (active) {
@@ -171,10 +173,14 @@ export function InterfaceTab() {
     let active = true;
     const loadFonts = async () => {
       const queryLocalFonts = (window as Window & { queryLocalFonts?: LocalFontQuery }).queryLocalFonts;
-      if (!queryLocalFonts) return;
+      if (!queryLocalFonts) {
+        return;
+      }
       try {
         const fonts = await queryLocalFonts();
-        if (!active) return;
+        if (!active) {
+          return;
+        }
         const families = fonts
           .map((f) => f.family)
           .filter((f): f is string => typeof f === 'string' && f.length > 0);
@@ -242,7 +248,9 @@ export function InterfaceTab() {
                     value={settings.fontFamily}
                     items={resolvedFontFamilies}
                     onValueChange={(value) => {
-                      if (value == null) return;
+                      if (value == null) {
+                        return;
+                      }
                       updateSettings({ fontFamily: value });
                     }}
                   >

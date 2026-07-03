@@ -50,7 +50,9 @@ export function ResizablePanel() {
   useEffect(() => {
     if (activePage !== DEFAULT_PAGE_ID) {
       setMountedPageIds((prev) => {
-        if (prev.has(activePage)) return prev;
+        if (prev.has(activePage)) {
+          return prev;
+        }
         const next = new Set(prev);
         next.add(activePage);
         return next;
@@ -138,7 +140,9 @@ export function ResizablePanel() {
           {/* Routed pages - mounted on first visit, never unmounted */}
           {Array.from(mountedPageIds, (pageId) => {
             const page = contentRouterService.getPage(pageId);
-            if (!page) return null;
+            if (!page) {
+              return null;
+            }
             const Component = page.component;
             return (
               <div

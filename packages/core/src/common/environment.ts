@@ -17,26 +17,46 @@ export function getSystemType(): string {
   const sUserAgent = navigator.userAgent;
   const isWin = navigator.platform === 'Win32' || navigator.platform === 'Windows';
   const isMac = navigator.platform === 'Mac68K' || navigator.platform === 'MacPPC' || navigator.platform === 'Macintosh' || navigator.platform === 'MacIntel';
-  if (isMac) return 'Mac';
+  if (isMac) {
+    return 'Mac';
+  }
   const isUnix = navigator.platform === 'X11' && !isWin && !isMac;
-  if (isUnix) return 'Unix';
+  if (isUnix) {
+    return 'Unix';
+  }
   const isLinux = String(navigator.platform).includes('Linux');
-  if (isLinux) return 'Linux';
+  if (isLinux) {
+    return 'Linux';
+  }
   if (isWin) {
     const isWin2K = sUserAgent.includes('Windows NT 5.0') || sUserAgent.includes('Windows 2000');
-    if (isWin2K) return 'Windows 2000';
+    if (isWin2K) {
+      return 'Windows 2000';
+    }
     const isWinXP = sUserAgent.includes('Windows NT 5.1') || sUserAgent.includes('Windows XP');
-    if (isWinXP) return 'Windows XP';
+    if (isWinXP) {
+      return 'Windows XP';
+    }
     const isWin2003 = sUserAgent.includes('Windows NT 5.2') || sUserAgent.includes('Windows 2003');
-    if (isWin2003) return 'Windows 2003';
+    if (isWin2003) {
+      return 'Windows 2003';
+    }
     const isWinVista = sUserAgent.includes('Windows NT 6.0') || sUserAgent.includes('Windows Vista');
-    if (isWinVista) return 'Windows Vista';
+    if (isWinVista) {
+      return 'Windows Vista';
+    }
     const isWin7 = sUserAgent.includes('Windows NT 6.1') || sUserAgent.includes('Windows 7');
-    if (isWin7) return 'Windows 7';
+    if (isWin7) {
+      return 'Windows 7';
+    }
     const isWin10 = sUserAgent.includes('Windows NT 10') || sUserAgent.includes('Windows 10');
-    if (isWin10) return 'Windows 10';
+    if (isWin10) {
+      return 'Windows 10';
+    }
     const isWin11 = sUserAgent.includes('Windows NT 11') || sUserAgent.includes('Windows 11');
-    if (isWin11) return 'Windows 11';
+    if (isWin11) {
+      return 'Windows 11';
+    }
   }
   return 'Unknown system';
 }

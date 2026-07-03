@@ -74,7 +74,7 @@ export default function ChangePasswordScreen() {
       Alert.alert(
         'Password Changed',
         'Your password has been updated. Other devices have been signed out.',
-        [{ text: 'OK', onPress: () => router.back() }],
+        [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to change password');

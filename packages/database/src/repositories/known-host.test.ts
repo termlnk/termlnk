@@ -64,17 +64,20 @@ describe('makeKnownHostId', () => {
 
   it('differs for different hosts', () => {
     expect(makeKnownHostId('a.example.com', 22, 'ssh-ed25519'))
-      .not.toBe(makeKnownHostId('b.example.com', 22, 'ssh-ed25519'));
+      .not
+      .toBe(makeKnownHostId('b.example.com', 22, 'ssh-ed25519'));
   });
 
   it('differs for different ports', () => {
     expect(makeKnownHostId('example.com', 22, 'ssh-ed25519'))
-      .not.toBe(makeKnownHostId('example.com', 2222, 'ssh-ed25519'));
+      .not
+      .toBe(makeKnownHostId('example.com', 2222, 'ssh-ed25519'));
   });
 
   it('differs for different key types', () => {
     expect(makeKnownHostId('example.com', 22, 'ssh-ed25519'))
-      .not.toBe(makeKnownHostId('example.com', 22, 'ssh-rsa'));
+      .not
+      .toBe(makeKnownHostId('example.com', 22, 'ssh-rsa'));
   });
 
   it('produces an opaque kh_ prefix (does not leak host plaintext)', () => {

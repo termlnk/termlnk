@@ -29,7 +29,9 @@ export function useRuleList(): IPortForwardingRule[] {
 export function useRule(ruleId: string | null): IPortForwardingRule | null {
   const rules = useRuleList();
   return useMemo(() => {
-    if (!ruleId) return null;
+    if (!ruleId) {
+      return null;
+    }
     return rules.find((r) => r.id === ruleId) ?? null;
   }, [rules, ruleId]);
 }

@@ -69,12 +69,16 @@ export function useTransferQueue(sessionId: string | null, options?: IUseTransfe
   }, [sessionId, sftpService, historyService]);
 
   const upload = useCallback(async (localPath: string, remotePath: string) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     await sftpService.upload(sessionId, localPath, remotePath);
   }, [sessionId, sftpService]);
 
   const download = useCallback(async (remotePath: string, localPath: string) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
     await sftpService.download(sessionId, remotePath, localPath);
   }, [sessionId, sftpService]);
 
@@ -88,7 +92,9 @@ export function useTransferQueue(sessionId: string | null, options?: IUseTransfe
   }, [historyService]);
 
   const uploadNativeFiles = useCallback(async (localPaths: string[], remoteTargetPath: string) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
     const localFs = (rpcClient.getClient() as any).localFs as ILocalFsClient;
 
@@ -127,7 +133,9 @@ export function useTransferQueue(sessionId: string | null, options?: IUseTransfe
     localDir: string,
     localFs: ILocalFsClient
   ) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
     // Create local directory
     await localFs.mkdir.mutate(localDir);
@@ -147,7 +155,9 @@ export function useTransferQueue(sessionId: string | null, options?: IUseTransfe
   }, [sessionId, sftpService]);
 
   const downloadFiles = useCallback(async (remotePaths: string[], localTargetDir: string) => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
     const localFs = (rpcClient.getClient() as any).localFs as ILocalFsClient;
 

@@ -21,7 +21,7 @@ import type * as schema from '../entities';
 import type { ISnippetEntity, ISnippetEntityInsert } from '../entities';
 import { Disposable } from '@termlnk/core';
 import { SnippetType } from '@termlnk/snippet';
-import { and, asc, desc, eq, gte, gt, inArray, like, lt, lte, not, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, like, lt, lte, not, sql } from 'drizzle-orm';
 import { map, Subject } from 'rxjs';
 import { generateId } from '../entities/base';
 import { DEFAULT_SNIPPET_ROOT, snippetEntity } from '../entities/snippet';
@@ -95,7 +95,8 @@ export class SnippetRepository extends Disposable {
 
   async getPackageById(id: string): Promise<ISnippetEntity | undefined> {
     const result = await this._db
-      .select().from(snippetEntity)
+      .select()
+      .from(snippetEntity)
       .where(and(eq(snippetEntity.id, id), eq(snippetEntity.type, SnippetType.PACKAGE)))
       .limit(1);
     return result[0];

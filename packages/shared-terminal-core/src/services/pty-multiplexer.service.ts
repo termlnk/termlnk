@@ -428,7 +428,7 @@ export class PtyMultiplexerService extends Disposable implements IPtyMultiplexer
       const hasRemainingKeyed = [...runtime.clients.values()].some((c) => c.publicKey);
       if (hasRemainingKeyed) {
         void this._rotateAndBroadcast(runtime, reason).catch((err) => {
-          this._logService.error(`[PtyMultiplexerService] forward-secrecy rekey on detach failed:`, err);
+          this._logService.error('[PtyMultiplexerService] forward-secrecy rekey on detach failed:', err);
         });
       } else {
         this._keyService.clear(runtime.source.id);

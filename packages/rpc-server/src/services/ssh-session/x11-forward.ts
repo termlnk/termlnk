@@ -86,7 +86,9 @@ export function bridgeX11Channel(channel: ClientChannel, socket: net.Socket, onE
   let cleaned = false;
 
   const cleanup = () => {
-    if (cleaned) return;
+    if (cleaned) {
+      return;
+    }
     cleaned = true;
     channel.unpipe(socket);
     socket.unpipe(channel);

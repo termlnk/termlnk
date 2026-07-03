@@ -13,12 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IWebServerConfig } from './config.schema';
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { IMasterKeyHolderService } from '../services/master-key-holder.service';
 import { IWebServerService } from '../services/web-server.service';
 import { IWebSessionService } from '../services/web-session.service';
 import { createAuthRouteHandler } from '../trpc/auth-routes';
-import { type IWebServerConfig, TERMLNK_WEB_AUTH_PATH_PREFIX, WEB_SERVER_PLUGIN_CONFIG_KEY } from './config.schema';
+import { TERMLNK_WEB_AUTH_PATH_PREFIX, WEB_SERVER_PLUGIN_CONFIG_KEY } from './config.schema';
 
 // Mounts the auth handler so the login UI loads even while the holder is still pending,
 // then fires holder.initialize() without blocking onReady. Holder failures flip the

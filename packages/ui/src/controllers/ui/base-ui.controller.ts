@@ -63,21 +63,29 @@ export abstract class BaseUIController extends Disposable {
         // First render.
         const allRenders = this._renderManagerService.getRenderAll();
         for (const [key] of allRenders) {
-          if (this._changeRender(key, contentElement)) break;
+          if (this._changeRender(key, contentElement)) {
+            break;
+          }
         }
 
         // Render as focus shifts.
         this.disposeWithMe(this._instanceService.focused$.subscribe((unit) => {
-          if (unit) this._changeRender(unit, contentElement);
+          if (unit) {
+            this._changeRender(unit, contentElement);
+          }
         }));
 
         // When renderer created, check if matches the focused.
         this.disposeWithMe(this._renderManagerService.created$.subscribe((render) => {
-          if (render.id === this._instanceService.getFocusedUnit()?.getId()) this._changeRender(render.id, contentElement);
+          if (render.id === this._instanceService.getFocusedUnit()?.getId()) {
+            this._changeRender(render.id, contentElement);
+          }
         }));
 
         this.disposeWithMe(this._renderManagerService.disposed$.subscribe((render) => {
-          if (this._currentRenderId === render) this._currentRenderId = null;
+          if (this._currentRenderId === render) {
+            this._currentRenderId = null;
+          }
         }));
 
         this._lifecycleService.setStage(LifecycleStages.Rendered);
@@ -100,10 +108,14 @@ export abstract class BaseUIController extends Disposable {
 
   private _currentRenderId: string | null = null;
   private _changeRender(renderId: string, _contentElement: HTMLElement): boolean {
-    if (this._currentRenderId === renderId) return false;
+    if (this._currentRenderId === renderId) {
+      return false;
+    }
 
     const render = this._renderManagerService.getRenderById(renderId)!;
-    if (!render || !render.id) return false;
+    if (!render || !render.id) {
+      return false;
+    }
 
     const currentRenderer = this._currentRenderId ? this._renderManagerService.getRenderById(this._currentRenderId) : null;
     currentRenderer?.deactivate();

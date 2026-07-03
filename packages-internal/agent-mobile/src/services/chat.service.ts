@@ -24,7 +24,7 @@ import { aiChatMessageEntity, aiChatSessionEntity, IDatabaseMobileAdaptorService
 import { asc, eq } from 'drizzle-orm';
 import { BehaviorSubject } from 'rxjs';
 import { IMobileProviderService as IMobileProviderServiceId } from './provider.service';
-import { streamAnthropicMessages, buildAnthropicMessages } from './stream/anthropic-stream';
+import { buildAnthropicMessages, streamAnthropicMessages } from './stream/anthropic-stream';
 import { buildOpenAIMessages, streamOpenAICompletions } from './stream/openai-stream';
 
 const TRANSIENT_ERROR = /overloaded|rate.?limit|429|500|503|504|service.?unavailable|connection|retry/i;
@@ -500,7 +500,7 @@ export class MobileChatService extends Disposable implements IMobileChatService 
         const resp = await fetch(`${baseUrl.replace(/\/+$/, '')}/chat/completions`, {
           method: 'POST',
           headers: {
-            'authorization': `Bearer ${apiKey}`,
+            authorization: `Bearer ${apiKey}`,
             'content-type': 'application/json',
             ...headers,
           },
