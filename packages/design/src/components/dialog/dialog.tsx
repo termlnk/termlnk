@@ -63,10 +63,7 @@ export function DialogDragHandle({ height = 30, className, style }: IDialogDragH
     <div
       data-slot="dialog-drag-handle"
       className={cn(
-        `
-          tm:pointer-events-auto tm:absolute tm:inset-x-0 tm:top-0 tm:z-0
-          tm:select-none
-        `,
+        'tm:pointer-events-auto tm:absolute tm:inset-x-0 tm:top-0 tm:z-0 tm:select-none',
         className
       )}
       style={{
@@ -208,6 +205,11 @@ function useDraggable(
   options: {
     defaultPosition?: { x: number; y: number };
     enabled?: boolean;
+    /**
+     * Whether the surrounding dialog is currently open. Global listeners
+     * (window resize) must not stay attached for closed dialogs.
+     */
+    open?: boolean;
   } = {}
 ) {
   const elementRef = useRef<HTMLElement | null>(null);
@@ -279,13 +281,15 @@ function useDraggable(
     }, targetSize);
   }, [clampPositionToViewport, getElementSize]);
 
-  const { defaultPosition = getCenteredPosition(), enabled = false } = options;
+  const { defaultPosition = getCenteredPosition(), enabled = false, open = false } = options;
 
   const [position, setPosition] = useState(defaultPosition);
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    if (!elementRef.current || initializedRef.current || options.defaultPosition) return;
+    if (!elementRef.current || initializedRef.current || options.defaultPosition) {
+      return;
+    }
 
     const centeredPosition = getCenteredPosition();
     setPosition(centeredPosition);
@@ -301,7 +305,9 @@ function useDraggable(
   }, [clampPositionToViewport]);
 
   const startDrag = useCallback((e: ReactMouseEvent<HTMLElement> | MouseEvent) => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -315,7 +321,9 @@ function useDraggable(
   }, [enabled, position]);
 
   const onDrag = useCallback((e: MouseEvent) => {
-    if (!isDragging) return;
+    if (!isDragging) {
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -329,20 +337,40 @@ function useDraggable(
     document.body.style.userSelect = '';
   }, []);
 
+  // Reset centering state when the dialog closes so the next open re-centers
+  // from scratch. This cannot live in setElementRef's null branch: Radix's
+  // composed ref is recreated every render, so React re-fires (null, node)
+  // on each render and the null call cannot tell a real close from ref churn.
   useEffect(() => {
-    if (enabled) {
-      document.addEventListener('mousemove', onDrag);
-      document.addEventListener('mouseup', endDrag);
-
-      return () => {
-        document.removeEventListener('mousemove', onDrag);
-        document.removeEventListener('mouseup', endDrag);
-      };
+    if (!open) {
+      initializedRef.current = false;
+      userHasDraggedRef.current = false;
     }
-  }, [enabled, onDrag, endDrag]);
+  }, [open]);
+
+  // Attach global drag listeners only while a drag is in progress; a closed
+  // (or unmounted) dialog must not keep document-level handlers alive. The
+  // teardown also restores userSelect in case we unmount mid-drag, since
+  // endDrag would never fire then.
+  useEffect(() => {
+    if (!isDragging) {
+      return;
+    }
+
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', endDrag);
+
+    return () => {
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', endDrag);
+      document.body.style.userSelect = '';
+    };
+  }, [isDragging, onDrag, endDrag]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !open) {
+      return;
+    }
 
     const handleResize = () => {
       const nextSize = getElementSize();
@@ -357,59 +385,66 @@ function useDraggable(
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [clampPositionToViewport, enabled, getElementSize, getCenteredPosition, options.defaultPosition]);
+  }, [clampPositionToViewport, enabled, open, getElementSize, getCenteredPosition, options.defaultPosition]);
+
+  // React re-invokes this with (null, node) on every render because Radix's
+  // composed ref changes identity each render — so the null call must stay
+  // cheap and idempotent: it only tears down the observer. Close-time state
+  // reset is handled by the `open` effect above.
+  const setElementRef = useCallback((el: HTMLElement | null) => {
+    // Tear down any previous observer before switching elements or when the
+    // element detaches, so we never keep observing a node removed from the
+    // document (which would pin the whole dialog DOM tree in memory).
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+      resizeObserverRef.current = null;
+    }
+
+    elementRef.current = el;
+
+    if (!el) {
+      return;
+    }
+
+    const nextSize = getElementSize(el);
+
+    // First-paint centering: use the size available now, even if the
+    // dialog's content will grow later (ResizeObserver will catch up).
+    if (!initializedRef.current && !options.defaultPosition) {
+      const centeredPosition = getCenteredPosition(nextSize);
+      setPosition(centeredPosition);
+      startPosRef.current = centeredPosition;
+      initializedRef.current = true;
+    }
+
+    // Follow-up centering: when content loads asynchronously (e.g. data
+    // fetched after mount), the dialog's size changes and it should
+    // re-center — unless the user has already chosen a position by
+    // dragging it, in which case we leave their choice alone.
+    if (!options.defaultPosition && typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => {
+        if (userHasDraggedRef.current) {
+          return;
+        }
+        // entry.contentRect excludes padding/border; re-measure via border-box.
+        const nextSize = getElementSize(el);
+        if (!nextSize || nextSize.width <= 0 || nextSize.height <= 0) {
+          return;
+        }
+        const centered = getCenteredPosition(nextSize);
+        setPosition(centered);
+        startPosRef.current = centered;
+      });
+      observer.observe(el);
+      resizeObserverRef.current = observer;
+    }
+  }, [getElementSize, getCenteredPosition, options.defaultPosition]);
 
   return {
     position,
     isDragging,
     elementRef,
-    setElementRef: (el: HTMLElement | null) => {
-      // Tear down any previous observer before switching elements (happens
-      // on every render because handleContentRef is a new closure each time).
-      if (resizeObserverRef.current) {
-        resizeObserverRef.current.disconnect();
-        resizeObserverRef.current = null;
-      }
-
-      elementRef.current = el;
-
-      if (!el) {
-        // Dialog closed or element detached — reset so the next open/mount
-        // cycle centers again from scratch.
-        initializedRef.current = false;
-        userHasDraggedRef.current = false;
-        return;
-      }
-
-      const nextSize = getElementSize(el);
-
-      // First-paint centering: use the size available now, even if the
-      // dialog's content will grow later (ResizeObserver will catch up).
-      if (!initializedRef.current && !options.defaultPosition) {
-        const centeredPosition = getCenteredPosition(nextSize);
-        setPosition(centeredPosition);
-        startPosRef.current = centeredPosition;
-        initializedRef.current = true;
-      }
-
-      // Follow-up centering: when content loads asynchronously (e.g. data
-      // fetched after mount), the dialog's size changes and it should
-      // re-center — unless the user has already chosen a position by
-      // dragging it, in which case we leave their choice alone.
-      if (!options.defaultPosition && typeof ResizeObserver !== 'undefined') {
-        const observer = new ResizeObserver(() => {
-          if (userHasDraggedRef.current) return;
-          // entry.contentRect excludes padding/border; re-measure via border-box.
-          const nextSize = getElementSize(el);
-          if (!nextSize || nextSize.width <= 0 || nextSize.height <= 0) return;
-          const centered = getCenteredPosition(nextSize);
-          setPosition(centered);
-          startPosRef.current = centered;
-        });
-        observer.observe(el);
-        resizeObserverRef.current = observer;
-      }
-    },
+    setElementRef,
     handleMouseDown: startDrag,
   };
 }
@@ -467,7 +502,7 @@ export function Dialog(props: IDialogProps) {
   const modal = modalProp ?? mask;
   const renderStandaloneBackdrop = mask && !modal;
 
-  const { position, isDragging, setElementRef, handleMouseDown } = useDraggable({ defaultPosition, enabled: draggable });
+  const { position, isDragging, setElementRef, handleMouseDown } = useDraggable({ defaultPosition, enabled: draggable, open });
 
   const dragContextValue = useMemo<IDialogDragContextValue>(
     () => ({ draggable, onMouseDown: draggable ? handleMouseDown : undefined }),
@@ -492,7 +527,9 @@ export function Dialog(props: IDialogProps) {
     : null);
 
   const handleContentRef = useCallback((node: HTMLDivElement | null) => {
-    if (node && draggable) {
+    // Forward null too: setElementRef's cleanup branch disconnects the
+    // ResizeObserver and resets centering state when the content unmounts.
+    if (draggable) {
       setElementRef(node);
     }
   }, [draggable, setElementRef]);

@@ -156,4 +156,89 @@ describe('Dialog', () => {
 
     workbenchContent.remove();
   });
+
+  it('detaches drag listeners and disconnects the resize observer when closed', () => {
+    class MockResizeObserver {
+      static instances: MockResizeObserver[] = [];
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+      constructor() {
+        MockResizeObserver.instances.push(this);
+      }
+    }
+    vi.stubGlobal('ResizeObserver', MockResizeObserver);
+
+    const addSpy = vi.spyOn(document, 'addEventListener');
+
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.dataset.slot === 'dialog-content') {
+        return createDomRect(960, 500);
+      }
+
+      return createDomRect(0, 0);
+    });
+
+    function renderDialog(open: boolean) {
+      act(() => {
+        root.render(
+          <Dialog open={open} draggable width={960}>
+            <div>content</div>
+          </Dialog>
+        );
+      });
+    }
+
+    renderDialog(true);
+
+    // No document-level drag listeners while merely open (not dragging).
+    expect(addSpy.mock.calls.some(([type]) => type === 'mousemove')).toBe(false);
+    expect(MockResizeObserver.instances.length).toBeGreaterThan(0);
+    for (const instance of MockResizeObserver.instances) {
+      expect(instance.observe).toHaveBeenCalled();
+    }
+
+    renderDialog(false);
+
+    // Content unmounted: every observer must be disconnected so it never
+    // keeps a detached dialog DOM tree alive.
+    for (const instance of MockResizeObserver.instances) {
+      expect(instance.disconnect).toHaveBeenCalled();
+    }
+
+    vi.unstubAllGlobals();
+  });
+
+  it('registers drag listeners only while dragging and restores userSelect on unmount mid-drag', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.dataset.slot === 'dialog-content') {
+        return createDomRect(960, 500);
+      }
+
+      return createDomRect(0, 0);
+    });
+
+    act(() => {
+      root.render(
+        <Dialog open draggable title="drag me" width={960}>
+          <div>content</div>
+        </Dialog>
+      );
+    });
+
+    const handle = document.body.querySelector('[data-drag-handle="true"]') as HTMLElement | null;
+    expect(handle).not.toBeNull();
+
+    act(() => {
+      handle?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 200, clientY: 120 }));
+    });
+    expect(document.body.style.userSelect).toBe('none');
+
+    // Unmount mid-drag: effect teardown must remove listeners and restore
+    // userSelect, since mouseup will never reach endDrag anymore.
+    act(() => {
+      root.render(null);
+    });
+    expect(document.body.style.userSelect).toBe('');
+  });
 });

@@ -14,7 +14,7 @@
  */
 
 import type { DragSourceType } from '../hooks/use-panel-drop';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LocalFilePane } from './LocalFilePane';
 import { RemoteFilePane } from './RemoteFilePane';
 
@@ -34,15 +34,25 @@ interface IDualPaneLayoutProps {
 
 export function DualPaneLayout({ sessionId, onUploadDrop, onDownloadDrop, refreshTrigger, singlePane }: IDualPaneLayoutProps) {
   const [splitRatio, setSplitRatio] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    dragging.current = true;
+    setIsDragging(true);
+  }, []);
+
+  // Attach global listeners only while dragging so an unmount mid-drag
+  // cleans them up via the effect teardown instead of leaking forever.
+  useEffect(() => {
+    if (!isDragging) {
+      return;
+    }
 
     const onMouseMove = (ev: MouseEvent) => {
-      if (!dragging.current || !containerRef.current) return;
+      if (!containerRef.current) {
+        return;
+      }
       const rect = containerRef.current.getBoundingClientRect();
       const x = ev.clientX - rect.left;
       const ratio = Math.min(80, Math.max(20, (x / rect.width) * 100));
@@ -50,14 +60,16 @@ export function DualPaneLayout({ sessionId, onUploadDrop, onDownloadDrop, refres
     };
 
     const onMouseUp = () => {
-      dragging.current = false;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      setIsDragging(false);
     };
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, []);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isDragging]);
 
   if (singlePane) {
     // Web shell: only the remote side. Browser uploads / downloads flow
