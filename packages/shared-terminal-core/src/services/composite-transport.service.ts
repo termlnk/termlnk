@@ -18,7 +18,7 @@ import type { IFrame, IInboundFrame, ISharedKey, ISharedTerminalTransportService
 import type { Observable, Subscription } from 'rxjs';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { TransportState } from '@termlnk/shared-terminal';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, filter, Subject, take } from 'rxjs';
 import { RelayTransportService } from './relay-transport.service';
 import { WebRTCTransportService } from './webrtc-transport.service';
 
@@ -60,6 +60,7 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
 
   private _relaySub: Nullable<Subscription> = null;
   private _webrtcSub: Nullable<Subscription> = null;
+  private _dropWatcherSub: Nullable<Subscription> = null;
 
   constructor(
     @Inject(WebRTCTransportService) private readonly _webrtcService: WebRTCTransportService,
@@ -112,7 +113,12 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
   }
 
   async disconnect(): Promise<void> {
+    // Tear down subscriptions (incl. the WebRTC drop watcher) and clear the
+    // active path BEFORE disconnecting the transports: their synchronous
+    // Disconnected emission must not be mistaken for a mid-session drop and
+    // trigger a failover-to-relay racing this intentional shutdown.
     this._teardownSubs();
+    this._activePath$.next(null);
     try {
       await this._webrtcService.disconnect();
     } catch (err) {
@@ -123,7 +129,6 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
     } catch (err) {
       this._logService.error('[CompositeTransportService] relay disconnect threw:', err);
     }
-    this._activePath$.next(null);
     this._state$.next(TransportState.Disconnected);
   }
 
@@ -192,19 +197,22 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
    * install this AFTER WebRTC was established as the primary path.
    */
   private _installWebrtcDropWatcher(options: ITransportConnectOptions, sharedKey: ISharedKey): void {
-    const sub = this._webrtcService.state$.subscribe((state) => {
-      if (state !== TransportState.Disconnected && state !== TransportState.Error) {
-        return;
-      }
+    // Tracked in _dropWatcherSub so disconnect()/dispose() tears it down BEFORE
+    // the transports emit Disconnected — otherwise an intentional disconnect
+    // would race a spurious failover-to-relay. Re-installing on a later
+    // connect() replaces the previous watcher instead of accumulating.
+    this._dropWatcherSub?.unsubscribe();
+    this._dropWatcherSub = this._webrtcService.state$.pipe(
+      filter((state) => state === TransportState.Disconnected || state === TransportState.Error),
+      take(1)
+    ).subscribe(() => {
+      this._dropWatcherSub = null;
       if (this._activePath$.getValue() !== 'webrtc') {
         return;
       }
       this._logService.log('[CompositeTransportService] WebRTC dropped — opening relay fallback');
       void this._failoverToRelay(options, sharedKey);
-      sub.unsubscribe();
     });
-    // Don't track in _relaySub/_webrtcSub since those are used for frame wiring;
-    // this sub auto-unsubscribes on first hit anyway.
   }
 
   private async _failoverToRelay(options: ITransportConnectOptions, sharedKey: ISharedKey): Promise<void> {
@@ -247,5 +255,7 @@ export class CompositeTransportService extends Disposable implements ISharedTerm
     this._relaySub = null;
     this._webrtcSub?.unsubscribe();
     this._webrtcSub = null;
+    this._dropWatcherSub?.unsubscribe();
+    this._dropWatcherSub = null;
   }
 }

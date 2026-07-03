@@ -21,15 +21,38 @@ import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 export type FetchLike = (url: string | URL, init?: RequestInit) => Promise<Response>;
 
-export function createProxyFetch(proxy: IProxy): FetchLike {
+/**
+ * Handle over a proxy-routed fetch. The underlying undici dispatcher holds
+ * native sockets, so callers MUST call `close()` when done (or when the proxy
+ * config changes) — dropping the handle without closing leaks the dispatcher.
+ */
+export interface IProxyFetchHandle {
+  readonly fetch: FetchLike;
+  close: () => Promise<void>;
+}
+
+export function createProxyFetch(proxy: IProxy): IProxyFetchHandle {
   const dispatcher = proxy.type === 'socks5'
     ? _createSocks5Dispatcher(proxy)
     : _createHttpProxyDispatcher(proxy);
 
-  return (url, init) => {
-    // Standard RequestInit body types differ slightly from undici's internal types
-    return undiciFetch(url, { ...init, dispatcher } as never) as unknown as Promise<Response>;
+  return {
+    fetch: (url, init) => {
+      // Standard RequestInit body types differ slightly from undici's internal types
+      return undiciFetch(url, { ...init, dispatcher } as never) as unknown as Promise<Response>;
+    },
+    close: () => dispatcher.close(),
   };
+}
+
+/** Structural equality on proxy settings, used to decide dispatcher reuse. */
+export function proxyConfigEqual(a: IProxy, b: IProxy): boolean {
+  return a.type === b.type
+    && a.host === b.host
+    && a.port === b.port
+    && a.username === b.username
+    && a.password === b.password
+    && a.enabled === b.enabled;
 }
 
 export function createProxyEnvironment(proxy: IProxy): Record<string, string> {

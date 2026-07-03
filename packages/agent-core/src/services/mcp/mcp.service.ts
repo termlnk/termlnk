@@ -16,9 +16,11 @@
 import type { IMcpInstalledServer, IMcpRemoteTool, IMcpServer, IMcpServerChangeEvent, IMcpService, McpConnectionStatus, McpServerConfig, McpTransportType } from '@termlnk/agent';
 import type { IProxy } from '@termlnk/terminal';
 import type { Observable } from 'rxjs';
+import type { IProxyFetchHandle } from './proxy-fetch';
 import { IAgentToolRegistryService, IMcpRegistryService } from '@termlnk/agent';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository, McpServerRepository } from '@termlnk/database';
+import { NETWORK_PLUGIN_CONFIG_KEY } from '@termlnk/network';
 import { BehaviorSubject } from 'rxjs';
 import { McpConnection } from './mcp-connection';
 import { createProxyEnvironment, createProxyFetch } from './proxy-fetch';
@@ -28,6 +30,8 @@ export class McpService extends Disposable implements IMcpService {
   private readonly _remoteTools$ = new BehaviorSubject<IMcpRemoteTool[]>([]);
   private readonly _connections = new Map<string, McpConnection>();
   private readonly _serverTools = new Map<string, IMcpRemoteTool[]>();
+  /** Per-connection proxy dispatchers; closed alongside their connection. */
+  private readonly _proxyHandles = new Map<string, IProxyFetchHandle>();
 
   readonly installedServers$ = this._servers$.asObservable();
   readonly remoteTools$ = this._remoteTools$.asObservable();
@@ -129,8 +133,13 @@ export class McpService extends Disposable implements IMcpService {
 
     try {
       const proxy = await this._getEnabledProxy();
+      const proxyHandle = server.config.type === 'http' && proxy ? createProxyFetch(proxy) : null;
+      if (proxyHandle) {
+        this._closeProxyHandle(id);
+        this._proxyHandles.set(id, proxyHandle);
+      }
       const connection = new McpConnection(server.config, {
-        fetch: server.config.type === 'http' && proxy ? createProxyFetch(proxy) : undefined,
+        fetch: proxyHandle?.fetch,
         env: server.config.type === 'stdio' && proxy ? createProxyEnvironment(proxy) : undefined,
       });
       this._connections.set(id, connection);
@@ -159,6 +168,7 @@ export class McpService extends Disposable implements IMcpService {
       const errorMsg = causeMsg ? `${String(err)} (${causeMsg})` : String(err);
       await this._updateStatus(id, 'error', errorMsg);
       this._connections.delete(id);
+      this._closeProxyHandle(id);
       throw err;
     }
   }
@@ -169,6 +179,7 @@ export class McpService extends Disposable implements IMcpService {
       await connection.close();
       this._connections.delete(id);
     }
+    this._closeProxyHandle(id);
     this._serverTools.delete(id);
     await this._updateStatus(id, 'disconnected');
     this._rebuildToolsList();
@@ -231,7 +242,7 @@ export class McpService extends Disposable implements IMcpService {
   }
 
   private async _getEnabledProxy(): Promise<IProxy | undefined> {
-    const proxy = await this._configRepository.getField<IProxy>('network.config', 'proxy');
+    const proxy = await this._configRepository.getField<IProxy>(NETWORK_PLUGIN_CONFIG_KEY, 'proxy');
     if (!proxy?.enabled) {
       return undefined;
     }
@@ -302,6 +313,17 @@ export class McpService extends Disposable implements IMcpService {
     );
   }
 
+  private _closeProxyHandle(id: string): void {
+    const handle = this._proxyHandles.get(id);
+    if (!handle) {
+      return;
+    }
+    this._proxyHandles.delete(id);
+    handle.close().catch((err) => {
+      this._logService.warn(`[McpClient] Failed to close proxy dispatcher for ${id}: ${String(err)}`);
+    });
+  }
+
   override dispose(): void {
     this._servers$.complete();
     this._remoteTools$.complete();
@@ -309,6 +331,9 @@ export class McpService extends Disposable implements IMcpService {
       conn.close().catch(() => {});
     }
     this._connections.clear();
+    for (const id of [...this._proxyHandles.keys()]) {
+      this._closeProxyHandle(id);
+    }
     this._serverTools.clear();
     super.dispose();
   }

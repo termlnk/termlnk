@@ -15,20 +15,28 @@
 
 import type { IAgentPluginConfig, IMcpConfig } from '@termlnk/agent';
 import type { IProxy } from '@termlnk/terminal';
+import type { FetchLike, IProxyFetchHandle } from '../services/mcp/proxy-fetch';
 import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_MCP_CONFIG, IAgentToolRegistryService, IMyMcpService } from '@termlnk/agent';
 import { Disposable, IConfigService, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
+import { NETWORK_PLUGIN_CONFIG_KEY } from '@termlnk/network';
 import { debounceTime, filter, from, switchMap } from 'rxjs';
 import { fetch as undiciFetch } from 'undici';
-import { createProxyFetch } from '../services/mcp/proxy-fetch';
+import { createProxyFetch, proxyConfigEqual } from '../services/mcp/proxy-fetch';
 import { registerSystemInfoTool } from '../tools/system-info-tool';
 import { registerWebFetchTool } from '../tools/web-fetch-tool';
 import { registerWebSearchTool } from '../tools/web-search-tool';
 import { registerWidgetTools } from '../tools/widget-tools';
 
-const NETWORK_CONFIG_KEY = 'network.config';
-
 export class MyMcpController extends Disposable {
+  /**
+   * Dispatcher-backed fetch cached per proxy config. Web tools may fire on
+   * every AI turn; creating a fresh undici dispatcher per call leaks native
+   * sockets, so we reuse one handle until the config changes or dispose.
+   */
+  private _proxyFetchHandle: IProxyFetchHandle | null = null;
+  private _proxyFetchConfig: IProxy | null = null;
+
   constructor(
     @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository,
     @IAgentToolRegistryService private readonly _toolRegistryService: IAgentToolRegistryService,
@@ -48,10 +56,12 @@ export class MyMcpController extends Disposable {
       // Web tools (with proxy support)
       const getFetch = async () => {
         try {
-          const proxy = await this._configRepository.getField<IProxy>(NETWORK_CONFIG_KEY, 'proxy');
+          const proxy = await this._configRepository.getField<IProxy>(NETWORK_PLUGIN_CONFIG_KEY, 'proxy');
           if (proxy?.enabled) {
-            return createProxyFetch(proxy);
+            return this._acquireProxyFetch(proxy);
           }
+          // Proxy turned off — release the cached dispatcher eagerly.
+          this._closeProxyFetch();
         } catch {
           // Proxy config unavailable, use direct fetch
         }
@@ -119,8 +129,29 @@ export class MyMcpController extends Disposable {
     return mcpConfig;
   }
 
+  private _acquireProxyFetch(proxy: IProxy): FetchLike {
+    if (!this._proxyFetchHandle || !this._proxyFetchConfig || !proxyConfigEqual(this._proxyFetchConfig, proxy)) {
+      this._closeProxyFetch();
+      this._proxyFetchHandle = createProxyFetch(proxy);
+      this._proxyFetchConfig = proxy;
+    }
+    return this._proxyFetchHandle.fetch;
+  }
+
+  private _closeProxyFetch(): void {
+    const handle = this._proxyFetchHandle;
+    this._proxyFetchHandle = null;
+    this._proxyFetchConfig = null;
+    if (handle) {
+      handle.close().catch((err) => {
+        this._logService.warn('[MyMcpController]', 'Failed to close proxy dispatcher:', err);
+      });
+    }
+  }
+
   override dispose(): void {
     super.dispose();
+    this._closeProxyFetch();
     this._myMcpService.stop();
   }
 }

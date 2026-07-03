@@ -315,12 +315,16 @@ export class WebRTCTransportService extends Disposable implements ISharedTermina
     return await new Promise<IRelayWebSocket>((resolve, reject) => {
       let settled = false;
       ws.addEventListener('open', () => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
         settled = true;
         resolve(ws);
       });
       ws.addEventListener('close', () => {
-        if (settled) return;
+        if (settled) {
+          return;
+        }
         settled = true;
         reject(new Error('[WebRTCTransportService] signaling WebSocket closed before open'));
       });
@@ -491,6 +495,14 @@ export class WebRTCTransportService extends Disposable implements ISharedTermina
     pc.oniceconnectionstatechange = () => {
       const s = pc.iceConnectionState;
       if (s === 'failed' || s === 'closed') {
+        // Close the pc so the failed leg releases its native resources.
+        // pc.close() is idempotent per spec; the guard covers non-compliant
+        // implementations when teardown already closed it.
+        try {
+          pc.close();
+        } catch {
+          // ignore — already-closed peer connections throw on some impls
+        }
         this._legs.delete(remotePeerId);
         if (this._legs.size === 0 && this._state$.getValue() === TransportState.Connected) {
           this._state$.next(TransportState.Disconnected);
@@ -529,8 +541,15 @@ export class WebRTCTransportService extends Disposable implements ISharedTermina
       }
     };
     channel.onclose = () => {
-      // Peer leg closed; remove from registry. Composite handles fallback.
+      // Peer leg closed; drop it from the registry AND close the pc — deleting
+      // the leg here means _teardown() will never see it, so skipping close()
+      // would leak the RTCPeerConnection. Composite handles fallback.
       leg.channel = null;
+      try {
+        leg.pc.close();
+      } catch {
+        // ignore — already-closed peer connections throw on some impls
+      }
       this._legs.delete(leg.peerId);
       if (this._legs.size === 0 && this._state$.getValue() === TransportState.Connected) {
         this._state$.next(TransportState.Disconnected);

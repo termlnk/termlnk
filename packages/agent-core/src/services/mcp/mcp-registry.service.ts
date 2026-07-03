@@ -18,6 +18,7 @@ import type { IProxy } from '@termlnk/terminal';
 import type { FetchLike } from './proxy-fetch';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
+import { NETWORK_PLUGIN_CONFIG_KEY } from '@termlnk/network';
 import { createProxyFetch } from './proxy-fetch';
 
 const COMMUNITY_REGISTRY_URL = 'https://ravitemer.github.io/mcp-registry/registry.json';
@@ -151,32 +152,42 @@ export class McpRegistryService extends Disposable implements IMcpRegistryServic
 
   private async _fetchItems(): Promise<IMcpRegistryItem[]> {
     const proxy = await this._getEnabledProxy();
-    const fetcher: FetchLike = proxy ? createProxyFetch(proxy) : fetch;
-    const response = await fetcher(COMMUNITY_REGISTRY_URL, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'Termlnk-MCP-Marketplace',
-      },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
+    const proxyHandle = proxy ? createProxyFetch(proxy) : null;
+    try {
+      const fetcher: FetchLike = proxyHandle ? proxyHandle.fetch : fetch;
+      const response = await fetcher(COMMUNITY_REGISTRY_URL, {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'Termlnk-MCP-Marketplace',
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Community MCP registry request failed: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Community MCP registry request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const payload = await response.json() as ICommunityRegistryResponse;
+      const items = (payload.servers ?? [])
+        .map((server) => this._mapServer(server, payload.generatedAt))
+        .filter((item): item is IMcpRegistryItem => item !== null)
+        .sort((left, right) => (
+          Number(right.featured) - Number(left.featured)
+          || Number(right.verified) - Number(left.verified)
+          || (right.stars ?? 0) - (left.stars ?? 0)
+          || left.name.localeCompare(right.name)
+        ));
+
+      this._logService.log(`[MCPRegistry] Loaded ${items.length} installable servers from the community registry`);
+      return items;
+    } finally {
+      // Body is fully consumed above; release the dispatcher's sockets.
+      if (proxyHandle) {
+        proxyHandle.close().catch((err) => {
+          this._logService.warn(`[MCPRegistry] Failed to close proxy dispatcher: ${String(err)}`);
+        });
+      }
     }
-
-    const payload = await response.json() as ICommunityRegistryResponse;
-    const items = (payload.servers ?? [])
-      .map((server) => this._mapServer(server, payload.generatedAt))
-      .filter((item): item is IMcpRegistryItem => item !== null)
-      .sort((left, right) => (
-        Number(right.featured) - Number(left.featured)
-        || Number(right.verified) - Number(left.verified)
-        || (right.stars ?? 0) - (left.stars ?? 0)
-        || left.name.localeCompare(right.name)
-      ));
-
-    this._logService.log(`[MCPRegistry] Loaded ${items.length} installable servers from the community registry`);
-    return items;
   }
 
   private _mapServer(server: ICommunityRegistryServer, generatedAt?: number): IMcpRegistryItem | null {
@@ -338,7 +349,7 @@ export class McpRegistryService extends Disposable implements IMcpRegistryServic
   }
 
   private async _getEnabledProxy(): Promise<IProxy | undefined> {
-    const proxy = await this._configRepository.getField<IProxy>('network.config', 'proxy');
+    const proxy = await this._configRepository.getField<IProxy>(NETWORK_PLUGIN_CONFIG_KEY, 'proxy');
     if (!proxy?.enabled) {
       return undefined;
     }

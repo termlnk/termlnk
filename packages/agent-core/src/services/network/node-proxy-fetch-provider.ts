@@ -15,13 +15,13 @@
 
 import type { IFetchProvider } from '@termlnk/network';
 import type { IProxy } from '@termlnk/terminal';
+import type { IProxyFetchHandle } from '../mcp/proxy-fetch';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
+import { NETWORK_PLUGIN_CONFIG_KEY } from '@termlnk/network';
 import { debounceTime, filter, from, switchMap } from 'rxjs';
 import { fetch as undiciFetch } from 'undici';
-import { createProxyFetch } from '../mcp/proxy-fetch';
-
-const NETWORK_CONFIG_KEY = 'network.config';
+import { createProxyFetch, proxyConfigEqual } from '../mcp/proxy-fetch';
 
 /**
  * NodeProxyFetchProvider — node-side IFetchProvider that routes traffic
@@ -43,9 +43,9 @@ const NETWORK_CONFIG_KEY = 'network.config';
  *
  * Live reload: subscribes to ConfigRepository.changed$ for network.config /
  * proxy. When proxy settings flip on/off or change endpoint, the cached
- * fetch implementation rebuilds on the next dispatch. We don't pre-compute
- * an undici Agent because stale ones leak sockets if not properly closed;
- * the cache is keyed on the proxy config snapshot for stable identity.
+ * handle is rebuilt and the previous undici dispatcher is closed so its
+ * sockets don't leak; the cache is keyed on the proxy config snapshot for
+ * stable identity.
  *
  * Race window: a fetch firing before the initial config load resolves goes
  * out direct (undici's default dispatcher). This is acceptable because the
@@ -55,14 +55,15 @@ const NETWORK_CONFIG_KEY = 'network.config';
  */
 export class NodeProxyFetchProvider extends Disposable implements IFetchProvider {
   private _cachedProxy: IProxy | null = null;
-  private _cachedFetch: ((url: string | URL, init?: RequestInit) => Promise<Response>) | null = null;
+  private _cachedHandle: IProxyFetchHandle | null = null;
 
   // No proxy active — undici fetch matches the standard signature closely
   // enough that the cast is safe in practice (undici tracks the WHATWG spec
   // and the differences live in stream init types we don't expose here).
   readonly fetch: typeof fetch = (input, init) => {
-    if (this._cachedFetch) {
-      return this._cachedFetch(input as URL, init);
+    const handle = this._cachedHandle;
+    if (handle) {
+      return handle.fetch(input as URL, init);
     }
     return undiciFetch(input as URL, init as never) as unknown as Promise<Response>;
   };
@@ -80,7 +81,7 @@ export class NodeProxyFetchProvider extends Disposable implements IFetchProvider
     this.disposeWithMe(
       this._configRepository.changed$.pipe(
         filter((event) =>
-          event.key === NETWORK_CONFIG_KEY
+          event.key === NETWORK_PLUGIN_CONFIG_KEY
           && (event.subKey === 'proxy' || event.subKey === undefined)
         ),
         debounceTime(200),
@@ -92,25 +93,33 @@ export class NodeProxyFetchProvider extends Disposable implements IFetchProvider
   }
 
   private async _refreshFromConfig(): Promise<void> {
-    const proxy = await this._configRepository.getField<IProxy>(NETWORK_CONFIG_KEY, 'proxy');
+    const proxy = await this._configRepository.getField<IProxy>(NETWORK_PLUGIN_CONFIG_KEY, 'proxy');
     if (!proxy?.enabled) {
       this._cachedProxy = null;
-      this._cachedFetch = null;
+      this._closeCachedHandle();
       return;
     }
-    if (this._cachedProxy && proxyEqual(this._cachedProxy, proxy)) {
+    if (this._cachedProxy && proxyConfigEqual(this._cachedProxy, proxy)) {
       return;
     }
+    this._closeCachedHandle();
     this._cachedProxy = proxy;
-    this._cachedFetch = createProxyFetch(proxy);
+    this._cachedHandle = createProxyFetch(proxy);
   }
-}
 
-function proxyEqual(a: IProxy, b: IProxy): boolean {
-  return a.type === b.type
-    && a.host === b.host
-    && a.port === b.port
-    && a.username === b.username
-    && a.password === b.password
-    && a.enabled === b.enabled;
+  private _closeCachedHandle(): void {
+    const handle = this._cachedHandle;
+    this._cachedHandle = null;
+    if (handle) {
+      handle.close().catch((err) => {
+        this._logService.warn('[NodeProxyFetchProvider] failed to close stale proxy dispatcher:', err);
+      });
+    }
+  }
+
+  override dispose(): void {
+    super.dispose();
+    this._cachedProxy = null;
+    this._closeCachedHandle();
+  }
 }
