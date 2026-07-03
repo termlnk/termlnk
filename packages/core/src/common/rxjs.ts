@@ -39,9 +39,13 @@ export function fromCallback<T extends readonly unknown[]>(callback: CallbackFn<
  * An operator that would complete the stream once a condition is met. Consider it as a shortcut of `takeUntil`.
  */
 export function takeAfter<T>(callback: (value: T) => boolean) {
-  return function complateAfter(source: Observable<T>) {
+  return function completeAfter(source: Observable<T>) {
     return new Observable<T>((subscriber) => {
-      source.subscribe({
+      // Return the source subscription as the teardown so the source gets
+      // unsubscribed on downstream unsubscribe, complete and error alike.
+      // RxJS runs the teardown immediately if the subscriber is already
+      // closed (e.g. the condition matched on a synchronous source).
+      return source.subscribe({
         next: (v) => {
           subscriber.next(v);
           if (callback(v)) {
@@ -51,8 +55,6 @@ export function takeAfter<T>(callback: (value: T) => boolean) {
         complete: () => subscriber.complete(),
         error: (error) => subscriber.error(error),
       });
-
-      return () => subscriber.unsubscribe();
     });
   };
 }

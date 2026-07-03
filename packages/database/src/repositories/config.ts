@@ -37,9 +37,27 @@ export class ConfigRepository extends Disposable implements ISyncConfigRepositor
     return this._dbService.db as BetterSQLite3Database<typeof schema>;
   }
 
-  private async _resolveObj(key: string): Promise<Record<string, unknown>> {
-    const existing = await this.get<Record<string, unknown>>(key);
-    return (existing && typeof existing === 'object') ? { ...existing } : {};
+  private _getObjSync(tx: BetterSQLite3Database<typeof schema>, key: string): Record<string, unknown> | null {
+    const rows = tx
+      .select()
+      .from(configEntity)
+      .where(eq(configEntity.key, key))
+      .limit(1)
+      .all();
+
+    const value = rows.length > 0 ? rows[0].value : null;
+    return (value && typeof value === 'object') ? value as Record<string, unknown> : null;
+  }
+
+  private _rawSetSync(tx: BetterSQLite3Database<typeof schema>, key: string, value: unknown): void {
+    tx
+      .insert(configEntity)
+      .values({ key, value, updatedAt: new Date().toISOString() })
+      .onConflictDoUpdate({
+        target: configEntity.key,
+        set: { value, updatedAt: new Date().toISOString() },
+      })
+      .run();
   }
 
   private async _rawSet(key: string, value: unknown): Promise<void> {
@@ -98,21 +116,35 @@ export class ConfigRepository extends Disposable implements ISyncConfigRepositor
   }
 
   async setField(key: string, field: string, value: unknown): Promise<void> {
-    const obj = await this._resolveObj(key);
-    obj[field] = value;
-    await this._rawSet(key, obj);
+    // Read-modify-write on the row JSON must not interleave: concurrent
+    // writers of different sub-keys (e.g. tokens vs. wrapped keys on
+    // `auth.config`) would silently roll back each other's write. The tx
+    // body is fully synchronous (better-sqlite3), so the whole cycle runs
+    // without yielding to the event loop.
+    this._db.transaction((tx) => {
+      const obj = { ...this._getObjSync(tx, key) };
+      obj[field] = value;
+      this._rawSetSync(tx, key, obj);
+    });
     this._changed$.next({ type: 'set', key, subKey: field });
   }
 
   async deleteField(key: string, field: string): Promise<void> {
-    const existing = await this.get<Record<string, unknown>>(key);
-    if (!existing || typeof existing !== 'object') {
-      return;
+    // Same atomicity requirement as setField: see the comment there.
+    const deleted = this._db.transaction((tx) => {
+      const existing = this._getObjSync(tx, key);
+      if (!existing) {
+        return false;
+      }
+      const obj = { ...existing };
+      delete obj[field];
+      this._rawSetSync(tx, key, obj);
+      return true;
+    });
+
+    if (deleted) {
+      this._changed$.next({ type: 'delete', key, subKey: field });
     }
-    const obj = { ...existing };
-    delete obj[field];
-    await this._rawSet(key, obj);
-    this._changed$.next({ type: 'delete', key, subKey: field });
   }
 
   async setMany(entries: IConfigEntry[]): Promise<void> {
