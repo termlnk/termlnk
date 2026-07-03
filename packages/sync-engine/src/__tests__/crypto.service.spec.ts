@@ -100,12 +100,12 @@ describe('SyncCryptoService', () => {
   });
 
   it('reports available after master key is derived', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     expect(bed.cryptoService.available).toBe(true);
   }, 30_000);
 
   it('encrypts to a tmsync1: framed payload of expected layout', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
 
     const plaintext = new TextEncoder().encode('hello world');
     const sealed = bed.cryptoService.encrypt(plaintext);
@@ -115,7 +115,7 @@ describe('SyncCryptoService', () => {
   }, 30_000);
 
   it('round-trips arbitrary bytes', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
 
     for (const sample of [
       new Uint8Array(0),
@@ -130,7 +130,7 @@ describe('SyncCryptoService', () => {
   }, 30_000);
 
   it('uses a fresh random nonce per encrypt — same plaintext yields different ciphertexts', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
 
     const plaintext = new TextEncoder().encode('repeat me');
     const a = bed.cryptoService.encrypt(plaintext);
@@ -143,19 +143,19 @@ describe('SyncCryptoService', () => {
   }, 30_000);
 
   it('rejects payloads missing the tmsync1: prefix', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const garbage = new Uint8Array(64).fill(0xAB);
     expect(() => bed.cryptoService.decrypt(garbage)).toThrow(/prefix/i);
   }, 30_000);
 
   it('rejects payloads shorter than minimum frame length', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const tooShort = new Uint8Array(PREFIX_BYTES.length + NONCE_LEN + TAG_LEN - 1);
     expect(() => bed.cryptoService.decrypt(tooShort)).toThrow(/too short/i);
   }, 30_000);
 
   it('rejects ciphertext when any byte is tampered (Poly1305 detection)', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
 
     const plaintext = new TextEncoder().encode('tamper-detect');
     const sealed = bed.cryptoService.encrypt(plaintext);
@@ -169,17 +169,17 @@ describe('SyncCryptoService', () => {
 
   it('rejects ciphertext encrypted with a different master key', async () => {
     // First instance encrypts
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const sealed = bed.cryptoService.encrypt(new TextEncoder().encode('cross-account'));
 
     // Re-derive with a different password — now key differs
-    await bed.masterKeyService.derive('different-password', { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive('different-password', { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
 
     expect(() => bed.cryptoService.decrypt(sealed)).toThrow();
   }, 60_000);
 
   it('hmacIndex is deterministic for identical inputs', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const a = bed.cryptoService.hmacIndex('hostA@vpn.example.com');
     const b = bed.cryptoService.hmacIndex('hostA@vpn.example.com');
     expect(a).toEqual(b);
@@ -187,17 +187,17 @@ describe('SyncCryptoService', () => {
   }, 30_000);
 
   it('hmacIndex differs across distinct values', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const a = bed.cryptoService.hmacIndex('alice');
     const b = bed.cryptoService.hmacIndex('bob');
     expect(a).not.toEqual(b);
   }, 30_000);
 
   it('hmacIndex changes when master key changes (different account)', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const a = bed.cryptoService.hmacIndex('shared-value');
 
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: 'bob@example.com', saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: 'bob@example.com', saltB64: TEST_SALT_B64 }));
     const b = bed.cryptoService.hmacIndex('shared-value');
 
     expect(a).not.toEqual(b);

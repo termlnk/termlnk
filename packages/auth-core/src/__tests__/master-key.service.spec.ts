@@ -107,22 +107,46 @@ describe('MasterKeyService', () => {
     sub.unsubscribe();
   });
 
-  it('derive() unlocks and exposes three 32-byte sub keys plus the email', async () => {
+  it('derive() is pure: returns three 32-byte sub keys without touching state or storage', async () => {
     const transitions: MasterKeyState[] = [];
     const sub = service.state$.subscribe((s) => transitions.push(s));
 
     const key = await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
 
-    expect(service.getState()).toBe(MasterKeyState.Unlocked);
-    expect(service.getCurrent()).toBe(key);
+    // Pure derivation: still locked, no active key, nothing persisted.
+    expect(service.getState()).toBe(MasterKeyState.Locked);
+    expect(service.getCurrent()).toBeNull();
+    expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(false);
     expect(key.email).toBe(TEST_EMAIL);
     expect(key.authKey.length).toBe(32);
     expect(key.encKey.length).toBe(32);
     expect(key.indexKey.length).toBe(32);
+    expect(transitions).toEqual([MasterKeyState.Locked]);
+
+    sub.unsubscribe();
+  }, 30_000);
+
+  it('activate() installs the key, publishes Unlocked and persists the wrap', async () => {
+    const key = await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    const transitions: MasterKeyState[] = [];
+    const sub = service.state$.subscribe((s) => transitions.push(s));
+
+    await service.activate(key);
+
+    expect(service.getState()).toBe(MasterKeyState.Unlocked);
+    expect(service.getCurrent()).toBe(key);
+    expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(true);
     expect(transitions).toEqual([MasterKeyState.Locked, MasterKeyState.Unlocked]);
 
     sub.unsubscribe();
   }, 30_000);
+
+  it('activate() rejects an incomplete key', async () => {
+    await expect(
+      service.activate({ email: '', authKey: new Uint8Array(32), encKey: new Uint8Array(32), indexKey: new Uint8Array(32) })
+    ).rejects.toThrow(/incomplete/i);
+    expect(service.getState()).toBe(MasterKeyState.Locked);
+  });
 
   it('derive() is deterministic — same password + material yields identical sub keys', async () => {
     const a = await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
@@ -141,6 +165,7 @@ describe('MasterKeyService', () => {
 
   it('lock() clears state and zeroes the previously held key buffers', async () => {
     const key = await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await service.activate(key);
     const transitions: MasterKeyState[] = [];
 
     expect(key.authKey.some((b) => b !== 0)).toBe(true);
@@ -183,10 +208,16 @@ describe('MasterKeyService', () => {
     ).rejects.toThrow(/saltB64/i);
   });
 
-  it('re-deriving zeroes the previous key before storing the new one', async () => {
+  it('activating a new key zeroes the previous one before storing the new one', async () => {
     const first = await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await service.activate(first);
     const otherSaltB64 = Buffer.from('alt-server-salt-32bytes-padding!').toString('base64');
     const second = await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: otherSaltB64 });
+    // Deriving alone must not disturb the active key (transactional flows depend on it).
+    expect(service.getCurrent()).toBe(first);
+    expect(first.authKey.some((b) => b !== 0)).toBe(true);
+
+    await service.activate(second);
 
     expect(Array.from(first.authKey).every((b) => b === 0)).toBe(true);
     expect(Array.from(first.encKey).every((b) => b === 0)).toBe(true);
@@ -196,7 +227,7 @@ describe('MasterKeyService', () => {
   }, 60_000);
 
   it('dispose() zeroes the held key and completes state$', async () => {
-    await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await service.activate(await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     let completed = false;
     const sub = service.state$.subscribe({
       complete: () => {
@@ -211,8 +242,8 @@ describe('MasterKeyService', () => {
     sub.unsubscribe();
   }, 30_000);
 
-  it('derive() persists a wrapped blob containing all three sub keys', async () => {
-    await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+  it('activate() persists a wrapped blob containing all three sub keys', async () => {
+    await service.activate(await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
 
     const raw = storage.map.get(WRAPPED_KEY_STORAGE_KEY);
     expect(raw).toBeDefined();
@@ -225,8 +256,9 @@ describe('MasterKeyService', () => {
     expect(blob.authKey.length).toBeGreaterThanOrEqual(43);
   }, 30_000);
 
-  it('tryRestoreFromStorage() round-trips: derive → simulate restart → restored key matches', async () => {
+  it('tryRestoreFromStorage() round-trips: activate → simulate restart → restored key matches', async () => {
     const original = await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await service.activate(original);
     const authSnapshot = new Uint8Array(original.authKey);
     const encSnapshot = new Uint8Array(original.encKey);
     const indexSnapshot = new Uint8Array(original.indexKey);
@@ -261,7 +293,7 @@ describe('MasterKeyService', () => {
   });
 
   it('lock() does NOT remove the persisted wrap — restart can still restore', async () => {
-    await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await service.activate(await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(true);
 
     service.lock();
@@ -275,7 +307,7 @@ describe('MasterKeyService', () => {
   }, 30_000);
 
   it('clearPersistedKey() removes the wrap so tryRestoreFromStorage returns false next time', async () => {
-    await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await service.activate(await service.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     expect(storage.map.has(WRAPPED_KEY_STORAGE_KEY)).toBe(true);
 
     await service.clearPersistedKey();

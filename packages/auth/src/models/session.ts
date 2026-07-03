@@ -66,6 +66,9 @@ export type AuthErrorCode =
   | 'token_expired' // access token expired but refresh may still succeed
   | 'wrong_encryption_password' // vault unlock: entered password does not match the stored key-check value
   | 'wrong_current_password' // changePassword: the supplied current password failed SRP verification
+  | 'sync_not_ready' // changePassword: sync could not drain/decrypt; aborted before the server was touched
+  | 'client_upgrade_required' // changePassword: this app version syncs fewer resources than the server holds; upgrade first
+  | 'rekey_pending' // changePassword: credential swap succeeded; data re-encryption pending, retried automatically
   | 'unknown';
 
 export interface IAuthError {

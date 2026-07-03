@@ -22,7 +22,7 @@ import { IMasterKeyService as IMasterKeyServiceId } from '@termlnk/auth';
 import { createIdentifier, Disposable, ILogService as ILogServiceId, Inject } from '@termlnk/core';
 import { IMobileHostRepository } from '@termlnk/database-mobile';
 import { ISyncService as ISyncServiceId } from '@termlnk/sync';
-import { HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, PortForwardingRuleSynchroniser, ProviderSynchroniser, SnippetSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
+import { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SnippetSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 
 export interface IMobileSyncService {
   readonly hosts$: Observable<readonly IMobileHost[]>;
@@ -50,12 +50,15 @@ export class MobileSyncService extends Disposable implements IMobileSyncService 
     @Inject(ISyncServiceId) syncService: ISyncService,
     @Inject(IMobileHostRepository) hostRepo: IMobileHostRepository,
     @Inject(HostSynchroniser) hostSynchroniser: HostSynchroniser,
+    @Inject(ConfigSynchroniser) configSynchroniser: ConfigSynchroniser,
     @Inject(IdentitySynchroniser) identitySynchroniser: IdentitySynchroniser,
     @Inject(SshKeySynchroniser) sshKeySynchroniser: SshKeySynchroniser,
     @Inject(KnownHostSynchroniser) knownHostSynchroniser: KnownHostSynchroniser,
     @Inject(PortForwardingRuleSynchroniser) portForwardingRuleSynchroniser: PortForwardingRuleSynchroniser,
     @Inject(SnippetSynchroniser) snippetSynchroniser: SnippetSynchroniser,
     @Inject(ProviderSynchroniser) providerSynchroniser: ProviderSynchroniser,
+    @Inject(McpSynchroniser) mcpSynchroniser: McpSynchroniser,
+    @Inject(SkillSynchroniser) skillSynchroniser: SkillSynchroniser,
     @Inject(IMasterKeyServiceId) masterKeyService: IMasterKeyService,
     @Inject(ILogServiceId) logService: ILogService
   ) {
@@ -68,14 +71,19 @@ export class MobileSyncService extends Disposable implements IMobileSyncService 
     this.state$ = syncService.state$;
 
     // Register every resource synchroniser with the engine; the returned disposables
-    // unregister them on teardown.
+    // unregister them on teardown. The set covers all 10 SYNC_RESOURCES, matching the
+    // desktop registration one-to-one so cross-device flows (e.g. prepareForRekey's
+    // unregistered-resource probe) see the same resource coverage on both ends.
     this.disposeWithMe(syncService.register(hostSynchroniser));
+    this.disposeWithMe(syncService.register(configSynchroniser));
     this.disposeWithMe(syncService.register(identitySynchroniser));
     this.disposeWithMe(syncService.register(sshKeySynchroniser));
     this.disposeWithMe(syncService.register(knownHostSynchroniser));
     this.disposeWithMe(syncService.register(portForwardingRuleSynchroniser));
     this.disposeWithMe(syncService.register(snippetSynchroniser));
     this.disposeWithMe(syncService.register(providerSynchroniser));
+    this.disposeWithMe(syncService.register(mcpSynchroniser));
+    this.disposeWithMe(syncService.register(skillSynchroniser));
 
     // Surface persisted hosts before the first pull resolves.
     void hostRepo.ready().catch((err) => {

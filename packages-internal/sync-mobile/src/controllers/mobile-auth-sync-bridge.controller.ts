@@ -60,9 +60,10 @@ export class MobileAuthSyncBridgeController extends Disposable {
       combineLatest([this._authService.authState$, this._masterKeyService.state$])
         .pipe(distinctUntilChanged(([a1, m1], [a2, m2]) => a1 === a2 && m1 === m2))
         .subscribe(([authState, masterKeyState]) => {
-          // Signed in + key unlocked -> kick the engine. pull() enables it on first call.
+          // Signed in + key unlocked -> settle any interrupted password change first
+          // (rekey resume), then kick the engine. pull() enables it on first call.
           if (authState === AuthState.Authenticated && masterKeyState === MasterKeyState.Unlocked) {
-            void this._startSync();
+            void this._resumeThenStartSync();
             return;
           }
 
@@ -80,6 +81,18 @@ export class MobileAuthSyncBridgeController extends Disposable {
           // Restoring / Authenticating: hold the previous state during recovery.
         })
     );
+  }
+
+  // A pending password change must be settled BEFORE the regular sync start: resume may
+  // need to rekey (which wipes sync state), and racing it against enable()/pull() would
+  // push old-key ciphertext. resumePendingPasswordChange is idempotent + fail-soft.
+  private async _resumeThenStartSync(): Promise<void> {
+    try {
+      await this._authService!.resumePendingPasswordChange();
+    } catch (err) {
+      this._logService.warn('[MobileAuthSyncBridgeController] pending password-change resume failed:', err);
+    }
+    await this._startSync();
   }
 
   private async _startSync(): Promise<void> {

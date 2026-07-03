@@ -125,11 +125,24 @@ export interface IAuthService {
   // Throws AuthError('wrong_encryption_password') on mismatch.
   unlockVault(password: string): Promise<void>;
 
-  // Change the account password. Verifies the old password via SRP, derives a new
-  // master key from the new password, and updates the server's SRP credential.
+  // Change the account password. Runs as a journaled saga:
+  //   1. verify the old password via SRP (zero side effects on failure),
+  //   2. gate on IVaultRekeyHandler.prepareForRekey() — throws 'sync_not_ready' before
+  //      the server is touched when synced data could not survive the key swap,
+  //   3. persist a pending-password-change journal, swap the server SRP credential,
+  //   4. activate the new master key and re-encrypt synced data (rekey).
   // Other devices are revoked and must re-login with the new password.
-  // Throws AuthError('wrong_current_password') if the old password is incorrect.
+  // Throws AuthError('wrong_current_password') if the old password is incorrect and
+  // AuthError('rekey_pending') when the credential swap succeeded but the data
+  // re-encryption must be retried (resumed automatically, see below).
   changePassword(oldPassword: string, newPassword: string): Promise<void>;
+
+  // Resume a password change interrupted by a crash / offline window, driven by the
+  // persisted journal. Uses the server's argon2 salt as a commit probe to decide whether
+  // the credential swap ever landed. Idempotent and fail-soft (keeps the journal and
+  // returns silently when the server is unreachable). Main-process only — invoked by the
+  // auth/sync bridge controllers whenever the session is authenticated and unlocked.
+  resumePendingPasswordChange(): Promise<void>;
 }
 
 export const IAuthService = createIdentifier<IAuthService>('auth.auth-service');

@@ -54,6 +54,10 @@ export class MasterKeyService extends Disposable implements IMasterKeyService {
     super.dispose();
   }
 
+  // Pure derivation: computes the sub keys and returns them without touching the active
+  // key, publishing state, or persisting anything. The caller owns the result — it must
+  // either activate() it after server confirmation or zeroize it on failure. This is what
+  // keeps credential flows transactional (a failed SRP verify leaves the vault untouched).
   async derive(password: string, material: IDerivationMaterial): Promise<IMasterKey> {
     if (!password) {
       throw new Error('[MasterKeyService] password must be a non-empty string');
@@ -62,30 +66,38 @@ export class MasterKeyService extends Disposable implements IMasterKeyService {
       throw new Error('[MasterKeyService] derivation material requires both email and saltB64');
     }
 
-    // Drop any prior key first so we do not briefly hold two master keys.
-    this._zeroizeAndClear();
-
     const salt = computeArgon2Salt(material.email, material.saltB64);
     const masterKey = await this._passwordHasher.argon2id(password, salt, MASTER_KEY_DERIVATION);
     try {
       const subKeys = deriveSubKeys(masterKey);
-      const next: IMasterKey = {
+      return {
         authKey: subKeys.authKey,
         encKey: subKeys.encKey,
         indexKey: subKeys.indexKey,
         email: material.email,
       };
-      this._currentKey = next;
-      this._state$.next(MasterKeyState.Unlocked);
-      this._logService.log('[MasterKeyService] master key derived for', material.email);
-      // Persist the wrap *after* publishing Unlocked — a storage hiccup must not block
-      // the in-memory flow; the next launch simply falls back to "no auto-restore".
-      await this._persistWrappedKey(next);
-      return next;
     } finally {
       // The HKDF inputs above already consumed the master key; nothing else needs it.
       zeroize(masterKey);
     }
+  }
+
+  // Atomic activation: swap the active key, publish Unlocked, rewrite the persisted wrap.
+  // Ownership of `key` transfers here; the previous key is zeroized.
+  async activate(key: IMasterKey): Promise<void> {
+    if (!key?.email || !key.authKey?.length || !key.encKey?.length || !key.indexKey?.length) {
+      throw new Error('[MasterKeyService] cannot activate an incomplete master key');
+    }
+    if (this._currentKey !== key) {
+      // Drop any prior key first so we do not briefly hold two master keys.
+      this._zeroizeAndClear();
+      this._currentKey = key;
+    }
+    this._state$.next(MasterKeyState.Unlocked);
+    this._logService.log('[MasterKeyService] master key activated for', key.email);
+    // Persist the wrap *after* publishing Unlocked — a storage hiccup must not block
+    // the in-memory flow; the next launch simply falls back to "no auto-restore".
+    await this._persistWrappedKey(key);
   }
 
   lock(): void {

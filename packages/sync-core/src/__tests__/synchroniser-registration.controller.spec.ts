@@ -14,7 +14,7 @@
  */
 
 import type { IConfigOptions, IConfigService, IDisposable, ILogService, LogLevel } from '@termlnk/core';
-import type { IResourceSynchroniser, ISyncMutation, ISyncPatchItem, SyncResourceId } from '@termlnk/sync';
+import type { IResourceSynchroniser, ISyncMutation, ISyncPatchApplyResult, ISyncPatchItem, SyncResourceId } from '@termlnk/sync';
 import type { ConfigSynchroniser, HostSynchroniser, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SnippetSynchroniser, SshKeySynchroniser } from '@termlnk/sync-engine';
 import type { Observable } from 'rxjs';
 import { SYNC_PLUGIN_CONFIG_KEY, SynchroniserStatus } from '@termlnk/sync';
@@ -83,7 +83,7 @@ class StubSynchroniser implements IResourceSynchroniser {
     this.startCalls++;
   }
 
-  async applyPatch(_patch: ISyncPatchItem[]): Promise<void> {}
+  async applyPatch(_patch: ISyncPatchItem[]): Promise<ISyncPatchApplyResult> { return { failures: [] }; }
   async buildMutations(): Promise<ISyncMutation[]> { return []; }
   async buildInitialSnapshot(): Promise<ISyncMutation[]> { return []; }
   async onPushAccepted(): Promise<void> {}
@@ -150,7 +150,15 @@ describe('SynchroniserRegistrationController', () => {
   it('skips a single excluded synchroniser', () => {
     const bed = createBed(['host']);
     expect(bed.fakeSync.registered.sort()).toEqual([
-      'ai_provider', 'config', 'identity', 'known_host', 'mcp_server', 'port_forwarding_rule', 'skill', 'snippet', 'ssh_key',
+      'ai_provider',
+      'config',
+      'identity',
+      'known_host',
+      'mcp_server',
+      'port_forwarding_rule',
+      'skill',
+      'snippet',
+      'ssh_key',
     ]);
     bed.controller.dispose();
   });
@@ -158,7 +166,13 @@ describe('SynchroniserRegistrationController', () => {
   it('skips multiple excluded synchronisers', () => {
     const bed = createBed(['ai_provider', 'mcp_server', 'skill']);
     expect(bed.fakeSync.registered.sort()).toEqual([
-      'config', 'host', 'identity', 'known_host', 'port_forwarding_rule', 'snippet', 'ssh_key',
+      'config',
+      'host',
+      'identity',
+      'known_host',
+      'port_forwarding_rule',
+      'snippet',
+      'ssh_key',
     ]);
     bed.controller.dispose();
   });

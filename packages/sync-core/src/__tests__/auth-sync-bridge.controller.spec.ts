@@ -59,6 +59,9 @@ class FakeAuthService implements IAuthService {
   async pollGoogleWebSignIn(): Promise<'pending' | 'complete' | 'expired'> { throw new Error('not used'); }
   async setupEncryptionPassword(): Promise<void> { throw new Error('not used'); }
   async unlockVault(): Promise<void> { throw new Error('not used'); }
+  async changePassword(): Promise<void> { throw new Error('not used'); }
+  resumeCalls = 0;
+  async resumePendingPasswordChange(): Promise<void> { this.resumeCalls++; }
   async getServerCapabilities() { return { googleOAuth: false }; }
 }
 
@@ -73,6 +76,7 @@ class FakeMasterKeyService implements IMasterKeyService {
   }
 
   async derive(): Promise<IMasterKey> { throw new Error('not used'); }
+  async activate(): Promise<void> { throw new Error('not used'); }
   lock(): void { this._state$.next(MasterKeyState.Locked); }
   getCurrent(): IMasterKey | null { return null; }
   getState(): MasterKeyState { return this._state$.getValue(); }
@@ -281,7 +285,7 @@ describe('AuthSyncBridgeController — master key state coupling', () => {
     bed.masterKey.setMasterKeyState(MasterKeyState.Locked);
     await flushAsync();
     expect(bed.sync.stopRuntimeCalls).toBeGreaterThan(baselineStop);
-    expect(bed.sync.disableCalls).toBe(0);   // userEnabled stays intact
+    expect(bed.sync.disableCalls).toBe(0); // userEnabled stays intact
   });
 
   it('re-enables after a lock → unlock cycle while staying Authenticated', async () => {
@@ -303,6 +307,32 @@ describe('AuthSyncBridgeController — misc', () => {
 
   afterEach(() => {
     bed?.controller.dispose();
+  });
+
+  // A pending password change (rekey journal) must be settled before auto-enable, or the
+  // enable would push old-key ciphertext while resume is about to wipe sync state.
+  it('resumes a pending password change before restoring sync intent', async () => {
+    bed = createBed({ persistedUserEnabled: true });
+    const order: string[] = [];
+    vi.spyOn(bed.auth, 'resumePendingPasswordChange').mockImplementation(async () => {
+      order.push('resume');
+    });
+    vi.spyOn(bed.sync, 'enable').mockImplementation(async () => {
+      order.push('enable');
+    });
+    await flushAsync();
+    bed.auth.setState(AuthState.Authenticated);
+    await flushAsync();
+    expect(order).toEqual(['resume', 'enable']);
+  });
+
+  it('still restores sync intent when the resume probe fails', async () => {
+    bed = createBed({ persistedUserEnabled: true });
+    vi.spyOn(bed.auth, 'resumePendingPasswordChange').mockRejectedValue(new Error('probe offline'));
+    await flushAsync();
+    bed.auth.setState(AuthState.Authenticated);
+    await flushAsync();
+    expect(bed.sync.enableCalls).toBe(1);
   });
 
   it('controller is a no-op when IAuthService is unbound (offline build)', async () => {

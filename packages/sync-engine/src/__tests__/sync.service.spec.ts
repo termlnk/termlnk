@@ -15,7 +15,7 @@
 
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { ConfigRepository, ISyncCursorEntity, SyncCursorRepository, SyncFieldMetaRepository, SyncRowMetaRepository } from '@termlnk/database';
-import type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse, IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
+import type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse, IResourceSynchroniser, ISyncCryptoService, ISyncMutation, ISyncOutboxService, ISyncPatchApplyResult, ISyncPatchItem, ISyncTransportService, SyncResourceId } from '@termlnk/sync';
 import { SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -190,6 +190,18 @@ class FakeRowMeta {
   async get(resource: SyncResourceId, entityId: string): Promise<{ resource: SyncResourceId; entityId: string; version: number; updatedAt: number } | null> {
     return this._rows.get(this._key(resource, entityId)) ?? null;
   }
+
+  async deleteResource(resource: SyncResourceId): Promise<void> {
+    for (const key of [...this._rows.keys()]) {
+      if (key.startsWith(`${resource}::`)) {
+        this._rows.delete(key);
+      }
+    }
+  }
+
+  count(resource: SyncResourceId): number {
+    return [...this._rows.keys()].filter((k) => k.startsWith(`${resource}::`)).length;
+  }
 }
 
 class FakeFieldMeta {
@@ -235,6 +247,7 @@ class FakeConfigRepo {
 class FakeSynchroniser implements IResourceSynchroniser {
   status$ = new BehaviorSubject<SynchroniserStatus>(SynchroniserStatus.Idle);
   appliedPatches: ISyncPatchItem[][] = [];
+  applyPatchResult: ISyncPatchApplyResult = { failures: [] };
   startCalls = 0;
   initialSnapshotCalls = 0;
   initialSnapshotError: Error | null = null;
@@ -256,8 +269,9 @@ class FakeSynchroniser implements IResourceSynchroniser {
     this.reconcileCalls.push(serverEntityIds);
   }
 
-  async applyPatch(patch: ISyncPatchItem[]): Promise<void> {
+  async applyPatch(patch: ISyncPatchItem[]): Promise<ISyncPatchApplyResult> {
     this.appliedPatches.push(patch);
+    return this.applyPatchResult;
   }
 
   async buildMutations(): Promise<ISyncMutation[]> {
@@ -908,3 +922,266 @@ async function firstValue<T>(observable: { subscribe: (handler: (v: T) => void) 
     });
   });
 }
+
+describe('SyncService — rekey lifecycle', () => {
+  let bed: ITestBed;
+
+  beforeEach(() => {
+    bed = createTestBed();
+  });
+
+  afterEach(() => {
+    bed.service.dispose();
+  });
+
+  // Regression: the old enabled-guard early return skipped the wipe entirely, leaving
+  // old-key ciphertext in the outbox/meta after a password change with sync paused.
+  it('rekeyAndResync wipes meta/cursors/outbox even when the runtime is disabled', async () => {
+    bed.service.register(new FakeSynchroniser('host'));
+    bed.rowMeta.set('host', 'h1', 3);
+    await bed.cursors.upsert({ resource: 'host', cursor: 'c1', lastPulledAt: 1 });
+    await bed.outbox.enqueue({ resource: 'host', op: 'delete', entityId: 'h1', payload: null, baseVersion: 3 });
+
+    await bed.service.rekeyAndResync();
+
+    expect(bed.rowMeta.count('host')).toBe(0);
+    expect(await bed.cursors.get('host')).toBeNull();
+    expect(bed.outbox.rows).toHaveLength(0);
+    // userEnabled was never set to true → rekey must not switch sync on behind the user.
+    expect(await firstValue(bed.service.enabled$)).toBe(false);
+    expect(bed.transport.connectCalls).toBe(0);
+  });
+
+  it('rekeyAndResync re-enables when the user has sync on and crypto is available', async () => {
+    bed.service.register(new FakeSynchroniser('host'));
+    await bed.service.enable();
+    await flushAsync(50);
+    expect(bed.transport.connectCalls).toBe(1);
+
+    await bed.service.rekeyAndResync();
+    await flushAsync(50);
+
+    expect(await firstValue(bed.service.enabled$)).toBe(true);
+    expect(bed.transport.connectCalls).toBe(2);
+  });
+
+  it('rekeyAndResync does not re-enable while the master key is locked', async () => {
+    bed.service.register(new FakeSynchroniser('host'));
+    await bed.service.enable();
+    await flushAsync(50);
+    bed.crypto.available = false;
+
+    await bed.service.rekeyAndResync();
+
+    expect(await firstValue(bed.service.enabled$)).toBe(false);
+    expect(bed.transport.connectCalls).toBe(1);
+  });
+
+  // Race regression: a push already past the enabled gate used to write row meta and ack
+  // the outbox AFTER the rekey wipe, resurrecting old-key state. The epoch guard must
+  // short-circuit every write-back of the stale round.
+  it('a push in flight during rekey cannot resurrect meta or ack the outbox (epoch guard)', async () => {
+    const sk = new FakeSynchroniser('skill');
+    bed.service.register(sk);
+    await bed.service.enable();
+    await flushAsync(50);
+
+    // Deferred push: resolves only after the rekey has been initiated.
+    let resolvePush: ((resp: IPushResponse) => void) | null = null;
+    bed.transport.push = async (req) => {
+      bed.transport.pushCalls.push(req);
+      return new Promise<IPushResponse>((resolve) => {
+        resolvePush = resolve;
+      });
+    };
+
+    await bed.outbox.enqueue({
+      resource: 'skill',
+      op: 'upsert',
+      entityId: 's1',
+      payload: new Uint8Array([1]),
+      baseVersion: null,
+    });
+    await flushAsync(600); // debounce elapses; push is now awaiting the transport
+    expect(resolvePush).not.toBeNull();
+
+    const rekeyDone = bed.service.rekeyAndResync();
+    // The server "accepts" the stale batch while the rekey is waiting for it to settle.
+    resolvePush!({
+      accepted: [1],
+      acceptedDetails: [{ id: 1, resource: 'skill', entityId: 's1', version: 9 }],
+      rejected: [],
+      lastServerVersion: 9,
+    });
+    await rekeyDone;
+    await flushAsync(50);
+
+    // Stale round detected via epoch mismatch: no meta write, no ack.
+    expect(sk.pushAccepted).toEqual([]);
+    expect(bed.outbox.ackedIds.flat()).not.toContain(1);
+  });
+});
+
+describe('SyncService — prepareForRekey', () => {
+  let bed: ITestBed;
+
+  beforeEach(() => {
+    bed = createTestBed();
+  });
+
+  afterEach(() => {
+    bed.service.dispose();
+  });
+
+  it('returns ok when the outbox drains and every pulled row applies', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+
+    const result = await bed.service.prepareForRekey();
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('returns master_key_locked when crypto is unavailable', async () => {
+    const locked = createTestBed({ cryptoAvailable: false });
+    locked.service.register(new FakeSynchroniser('skill'));
+
+    const result = await locked.service.prepareForRekey();
+
+    expect(result).toEqual({ ok: false, reason: 'master_key_locked' });
+    locked.service.dispose();
+  });
+
+  it('returns outbox_not_drained when the server keeps refusing the pending mutations', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    await bed.outbox.enqueue({
+      resource: 'skill',
+      op: 'upsert',
+      entityId: 's1',
+      payload: new Uint8Array([1]),
+      baseVersion: null,
+    });
+    // No accepted, no rejected → the drain loop makes no progress and exits.
+    bed.transport.pushResponse = { accepted: [], acceptedDetails: [], rejected: [], lastServerVersion: 0 };
+
+    const result = await bed.service.prepareForRekey();
+
+    expect(result).toEqual({ ok: false, reason: 'outbox_not_drained' });
+  });
+
+  it('returns cipher_mismatch when any pulled row fails to apply (strict, no skipping)', async () => {
+    const sk = new FakeSynchroniser('skill');
+    sk.applyPatchResult = { failures: [{ entityId: 's-bad', version: 3, error: 'poly1305 tag mismatch' }] };
+    bed.service.register(sk);
+    bed.transport.pullResponseFor.set('skill', {
+      cursor: 'c1',
+      patch: [
+        { op: 'put', resource: 'skill', entityId: 's-bad', payload: new Uint8Array([1]), version: 3 },
+        { op: 'put', resource: 'skill', entityId: 's-ok', payload: new Uint8Array([2]), version: 4 },
+      ],
+      lastMutationId: 0,
+    });
+
+    const result = await bed.service.prepareForRekey();
+
+    expect(result).toEqual({ ok: false, reason: 'cipher_mismatch' });
+  });
+
+  it('returns network (never throws) when the transport fails', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    bed.transport.pullThrows = new Error('offline');
+
+    const result = await bed.service.prepareForRekey();
+
+    expect(result).toEqual({ ok: false, reason: 'network' });
+  });
+
+  // Mobile-like partial registration: a client whose synchroniser set does not cover a
+  // resource the server already stores data for is treated as outdated — it cannot
+  // re-encrypt that data, so the rekey must be refused until the app is upgraded.
+  it('returns client_outdated when an unregistered resource has server data', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    bed.transport.pullResponseFor.set('mcp_server', {
+      cursor: 'c-mcp',
+      patch: [{ op: 'put', resource: 'mcp_server', entityId: 'm1', payload: new Uint8Array([1]), version: 2 }],
+      lastMutationId: 0,
+    });
+
+    const result = await bed.service.prepareForRekey();
+
+    expect(result).toEqual({ ok: false, reason: 'client_outdated' });
+    // Pure existence probe: it must not advance a cursor for the probed resource.
+    expect(await bed.cursors.get('mcp_server')).toBeNull();
+  });
+
+  it('passes when unregistered resources hold no server data (tombstones do not count)', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    // Deleted-everything stream: tombstones carry no ciphertext to strand.
+    bed.transport.pullResponseFor.set('mcp_server', {
+      cursor: 'c-mcp',
+      patch: [{ op: 'del', resource: 'mcp_server', entityId: 'm1', payload: null, version: 2 }],
+      lastMutationId: 0,
+    });
+
+    const result = await bed.service.prepareForRekey();
+
+    expect(result).toEqual({ ok: true });
+    // Every unregistered resource was probed from the stream start.
+    const probed = bed.transport.pullCalls.filter((c) => c.resource === 'mcp_server');
+    expect(probed).toEqual([{ clientId: expect.any(String), resource: 'mcp_server', cursor: null }]);
+  });
+
+  it('works while the runtime is disabled (drains the outbox directly)', async () => {
+    bed.service.register(new FakeSynchroniser('skill'));
+    await bed.outbox.enqueue({
+      resource: 'skill',
+      op: 'upsert',
+      entityId: 's1',
+      payload: new Uint8Array([1]),
+      baseVersion: null,
+    });
+    bed.transport.pushResponse = {
+      accepted: [1],
+      acceptedDetails: [{ id: 1, resource: 'skill', entityId: 's1', version: 1 }],
+      rejected: [],
+      lastServerVersion: 1,
+    };
+
+    const result = await bed.service.prepareForRekey();
+
+    expect(result).toEqual({ ok: true });
+    expect(bed.outbox.rows).toHaveLength(0);
+    expect(bed.transport.pushCalls.length).toBeGreaterThan(0);
+  });
+});
+
+describe('SyncService — tolerant applyPatch handling', () => {
+  let bed: ITestBed;
+
+  beforeEach(() => {
+    bed = createTestBed();
+  });
+
+  afterEach(() => {
+    bed.service.dispose();
+  });
+
+  // Regular pull path: a failing row is logged and skipped; the cursor still advances so
+  // one poisoned row cannot wedge the pipeline forever.
+  it('pull advances the cursor even when some patch rows fail to apply', async () => {
+    const sk = new FakeSynchroniser('skill');
+    sk.applyPatchResult = { failures: [{ entityId: 's-bad', version: 3, error: 'decrypt failed' }] };
+    bed.service.register(sk);
+    bed.transport.pullResponseFor.set('skill', {
+      cursor: 'cursor-after-skill',
+      patch: [{ op: 'put', resource: 'skill', entityId: 's-bad', payload: new Uint8Array([1]), version: 3 }],
+      lastMutationId: 0,
+    });
+
+    await bed.service.enable();
+    await flushAsync(50);
+
+    expect(sk.appliedPatches.length).toBeGreaterThan(0);
+    expect((await bed.cursors.get('skill'))?.cursor).toBe('cursor-after-skill');
+    expect(await firstValue(bed.service.state$)).not.toBe('error');
+  });
+});

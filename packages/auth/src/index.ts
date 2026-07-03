@@ -38,6 +38,8 @@ export { ITokenManager } from './services/token-manager.service';
 export { ITokenRefresher } from './services/token-refresher.service';
 export { ITokenStorageService } from './services/token-storage.service';
 export { IUserStorageService } from './services/user-storage.service';
+export { IVaultRekeyHandler, VAULT_REKEY_REASON_CLIENT_OUTDATED } from './services/vault-rekey-handler';
+export type { IVaultRekeyPreparation } from './services/vault-rekey-handler';
 export { base64ToBytes, bytesToBase64, bytesToHex, hexToBytes, randomBytes } from './utils/encoding';
 export { HttpRequestError, parseServerError } from './utils/http-server-error';
 export type { IServerErrorBody, IServerErrorDetail } from './utils/http-server-error';

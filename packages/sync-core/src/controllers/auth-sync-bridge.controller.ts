@@ -49,10 +49,11 @@ export class AuthSyncBridgeController extends RxDisposable {
         takeUntil(this.dispose$)
       )
       .subscribe(([authState, masterKeyState]) => {
-        // Happy path: signed in + key unlocked -> let SyncService decide whether the user
-        // has sync turned on (it persists userEnabled across sessions).
+        // Happy path: signed in + key unlocked -> first settle any interrupted password
+        // change (rekey resume), then let SyncService decide whether the user has sync
+        // turned on (it persists userEnabled across sessions).
         if (authState === AuthState.Authenticated && masterKeyState === MasterKeyState.Unlocked) {
-          void this._restoreSyncIntent();
+          void this._resumeThenRestoreSyncIntent();
           return;
         }
 
@@ -76,6 +77,19 @@ export class AuthSyncBridgeController extends RxDisposable {
   private _shouldAutoEnableOnLogin(): boolean {
     const config = this._configService.getConfig<ISyncPluginConfig>(SYNC_PLUGIN_CONFIG_KEY);
     return config?.autoEnableOnLogin !== false;
+  }
+
+  // A pending password change must be settled BEFORE the regular auto-enable path runs:
+  // resume may need to rekey (which wipes sync state), and racing it against enable()
+  // would push old-key ciphertext. resumePendingPasswordChange is idempotent + fail-soft,
+  // so calling it on every Authenticated+Unlocked emission is safe.
+  private async _resumeThenRestoreSyncIntent(): Promise<void> {
+    try {
+      await this._authService!.resumePendingPasswordChange();
+    } catch (err) {
+      this._logService.warn('[AuthSyncBridgeController] pending password-change resume failed:', err);
+    }
+    await this._restoreSyncIntent();
   }
 
   private async _restoreSyncIntent(): Promise<void> {

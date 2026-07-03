@@ -21,13 +21,13 @@ export type { ISyncCursor, ISyncFieldMeta, ISyncMutation, ISyncPatchItem } from 
 export type { IResourceSyncStats, ISyncError, ISyncStats, SyncErrorCode } from './models/state';
 export { SynchroniserStatus, SyncState } from './models/state';
 export { SYNC_PLUGIN_NAME, SyncPlugin } from './plugin';
-export { BACKUP_PAYLOAD_PREFIX, BACKUP_PAYLOAD_VERSION, IBackupClientService, IBackupService } from './services/backup.service';
+export { BACKUP_PAYLOAD_PREFIX, BACKUP_PAYLOAD_VERSION, IBackupFileService, IBackupService } from './services/backup.service';
 export type { BackupImportMode, IBackupExportFileResult, IBackupExportSummary, IBackupImportFileResult, IBackupImportSummary } from './services/backup.service';
 export { ISyncCryptoService } from './services/crypto.service';
 export { ISyncOutboxService } from './services/outbox.service';
 export { IBackupRepository, IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IMcpServerSyncRepository, IPortForwardingRuleSyncRepository, IProviderSyncRepository, ISkillSyncRepository, ISnippetSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from './services/repositories';
 export type { IBackupSnapshot, IConfigChangeEvent, IConfigEntry, IProviderChangeEvent, ISyncCursorRow, ISyncEntityRow, ISyncHostChangeEvent, ISyncHostTreeNode, ISyncOutboxInsert, ISyncOutboxRow, ISyncRowChangeEvent, ISyncRowMeta, ISyncSkillRow, ISyncWritableRow } from './services/repositories';
-export type { IResourceSynchroniser, IResourceSynchroniserFactory } from './services/resource-synchroniser';
+export type { IResourceSynchroniser, IResourceSynchroniserFactory, ISyncPatchApplyFailure, ISyncPatchApplyResult } from './services/resource-synchroniser';
 export { ISyncService } from './services/sync.service';
 export { ISyncTransportService } from './services/transport.service';
 export type { IPokeMessage, IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse } from './services/transport.service';

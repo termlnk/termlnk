@@ -13,9 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IVaultRekeyHandler, IVaultRekeyPreparation } from '@termlnk/auth';
 import type { IDisposable } from '@termlnk/core';
 import type { IResourceSynchroniser, IResourceSyncStats, ISyncError, ISyncMutation, ISyncService, ISyncStats, SyncResourceId } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
+import { VAULT_REKEY_REASON_CLIENT_OUTDATED } from '@termlnk/auth';
 import { Disposable, generateRandomId, ILogService, toDisposable } from '@termlnk/core';
 import { ISyncConfigRepository, ISyncCryptoService, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxService, ISyncRowMetaRepository, ISyncTransportService, NON_SYNCABLE_CONFIG_KEYS, SYNC_MAX_BASE_VERSION_RETRIES, SYNC_PLUGIN_CONFIG_KEY, SYNC_PUSH_BATCH_SIZE, SYNC_RESOURCES, SYNC_TRIGGER_INTERVALS, SYNC_USER_ENABLED_FIELD, SynchroniserStatus, SyncState } from '@termlnk/sync';
 import { BehaviorSubject, debounceTime, distinctUntilChanged, filter, interval, merge, Subject, Subscription } from 'rxjs';
@@ -29,8 +31,9 @@ const CONFIG_GARBAGE_ENTITY_PREFIXES: readonly string[] = Array.from(NON_SYNCABL
 );
 
 // Top-level sync coordinator. Registers ResourceSynchronisers and drives the
-// push/pull/poke cadence.
-export class SyncService extends Disposable implements ISyncService {
+// push/pull/poke cadence. Also implements IVaultRekeyHandler so the password-change saga
+// in auth-core can gate on prepareForRekey() and drive the post-swap re-encryption.
+export class SyncService extends Disposable implements ISyncService, IVaultRekeyHandler {
   private readonly _state$ = new BehaviorSubject<SyncState>(SyncState.Disabled);
   readonly state$: Observable<SyncState> = this._state$.asObservable();
 
@@ -52,6 +55,18 @@ export class SyncService extends Disposable implements ISyncService {
   private _transportSub: Subscription | null = null;
 
   private _clientId: string | null = null;
+
+  // Bumped by rekeyAndResync(). Every push/pull round captures the epoch at start and
+  // re-checks it before each local write-back (meta upsert, outbox ack, cursor advance,
+  // applyPatch). A stale round that raced the rekey wipe therefore cannot resurrect
+  // old-key state. The awaited in-flight promises below are the primary defence; the
+  // epoch is the backstop for rounds not yet tracked when the wipe starts.
+  private _epoch = 0;
+
+  // Most recent push/pull round promises, awaited by rekeyAndResync so the wipe never
+  // interleaves with a round that is already past the enabled gate.
+  private _pushInFlight: Promise<void> | null = null;
+  private _pullInFlight: Promise<void> | null = null;
 
   // Gates SyncState.Idle: a push-only success would otherwise light the "Up to date"
   // badge while stats.lastSyncedAt is still null/stale.
@@ -139,6 +154,7 @@ export class SyncService extends Disposable implements ISyncService {
       return;
     }
 
+    const epoch = this._epoch;
     this._lastError$.next(null);
     this._initialPullDone = false;
     this._skipFirstConnectPull = false;
@@ -157,17 +173,29 @@ export class SyncService extends Disposable implements ISyncService {
     this._subscribeSynchroniserStatuses(runtimeSub);
     this._clientId = await this._loadOrCreateClientId();
     await this._purgeConfigGarbageOnce();
+    if (this._isEnableStale(epoch)) {
+      return;
+    }
     // Reconcile *before* buildInitialSnapshot so that any "ghost meta" (local meta rows
     // pointing at server-side entityIds that no longer exist — e.g. after a cloud reset)
     // is cleared first. Without this, buildInitialSnapshot would skip those local rows
     // forever (its dedupe checks meta existence) and they would never reach the cloud.
-    await this._reconcile();
+    await this._reconcile(epoch);
+    if (this._isEnableStale(epoch)) {
+      return;
+    }
     // Seed *after* reconcile so buildInitialSnapshot's "skip if meta exists" gate sees the
     // post-reconcile state. outbox.pendingCount$ is a BehaviorSubject and replays its
     // (now non-zero) value at subscribe time, so the first debounce window fires push.
     await this._seedInitialSnapshots();
     await this._refreshStats();
+    if (this._isEnableStale(epoch)) {
+      return;
+    }
 
+    // Drop a leftover subscription from a previous enable() before installing the new one,
+    // otherwise the old handler keeps reacting to connected$ forever.
+    this._transportSub?.unsubscribe();
     this._transportSub = this._transportService.connected$.subscribe((isConnected) => {
       if (!this._enabled$.getValue()) {
         return;
@@ -221,6 +249,12 @@ export class SyncService extends Disposable implements ISyncService {
     }
   }
 
+  // True when a concurrent stopRuntime()/rekey invalidated this enable() run between two
+  // of its awaits — the remaining steps must not run against torn-down state.
+  private _isEnableStale(epoch: number): boolean {
+    return !this._enabled$.getValue() || epoch !== this._epoch;
+  }
+
   async disable(): Promise<void> {
     await this._configRepo.setField(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD, false);
     await this.stopRuntime();
@@ -266,14 +300,83 @@ export class SyncService extends Disposable implements ISyncService {
     this._pullTrigger$.next();
   }
 
-  async rekeyAndResync(): Promise<void> {
-    if (!this._enabled$.getValue()) {
-      return;
-    }
-    // Stop the runtime pipeline (WS disconnect, cancel push/pull loops).
-    await this.stopRuntime();
+  // IVaultRekeyHandler — pre-flight gate run by the password-change saga BEFORE the server
+  // credential swap. Proves that a rekey can succeed: the outbox drains to zero (pending
+  // mutations — deletes in particular — reference local state that the rekey wipe cannot
+  // rebuild) and every server-side row decrypts under the current key (a single failure
+  // means ciphertext would be stranded after the swap). Never throws.
+  async prepareForRekey(): Promise<IVaultRekeyPreparation> {
+    try {
+      if (!this._cryptoService.available) {
+        return { ok: false, reason: 'master_key_locked' };
+      }
+      // Runs even when the runtime is disabled (user paused sync): stale outbox rows and
+      // undecryptable server rows are just as fatal to a rekey in that state.
+      if (!this._clientId) {
+        this._clientId = await this._loadOrCreateClientId();
+      }
+      const epoch = this._epoch;
 
-    // Wipe all sync state so the re-enable cycle treats every local row as brand-new.
+      // Resources this platform never registered a synchroniser for (e.g. an older
+      // mobile build missing config/mcp_server/skill) cannot be re-encrypted by the
+      // rekey. If the server holds data for any of them, this client is effectively
+      // outdated: rekeying from here would strand that ciphertext under the old key and
+      // permanently block later rekeys with cipher_mismatch — probe the server through
+      // the raw transport and refuse until the app is upgraded.
+      for (const resource of SYNC_RESOURCES) {
+        if (this._synchronisers.has(resource)) {
+          continue;
+        }
+        if (await this._remoteResourceHasData(resource)) {
+          return { ok: false, reason: VAULT_REKEY_REASON_CLIENT_OUTDATED };
+        }
+      }
+
+      await this._drainOutbox(epoch, { ignoreEnabled: true });
+      let pending = 0;
+      for (const resource of SYNC_RESOURCES) {
+        pending += await this._outboxService.countByResource(resource);
+      }
+      if (pending > 0) {
+        return { ok: false, reason: 'outbox_not_drained' };
+      }
+
+      for (const resource of SYNC_RESOURCES) {
+        if (!this._synchronisers.has(resource)) {
+          continue;
+        }
+        const failures = await this._pullResource(resource, epoch);
+        if (failures > 0) {
+          // Strict by design: skipping here would silently accept data loss after the swap.
+          return { ok: false, reason: 'cipher_mismatch' };
+        }
+      }
+      return { ok: true };
+    } catch (err) {
+      this._logService.warn('[SyncService] prepareForRekey failed:', err);
+      return { ok: false, reason: 'network' };
+    }
+  }
+
+  // IVaultRekeyHandler — idempotent re-encryption entry point used by the saga and its
+  // crash-resume path.
+  async rekey(): Promise<void> {
+    await this.rekeyAndResync();
+  }
+
+  async rekeyAndResync(): Promise<void> {
+    // Invalidate every in-flight round first, then wait for the tracked ones to settle so
+    // the wipe below cannot interleave with a late write-back.
+    this._epoch++;
+    await this.stopRuntime();
+    const inFlight = [this._pushInFlight, this._pullInFlight].filter((p): p is Promise<void> => p !== null);
+    if (inFlight.length > 0) {
+      await Promise.allSettled(inFlight);
+    }
+
+    // Unconditional wipe — even with the runtime disabled, meta/cursors/outbox still
+    // reference old-key ciphertext that must not survive a key change. The re-enable cycle
+    // then treats every local row as brand-new and re-pushes it under the new key.
     for (const resource of SYNC_RESOURCES) {
       await this._rowMetaRepo.deleteResource(resource);
       await this._fieldMetaRepo.deleteResource(resource);
@@ -281,72 +384,34 @@ export class SyncService extends Disposable implements ISyncService {
       await this._outboxService.clearResource(resource);
     }
 
-    // Re-enable triggers reconcile (will fail on old-key data — caught per-resource),
-    // then seedInitialSnapshots (no meta → seeds everything), then push (new encKey).
-    await this.enable();
+    // Re-enable only when the user actually has sync switched on and the new key is
+    // usable; a rekey must not flip sync on behind the user's back.
+    const userEnabled = await this._configRepo.getField<boolean>(SYNC_PLUGIN_CONFIG_KEY, SYNC_USER_ENABLED_FIELD);
+    if (userEnabled === true && this._cryptoService.available) {
+      await this.enable();
+    }
   }
 
-  private async _runPush(): Promise<void> {
+  private _runPush(): Promise<void> {
+    const run = this._doRunPush(this._epoch);
+    this._pushInFlight = run;
+    void run.finally(() => {
+      if (this._pushInFlight === run) {
+        this._pushInFlight = null;
+      }
+    });
+    return run;
+  }
+
+  private async _doRunPush(epoch: number): Promise<void> {
     if (!this._enabled$.getValue() || !this._clientId) {
       return;
     }
     try {
       this._state$.next(SyncState.Syncing);
-      // Drain in fixed-size batches. Exit when the outbox empties or when no row in the
-      // latest batch was accepted — the rejected rows still sit at the FIFO head; let the
-      // next pull/push tick retry after baseVersion conflicts resolve.
-      let drainedEmpty = false;
-      let anyAccepted = false;
-      while (this._enabled$.getValue()) {
-        const mutations = await this._outboxService.peek(SYNC_PUSH_BATCH_SIZE);
-        if (mutations.length === 0) {
-          drainedEmpty = true;
-          break;
-        }
-        const resp = await this._transportService.push({ clientId: this._clientId, mutations });
-
-        // Write sync_row_meta first so that even if ack() later crashes, the meta still
-        // reflects the server-assigned version. Idempotency on the synchroniser side
-        // (per-resource upsert by entityId) makes a possible duplicate harmless.
-        for (const detail of resp.acceptedDetails) {
-          const synchroniser = this._synchronisers.get(detail.resource);
-          if (!synchroniser) {
-            continue;
-          }
-          try {
-            await synchroniser.onPushAccepted(detail);
-          } catch (err) {
-            this._logService.warn(
-              `[SyncService] onPushAccepted failed for ${detail.resource}/${detail.entityId}:`,
-              err
-            );
-            // Don't break the ack loop — reconcile picks up missed meta on next enable().
-          }
-        }
-
-        // Prefer the detailed list for ack so id ordering matches the meta writes above;
-        // fall back to the legacy `accepted` array when the server hasn't shipped the new
-        // protocol yet.
-        const idsToAck = resp.acceptedDetails.length > 0
-          ? resp.acceptedDetails.map((d) => d.id)
-          : [...resp.accepted];
-        if (idsToAck.length > 0) {
-          await this._outboxService.ack(idsToAck);
-          anyAccepted = true;
-        }
-        let rebased = 0;
-        if (resp.rejected.length > 0) {
-          const rejectedIds = resp.rejected.map((r) => r.id);
-          const reason = resp.rejected.map((r) => `${r.id}:${r.reason}`).join(';');
-          const retryCounts = await this._outboxService.markRejected(rejectedIds, reason);
-          // Local-first: rebase rejected row-level mutations onto the latest server version so
-          // the loop's next iteration retries them with a fresh baseVersion (serial, no re-entry).
-          rebased = await this._rebaseRejectedMutations(mutations, retryCounts);
-        }
-        // No progress this round — nothing accepted and nothing left to retry.
-        if (resp.accepted.length === 0 && rebased === 0) {
-          break;
-        }
+      const { drainedEmpty, anyAccepted } = await this._drainOutbox(epoch, { ignoreEnabled: false });
+      if (epoch !== this._epoch) {
+        return;
       }
       // Mark the "outbox cleanly drained" wall-clock so the UI can distinguish "Up to
       // date" (push + pull both flowed) from "Pulled only" (never had local changes to
@@ -368,12 +433,85 @@ export class SyncService extends Disposable implements ISyncService {
     }
   }
 
+  // Push loop shared by the regular push round and prepareForRekey (which must drain even
+  // while the runtime is disabled). Drains in fixed-size batches; exits when the outbox
+  // empties, no progress is possible, or the epoch went stale (rekey wiped state mid-round).
+  private async _drainOutbox(epoch: number, opts: { ignoreEnabled: boolean }): Promise<{ drainedEmpty: boolean; anyAccepted: boolean }> {
+    const clientId = this._clientId;
+    if (!clientId) {
+      return { drainedEmpty: false, anyAccepted: false };
+    }
+    let drainedEmpty = false;
+    let anyAccepted = false;
+    while ((opts.ignoreEnabled || this._enabled$.getValue()) && epoch === this._epoch) {
+      const mutations = await this._outboxService.peek(SYNC_PUSH_BATCH_SIZE);
+      if (mutations.length === 0) {
+        drainedEmpty = true;
+        break;
+      }
+      const resp = await this._transportService.push({ clientId, mutations });
+      if (epoch !== this._epoch) {
+        // Stale round: the rekey wipe already ran; acking or writing meta now would
+        // resurrect old-key state. The server kept the batch — harmless, the wiped
+        // outbox no longer references it.
+        break;
+      }
+
+      // Write sync_row_meta first so that even if ack() later crashes, the meta still
+      // reflects the server-assigned version. Idempotency on the synchroniser side
+      // (per-resource upsert by entityId) makes a possible duplicate harmless.
+      for (const detail of resp.acceptedDetails) {
+        const synchroniser = this._synchronisers.get(detail.resource);
+        if (!synchroniser) {
+          continue;
+        }
+        try {
+          await synchroniser.onPushAccepted(detail);
+        } catch (err) {
+          this._logService.warn(
+            `[SyncService] onPushAccepted failed for ${detail.resource}/${detail.entityId}:`,
+            err
+          );
+          // Don't break the ack loop — reconcile picks up missed meta on next enable().
+        }
+      }
+      if (epoch !== this._epoch) {
+        break;
+      }
+
+      // Prefer the detailed list for ack so id ordering matches the meta writes above;
+      // fall back to the legacy `accepted` array when the server hasn't shipped the new
+      // protocol yet.
+      const idsToAck = resp.acceptedDetails.length > 0
+        ? resp.acceptedDetails.map((d) => d.id)
+        : [...resp.accepted];
+      if (idsToAck.length > 0) {
+        await this._outboxService.ack(idsToAck);
+        anyAccepted = true;
+      }
+      let rebased = 0;
+      if (resp.rejected.length > 0) {
+        const rejectedIds = resp.rejected.map((r) => r.id);
+        const reason = resp.rejected.map((r) => `${r.id}:${r.reason}`).join(';');
+        const retryCounts = await this._outboxService.markRejected(rejectedIds, reason);
+        // Local-first: rebase rejected row-level mutations onto the latest server version so
+        // the loop's next iteration retries them with a fresh baseVersion (serial, no re-entry).
+        rebased = await this._rebaseRejectedMutations(mutations, retryCounts, epoch);
+      }
+      // No progress this round — nothing accepted and nothing left to retry.
+      if (resp.accepted.length === 0 && rebased === 0) {
+        break;
+      }
+    }
+    return { drainedEmpty, anyAccepted };
+  }
+
   // Per-resource forced full pull (cursor=null) → apply patches → diff local meta against
   // server's authoritative entityId set → clear ghost meta. Runs once per enable(); the
   // network cost is one batch per resource and the data already needs to be on the device
   // for the first authoritative snapshot anyway. Failures are logged and skipped; we'd
   // rather start sync with partial reconciliation than block enable() outright.
-  private async _reconcile(): Promise<void> {
+  private async _reconcile(epoch: number): Promise<void> {
     if (!this._clientId) {
       return;
     }
@@ -391,13 +529,18 @@ export class SyncService extends Disposable implements ISyncService {
           resource,
           cursor: null,
         });
+        if (epoch !== this._epoch) {
+          return;
+        }
 
         if (fullPull.patch.length > 0) {
-          // Apply unconditionally: `put` rewrites the local row + writes meta;
+          // Apply with per-row tolerance: `put` rewrites the local row + writes meta;
           // `del` tombstones cascade through the synchroniser's repository (and clear meta
           // for that entityId). _applyingPatch flag in each synchroniser suppresses the
-          // changed$ self-echo that would otherwise loop back into the outbox.
-          await synchroniser.applyPatch([...fullPull.patch]);
+          // changed$ self-echo that would otherwise loop back into the outbox. Failed rows
+          // are logged and skipped — the next pull retries them.
+          const result = await synchroniser.applyPatch([...fullPull.patch]);
+          this._logApplyFailures(resource, result.failures);
         }
 
         // Authoritative server-side entityId set. Include both 'put' (still exists) and
@@ -413,6 +556,9 @@ export class SyncService extends Disposable implements ISyncService {
         }
 
         await synchroniser.reconcileGhostMeta(serverEntityIds);
+        if (epoch !== this._epoch) {
+          return;
+        }
 
         // Update cursor so the regular pull/poke loop continues from the latest position.
         await this._cursors.upsert({
@@ -421,9 +567,9 @@ export class SyncService extends Disposable implements ISyncService {
           lastPulledAt: Date.now(),
         });
       } catch (err) {
-        // Network down / decryption failure / repository write blew up — surface as a
-        // lastError so the UI can show a banner. Don't abort enable(): the regular
-        // connect-driven pull below will take over as the "first pull" attempt.
+        // Network down / repository write blew up — surface as a lastError so the UI can
+        // show a banner. Don't abort enable(): the regular connect-driven pull below will
+        // take over as the "first pull" attempt.
         anyFailed = true;
         this._logService.warn(`[SyncService] reconcile failed for ${resource}:`, err);
         this._reportError('network', `reconcile failed for ${resource}: ${(err as Error).message}`);
@@ -473,14 +619,31 @@ export class SyncService extends Disposable implements ISyncService {
     }
   }
 
-  private async _runPull(): Promise<void> {
+  private _runPull(): Promise<void> {
+    const run = this._doRunPull(this._epoch);
+    this._pullInFlight = run;
+    void run.finally(() => {
+      if (this._pullInFlight === run) {
+        this._pullInFlight = null;
+      }
+    });
+    return run;
+  }
+
+  private async _doRunPull(epoch: number): Promise<void> {
     if (!this._enabled$.getValue() || !this._clientId) {
       return;
     }
     try {
       this._state$.next(SyncState.Syncing);
       for (const resource of SYNC_RESOURCES) {
-        await this._pullResource(resource);
+        if (epoch !== this._epoch) {
+          return;
+        }
+        await this._pullResource(resource, epoch);
+      }
+      if (epoch !== this._epoch) {
+        return;
       }
       // refreshStats must precede the Idle emit so subscribers never observe
       // "Idle + stale lastSyncedAt" between two BehaviorSubject ticks.
@@ -494,13 +657,32 @@ export class SyncService extends Disposable implements ISyncService {
     }
   }
 
-  // Single-resource pull, shared by _runPull and the rebase path. Throws on transport/apply
-  // failure so callers decide handling.
-  private async _pullResource(resource: SyncResourceId): Promise<void> {
+  // Existence probe used only by prepareForRekey for resources with no local
+  // synchroniser. Pulls one page from the stream start via the raw transport — no
+  // decryption, and no cursor/outbox writes so the regular pull path stays untouched.
+  // Tombstones ('del'/'clear') carry no ciphertext, hence only 'put' rows count.
+  // Transport failures propagate to the caller's network handling.
+  private async _remoteResourceHasData(resource: SyncResourceId): Promise<boolean> {
+    if (!this._clientId) {
+      return false;
+    }
+    const resp = await this._transportService.pull({
+      clientId: this._clientId,
+      resource,
+      cursor: null,
+    });
+    return resp.patch.some((item) => item.op === 'put');
+  }
+
+  // Single-resource pull, shared by _doRunPull, the rebase path and prepareForRekey.
+  // Returns the number of patch rows that failed to apply (decrypt/parse) — the regular
+  // pull path logs and moves on, the rekey pre-flight treats any failure as fatal. Throws
+  // on transport failure so callers decide handling.
+  private async _pullResource(resource: SyncResourceId, epoch: number): Promise<number> {
     const clientId = this._clientId;
     const synchroniser = this._synchronisers.get(resource);
     if (!clientId || !synchroniser) {
-      return;
+      return 0;
     }
     const cursorRow = await this._cursors.get(resource);
     const resp = await this._transportService.pull({
@@ -508,8 +690,17 @@ export class SyncService extends Disposable implements ISyncService {
       resource,
       cursor: cursorRow?.cursor ?? null,
     });
+    if (epoch !== this._epoch) {
+      return 0;
+    }
+    let failedCount = 0;
     if (resp.patch.length > 0) {
-      await synchroniser.applyPatch([...resp.patch]);
+      const result = await synchroniser.applyPatch([...resp.patch]);
+      failedCount = result.failures.length;
+      this._logApplyFailures(resource, result.failures);
+    }
+    if (epoch !== this._epoch) {
+      return failedCount;
     }
     if (resp.lastMutationId > 0) {
       // Backstop ack: push.accepted has usually cleared the outbox already, but if
@@ -521,6 +712,15 @@ export class SyncService extends Disposable implements ISyncService {
       cursor: resp.cursor,
       lastPulledAt: Date.now(),
     });
+    return failedCount;
+  }
+
+  private _logApplyFailures(resource: SyncResourceId, failures: readonly { entityId: string | null; version: number; error: string }[]): void {
+    for (const f of failures) {
+      this._logService.warn(
+        `[SyncService] skipped unapplicable patch row ${resource}/${f.entityId ?? '<null>'}@v${f.version}: ${f.error}`
+      );
+    }
   }
 
   // Local-first conflict resolution: keep each rejected mutation's payload (the local change)
@@ -528,7 +728,8 @@ export class SyncService extends Disposable implements ISyncService {
   // mutations past the retry cap (yield to remote) or whose entity the server has deleted.
   private async _rebaseRejectedMutations(
     batch: ISyncMutation[],
-    retryCounts: Map<number, number>
+    retryCounts: Map<number, number>,
+    epoch: number
   ): Promise<number> {
     const rejectedMutations = batch.filter((m) => retryCounts.has(m.id));
     if (rejectedMutations.length === 0) {
@@ -540,11 +741,14 @@ export class SyncService extends Disposable implements ISyncService {
     const resources = new Set(rejectedMutations.map((m) => m.resource));
     for (const resource of resources) {
       try {
-        await this._pullResource(resource);
+        await this._pullResource(resource, epoch);
       } catch (err) {
         this._logService.warn(`[SyncService] rebase pull failed for ${resource}:`, err);
         return 0;
       }
+    }
+    if (epoch !== this._epoch) {
+      return 0;
     }
 
     let rebasedCount = 0;

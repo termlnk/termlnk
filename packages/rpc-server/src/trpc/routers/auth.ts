@@ -18,7 +18,6 @@ import type { Injector } from '@termlnk/core';
 import { IAuthService as IAuthServiceId } from '@termlnk/auth';
 import { Quantity } from '@termlnk/core';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
-import { ISyncService } from '@termlnk/sync';
 import { z } from 'zod';
 import { publicProcedure, router } from '../trpc';
 
@@ -177,16 +176,16 @@ export const authRouter = router({
       await authService.unlockVault(input.password);
     }),
 
-  /** Change the account password. Verifies old password via SRP, updates credentials. */
+  /**
+   * Change the account password. The whole saga (SRP verify, rekey pre-flight gate,
+   * journal, credential swap, sync re-encryption) is orchestrated inside
+   * IAuthService.changePassword — the transport layer stays thin.
+   */
   changePassword: publicProcedure
     .input(z.object({ oldPassword: z.string().min(1), newPassword: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       const authService = requireAuthService(ctx.injector);
       await authService.changePassword(input.oldPassword, input.newPassword);
-      const syncService = ctx.injector.get(ISyncService, Quantity.OPTIONAL);
-      if (syncService) {
-        await syncService.rekeyAndResync();
-      }
     }),
 
   vaultState$: publicProcedure.subscription(async function* ({ ctx }) {

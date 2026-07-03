@@ -247,6 +247,37 @@ describe('HostSynchroniser', () => {
     });
   });
 
+  // One poisoned row (stale ciphertext / malformed JSON) must not sink the batch: the
+  // remaining rows still apply and the failure is reported to the caller.
+  it('applyPatch collects per-row failures and keeps applying the rest of the batch', async () => {
+    bed.syncer.start();
+    const good = makeHost('h-good', { label: 'good' });
+    const patch: ISyncPatchItem[] = [
+      {
+        op: 'put',
+        resource: 'host',
+        entityId: 'h-bad',
+        payload: new TextEncoder().encode('FAKE_E:{not-valid-json'),
+        version: 4,
+      },
+      {
+        op: 'put',
+        resource: 'host',
+        entityId: 'h-good',
+        payload: bed.crypto.encrypt(new TextEncoder().encode(JSON.stringify(good))),
+        version: 5,
+      },
+    ];
+
+    const result = await bed.syncer.applyPatch(patch);
+
+    expect(result.failures).toHaveLength(1);
+    expect(result.failures[0].entityId).toBe('h-bad');
+    expect(bed.hostRepo.rows.get('h-good')?.label).toBe('good');
+    expect((await bed.rowMeta.get('host', 'h-good'))?.version).toBe(5);
+    expect(bed.hostRepo.rows.has('h-bad')).toBe(false);
+  });
+
   it('applyPatch op=put writes the full row through HostRepository.syncUpsertRow', async () => {
     bed.syncer.start();
     const remote = makeHost('h1', { label: 'remote' });
@@ -354,7 +385,7 @@ describe('HostSynchroniser', () => {
     await bed.rowMeta.upsert({ resource: 'host', entityId: 'a', version: 1, updatedAt: 1 });
     await bed.rowMeta.upsert({ resource: 'host', entityId: 'b', version: 2, updatedAt: 2 });
 
-    await bed.syncer.reconcileGhostMeta(new Set(['a', 'b', 'c']));  // server has extras too
+    await bed.syncer.reconcileGhostMeta(new Set(['a', 'b', 'c'])); // server has extras too
 
     expect(await bed.rowMeta.get('host', 'a')).not.toBeNull();
     expect(await bed.rowMeta.get('host', 'b')).not.toBeNull();

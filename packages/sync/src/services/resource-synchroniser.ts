@@ -23,6 +23,16 @@ import type { IPushAcceptedDetail } from './transport.service';
 // One instance per resource type. Owns the changed$ subscription that pushes mutations
 // to the outbox and the applyPatch that consumes pulls. Field-level LWW (only `config`)
 // is an internal concern of the synchroniser.
+export interface ISyncPatchApplyFailure {
+  readonly entityId: string | null;
+  readonly version: number;
+  readonly error: string;
+}
+
+export interface ISyncPatchApplyResult {
+  readonly failures: ISyncPatchApplyFailure[];
+}
+
 export interface IResourceSynchroniser extends IDisposable {
   readonly resourceId: SyncResourceId;
   readonly status$: Observable<SynchroniserStatus>;
@@ -31,8 +41,9 @@ export interface IResourceSynchroniser extends IDisposable {
   start(): void;
 
   // Apply a batch of patch items; called by SyncService after a successful pull. Decryption
-  // and row-/field-level LWW are at the synchroniser's discretion.
-  applyPatch(patch: ISyncPatchItem[]): Promise<void>;
+  // and row-/field-level LWW are at the synchroniser's discretion. Per-row failures are
+  // collected in the result instead of aborting the batch.
+  applyPatch(patch: ISyncPatchItem[]): Promise<ISyncPatchApplyResult>;
 
   // Encrypt + serialize local changes into mutations. Synchronisers typically drive this
   // via their changed$ subscription.

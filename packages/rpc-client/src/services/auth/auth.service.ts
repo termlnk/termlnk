@@ -174,4 +174,10 @@ export class AuthService extends Disposable implements IAuthService {
   restore(): Promise<void> {
     throw new Error(MAIN_PROCESS_ONLY_MESSAGE);
   }
+
+  // Driven by the main-process auth/sync bridge on Authenticated+Unlocked transitions;
+  // the journal it replays never leaves the main process.
+  resumePendingPasswordChange(): Promise<void> {
+    throw new Error(MAIN_PROCESS_ONLY_MESSAGE);
+  }
 }

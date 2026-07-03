@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthKeyValueStorage as IAuthKeyValueStorageType, IDeviceNameProvider as IDeviceNameProviderType, IMasterKeyService as IMasterKeyServiceType, ISrpClientService as ISrpClientServiceType, ITokenManager as ITokenManagerType, IUserStorageService as IUserStorageServiceType } from '@termlnk/auth';
+import type { IAuthKeyValueStorage as IAuthKeyValueStorageType, IDeviceNameProvider as IDeviceNameProviderType, IMasterKeyService as IMasterKeyServiceType, ISrpClientService as ISrpClientServiceType, ITokenManager as ITokenManagerType, IUserStorageService as IUserStorageServiceType, IVaultRekeyHandler as IVaultRekeyHandlerType } from '@termlnk/auth';
 import type { Dependency, Injector } from '@termlnk/core';
 import type { IAuthCorePluginConfig } from './controllers/config.schema';
-import { AuthPlugin, IAuthKeyValueStorage, IAuthService, IDeviceNameProvider, IIdleProbe, IMasterKeyService, IPasswordHasher, ISrpClientService, ITokenManager, ITokenRefresher, ITokenStorageService, IUserStorageService } from '@termlnk/auth';
-import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
+import { AuthPlugin, IAuthKeyValueStorage, IAuthService, IDeviceNameProvider, IIdleProbe, IMasterKeyService, IPasswordHasher, ISrpClientService, ITokenManager, ITokenRefresher, ITokenStorageService, IUserStorageService, IVaultRekeyHandler } from '@termlnk/auth';
+import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Optional, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
 import { AUTH_CORE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { IdleLockController } from './controllers/idle-lock.controller';
 import { DefaultDeviceNameProvider } from './services/default-device-name-provider.service';
@@ -92,7 +92,7 @@ export class AuthCorePlugin extends Plugin {
         }],
         [IAuthService, {
           // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
-          useFactory: (masterKey: IMasterKeyServiceType, srp: ISrpClientServiceType, tokenManager: ITokenManagerType, storage: IAuthKeyValueStorageType, userStorage: IUserStorageServiceType, logService: ILogService, deviceNameProvider: IDeviceNameProviderType) =>
+          useFactory: (masterKey: IMasterKeyServiceType, srp: ISrpClientServiceType, tokenManager: ITokenManagerType, storage: IAuthKeyValueStorageType, userStorage: IUserStorageServiceType, logService: ILogService, deviceNameProvider: IDeviceNameProviderType, rekeyHandler: IVaultRekeyHandlerType | null) =>
             new HttpAuthService(
               { baseUrl },
               masterKey,
@@ -101,9 +101,14 @@ export class AuthCorePlugin extends Plugin {
               storage,
               userStorage,
               logService,
-              deviceNameProvider
+              deviceNameProvider,
+              rekeyHandler ?? undefined
             ),
-          deps: [IMasterKeyService, ISrpClientService, ITokenManager, IAuthKeyValueStorage, IUserStorageService, ILogService, IDeviceNameProvider],
+          // IVaultRekeyHandler is optional: the sync layer binds it when present; a
+          // credential-only deployment simply skips the rekey saga steps. Note: redi's
+          // factory-dep modifier must be an INSTANCE (`new Optional()`), unlike the
+          // parameter decorator form.
+          deps: [IMasterKeyService, ISrpClientService, ITokenManager, IAuthKeyValueStorage, IUserStorageService, ILogService, IDeviceNameProvider, [new Optional(), IVaultRekeyHandler]],
         }]
       );
     }

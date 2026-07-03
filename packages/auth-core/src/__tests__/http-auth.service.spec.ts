@@ -13,11 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthKeyValueStorage, IDerivationMaterial, IMasterKey, IMasterKeyService, ISrpClientService, IUserAccount, IUserStorageService } from '@termlnk/auth';
+import type { IAuthKeyValueStorage, IDerivationMaterial, IMasterKey, IMasterKeyService, ISrpClientService, IUserAccount, IUserStorageService, IVaultRekeyHandler, IVaultRekeyPreparation } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { HttpFetchFn } from '../services/http-auth.service';
 import { Buffer } from 'node:buffer';
-import { AuthState, MasterKeyState } from '@termlnk/auth';
+import { AuthError, AuthState, MasterKeyState } from '@termlnk/auth';
 import { BehaviorSubject } from 'rxjs';
 import * as srpServer from 'secure-remote-password/server';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -38,25 +38,30 @@ class FakeMasterKeyService implements IMasterKeyService {
   readonly state$ = new BehaviorSubject<MasterKeyState>(MasterKeyState.Locked).asObservable();
   current: IMasterKey | null = null;
   derivedFor: { password: string; material: IDerivationMaterial } | null = null;
+  activatedKeys: IMasterKey[] = [];
   lockCalls = 0;
   tryRestoreCalls = 0;
   clearPersistedCalls = 0;
   // When set, tryRestoreFromStorage() installs this key and returns true.
   pendingRestore: IMasterKey | null = null;
 
+  // Pure derive, mirroring the production contract: no state change, no persistence.
   async derive(password: string, material: IDerivationMaterial): Promise<IMasterKey> {
     this.derivedFor = { password, material };
     // deterministic 32-byte authKey based on password — lets us match SRP enrollments
     const authKeyBytes = Buffer.alloc(32);
     Buffer.from(password.padEnd(32, '.').slice(0, 32)).copy(authKeyBytes);
-    const key: IMasterKey = {
+    return {
       authKey: new Uint8Array(authKeyBytes),
       encKey: new Uint8Array(32).fill(2),
       indexKey: new Uint8Array(32).fill(3),
       email: material.email,
     };
+  }
+
+  async activate(key: IMasterKey): Promise<void> {
+    this.activatedKeys.push(key);
     this.current = key;
-    return key;
   }
 
   lock(): void {
@@ -463,7 +468,11 @@ describe('HttpAuthService — login (full SRP6a round-trip with simulated server
     await auth.register({ email: 'alice@example.com', password: 'right-pw' });
 
     await expect(auth.login({ email: 'alice@example.com', password: 'wrong-pw' })).rejects.toThrow();
-    expect(bed.masterKey.lockCalls).toBeGreaterThan(0); // partially-derived master key gets locked
+    // Pure-derive contract: only the successful register activated a key; the failed
+    // login must not have activated (or locked) anything — the active key is untouched.
+    expect(bed.masterKey.activatedKeys).toHaveLength(1);
+    expect(bed.masterKey.current).toBe(bed.masterKey.activatedKeys[0]);
+    expect(bed.masterKey.lockCalls).toBe(0);
     auth.dispose();
   }, 60_000);
 });
@@ -776,4 +785,386 @@ describe('HttpAuthService — getAccessToken', () => {
     auth.dispose();
     bed.tokenManager.dispose();
   });
+});
+
+// ---------------------------------------------------------------------------
+// changePassword saga + crash resume
+// ---------------------------------------------------------------------------
+
+const PENDING_JOURNAL_KEY = 'pendingPasswordChange';
+
+class FakeRekeyHandler implements IVaultRekeyHandler {
+  prepareResult: IVaultRekeyPreparation = { ok: true };
+  prepareCalls = 0;
+  rekeyCalls = 0;
+  rekeyError: Error | null = null;
+
+  async prepareForRekey(): Promise<IVaultRekeyPreparation> {
+    this.prepareCalls++;
+    return this.prepareResult;
+  }
+
+  async rekey(): Promise<void> {
+    this.rekeyCalls++;
+    if (this.rekeyError) {
+      throw this.rekeyError;
+    }
+  }
+}
+
+interface IServerEnrollment { argon2SaltB64: string; srpSalt: string; srpVerifier: string }
+
+// Minimal simulated cloud: register seeds the enrollment, srp/init + srp/verify run the
+// real SRP6a server side, password/change swaps the stored enrollment.
+function makeCloud(serverDb: Map<string, IServerEnrollment>) {
+  let serverEphemeral: { secret: string; public: string } | null = null;
+  const counters = { init: 0, change: 0 };
+  const state = { failChangeStatus: 0 as number, throwOnChange: false };
+
+  const handlers: Array<(call: IFetchCall) => { status: number; json?: unknown; text?: string } | null> = [
+    (call) => {
+      if (!call.url.endsWith('/auth/register')) {
+        return null;
+      }
+      const body = JSON.parse(call.init.body!);
+      serverDb.set(body.email, {
+        argon2SaltB64: body.argon2SaltB64,
+        srpSalt: body.srpSalt,
+        srpVerifier: body.srpVerifier,
+      });
+      return {
+        status: 200,
+        json: {
+          user: TEST_USER,
+          accessToken: 'live-access',
+          refreshToken: 'live-refresh',
+          accessTokenExpiresAt: Date.now() + 600_000,
+          refreshTokenExpiresAt: Date.now() + 86_400_000,
+        },
+      };
+    },
+    (call) => {
+      if (!call.url.endsWith('/auth/srp/init')) {
+        return null;
+      }
+      counters.init++;
+      const body = JSON.parse(call.init.body!);
+      const enrollment = serverDb.get(body.email);
+      if (!enrollment) {
+        return { status: 404, text: 'no such user' };
+      }
+      serverEphemeral = srpServer.generateEphemeral(enrollment.srpVerifier);
+      return {
+        status: 200,
+        json: {
+          argon2SaltB64: enrollment.argon2SaltB64,
+          srpSalt: enrollment.srpSalt,
+          srpServerEphemeralPublic: serverEphemeral.public,
+        },
+      };
+    },
+    (call) => {
+      if (!call.url.endsWith('/auth/srp/verify')) {
+        return null;
+      }
+      const body = JSON.parse(call.init.body!);
+      const enrollment = serverDb.get(body.email);
+      if (!enrollment || !serverEphemeral) {
+        return { status: 401, text: 'no session' };
+      }
+      try {
+        const session = srpServer.deriveSession(
+          serverEphemeral.secret,
+          body.clientPublicEphemeral,
+          enrollment.srpSalt,
+          body.email,
+          enrollment.srpVerifier,
+          body.clientSessionProof
+        );
+        return {
+          status: 200,
+          json: {
+            serverSessionProof: session.proof,
+            user: TEST_USER,
+            accessToken: 'live-access',
+            refreshToken: 'live-refresh',
+            accessTokenExpiresAt: Date.now() + 600_000,
+            refreshTokenExpiresAt: Date.now() + 86_400_000,
+          },
+        };
+      } catch {
+        return { status: 401, text: 'invalid SRP proof' };
+      }
+    },
+    (call) => {
+      if (!call.url.endsWith('/auth/password/change')) {
+        return null;
+      }
+      counters.change++;
+      if (state.throwOnChange) {
+        throw new AuthError('network', 'network drop');
+      }
+      if (state.failChangeStatus > 0) {
+        return { status: state.failChangeStatus, text: 'change rejected' };
+      }
+      const body = JSON.parse(call.init.body!);
+      serverDb.set(TEST_USER.email, {
+        argon2SaltB64: body.argon2SaltB64,
+        srpSalt: body.srpSalt,
+        srpVerifier: body.srpVerifier,
+      });
+      return { status: 200, json: {} };
+    },
+  ];
+  return { handlers, counters, state };
+}
+
+interface IChangePasswordBed extends ITestBed {
+  auth: HttpAuthService;
+  rekeyHandler: FakeRekeyHandler;
+  cloud: ReturnType<typeof makeCloud>;
+  serverDb: Map<string, IServerEnrollment>;
+}
+
+async function createChangePasswordBed(opts: { register?: boolean } = {}): Promise<IChangePasswordBed> {
+  const bed = createTestBed();
+  const serverDb = new Map<string, IServerEnrollment>();
+  const cloud = makeCloud(serverDb);
+  const rekeyHandler = new FakeRekeyHandler();
+  const { fetch } = makeFakeFetch(cloud.handlers);
+  const auth = new HttpAuthService(
+    { baseUrl: 'https://cloud.example/v1', fetchFn: fetch },
+    bed.masterKey,
+    bed.srp,
+    bed.tokenManager,
+    bed.authKv,
+    bed.userStorage,
+    new NoopLogService(),
+    undefined,
+    rekeyHandler
+  );
+  if (opts.register !== false) {
+    await auth.register({ email: TEST_USER.email, password: 'old-password' });
+  }
+  return { ...bed, auth, rekeyHandler, cloud, serverDb };
+}
+
+async function readJournal(bed: IChangePasswordBed): Promise<{ phase: string; email: string; oldSaltB64: string; newSaltB64: string } | null> {
+  const raw = await bed.authKv.getString(PENDING_JOURNAL_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
+describe('HttpAuthService — changePassword saga', () => {
+  let bed: IChangePasswordBed;
+
+  afterEach(() => {
+    bed.auth.dispose();
+    bed.tokenManager.dispose();
+  });
+
+  it('wrong current password: zero side effects (no journal, no server change, active key intact)', async () => {
+    bed = await createChangePasswordBed();
+    const activationsBefore = bed.masterKey.activatedKeys.length;
+
+    await expect(bed.auth.changePassword('wrong-old', 'new-password-1')).rejects.toMatchObject({ code: 'wrong_current_password' });
+
+    expect(await readJournal(bed)).toBeNull();
+    expect(bed.cloud.counters.change).toBe(0);
+    expect(bed.rekeyHandler.prepareCalls).toBe(0);
+    expect(bed.masterKey.activatedKeys.length).toBe(activationsBefore);
+    expect(bed.masterKey.lockCalls).toBe(0);
+  }, 60_000);
+
+  it('prepareForRekey not-ok: aborts with sync_not_ready before the server is touched', async () => {
+    bed = await createChangePasswordBed();
+    bed.rekeyHandler.prepareResult = { ok: false, reason: 'cipher_mismatch' };
+
+    await expect(bed.auth.changePassword('old-password', 'new-password-1')).rejects.toMatchObject({ code: 'sync_not_ready' });
+
+    expect(bed.cloud.counters.change).toBe(0);
+    expect(await readJournal(bed)).toBeNull();
+    expect(bed.rekeyHandler.rekeyCalls).toBe(0);
+    // Server enrollment still belongs to the old password.
+    expect(bed.serverDb.get(TEST_USER.email)?.argon2SaltB64).toBeDefined();
+  }, 60_000);
+
+  it('prepareForRekey client_outdated: surfaces client_upgrade_required instead of sync_not_ready', async () => {
+    bed = await createChangePasswordBed();
+    bed.rekeyHandler.prepareResult = { ok: false, reason: 'client_outdated' };
+
+    await expect(bed.auth.changePassword('old-password', 'new-password-1')).rejects.toMatchObject({ code: 'client_upgrade_required' });
+
+    // Same zero-side-effect guarantees as any other step-2 refusal.
+    expect(bed.cloud.counters.change).toBe(0);
+    expect(await readJournal(bed)).toBeNull();
+    expect(bed.rekeyHandler.rekeyCalls).toBe(0);
+  }, 60_000);
+
+  it('upload rejected: journal cleared, no re-derive of the old key (zero-network rollback), original error surfaced', async () => {
+    bed = await createChangePasswordBed();
+    bed.cloud.state.failChangeStatus = 500;
+    const activationsBefore = bed.masterKey.activatedKeys.length;
+    const initCallsBeforeFailurePath = bed.cloud.counters.init;
+
+    await expect(bed.auth.changePassword('old-password', 'new-password-1')).rejects.toMatchObject({ code: 'server_error' });
+
+    expect(await readJournal(bed)).toBeNull();
+    // Rollback must not hit the network: exactly one srp/init (the step-1 proof) ran.
+    expect(bed.cloud.counters.init).toBe(initCallsBeforeFailurePath + 1);
+    // The active (old) key was never switched.
+    expect(bed.masterKey.activatedKeys.length).toBe(activationsBefore);
+    expect(bed.rekeyHandler.rekeyCalls).toBe(0);
+  }, 60_000);
+
+  it('upload network drop: journal survives so the salt probe can settle the ambiguous commit', async () => {
+    bed = await createChangePasswordBed();
+    bed.cloud.state.throwOnChange = true;
+
+    await expect(bed.auth.changePassword('old-password', 'new-password-1')).rejects.toMatchObject({ code: 'network' });
+
+    const journal = await readJournal(bed);
+    expect(journal?.phase).toBe('credential-swap');
+    expect(bed.masterKey.activatedKeys.length).toBe(1); // only register()'s activation
+  }, 60_000);
+
+  it('happy path: prepare → journal → server swap → activate new key → rekey → journal cleared', async () => {
+    bed = await createChangePasswordBed();
+
+    await bed.auth.changePassword('old-password', 'new-password-1');
+
+    expect(bed.rekeyHandler.prepareCalls).toBe(1);
+    expect(bed.cloud.counters.change).toBe(1);
+    expect(bed.rekeyHandler.rekeyCalls).toBe(1);
+    expect(await readJournal(bed)).toBeNull();
+    // register + changePassword each activated once; the last activation is the new key.
+    expect(bed.masterKey.activatedKeys.length).toBe(2);
+    const newKey = bed.masterKey.activatedKeys[1];
+    expect(bed.masterKey.current).toBe(newKey);
+    // Fake hasher derives authKey from the password, so the swap is observable.
+    expect(newKey.authKey).not.toEqual(bed.masterKey.activatedKeys[0].authKey);
+    // Server now holds the new enrollment (new argon2 salt).
+    expect(bed.serverDb.get(TEST_USER.email)!.argon2SaltB64).toBe(bed.masterKey.derivedFor!.material.saltB64);
+  }, 60_000);
+
+  it('rekey failure after a committed swap: throws rekey_pending and retains the journal in rekey phase', async () => {
+    bed = await createChangePasswordBed();
+    bed.rekeyHandler.rekeyError = new Error('rekey boom');
+
+    await expect(bed.auth.changePassword('old-password', 'new-password-1')).rejects.toMatchObject({ code: 'rekey_pending' });
+
+    const journal = await readJournal(bed);
+    expect(journal?.phase).toBe('rekey');
+    // Password change itself succeeded: the new key is active and persisted.
+    expect(bed.masterKey.activatedKeys.length).toBe(2);
+    expect(bed.masterKey.current).toBe(bed.masterKey.activatedKeys[1]);
+  }, 60_000);
+});
+
+describe('HttpAuthService — resumePendingPasswordChange', () => {
+  let bed: IChangePasswordBed;
+
+  afterEach(() => {
+    bed.auth.dispose();
+    bed.tokenManager.dispose();
+  });
+
+  function seedJournal(phase: 'credential-swap' | 'rekey', opts: { oldSaltB64: string; newSaltB64: string }): Promise<void> {
+    const newKeyBytes = Buffer.alloc(32);
+    Buffer.from('new-password-1'.padEnd(32, '.').slice(0, 32)).copy(newKeyBytes);
+    return bed.authKv.setString(PENDING_JOURNAL_KEY, JSON.stringify({
+      phase,
+      email: TEST_USER.email,
+      oldSaltB64: opts.oldSaltB64,
+      newSaltB64: opts.newSaltB64,
+      newKey: {
+        authKey: Buffer.from(newKeyBytes).toString('base64'),
+        encKey: Buffer.from(new Uint8Array(32).fill(2)).toString('base64'),
+        indexKey: Buffer.from(new Uint8Array(32).fill(3)).toString('base64'),
+      },
+      startedAt: Date.now(),
+    }));
+  }
+
+  it('is a no-op without a journal', async () => {
+    bed = await createChangePasswordBed({ register: false });
+    const initBefore = bed.cloud.counters.init;
+
+    await bed.auth.resumePendingPasswordChange();
+
+    expect(bed.cloud.counters.init).toBe(initBefore);
+    expect(bed.rekeyHandler.rekeyCalls).toBe(0);
+  });
+
+  it('credential-swap + server still on old salt: uncommitted — clears the journal, no rekey', async () => {
+    bed = await createChangePasswordBed();
+    const serverSalt = bed.serverDb.get(TEST_USER.email)!.argon2SaltB64;
+    await seedJournal('credential-swap', { oldSaltB64: serverSalt, newSaltB64: 'bmV3LXNhbHQ=' });
+
+    await bed.auth.resumePendingPasswordChange();
+
+    expect(await readJournal(bed)).toBeNull();
+    expect(bed.rekeyHandler.rekeyCalls).toBe(0);
+    expect(bed.masterKey.activatedKeys.length).toBe(1); // register only
+  }, 60_000);
+
+  it('credential-swap + server on new salt: committed — activates the journaled key, rekeys, clears', async () => {
+    bed = await createChangePasswordBed();
+    const serverSalt = bed.serverDb.get(TEST_USER.email)!.argon2SaltB64;
+    await seedJournal('credential-swap', { oldSaltB64: 'b2xkLXNhbHQ=', newSaltB64: serverSalt });
+
+    await bed.auth.resumePendingPasswordChange();
+
+    expect(await readJournal(bed)).toBeNull();
+    expect(bed.rekeyHandler.rekeyCalls).toBe(1);
+    // register key differs from the journaled key → resume must have re-activated.
+    expect(bed.masterKey.activatedKeys.length).toBe(2);
+    expect(bed.masterKey.current?.email).toBe(TEST_USER.email);
+  }, 60_000);
+
+  it('credential-swap + probe offline: keeps the journal for the next pass', async () => {
+    bed = await createChangePasswordBed();
+    // Wipe the simulated account so srp/init 404s (equivalent to "cannot decide").
+    bed.serverDb.clear();
+    await seedJournal('credential-swap', { oldSaltB64: 'b2xkLXNhbHQ=', newSaltB64: 'bmV3LXNhbHQ=' });
+
+    await bed.auth.resumePendingPasswordChange();
+
+    expect((await readJournal(bed))?.phase).toBe('credential-swap');
+    expect(bed.rekeyHandler.rekeyCalls).toBe(0);
+  }, 60_000);
+
+  it('rekey phase with a locked vault: re-activates from the journal and finishes the rekey', async () => {
+    bed = await createChangePasswordBed();
+    bed.masterKey.lock();
+    await seedJournal('rekey', { oldSaltB64: 'b2xkLXNhbHQ=', newSaltB64: 'bmV3LXNhbHQ=' });
+
+    await bed.auth.resumePendingPasswordChange();
+
+    expect(await readJournal(bed)).toBeNull();
+    expect(bed.rekeyHandler.rekeyCalls).toBe(1);
+    expect(bed.masterKey.current).not.toBeNull();
+  }, 60_000);
+
+  it('rekey phase failure: journal retained, resume does not throw (background retry semantics)', async () => {
+    bed = await createChangePasswordBed();
+    bed.rekeyHandler.rekeyError = new Error('still failing');
+    await seedJournal('rekey', { oldSaltB64: 'b2xkLXNhbHQ=', newSaltB64: 'bmV3LXNhbHQ=' });
+
+    await expect(bed.auth.resumePendingPasswordChange()).resolves.toBeUndefined();
+
+    expect((await readJournal(bed))?.phase).toBe('rekey');
+    expect(bed.rekeyHandler.rekeyCalls).toBe(1);
+  }, 60_000);
+
+  it('is idempotent: a second resume after success is a no-op', async () => {
+    bed = await createChangePasswordBed();
+    bed.masterKey.lock();
+    await seedJournal('rekey', { oldSaltB64: 'b2xkLXNhbHQ=', newSaltB64: 'bmV3LXNhbHQ=' });
+
+    await bed.auth.resumePendingPasswordChange();
+    await bed.auth.resumePendingPasswordChange();
+
+    expect(bed.rekeyHandler.rekeyCalls).toBe(1);
+    expect(await readJournal(bed)).toBeNull();
+  }, 60_000);
 });

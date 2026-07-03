@@ -44,6 +44,10 @@ class FakeMasterKeyService implements IMasterKeyService {
     throw new Error('not used in these tests');
   }
 
+  async activate(): Promise<void> {
+    throw new Error('not used in these tests');
+  }
+
   lock(): void {
     this.lockCalls++;
     this._state$.next(MasterKeyState.Locked);
@@ -111,6 +115,7 @@ class FakeAuthService implements IAuthService {
   async setupEncryptionPassword(): Promise<void> { throw new Error('not used'); }
   async unlockVault(): Promise<void> { throw new Error('not used'); }
   async changePassword(): Promise<void> { throw new Error('not used'); }
+  async resumePendingPasswordChange(): Promise<void> {}
   async getServerCapabilities() { return { googleOAuth: false }; }
 }
 

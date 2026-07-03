@@ -187,7 +187,7 @@ describe('BackupService', () => {
   });
 
   it('export wraps the snapshot in a tmbak1: framed payload', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     bed.backupRepo.exported = makeSampleSnapshot();
 
     const { payload, summary } = await bed.service.exportEncryptedBackup();
@@ -199,7 +199,7 @@ describe('BackupService', () => {
   }, 30_000);
 
   it('export → import round-trips the snapshot through the crypto layer', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const original = makeSampleSnapshot();
     bed.backupRepo.exported = original;
 
@@ -214,19 +214,19 @@ describe('BackupService', () => {
   }, 60_000);
 
   it('import rejects payloads missing the tmbak1: prefix', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const garbage = new Uint8Array(64).fill(0xAB);
     await expect(bed.service.importEncryptedBackup(garbage, 'replace')).rejects.toThrow(/tmbak1/i);
   }, 30_000);
 
   it('import rejects payloads shorter than the prefix', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     const tooShort = new Uint8Array(PREFIX_BYTES.length - 1);
     await expect(bed.service.importEncryptedBackup(tooShort, 'replace')).rejects.toThrow();
   }, 30_000);
 
   it('import surfaces decryption failure when the inner ciphertext is tampered', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     bed.backupRepo.exported = makeSampleSnapshot();
     const { payload } = await bed.service.exportEncryptedBackup();
 
@@ -239,18 +239,18 @@ describe('BackupService', () => {
   }, 60_000);
 
   it('import refuses payloads encrypted with a different master password', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     bed.backupRepo.exported = makeSampleSnapshot();
     const { payload } = await bed.service.exportEncryptedBackup();
 
     // Re-derive with a different password
-    await bed.masterKeyService.derive('different-pw', { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive('different-pw', { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
 
     await expect(bed.service.importEncryptedBackup(payload, 'replace')).rejects.toThrow();
   }, 60_000);
 
   it('propagates repository errors from importSnapshot', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     bed.backupRepo.exported = makeEmptySnapshot();
     const { payload } = await bed.service.exportEncryptedBackup();
 
@@ -259,7 +259,7 @@ describe('BackupService', () => {
   }, 30_000);
 
   it('rejects merge mode through the repository (replace-only)', async () => {
-    await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 });
+    await bed.masterKeyService.activate(await bed.masterKeyService.derive(TEST_PASSWORD, { email: TEST_EMAIL, saltB64: TEST_SALT_B64 }));
     bed.backupRepo.exported = makeEmptySnapshot();
     const { payload } = await bed.service.exportEncryptedBackup();
 

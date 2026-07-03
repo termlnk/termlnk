@@ -13,11 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchItem } from '@termlnk/sync';
+import type { IPushAcceptedDetail, IResourceSynchroniser, ISyncMutation, ISyncPatchApplyResult, ISyncPatchItem } from '@termlnk/sync';
 import type { Observable } from 'rxjs';
 import { ILogService, RxDisposable } from '@termlnk/core';
 import { ISyncConfigRepository, ISyncCryptoService, ISyncFieldMetaRepository, ISyncOutboxService, NON_SYNCABLE_CONFIG_KEYS, SynchroniserStatus } from '@termlnk/sync';
 import { BehaviorSubject } from 'rxjs';
+import { applyPatchItems } from './apply-patch';
 
 const RESOURCE_ID = 'config' as const;
 const TEXT_ENCODER = new TextEncoder();
@@ -80,19 +81,16 @@ export class ConfigSynchroniser extends RxDisposable implements IResourceSynchro
     );
   }
 
-  async applyPatch(patch: ISyncPatchItem[]): Promise<void> {
+  async applyPatch(patch: ISyncPatchItem[]): Promise<ISyncPatchApplyResult> {
     if (patch.length === 0) {
-      return;
+      return { failures: [] };
     }
     this._status$.next(SynchroniserStatus.ApplyingPatch);
     this._applyingPatch = true;
     try {
-      for (const item of patch) {
-        if (item.resource !== RESOURCE_ID) {
-          continue;
-        }
-        await this._applyOne(item);
-      }
+      // Per-item tolerance: one bad row (stale ciphertext, malformed payload) must not
+      // block the rest of the batch. The caller decides how to treat the failures.
+      return await applyPatchItems(patch, RESOURCE_ID, (item) => this._applyOne(item));
     } finally {
       this._applyingPatch = false;
       this._status$.next(SynchroniserStatus.Idle);

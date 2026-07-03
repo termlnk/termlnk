@@ -16,10 +16,10 @@
 import type { ITokenManager } from '@termlnk/auth';
 import type { Dependency, Injector } from '@termlnk/core';
 import type { ISyncMobileConfig } from './controllers/config.schema';
-import { ITokenManager as ITokenManagerId } from '@termlnk/auth';
+import { ITokenManager as ITokenManagerId, IVaultRekeyHandler } from '@termlnk/auth';
 import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IBackupService, ISyncCryptoService, ISyncOutboxService, ISyncService, ISyncTransportService } from '@termlnk/sync';
-import { BackupService, HostSynchroniser, HttpSyncTransportService, IdentitySynchroniser, KnownHostSynchroniser, NoopSyncTransportService, PortForwardingRuleSynchroniser, ProviderSynchroniser, SnippetSynchroniser, SshKeySynchroniser, SyncCryptoService, SyncOutboxService, SyncService } from '@termlnk/sync-engine';
+import { BackupService, ConfigSynchroniser, HostSynchroniser, HttpSyncTransportService, IdentitySynchroniser, KnownHostSynchroniser, McpSynchroniser, NoopSyncTransportService, PortForwardingRuleSynchroniser, ProviderSynchroniser, SkillSynchroniser, SnippetSynchroniser, SshKeySynchroniser, SyncCryptoService, SyncOutboxService, SyncService } from '@termlnk/sync-engine';
 import { defaultPluginConfig, SYNC_MOBILE_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { MobileAuthSyncBridgeController } from './controllers/mobile-auth-sync-bridge.controller';
 import { IMobileSyncService, MobileSyncService } from './services/mobile-sync.service';
@@ -64,14 +64,21 @@ export class SyncMobilePlugin extends Plugin {
       [ISyncOutboxService, { useClass: SyncOutboxService }],
       [IBackupService, { useClass: BackupService }],
       [ISyncService, { useClass: SyncService }],
+      // SyncService also implements IVaultRekeyHandler; alias the same instance so the
+      // password-change saga in auth-core can drive prepare/rekey on mobile too. The
+      // identifier cast is safe: the bound SyncService structurally satisfies both.
+      [IVaultRekeyHandler, { useExisting: ISyncService as unknown as typeof IVaultRekeyHandler }],
       transportBinding,
       [HostSynchroniser, { useClass: HostSynchroniser }],
+      [ConfigSynchroniser, { useClass: ConfigSynchroniser }],
       [IdentitySynchroniser, { useClass: IdentitySynchroniser }],
       [SshKeySynchroniser, { useClass: SshKeySynchroniser }],
       [KnownHostSynchroniser, { useClass: KnownHostSynchroniser }],
       [PortForwardingRuleSynchroniser, { useClass: PortForwardingRuleSynchroniser }],
       [SnippetSynchroniser, { useClass: SnippetSynchroniser }],
       [ProviderSynchroniser, { useClass: ProviderSynchroniser }],
+      [McpSynchroniser, { useClass: McpSynchroniser }],
+      [SkillSynchroniser, { useClass: SkillSynchroniser }],
       [IMobileSyncService, { useClass: MobileSyncService }],
       [MobileAuthSyncBridgeController],
     ];

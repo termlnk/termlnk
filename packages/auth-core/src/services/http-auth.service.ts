@@ -13,11 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AuthErrorCode, GoogleWebSignInStatus, IAuthCapabilities, IAuthError, IAuthService, IDevice, IGoogleWebSignInBegin, ILoginInput, IRegisterInput, ITokenPair, IUserAccount } from '@termlnk/auth';
+import type { AuthErrorCode, GoogleWebSignInStatus, IAuthCapabilities, IAuthError, IAuthService, IDevice, IGoogleWebSignInBegin, ILoginInput, IMasterKey, IRegisterInput, ITokenPair, IUserAccount, IVaultRekeyHandler } from '@termlnk/auth';
 import type { Observable } from 'rxjs';
-import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage, IDeviceNameProvider, IMasterKeyService, ISrpClientService, ITokenManager, IUserStorageService, MasterKeyState, randomBytes, VaultState } from '@termlnk/auth';
+import { AUTH_DEVICE_ID_STORAGE_KEY, AuthError, AuthState, base64ToBytes, bytesToBase64, bytesToHex, HttpRequestError, IAuthKeyValueStorage, IDeviceNameProvider, IMasterKeyService, ISrpClientService, ITokenManager, IUserStorageService, IVaultRekeyHandler as IVaultRekeyHandlerId, MasterKeyState, randomBytes, VAULT_REKEY_REASON_CLIENT_OUTDATED, VaultState } from '@termlnk/auth';
 import { Disposable, generateRandomId, ILogService, Optional } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
+import { zeroize } from '../crypto/kdf';
 
 // Random component length (bytes) of the Argon2id salt; combined with the email to form
 // the full salt material.
@@ -112,6 +113,9 @@ const FRIENDLY_MESSAGES: Readonly<Record<AuthErrorCode, string>> = {
   token_expired: 'Your session has expired. Please sign in again.',
   wrong_encryption_password: 'Incorrect encryption password.',
   wrong_current_password: 'The current password is incorrect.',
+  sync_not_ready: 'Sync is not ready for a password change. Check your connection and try again.',
+  client_upgrade_required: 'This version of the app is too old to change your password safely. Please update to the latest version and try again.',
+  rekey_pending: 'Password changed. Re-encrypting your synced data will resume automatically.',
   unknown: 'Something went wrong. Please try again.',
 };
 
@@ -207,6 +211,44 @@ interface IGoogleWebPollResponseBody {
   error?: string;
 }
 
+// IAuthKeyValueStorage subKey (under AUTH_PLUGIN_CONFIG_KEY) holding the password-change
+// saga journal. Same encrypted at-rest path as the wrapped master key (SecretCipher /
+// SecureStore), so the wrapped new key inside never touches disk in clear.
+const PENDING_PASSWORD_CHANGE_STORAGE_KEY = 'pendingPasswordChange';
+
+// Saga phases: 'credential-swap' = journal written, server mutation may or may not have
+// landed (the argon2 salt served by /auth/srp/init is the commit probe); 'rekey' = server
+// committed, the new key is (or must be made) active, synced data still needs re-encryption.
+type PendingPasswordChangePhase = 'credential-swap' | 'rekey';
+
+// Serialised journal blob. Sub keys are base64 because IAuthKeyValueStorage is string-only.
+interface IPendingPasswordChange {
+  phase: PendingPasswordChangePhase;
+  email: string;
+  // Commit-probe material — see resumePendingPasswordChange.
+  oldSaltB64: string;
+  newSaltB64: string;
+  // Wrapped new master key; covers the crash window between the server commit and
+  // activate() persisting the wrap.
+  newKey: { authKey: string; encKey: string; indexKey: string };
+  startedAt: number;
+}
+
+function zeroizeMasterKey(key: IMasterKey): void {
+  zeroize(key.authKey);
+  zeroize(key.encKey);
+  zeroize(key.indexKey);
+}
+
+function masterKeysEqual(a: IMasterKey, b: IMasterKey): boolean {
+  const bytesEqual = (x: Uint8Array, y: Uint8Array): boolean =>
+    x.length === y.length && x.every((v, i) => v === y[i]);
+  return a.email === b.email
+    && bytesEqual(a.authKey, b.authKey)
+    && bytesEqual(a.encKey, b.encKey)
+    && bytesEqual(a.indexKey, b.indexKey);
+}
+
 // Trust boundary: plaintext password is consumed inside register/login only; master key
 // and tokens never leave the main process.
 export class HttpAuthService extends Disposable implements IAuthService {
@@ -241,6 +283,10 @@ export class HttpAuthService extends Disposable implements IAuthService {
   // a concurrent web sign-in overwrites it, same assumption as the intent above.
   private _pendingWebDeviceCode: string | null = null;
 
+  // Coalesces concurrent resumePendingPasswordChange calls (the auth/sync bridge fires on
+  // every Authenticated+Unlocked emission).
+  private _resumeInFlight: Promise<void> | null = null;
+
   constructor(
     private readonly _config: IHttpAuthServiceConfig,
     @IMasterKeyService private readonly _masterKey: IMasterKeyService,
@@ -249,7 +295,8 @@ export class HttpAuthService extends Disposable implements IAuthService {
     @IAuthKeyValueStorage private readonly _storage: IAuthKeyValueStorage,
     @IUserStorageService private readonly _userStorage: IUserStorageService,
     @ILogService private readonly _logService: ILogService,
-    @Optional(IDeviceNameProvider) private readonly _deviceNameProvider?: IDeviceNameProvider
+    @Optional(IDeviceNameProvider) private readonly _deviceNameProvider?: IDeviceNameProvider,
+    @Optional(IVaultRekeyHandlerId) private readonly _rekeyHandler?: IVaultRekeyHandler
   ) {
     super();
 
@@ -280,11 +327,12 @@ export class HttpAuthService extends Disposable implements IAuthService {
     this._lastError$.next(null);
     this._authState$.next(AuthState.Authenticating);
 
+    let masterKey: IMasterKey | null = null;
     try {
       const argon2SaltBytes = randomBytes(ARGON2_RANDOM_SALT_LENGTH);
       const argon2SaltB64 = bytesToBase64(argon2SaltBytes);
 
-      const masterKey = await this._masterKey.derive(input.password, {
+      masterKey = await this._masterKey.derive(input.password, {
         email: input.email,
         saltB64: argon2SaltB64,
       });
@@ -305,10 +353,19 @@ export class HttpAuthService extends Disposable implements IAuthService {
       }
 
       const resp = await this._fetchAuthFreeJson<IRegisterResponseBody>('/auth/register', body);
+      // Server accepted the enrollment — only now does the derived key become the active
+      // key (ownership transfers to the master key service).
+      await this._masterKey.activate(masterKey);
+      masterKey = null;
       await this._completeAuthSession(resp);
       // SRP register derived the master key above; the vault is immediately usable.
       this._vaultState$.next(VaultState.Unlocked);
     } catch (err) {
+      // Failed registration must not leave key material around; the active key (if any)
+      // was never touched.
+      if (masterKey) {
+        zeroizeMasterKey(masterKey);
+      }
       throw this._toAuthError(err, 'register');
     }
   }
@@ -318,56 +375,67 @@ export class HttpAuthService extends Disposable implements IAuthService {
     this._authState$.next(AuthState.Authenticating);
 
     try {
-      const verifyResp = await this._performSrpLogin(input.email, input.password);
+      const { verifyResp, masterKey } = await this._performSrpLogin(input.email, input.password);
+      await this._masterKey.activate(masterKey);
       await this._completeAuthSession(verifyResp);
       // SRP login derived the master key above; the vault is immediately usable.
       this._vaultState$.next(VaultState.Unlocked);
     } catch (err) {
-      // SRP server-proof failure / network error / wrong password → master key may be
-      // partially derived. Lock it to keep the in-memory invariant clean.
-      this._masterKey.lock();
+      // _performSrpLogin already zeroized its transient key; the active key (a previous
+      // session's, if any) is deliberately left untouched.
       throw this._toAuthError(err, 'login');
     }
   }
 
   // Runs the SRP6a handshake (init → derive → verify → M2 check) and returns the server
-  // response. Mutates NO public state by design: callers decide whether the outcome is an
-  // identity-login event (login) or a vault-unlock event (unlockVault), so a wrong password
-  // during unlock does not flip the identity authState$ to Error.
-  private async _performSrpLogin(email: string, password: string): Promise<ISrpVerifyResponseBody> {
+  // response together with the derived (NOT yet active) master key and the argon2 salt it
+  // was derived from. Mutates NO public state by design: callers decide whether the outcome
+  // is an identity-login event (login), a vault-unlock event (unlockVault) or a mere
+  // password proof (changePassword step 1), and they own activating or zeroizing the key.
+  // On any failure the transient key is zeroized here and the error rethrown.
+  private async _performSrpLogin(email: string, password: string): Promise<{
+    verifyResp: ISrpVerifyResponseBody;
+    masterKey: IMasterKey;
+    argon2SaltB64: string;
+  }> {
     const initResp = await this._fetchSrpInit(email);
 
     const masterKey = await this._masterKey.derive(password, {
       email,
       saltB64: initResp.argon2SaltB64,
     });
-    const authKeyHex = bytesToHex(masterKey.authKey);
+    try {
+      const authKeyHex = bytesToHex(masterKey.authKey);
 
-    const ephemeral = this._srp.generateEphemeral();
-    const session = this._srp.deriveSession(
-      ephemeral.secret,
-      initResp.srpServerEphemeralPublic,
-      initResp.srpSalt,
-      email,
-      authKeyHex
-    );
-
-    const verifyResp = await this._fetchAuthFreeJson<ISrpVerifyResponseBody>(
-      '/auth/srp/verify',
-      {
+      const ephemeral = this._srp.generateEphemeral();
+      const session = this._srp.deriveSession(
+        ephemeral.secret,
+        initResp.srpServerEphemeralPublic,
+        initResp.srpSalt,
         email,
-        clientPublicEphemeral: ephemeral.public,
-        clientSessionProof: session.proof,
-        deviceName: this._safeDeviceName(),
-        deviceId: await this._loadOrCreateDeviceId(),
-      } satisfies ISrpVerifyRequestBody
-    );
+        authKeyHex
+      );
 
-    // verifySession throws on M2 mismatch — "server doesn't actually have the verifier",
-    // i.e. MITM. We must reject the tokens that came alongside.
-    this._srp.verifySession(ephemeral.public, session, verifyResp.serverSessionProof);
+      const verifyResp = await this._fetchAuthFreeJson<ISrpVerifyResponseBody>(
+        '/auth/srp/verify',
+        {
+          email,
+          clientPublicEphemeral: ephemeral.public,
+          clientSessionProof: session.proof,
+          deviceName: this._safeDeviceName(),
+          deviceId: await this._loadOrCreateDeviceId(),
+        } satisfies ISrpVerifyRequestBody
+      );
 
-    return verifyResp;
+      // verifySession throws on M2 mismatch — "server doesn't actually have the verifier",
+      // i.e. MITM. We must reject the tokens that came alongside.
+      this._srp.verifySession(ephemeral.public, session, verifyResp.serverSessionProof);
+
+      return { verifyResp, masterKey, argon2SaltB64: initResp.argon2SaltB64 };
+    } catch (err) {
+      zeroizeMasterKey(masterKey);
+      throw err;
+    }
   }
 
   async listDevices(): Promise<readonly IDevice[]> {
@@ -605,9 +673,10 @@ export class HttpAuthService extends Disposable implements IAuthService {
     if (!user) {
       throw new AuthError('unknown', 'cannot set an encryption password before signing in');
     }
+    let masterKey: IMasterKey | null = null;
     try {
       const argon2SaltB64 = bytesToBase64(randomBytes(ARGON2_RANDOM_SALT_LENGTH));
-      const masterKey = await this._masterKey.derive(password, { email: user.email, saltB64: argon2SaltB64 });
+      masterKey = await this._masterKey.derive(password, { email: user.email, saltB64: argon2SaltB64 });
       const authKeyHex = bytesToHex(masterKey.authKey);
       // Enroll the encryption password as the account's SRP credential so it is also
       // a login password: email + this password can sign in via /auth/srp/* and
@@ -618,13 +687,15 @@ export class HttpAuthService extends Disposable implements IAuthService {
         srpSalt: enrollment.srpSalt,
         srpVerifier: enrollment.srpVerifier,
       });
+      // Server holds the credential — only now install (and persist) the key. A failed
+      // upload therefore cannot leave a local wrap the server has no credential for.
+      await this._masterKey.activate(masterKey);
+      masterKey = null;
       this._vaultState$.next(VaultState.Unlocked);
     } catch (err) {
-      // derive() already persisted the wrapped key as a side effect. Roll it back so a
-      // failed upload can't leave a local wrap the server has no credential for — which
-      // would restore as a bogus Unlocked on next launch and never unlock on other devices.
-      this._masterKey.lock();
-      await this._masterKey.clearPersistedKey();
+      if (masterKey) {
+        zeroizeMasterKey(masterKey);
+      }
       throw err instanceof AuthError ? err : this._classifyError(err);
     }
   }
@@ -641,11 +712,11 @@ export class HttpAuthService extends Disposable implements IAuthService {
       // (unlocking the vault) and refreshes the session. Identity is already established,
       // so a wrong password is a VAULT error — we deliberately do NOT route through login(),
       // which would flip the identity authState$ to Error for an otherwise-valid session.
-      const verifyResp = await this._performSrpLogin(user.email, password);
+      const { verifyResp, masterKey } = await this._performSrpLogin(user.email, password);
+      await this._masterKey.activate(masterKey);
       await this._completeAuthSession(verifyResp);
       this._vaultState$.next(VaultState.Unlocked);
     } catch (err) {
-      this._masterKey.lock();
       const authError = err instanceof AuthError ? err : this._classifyError(err);
       // A wrong encryption password surfaces as invalid_credentials; remap to the
       // vault-specific code so the UI shows the right message.
@@ -657,6 +728,13 @@ export class HttpAuthService extends Disposable implements IAuthService {
     }
   }
 
+  // Journaled saga; every failure mode leaves the account in a recoverable state:
+  //   step 1 fail → zero side effects (transient derive only);
+  //   step 2 fail → sync_not_ready (or client_upgrade_required), server untouched;
+  //   step 4/5 fail → journal cleared, active key/wrap untouched, original error rethrown
+  //                   (rollback is purely local — no network required);
+  //   step 6 crash → journal survives; resumePendingPasswordChange probes the server salt;
+  //   step 7 fail → rekey_pending, journal retained for automatic resume.
   async changePassword(oldPassword: string, newPassword: string): Promise<void> {
     const user = this._currentUser$.getValue();
     if (!user) {
@@ -664,13 +742,14 @@ export class HttpAuthService extends Disposable implements IAuthService {
     }
     this._lastError$.next(null);
 
-    // Step 1: verify the old password via a full SRP handshake. On success the
-    // master key is re-derived to the same value (no-op); on failure the key is
-    // locked and the user must re-enter the correct password to continue.
+    // Step 1: prove the old password via a full SRP handshake. The derived key is
+    // transient (the active key already equals it); only its salt is kept for the journal.
+    let oldSaltB64: string;
     try {
-      await this._performSrpLogin(user.email, oldPassword);
+      const { masterKey: oldKey, argon2SaltB64 } = await this._performSrpLogin(user.email, oldPassword);
+      zeroizeMasterKey(oldKey);
+      oldSaltB64 = argon2SaltB64;
     } catch (err) {
-      this._masterKey.lock();
       const authError = err instanceof AuthError ? err : this._classifyError(err);
       const surfaced = authError.code === 'invalid_credentials'
         ? new AuthError('wrong_current_password', friendlyMessageFor('wrong_current_password'))
@@ -679,29 +758,237 @@ export class HttpAuthService extends Disposable implements IAuthService {
       throw surfaced;
     }
 
-    // Step 2: derive the new master key and enroll new SRP credentials.
-    const newArgon2SaltB64 = bytesToBase64(randomBytes(ARGON2_RANDOM_SALT_LENGTH));
-    const newMasterKey = await this._masterKey.derive(newPassword, {
-      email: user.email,
-      saltB64: newArgon2SaltB64,
-    });
-    const newAuthKeyHex = bytesToHex(newMasterKey.authKey);
-    const enrollment = this._srp.enroll(user.email, newAuthKeyHex);
+    // Step 2: pre-flight gate. Synced data must be provably re-encryptable (outbox
+    // drained, every server row decrypts) BEFORE the server credential is touched;
+    // otherwise old-key ciphertext would be stranded after the swap.
+    if (this._rekeyHandler) {
+      const prep = await this._rekeyHandler.prepareForRekey();
+      if (!prep.ok) {
+        this._logService.warn(`[HttpAuthService] changePassword blocked: sync not ready (${prep.reason ?? 'unknown'})`);
+        // Client-outdated refusals get a dedicated code: the fix is "update the app",
+        // not the retry/connectivity guidance implied by sync_not_ready.
+        const code: AuthErrorCode = prep.reason === VAULT_REKEY_REASON_CLIENT_OUTDATED
+          ? 'client_upgrade_required'
+          : 'sync_not_ready';
+        const surfaced = new AuthError(code, friendlyMessageFor(code));
+        this._lastError$.next({ code: surfaced.code, message: surfaced.message });
+        throw surfaced;
+      }
+    }
 
-    // Step 3: upload the new SRP credentials. The server revokes all other devices.
+    // Step 3: derive the new master key and enroll new SRP credentials (client-side only).
+    const newSaltB64 = bytesToBase64(randomBytes(ARGON2_RANDOM_SALT_LENGTH));
+    const newKey = await this._masterKey.derive(newPassword, {
+      email: user.email,
+      saltB64: newSaltB64,
+    });
+    const journal: IPendingPasswordChange = {
+      phase: 'credential-swap',
+      email: user.email,
+      oldSaltB64,
+      newSaltB64,
+      newKey: {
+        authKey: bytesToBase64(newKey.authKey),
+        encKey: bytesToBase64(newKey.encKey),
+        indexKey: bytesToBase64(newKey.indexKey),
+      },
+      startedAt: Date.now(),
+    };
     try {
-      await this._fetchAuthorizedJson('POST /auth/password/change', '/auth/password/change', {
-        argon2SaltB64: newArgon2SaltB64,
-        srpSalt: enrollment.srpSalt,
-        srpVerifier: enrollment.srpVerifier,
-      });
+      const enrollment = this._srp.enroll(user.email, bytesToHex(newKey.authKey));
+
+      // Step 4: persist the intent BEFORE the server mutation. If the journal cannot be
+      // written we abort here — proceeding without crash coverage risks a permanent lockout.
+      await this._writePendingPasswordChange(journal);
+
+      // Step 5: the server mutation (revokes all other devices).
+      try {
+        await this._fetchAuthorizedJson('POST /auth/password/change', '/auth/password/change', {
+          argon2SaltB64: newSaltB64,
+          srpSalt: enrollment.srpSalt,
+          srpVerifier: enrollment.srpVerifier,
+        });
+      } catch (err) {
+        // Server rejected / unreachable at the request stage: nothing was committed and
+        // the active key was never switched, so rollback is purely local (no network) and
+        // the ORIGINAL failure is what the caller sees.
+        // Caveat: on a response-less network error the server may still have committed;
+        // the journal is kept in that case so the salt probe can settle it later.
+        const authError = err instanceof AuthError ? err : this._classifyError(err);
+        if (authError.code === 'network') {
+          throw authError;
+        }
+        await this._clearPendingPasswordChange();
+        throw authError;
+      }
     } catch (err) {
-      // Roll back to the old key so the session remains usable.
-      await this._masterKey.derive(oldPassword, {
-        email: user.email,
-        saltB64: (await this._fetchSrpInit(user.email)).argon2SaltB64,
-      });
-      throw err instanceof AuthError ? err : this._classifyError(err);
+      zeroizeMasterKey(newKey);
+      const authError = err instanceof AuthError ? err : this._classifyError(err);
+      this._lastError$.next({ code: authError.code, message: authError.message });
+      throw authError;
+    }
+
+    // Step 6: credential committed server-side — flip the journal phase, then atomically
+    // switch the active key (activate also rewrites the persisted wrap and zeroizes the
+    // old key). A journal-write hiccup here is recoverable: resume's salt probe lands in
+    // the rekey branch anyway.
+    try {
+      await this._writePendingPasswordChange({ ...journal, phase: 'rekey' });
+    } catch (err) {
+      this._logService.warn('[HttpAuthService] failed to advance password-change journal:', err);
+    }
+    await this._masterKey.activate(newKey);
+
+    // Step 7: re-encrypt synced data under the new key.
+    await this._runRekeyPhase();
+  }
+
+  // Idempotent; safe to call on every Authenticated+Unlocked transition. Fail-soft: keeps
+  // the journal and returns silently when the outcome cannot be decided yet (offline).
+  async resumePendingPasswordChange(): Promise<void> {
+    if (this._resumeInFlight) {
+      return this._resumeInFlight;
+    }
+    const run = this._doResumePendingPasswordChange().finally(() => {
+      this._resumeInFlight = null;
+    });
+    this._resumeInFlight = run;
+    return run;
+  }
+
+  private async _doResumePendingPasswordChange(): Promise<void> {
+    const journal = await this._readPendingPasswordChange();
+    if (!journal) {
+      return;
+    }
+
+    // Journals are per-account; a different signed-in user must not replay someone
+    // else's pending change.
+    const user = this._currentUser$.getValue();
+    if (user && user.email !== journal.email) {
+      this._logService.warn('[HttpAuthService] dropping password-change journal for a different account');
+      await this._clearPendingPasswordChange();
+      return;
+    }
+
+    if (journal.phase === 'credential-swap') {
+      // Commit probe: /auth/srp/init returns the account's current argon2 salt, which the
+      // change endpoint swaps together with the verifier.
+      let initResp: ISrpInitResponseBody;
+      try {
+        initResp = await this._fetchSrpInit(journal.email);
+      } catch (err) {
+        // Offline / transient failure — cannot decide; keep the journal for the next pass.
+        this._logService.warn('[HttpAuthService] password-change probe failed (will retry):', err);
+        return;
+      }
+      if (initResp.argon2SaltB64 === journal.oldSaltB64) {
+        // Server never committed the swap: the old credential (and the active key) are
+        // intact — forget the intent.
+        await this._clearPendingPasswordChange();
+        return;
+      }
+      if (initResp.argon2SaltB64 !== journal.newSaltB64) {
+        // Neither salt matches: the credential moved past this journal (e.g. another
+        // device changed the password again). The journaled key is stale — replaying it
+        // would install a wrong key, so drop the journal and let the normal unlock flow
+        // take over with the latest password.
+        this._logService.warn('[HttpAuthService] password-change journal superseded by a newer credential; discarding');
+        await this._clearPendingPasswordChange();
+        return;
+      }
+      // Committed — advance the phase (best-effort; the salt probe re-detects it anyway).
+      try {
+        await this._writePendingPasswordChange({ ...journal, phase: 'rekey' });
+      } catch (err) {
+        this._logService.warn('[HttpAuthService] failed to advance password-change journal:', err);
+      }
+    }
+
+    // Rekey phase: make sure the journaled new key is the active key (covers a crash
+    // between the server commit and activate()), then finish the data re-encryption.
+    let journalKey: IMasterKey;
+    try {
+      journalKey = {
+        email: journal.email,
+        authKey: base64ToBytes(journal.newKey.authKey),
+        encKey: base64ToBytes(journal.newKey.encKey),
+        indexKey: base64ToBytes(journal.newKey.indexKey),
+      };
+    } catch (err) {
+      // Corrupt blob — unrecoverable journal; the user can still unlock with the new
+      // password (server already holds the new credential).
+      this._logService.warn('[HttpAuthService] password-change journal corrupt, discarding:', err);
+      await this._clearPendingPasswordChange();
+      return;
+    }
+    const current = this._masterKey.getCurrent();
+    if (!current || !masterKeysEqual(current, journalKey)) {
+      await this._masterKey.activate(journalKey);
+      this._vaultState$.next(VaultState.Unlocked);
+    } else {
+      zeroizeMasterKey(journalKey);
+    }
+
+    try {
+      await this._runRekeyPhase();
+    } catch (err) {
+      // rekey_pending — journal already retained by _runRekeyPhase; swallow here because
+      // resume is a background retry, not a user action.
+      this._logService.warn('[HttpAuthService] password-change resume: rekey still pending:', err);
+    }
+  }
+
+  // Shared tail of changePassword and resume: run the handler's idempotent rekey and clear
+  // the journal on success. Throws AuthError('rekey_pending') (journal retained) on failure.
+  private async _runRekeyPhase(): Promise<void> {
+    if (this._rekeyHandler) {
+      try {
+        await this._rekeyHandler.rekey();
+      } catch (err) {
+        this._logService.warn('[HttpAuthService] rekey after password change failed (will retry):', err);
+        const surfaced = new AuthError('rekey_pending', friendlyMessageFor('rekey_pending'));
+        this._lastError$.next({ code: surfaced.code, message: surfaced.message });
+        throw surfaced;
+      }
+    }
+    await this._clearPendingPasswordChange();
+    this._lastError$.next(null);
+  }
+
+  private async _readPendingPasswordChange(): Promise<IPendingPasswordChange | null> {
+    let blob: string | null;
+    try {
+      blob = await this._storage.getString(PENDING_PASSWORD_CHANGE_STORAGE_KEY);
+    } catch (err) {
+      this._logService.warn('[HttpAuthService] password-change journal read failed:', err);
+      return null;
+    }
+    if (!blob) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(blob) as IPendingPasswordChange;
+      if (!parsed.email || !parsed.newSaltB64 || !parsed.newKey || (parsed.phase !== 'credential-swap' && parsed.phase !== 'rekey')) {
+        throw new Error('journal missing fields');
+      }
+      return parsed;
+    } catch (err) {
+      this._logService.warn('[HttpAuthService] password-change journal corrupt, discarding:', err);
+      await this._clearPendingPasswordChange();
+      return null;
+    }
+  }
+
+  private async _writePendingPasswordChange(journal: IPendingPasswordChange): Promise<void> {
+    await this._storage.setString(PENDING_PASSWORD_CHANGE_STORAGE_KEY, JSON.stringify(journal));
+  }
+
+  private async _clearPendingPasswordChange(): Promise<void> {
+    try {
+      await this._storage.deleteKey(PENDING_PASSWORD_CHANGE_STORAGE_KEY);
+    } catch (err) {
+      this._logService.warn('[HttpAuthService] password-change journal delete failed:', err);
     }
   }
 

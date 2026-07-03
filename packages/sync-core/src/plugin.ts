@@ -15,7 +15,7 @@
 
 import type { Dependency, Injector } from '@termlnk/core';
 import type { ISyncCorePluginConfig } from './controllers/config.schema';
-import { ITokenManager } from '@termlnk/auth';
+import { ITokenManager, IVaultRekeyHandler } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { DependentOn, IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
@@ -52,6 +52,11 @@ export class SyncCorePlugin extends Plugin {
       [ISyncOutboxService, { useClass: SyncOutboxService }],
       [IBackupService, { useClass: BackupService }],
       [ISyncService, { useClass: SyncService }],
+      // SyncService also implements IVaultRekeyHandler; alias the same instance so the
+      // password-change saga in auth-core can drive prepare/rekey without depending on
+      // the sync packages. The identifier cast is safe: the bound SyncService instance
+      // structurally satisfies both contracts.
+      [IVaultRekeyHandler, { useExisting: ISyncService as unknown as typeof IVaultRekeyHandler }],
       transportBinding,
 
       [HostSynchroniser, { useClass: HostSynchroniser }],
