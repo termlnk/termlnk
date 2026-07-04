@@ -26,6 +26,9 @@
 // "Parameter decorators only work when experimental decorators are enabled" on cross-
 // package .ts sources. Production builds the packages first and starts from `lib/es/`.
 
+import type { Buffer } from 'node:buffer';
+import { pbkdf2Sync } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -79,9 +82,37 @@ const relayBaseUrl = cloudBaseUrl.replace(/^https:\/\//, 'wss://').replace(/^htt
 // version suffix and any trailing slashes.
 const inviteBaseUrl = cloudBaseUrl.replace(/\/v\d+\/?$/, '').replace(/\/+$/, '');
 
+function resolveWebCipherKey(): Buffer {
+  let password: string | undefined;
+
+  const fileEnv = process.env.TERMLNK_MASTER_PASSWORD_FILE;
+  if (fileEnv) {
+    try {
+      password = readFileSync(fileEnv, 'utf8')
+        .replace(/^\uFEFF/, '')
+        .replace(/\n$/, '');
+    } catch {
+      // File not readable; fall through to env var.
+    }
+  }
+
+  password ??= process.env.TERMLNK_MASTER_PASSWORD;
+
+  if (!password) {
+    throw new Error(
+      '[termlnk-web] TERMLNK_MASTER_PASSWORD or TERMLNK_MASTER_PASSWORD_FILE is required. '
+      + 'Set one to derive a stable encryption key for the database vault.'
+    );
+  }
+
+  return pbkdf2Sync(password, 'termlnk-web/v1/secret-cipher', 100_000, 32, 'sha256');
+}
+
 async function bootstrap(): Promise<void> {
   const dbAdaptor = new SQLiteAdaptor({ filename: dbPath, migrationsFolder });
   await dbAdaptor.initialize();
+
+  const cipherKey = resolveWebCipherKey();
 
   const core = new Core({
     logLevel: LogLevel.INFO,
@@ -93,7 +124,7 @@ async function bootstrap(): Promise<void> {
     migrationsFolder,
     override: [
       [IDBAdaptorService, { useValue: dbAdaptor }],
-      [ISecretCipherService, { useClass: LocalDerivedSecretCipher }],
+      [ISecretCipherService, { useValue: new LocalDerivedSecretCipher(cipherKey) }],
     ],
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
