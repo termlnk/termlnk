@@ -82,6 +82,7 @@ export default {
       'tooltip-account': '账号',
       'sync-title': '云同步',
       'sync-description': '同步引擎的运行状态及各资源的同步进度',
+      back: '返回',
     },
     gate: {
       'unavailable-title': '云同步未配置',

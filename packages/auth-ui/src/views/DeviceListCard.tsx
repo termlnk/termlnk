@@ -17,10 +17,18 @@ import type { IDevice } from '@termlnk/auth';
 import { AuthState, IAuthService } from '@termlnk/auth';
 import { IConfirmService, ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, useDependency, useObservable } from '@termlnk/design';
-import { LaptopIcon, LockIcon, RefreshCwIcon, TrashIcon, TriangleAlertIcon } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { LaptopIcon, LockIcon, TrashIcon, TriangleAlertIcon } from 'lucide-react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
 
-export function DeviceListCard() {
+export interface IDeviceListCardProps {
+  readonly onLoadingChange?: (loading: boolean) => void;
+}
+
+export interface IDeviceListCardHandle {
+  refresh: () => void;
+}
+
+export const DeviceListCard = forwardRef<IDeviceListCardHandle, IDeviceListCardProps>(function DeviceListCard(props, ref) {
   const localeService = useDependency(LocaleService);
   const logService = useDependency(ILogService);
   const confirmService = useDependency(IConfirmService);
@@ -43,6 +51,7 @@ export function DeviceListCard() {
       return;
     }
     setLoading(true);
+    props.onLoadingChange?.(true);
     setError(null);
     try {
       const list = await authClient.listDevices();
@@ -53,8 +62,13 @@ export function DeviceListCard() {
       setError(message);
     } finally {
       setLoading(false);
+      props.onLoadingChange?.(false);
     }
-  }, [authClient, isUnlocked, logService]);
+  }, [authClient, isUnlocked, logService, props]);
+
+  useImperativeHandle(ref, () => ({
+    refresh: () => { void loadDevices(); },
+  }), [loadDevices]);
 
   useEffect(() => {
     if (isUnlocked) {
@@ -109,20 +123,6 @@ export function DeviceListCard() {
 
   return (
     <div className={cn('tm:flex tm:flex-col tm:gap-3')}>
-      <div className={cn('tm:flex tm:items-center tm:justify-end')}>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void loadDevices()}
-          disabled={!isUnlocked || loading}
-          className={cn('tm:gap-1.5')}
-          aria-label={localeService.t('auth-ui.devices.refresh')}
-        >
-          <RefreshCwIcon className={cn('tm:size-3.5', { 'tm:animate-spin': loading })} />
-          {localeService.t('auth-ui.devices.refresh')}
-        </Button>
-      </div>
-
       {!isUnlocked && (
         <div
           className={cn(`
@@ -165,7 +165,7 @@ export function DeviceListCard() {
       )}
     </div>
   );
-}
+});
 
 interface IDeviceListItemProps {
   readonly device: IDevice;

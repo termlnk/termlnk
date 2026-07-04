@@ -82,6 +82,7 @@ export default {
       'tooltip-account': '계정',
       'sync-title': '클라우드 동기화',
       'sync-description': '동기화 엔진 상태 및 리소스별 동기화 진행 상황.',
+      back: '뒤로',
     },
     gate: {
       'unavailable-title': '클라우드 동기화가 구성되지 않았습니다',

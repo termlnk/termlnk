@@ -82,6 +82,7 @@ export default {
       'tooltip-account': 'アカウント',
       'sync-title': 'クラウド同期',
       'sync-description': '同期エンジンの状態と各リソースの同期進捗。',
+      back: '戻る',
     },
     gate: {
       'unavailable-title': 'クラウド同期は未設定です',

@@ -82,6 +82,7 @@ export default {
       'tooltip-account': 'Account',
       'sync-title': 'Cloud Sync',
       'sync-description': 'Sync engine status and per-resource progress.',
+      back: 'Back',
     },
     gate: {
       'unavailable-title': 'Cloud sync is not configured',

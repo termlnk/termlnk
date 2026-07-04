@@ -27,17 +27,18 @@ import {
   TooltipTrigger,
   useDependency,
 } from '@termlnk/design';
-import { Loader2Icon, LogOutIcon, MailCheckIcon, MailWarningIcon } from 'lucide-react';
+import { KeyRoundIcon, Loader2Icon, LogOutIcon, MailCheckIcon, MailWarningIcon } from 'lucide-react';
 
 export interface IAccountPanelProps {
   readonly user: IUserAccount;
   readonly onLogout: () => Promise<void> | void;
+  readonly onChangePassword?: () => void;
   readonly busy?: boolean;
 }
 
 export function AccountPanel(props: IAccountPanelProps) {
   const localeService = useDependency(LocaleService);
-  const { user, onLogout, busy } = props;
+  const { user, onLogout, onChangePassword, busy } = props;
 
   const displayName = user.displayName?.trim().length
     ? user.displayName
@@ -80,32 +81,56 @@ export function AccountPanel(props: IAccountPanelProps) {
           </div>
         </div>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                void onLogout();
-              }}
-              disabled={busy}
-              aria-label={localeService.t('auth-ui.account.logout')}
-              className={cn(`
-                tm:-mt-1 tm:-mr-1 tm:shrink-0 tm:text-grey-fg
-                tm:hover:bg-red/10 tm:hover:text-red
-              `)}
-            >
+        <div className={cn('tm:-mt-1 tm:-mr-1 tm:flex tm:shrink-0 tm:items-center tm:gap-0.5')}>
+          {onChangePassword && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onChangePassword}
+                  aria-label={localeService.t('auth-ui.change-password.title')}
+                  className={cn(`
+                    tm:size-8 tm:text-grey-fg
+                    tm:hover:bg-blue/10 tm:hover:text-blue
+                  `)}
+                >
+                  <KeyRoundIcon className={cn('tm:size-4')} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {localeService.t('auth-ui.change-password.title')}
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  void onLogout();
+                }}
+                disabled={busy}
+                aria-label={localeService.t('auth-ui.account.logout')}
+                className={cn(`
+                  tm:size-8 tm:text-grey-fg
+                  tm:hover:bg-red/10 tm:hover:text-red
+                `)}
+              >
+                {busy
+                  ? <Loader2Icon className={cn('tm:size-4 tm:animate-spin')} />
+                  : <LogOutIcon className={cn('tm:size-4')} />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
               {busy
-                ? <Loader2Icon className={cn('tm:size-4 tm:animate-spin')} />
-                : <LogOutIcon className={cn('tm:size-4')} />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {busy
-              ? localeService.t('auth-ui.account.logging-out')
-              : localeService.t('auth-ui.account.logout')}
-          </TooltipContent>
-        </Tooltip>
+                ? localeService.t('auth-ui.account.logging-out')
+                : localeService.t('auth-ui.account.logout')}
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
 
       {joinedAt && (

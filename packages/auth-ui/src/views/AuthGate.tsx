@@ -27,7 +27,11 @@ import { VaultForm } from './VaultForm';
 
 type ViewMode = 'login' | 'register';
 
-export function AuthGate() {
+export interface IAuthGateProps {
+  readonly onChangePassword?: () => void;
+}
+
+export function AuthGate(props: IAuthGateProps) {
   // OPTIONAL: cloud service may be unconfigured; fall through to a placeholder below.
   const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
   const logService = useDependency(ILogService);
@@ -168,6 +172,7 @@ export function AuthGate() {
         user={currentUser}
         busy={busy}
         onLogout={doLogout}
+        onChangePassword={props.onChangePassword}
       />
     );
   }

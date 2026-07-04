@@ -13,94 +13,52 @@
  * governing permissions and limitations under the License.
  */
 
-import { IAuthService, VaultState } from '@termlnk/auth';
-import { ILogService, LocaleService, Quantity } from '@termlnk/core';
-import { Card, CardContent, CardDescription, CardHeader, cn, useDependency, useObservable } from '@termlnk/design';
+import type { IDeviceListCardHandle } from '../DeviceListCard';
+import { IAuthService } from '@termlnk/auth';
+import { LocaleService, Quantity } from '@termlnk/core';
+import { Button, Card, CardContent, CardDescription, CardHeader, cn, useDependency } from '@termlnk/design';
 import { IBackupFileService } from '@termlnk/sync';
 import { BackupCard } from '@termlnk/sync-ui';
-import { CheckCircle2Icon } from 'lucide-react';
-import { useCallback, useState } from 'react';
-import { ChangePasswordForm } from '../ChangePasswordForm';
+import { RefreshCwIcon } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { DeviceListCard } from '../DeviceListCard';
 
 export function AccountTab() {
   const localeService = useDependency(LocaleService);
-  const logService = useDependency(ILogService);
   const authClient = useDependency(IAuthService, Quantity.OPTIONAL);
   const backupClient = useDependency(IBackupFileService, Quantity.OPTIONAL);
 
-  const vaultState = useObservable<VaultState>(
-    authClient?.vaultState$ ?? null,
-    VaultState.Empty
-  );
-
-  const [changeBusy, setChangeBusy] = useState(false);
-  const [changeSuccess, setChangeSuccess] = useState(false);
-  const [changeError, setChangeError] = useState<string | null>(null);
-
-  const handleChangePassword = useCallback(async (oldPassword: string, newPassword: string) => {
-    if (!authClient) {
-      return;
-    }
-    setChangeBusy(true);
-    setChangeError(null);
-    setChangeSuccess(false);
-    try {
-      await authClient.changePassword(oldPassword, newPassword);
-      setChangeSuccess(true);
-    } catch (err) {
-      logService.error('[AccountTab] changePassword failed:', err);
-      setChangeError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setChangeBusy(false);
-    }
-  }, [authClient, logService]);
-
-  const showChangePassword = authClient && vaultState === VaultState.Unlocked;
+  const deviceListRef = useRef<IDeviceListCardHandle>(null);
+  const [deviceLoading, setDeviceLoading] = useState(false);
 
   return (
     <div className="tm:flex tm:flex-col tm:gap-6">
-      {showChangePassword && (
-        <Card className="tm:gap-0 tm:py-0">
-          <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
-            <h3 className="tm:text-base tm:font-semibold tm:text-white">
-              {localeService.t('auth-ui.change-password.title')}
-            </h3>
-            <CardDescription className="tm:mt-2 tm:text-xs/5">
-              {localeService.t('auth-ui.change-password.subtitle')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="tm:py-4">
-            {changeSuccess
-              ? (
-                <div className={cn('tm:flex tm:items-center tm:gap-2 tm:text-sm tm:text-green')}>
-                  <CheckCircle2Icon className={cn('tm:size-4 tm:shrink-0')} />
-                  {localeService.t('auth-ui.change-password.success')}
-                </div>
-              )
-              : (
-                <ChangePasswordForm
-                  busy={changeBusy}
-                  errorMessage={changeError ?? undefined}
-                  onSubmit={handleChangePassword}
-                />
-              )}
-          </CardContent>
-        </Card>
-      )}
-
       {authClient && (
         <Card className="tm:gap-0 tm:py-0">
           <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
-            <h3 className="tm:text-base tm:font-semibold tm:text-white">
-              {localeService.t('settings-ui.account.section-devices')}
-            </h3>
-            <CardDescription className="tm:mt-2 tm:text-xs/5">
-              {localeService.t('settings-ui.account.section-devices-description')}
-            </CardDescription>
+            <div className={cn('tm:flex tm:items-start tm:justify-between')}>
+              <div>
+                <h3 className="tm:text-base tm:font-semibold tm:text-white">
+                  {localeService.t('settings-ui.account.section-devices')}
+                </h3>
+                <CardDescription className="tm:mt-2 tm:text-xs/5">
+                  {localeService.t('settings-ui.account.section-devices-description')}
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => deviceListRef.current?.refresh()}
+                disabled={deviceLoading}
+                className={cn('tm:-mt-1 tm:-mr-1 tm:size-8 tm:shrink-0 tm:text-grey-fg')}
+                aria-label={localeService.t('auth-ui.devices.refresh')}
+              >
+                <RefreshCwIcon className={cn('tm:size-3.5', { 'tm:animate-spin': deviceLoading })} />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="tm:py-4">
-            <DeviceListCard />
+            <DeviceListCard ref={deviceListRef} onLoadingChange={setDeviceLoading} />
           </CardContent>
         </Card>
       )}

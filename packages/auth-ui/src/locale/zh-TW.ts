@@ -82,6 +82,7 @@ export default {
       'tooltip-account': '帳號',
       'sync-title': '雲端同步',
       'sync-description': '同步引擎的執行狀態及各資源的同步進度',
+      back: '返回',
     },
     gate: {
       'unavailable-title': '雲端同步未設定',
