@@ -14,8 +14,9 @@
  */
 
 import type { ReactNode } from 'react';
-import { IUpdaterService, LocaleService } from '@termlnk/core';
+import { IUpdaterService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, LogoIcon, useDependency } from '@termlnk/design';
+import { IDialogService, IHostEnvironmentService, UPDATE_DIALOG_COMPONENT_NAME, UPDATE_DIALOG_ID } from '@termlnk/ui';
 import { ArrowUpRight, Download, RefreshCw, ScrollText, Star } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -48,6 +49,9 @@ const RELEASES_URL = `${GITHUB_URL}/releases`;
 export function AboutTab() {
   const localeService = useDependency(LocaleService);
   const updaterService = useDependency(IUpdaterService);
+  const dialogService = useDependency(IDialogService);
+  const hostEnvironment = useDependency(IHostEnvironmentService, Quantity.OPTIONAL);
+  const supportsInAppInstall = (hostEnvironment?.host ?? 'electron') === 'electron';
 
   const [currentVersion, setCurrentVersion] = useState('-');
   const [latestVersion, setLatestVersion] = useState('-');
@@ -116,6 +120,19 @@ export function AboutTab() {
       setUpdateState('error');
     }
   }, [currentVersion, updaterService, updateState]);
+
+  const openUpdateDialog = useCallback(() => {
+    dialogService.open({
+      id: UPDATE_DIALOG_ID,
+      draggable: true,
+      width: 480,
+      className: 'tm:overflow-hidden',
+      disableAutoFocus: true,
+      title: { title: 'ui.updater.dialog-title' },
+      children: { componentId: UPDATE_DIALOG_COMPONENT_NAME },
+      onClose: () => dialogService.close(UPDATE_DIALOG_ID),
+    });
+  }, [dialogService]);
 
   const statusText = useMemo(() => {
     switch (updateState) {
@@ -244,7 +261,9 @@ export function AboutTab() {
           variant={hasUpdate ? 'default' : 'secondary'}
           size="sm"
           className="tm:shrink-0"
-          onClick={hasUpdate ? () => openExternal(RELEASES_URL) : () => void handleCheckForUpdates()}
+          onClick={hasUpdate
+            ? (supportsInAppInstall ? openUpdateDialog : () => openExternal(RELEASES_URL))
+            : () => void handleCheckForUpdates()}
           disabled={isChecking}
         >
           {hasUpdate
