@@ -118,7 +118,14 @@ export function decryptIfNeeded(value: string | null | undefined, cipher: ISecre
   if (value === '' || !isEncrypted(value)) {
     return value;
   }
-  return cipher.decrypt(value);
+  try {
+    return cipher.decrypt(value);
+  } catch {
+    // Encrypted with a stale key (e.g. hostname-derived key from a previous Docker
+    // container). The original plaintext is unrecoverable; return empty so the caller
+    // sees a missing value rather than a crash.
+    return '';
+  }
 }
 
 // MCP server config: only env (stdio) / headers (http) values are encrypted —

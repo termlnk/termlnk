@@ -38,6 +38,7 @@ export interface IEncryptSecretsResult {
   mcpServersScanned: number;
   mcpOAuthTokensEncrypted: number;
   mcpOAuthTokensScanned: number;
+  sanitized: number;
 }
 
 const OAUTH_SENSITIVE_FIELDS = ['accessToken', 'refreshToken', 'clientSecret', 'codeVerifier'] as const;
@@ -55,7 +56,13 @@ export async function runEncryptSecretsRuntimeMigration(
     mcpServersScanned: 0,
     mcpOAuthTokensEncrypted: 0,
     mcpOAuthTokensScanned: 0,
+    sanitized: 0,
   };
+
+  // Phase 1: clear fields encrypted with a stale key (e.g. hostname-derived key from a
+  // previous Docker container). The original plaintext is unrecoverable; clearing them
+  // lets the app serve rows without crashing and lets users re-enter credentials.
+  result.sanitized = await _sanitizeCorruptedFields(db, cipher);
 
   const hosts = await db.select().from(hostEntity);
   for (const host of hosts) {
@@ -138,4 +145,118 @@ function _hostCredentialNeedsEncryption(credential: ICredential): boolean {
     return credential.privateKey !== '' && !isEncrypted(credential.privateKey);
   }
   return false;
+}
+
+function _canDecrypt(value: string, cipher: ISecretCipherService): boolean {
+  try {
+    cipher.decrypt(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function _sanitizeCorruptedFields(
+  db: BetterSQLite3Database<typeof schema>,
+  cipher: ISecretCipherService
+): Promise<number> {
+  let cleared = 0;
+
+  const hosts = await db.select().from(hostEntity);
+  for (const host of hosts) {
+    const updates: { credential?: typeof host.credential; proxy?: typeof host.proxy; updatedAt?: string } = {};
+
+    if (host.credential) {
+      const sanitized = _sanitizeCredential(host.credential, cipher);
+      if (sanitized) {
+        updates.credential = sanitized;
+      }
+    }
+
+    if (host.proxy?.password && isEncrypted(host.proxy.password) && !_canDecrypt(host.proxy.password, cipher)) {
+      updates.proxy = { ...host.proxy, password: '' };
+    }
+
+    if (Object.keys(updates).length > 0) {
+      updates.updatedAt = new Date().toISOString();
+      await db.update(hostEntity).set(updates).where(eq(hostEntity.id, host.id));
+      cleared += 1;
+    }
+  }
+
+  const providers = await db.select().from(aiProviderEntity);
+  for (const provider of providers) {
+    if (provider.apiKey && isEncrypted(provider.apiKey) && !_canDecrypt(provider.apiKey, cipher)) {
+      await db.update(aiProviderEntity)
+        .set({ apiKey: '', updatedAt: new Date().toISOString() })
+        .where(eq(aiProviderEntity.id, provider.id));
+      cleared += 1;
+    }
+  }
+
+  const mcpServers = await db.select().from(mcpServerEntity);
+  for (const server of mcpServers) {
+    if (server.config && _mcpConfigHasCorruptedEncryption(server.config, cipher)) {
+      const sanitized = _sanitizeMcpConfig(server.config, cipher);
+      await db.update(mcpServerEntity)
+        .set({ config: sanitized, updatedAt: new Date().toISOString() })
+        .where(eq(mcpServerEntity.id, server.id));
+      cleared += 1;
+    }
+  }
+
+  const tokens = await db.select().from(mcpOAuthTokenEntity);
+  for (const token of tokens) {
+    const updates: Partial<Record<typeof OAUTH_SENSITIVE_FIELDS[number], string | null>> & { updatedAt?: string } = {};
+    for (const field of OAUTH_SENSITIVE_FIELDS) {
+      const value = token[field];
+      if (value && isEncrypted(value) && !_canDecrypt(value, cipher)) {
+        updates[field] = '';
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      updates.updatedAt = new Date().toISOString();
+      await db.update(mcpOAuthTokenEntity).set(updates).where(eq(mcpOAuthTokenEntity.id, token.id));
+      cleared += 1;
+    }
+  }
+
+  return cleared;
+}
+
+function _sanitizeCredential(credential: ICredential, cipher: ISecretCipherService): ICredential | null {
+  if (credential.type === 'password' && credential.password && isEncrypted(credential.password) && !_canDecrypt(credential.password, cipher)) {
+    return { ...credential, password: '' };
+  }
+  if (credential.type === 'rsa' && credential.privateKey && isEncrypted(credential.privateKey) && !_canDecrypt(credential.privateKey, cipher)) {
+    return { ...credential, privateKey: '' };
+  }
+  if (credential.type === 'key' && credential.passphrase && isEncrypted(credential.passphrase) && !_canDecrypt(credential.passphrase, cipher)) {
+    return { ...credential, passphrase: '' };
+  }
+  return null;
+}
+
+function _mcpConfigHasCorruptedEncryption(config: McpServerConfig, cipher: ISecretCipherService): boolean {
+  const sensitive = config.type === 'stdio' ? config.env : config.headers;
+  return Object.values(sensitive ?? {}).some((v) => isEncrypted(v) && !_canDecrypt(v, cipher));
+}
+
+function _sanitizeMcpConfig(config: McpServerConfig, cipher: ISecretCipherService): McpServerConfig {
+  const clearCorrupted = (v: string): string => (isEncrypted(v) && !_canDecrypt(v, cipher)) ? '' : v;
+  if (config.type === 'stdio' && config.env) {
+    const env: Record<string, string> = {};
+    for (const [k, v] of Object.entries(config.env)) {
+      env[k] = clearCorrupted(v);
+    }
+    return { ...config, env };
+  }
+  if (config.type === 'http' && config.headers) {
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(config.headers)) {
+      headers[k] = clearCorrupted(v);
+    }
+    return { ...config, headers };
+  }
+  return config;
 }

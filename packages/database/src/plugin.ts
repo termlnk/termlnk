@@ -149,6 +149,12 @@ export class DatabasePlugin extends Plugin {
       const cipher = this._injector.get(ISecretCipherService);
       const db = dbService.db as BetterSQLite3Database<typeof entities>;
       const result = await runEncryptSecretsRuntimeMigration(db, cipher);
+      if (result.sanitized > 0) {
+        this._logService.warn(
+          `[DatabasePlugin] Cleared ${result.sanitized} row(s) with stale encryption — `
+          + 'credentials encrypted with a previous key are unrecoverable and must be re-entered'
+        );
+      }
       const totalEncrypted = result.hostsEncrypted + result.providersEncrypted + result.mcpServersEncrypted + result.mcpOAuthTokensEncrypted;
       if (totalEncrypted > 0) {
         this._logService.log(
