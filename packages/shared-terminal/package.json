@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/shared-terminal",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": false,
   "description": "Shared terminal contracts for termlnk - daemon-as-PTY-owner pairing, NaCl box encrypted relay channel, and multi-user collaboration interfaces",
   "author": "telan <telanflow@gmail.com>",

@@ -1,7 +1,7 @@
 {
   "name": "@termlnk/web-app-renderer",
   "type": "module",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "termlnk-web browser SPA — desktop renderer mirror over HTTP/WS RPC (P7.4)",
   "author": "telan <telanflow@gmail.com>",

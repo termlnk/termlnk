@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/terminal-mobile",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Mobile terminal plugin — russh-backed SSH client, server-key TOFU, xterm WebView host, and on-screen key bar.",
   "author": "telan <telanflow@gmail.com>",

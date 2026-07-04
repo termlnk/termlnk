@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/agent-mobile",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Mobile AI assistant plugin — OpenAI-compatible chat client backed by expo-secure-store for API keys.",
   "author": "telan <telanflow@gmail.com>",

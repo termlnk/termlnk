@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/port-forwarding-mobile",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Mobile port forwarding plugin — rule CRUD, tunnel lifecycle (Local/Remote/Dynamic), and SSH connection pooling.",
   "author": "telan <telanflow@gmail.com>",

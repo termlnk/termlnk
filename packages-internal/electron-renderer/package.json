@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/electron-renderer",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Electron renderer plugin (tRPC IPC client, window manager wrapper, PTY wrapper, header).",
   "author": "telan <telanflow@gmail.com>",

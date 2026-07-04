@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/macos-utils",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Native macOS window utilities for Electron",
   "license": "PolyForm-Noncommercial-1.0.0",

@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/island-ui",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "description": "Dynamic Island UI — macOS notch overlay with session status and permission approval.",
   "author": "telan <telanflow@gmail.com>",
