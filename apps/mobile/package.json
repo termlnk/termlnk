@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/mobile-app",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "description": "termlnk-mobile — Expo SDK 56 fat client",
   "author": "telan <telanflow@gmail.com>",

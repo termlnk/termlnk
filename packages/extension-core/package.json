@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/extension-core",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": false,
   "description": "Extension core services for termlnk - extension storage, install, state persistence, and registry",
   "author": "telan <telanflow@gmail.com>",

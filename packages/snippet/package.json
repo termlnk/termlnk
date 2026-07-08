@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/snippet",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": false,
   "description": "Snippet shared contracts for termlnk - snippet and snippet package interfaces, types, and DI identifiers",
   "author": "telan <telanflow@gmail.com>",

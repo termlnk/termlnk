@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/database-mobile",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "description": "Mobile database plugin (drizzle-orm + expo-sqlite). Hosts, identities, ssh keys, known hosts, recent sessions, preferences, sync bookkeeping.",
   "author": "telan <telanflow@gmail.com>",

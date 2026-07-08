@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/shared-terminal-core",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": false,
   "description": "Shared terminal core implementations for termlnk - NaCl box crypto, frame codec, PTY multiplexer with xterm-headless, ring buffer, pairing, and asciicast recording",
   "author": "telan <telanflow@gmail.com>",
