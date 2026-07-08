@@ -19,10 +19,11 @@ import { ALL_THEMES, THEME_MAP } from '@termlnk/themes';
 import { useRouter } from 'expo-router';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Braces, ChevronDown, ChevronLeft, ChevronRight, CircleX, Clock, Keyboard, LayoutGrid, Minus, Palette, Plus, Search, Settings, TerminalSquare } from 'lucide-react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, Text, TextInput, useColorScheme, View } from 'react-native';
 import { useObservable, usePreferencesService, useSnippetRepository } from '../../core/core-context';
 import { filterSnippets, groupSnippets } from '../../lib/snippet-utils';
 import { ARROW_KEYS, KEY_GRID } from '../../lib/terminal-keys';
+import { resolveEffectiveMode } from '../../theme/theme-resolver';
 import { KeyboardHideIcon } from './keyboard-hide-icon';
 import { ThemeMiniCard } from './theme-mini-card';
 
@@ -97,7 +98,10 @@ export function TerminalAccessory(props: ITerminalAccessoryProps) {
   const [collapsed, setCollapsed] = useState(false);
   const prefsService = usePreferencesService();
   const prefs = useObservable(prefsService.prefs$, DEFAULT_PREFERENCES);
-  const termColors = useMemo(() => colorsFromThemeName(prefs.terminalThemeName), [prefs.terminalThemeName]);
+  const osScheme = useColorScheme();
+  const activeSlot = resolveEffectiveMode(prefs.themeMode, osScheme === 'dark' ? 'dark' : 'light');
+  const effectiveThemeName = activeSlot === 'dark' ? prefs.darkThemeName : prefs.lightThemeName;
+  const termColors = useMemo(() => colorsFromThemeName(effectiveThemeName), [effectiveThemeName]);
 
   const onToggleCollapse = useCallback(() => {
     setCollapsed((prev) => !prev);
@@ -402,7 +406,13 @@ function ThemePanel({ fontSize, onFontDelta, onSetThemeLive }: { fontSize: numbe
   const TERM = useTermColors();
   const prefsService = usePreferencesService();
   const prefs = useObservable(prefsService.prefs$, DEFAULT_PREFERENCES);
-  const currentThemeName = prefs.terminalThemeName;
+  const osScheme = useColorScheme();
+  const activeSlot = resolveEffectiveMode(prefs.themeMode, osScheme === 'dark' ? 'dark' : 'light');
+  const currentThemeName = activeSlot === 'dark' ? prefs.darkThemeName : prefs.lightThemeName;
+  const slotThemes = useMemo(
+    () => ALL_THEMES.filter((t) => t.type === activeSlot),
+    [activeSlot]
+  );
 
   const handleThemeSelect = useCallback((themeName: string) => {
     if (onSetThemeLive) {
@@ -411,16 +421,16 @@ function ThemePanel({ fontSize, onFontDelta, onSetThemeLive }: { fontSize: numbe
   }, [onSetThemeLive]);
 
   const paddedThemes = useMemo(() => {
-    const remainder = ALL_THEMES.length % 3;
+    const remainder = slotThemes.length % 3;
     if (remainder === 0) {
-      return ALL_THEMES;
+      return slotThemes;
     }
     const placeholders = Array.from({ length: 3 - remainder }, (_, i) => ({
       _placeholder: true as const,
       key: `__pad_${i}`,
     }));
-    return [...ALL_THEMES, ...placeholders] as ((typeof ALL_THEMES)[number] | { _placeholder: true; key: string })[];
-  }, []);
+    return [...slotThemes, ...placeholders] as ((typeof ALL_THEMES)[number] | { _placeholder: true; key: string })[];
+  }, [slotThemes]);
 
   const renderItem = useCallback(({ item }: { item: (typeof ALL_THEMES)[number] | { _placeholder: true; key: string } }) => {
     if ('_placeholder' in item) {

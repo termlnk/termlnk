@@ -15,6 +15,7 @@
 
 import type { Observable } from 'rxjs';
 import { createIdentifier, Disposable, Inject } from '@termlnk/core';
+import { THEME_MAP } from '@termlnk/themes';
 import { eq } from 'drizzle-orm';
 import { BehaviorSubject } from 'rxjs';
 import { configEntity } from '../entities/config-kv';
@@ -28,8 +29,24 @@ import { IDatabaseMobileAdaptorService } from './expo-sqlite-adaptor.service';
 // relaunches; `_load` merges over DEFAULT_PREFERENCES so older rows stay valid.
 export type TerminalCursorStyle = 'bar' | 'block' | 'underline';
 
+export type ThemeMode = 'auto' | 'dark' | 'light';
+
 export interface IMobilePreferences {
   readonly terminalFontSize: number;
+  /**
+   * Theme mode. Drives chrome (NativeWind LIGHT_VARS/DARK_VARS) and terminal
+   * (Base46 xterm palette) together — this is a mobile-wide preference, not
+   * terminal-specific.
+   */
+  readonly themeMode: ThemeMode;
+  /** Base46 theme name applied when the resolved mode is 'dark'. */
+  readonly darkThemeName: string;
+  /** Base46 theme name applied when the resolved mode is 'light'. */
+  readonly lightThemeName: string;
+  /**
+   * @deprecated Legacy single-slot theme name (pre-mode). Kept for read-through
+   * migration only; never written by new code. See `_migrateLegacyThemeName`.
+   */
   readonly terminalThemeName: string;
   readonly terminalFontFamily: string;
   readonly terminalCursorStyle: TerminalCursorStyle;
@@ -55,9 +72,15 @@ export interface IMobilePreferences {
   readonly saveLocationData: boolean;
 }
 
+export const DEFAULT_MOBILE_DARK_THEME_NAME = 'termlnk-dark';
+export const DEFAULT_MOBILE_LIGHT_THEME_NAME = 'termlnk-light';
+
 export const DEFAULT_PREFERENCES: IMobilePreferences = {
   terminalFontSize: 13,
-  terminalThemeName: 'one-dark',
+  themeMode: 'auto',
+  darkThemeName: DEFAULT_MOBILE_DARK_THEME_NAME,
+  lightThemeName: DEFAULT_MOBILE_LIGHT_THEME_NAME,
+  terminalThemeName: DEFAULT_MOBILE_DARK_THEME_NAME,
   terminalFontFamily: 'Menlo, monospace',
   terminalCursorStyle: 'bar',
   terminalCursorBlink: true,
@@ -146,9 +169,41 @@ export class MobilePreferencesService extends Disposable implements IMobilePrefe
     }
     try {
       const parsed = JSON.parse(row.value) as Partial<IMobilePreferences>;
-      this._prefs$.next({ ...DEFAULT_PREFERENCES, ...parsed });
+      const merged: IMobilePreferences = { ...DEFAULT_PREFERENCES, ...parsed };
+      const migrated = migrateLegacyThemeName(merged, parsed);
+      this._prefs$.next(migrated);
     } catch {
       // Corrupt prefs row — fall back to defaults already seeded in the subject.
     }
   }
+}
+
+/**
+ * Idempotent migration from pre-mode `terminalThemeName` to the mode + dual-slot
+ * model. Runs on every load but only fills in fields the stored row is missing.
+ *   - If the stored row has any of the new mode fields, treat it as already
+ *     migrated: no legacy overwrite. Preserves user choices across launches.
+ *   - Otherwise infer the slot from the legacy theme's `type` and set the mode
+ *     to that type (respects the user's prior explicit choice — do NOT jump to
+ *     'auto' silently).
+ */
+function migrateLegacyThemeName(merged: IMobilePreferences, raw: Partial<IMobilePreferences>): IMobilePreferences {
+  const hasAnyNewField = raw.themeMode !== undefined
+    || raw.darkThemeName !== undefined
+    || raw.lightThemeName !== undefined;
+  if (hasAnyNewField) {
+    return merged;
+  }
+  const legacyName = raw.terminalThemeName;
+  if (!legacyName) {
+    return merged;
+  }
+  const legacy = THEME_MAP.get(legacyName);
+  if (!legacy) {
+    return merged;
+  }
+  if (legacy.type === 'dark') {
+    return { ...merged, themeMode: 'dark', darkThemeName: legacy.name };
+  }
+  return { ...merged, themeMode: 'light', lightThemeName: legacy.name };
 }

@@ -40,8 +40,8 @@ export { IMobileHostRepository, MobileHostRepository } from './services/mobile-h
 export { IMobileIdentityRepository, IMobileKnownHostRepository, IMobileSshKeyRepository, MobileIdentityRepository, MobileKnownHostRepository, MobileSshKeyRepository } from './services/mobile-keychain-repositories';
 export { MobileMcpServerRepository } from './services/mobile-mcp-server-repository';
 export { IMobilePortForwardingRuleRepository, MobilePortForwardingRuleRepository } from './services/mobile-port-forwarding-rule-repository';
-export { DEFAULT_PREFERENCES, IMobilePreferencesService, MobilePreferencesService } from './services/mobile-preferences.service';
-export type { IMobilePreferences, TerminalCursorStyle } from './services/mobile-preferences.service';
+export { DEFAULT_MOBILE_DARK_THEME_NAME, DEFAULT_MOBILE_LIGHT_THEME_NAME, DEFAULT_PREFERENCES, IMobilePreferencesService, MobilePreferencesService } from './services/mobile-preferences.service';
+export type { IMobilePreferences, TerminalCursorStyle, ThemeMode } from './services/mobile-preferences.service';
 export { MobileProviderRepository } from './services/mobile-provider-repository';
 export { IMobileSecretCipherService, MobileSecretCipherService } from './services/mobile-secret-cipher.service';
 export { MobileSkillRepository } from './services/mobile-skill-repository';

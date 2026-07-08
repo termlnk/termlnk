@@ -19,15 +19,16 @@ import { buildXtermHtml, xtermBridge } from '@termlnk/terminal-mobile';
 import { base46ToXterm, THEME_MAP } from '@termlnk/themes';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Appearance, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, useColorScheme, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { AuthFailedSheet } from '../../../components/terminal/auth-failed-sheet';
 import { HostKeySheet } from '../../../components/terminal/host-key-sheet';
 import { TerminalAccessory } from '../../../components/terminal/terminal-accessory';
-import { useConnectionService, usePreferencesService, useRecentSessionsRepository, useSyncService } from '../../../core/core-context';
+import { useConnectionService, useObservable, usePreferencesService, useRecentSessionsRepository, useSyncService } from '../../../core/core-context';
 import { useSshEvent } from '../../../hooks/use-ssh-event';
 import { useThemeColors } from '../../../theme/theme-provider';
+import { resolveEffectiveMode, resolveEffectiveThemeName } from '../../../theme/theme-resolver';
 
 type ConnectState = 'connecting' | 'awaiting-credentials' | 'connected' | 'error';
 
@@ -84,21 +85,53 @@ export default function TerminalScreen() {
   }, [termConfig]);
 
   useEffect(() => {
-    void prefsService.ready().then(() => {
-      const p = prefsService.get();
-      const theme = THEME_MAP.get(p.terminalThemeName);
-      const xtermTheme = theme ? base46ToXterm(theme) : undefined;
-      setTermConfig({
-        fontSize: p.terminalFontSize,
-        fontFamily: p.terminalFontFamily,
-        cursorStyle: p.terminalCursorStyle,
-        cursorBlink: p.terminalCursorBlink,
-        scrollback: p.terminalScrollback,
-        theme: xtermTheme,
-      });
-      setDisplayFontSize(p.terminalFontSize);
+    // PreferencesBootGate ensures the prefs service is already loaded, so a
+    // synchronous get() is safe. We seed the WebView HTML ONCE from the
+    // resolved theme; further theme changes fan out via injectJavaScript so
+    // the live session isn't destroyed.
+    const p = prefsService.get();
+    const initialOSScheme = Appearance.getColorScheme() === 'dark' ? 'dark' : 'light';
+    const effectiveThemeName = resolveEffectiveThemeName(p.themeMode, initialOSScheme, p.darkThemeName, p.lightThemeName);
+    const theme = THEME_MAP.get(effectiveThemeName);
+    const xtermTheme = theme ? base46ToXterm(theme) : undefined;
+    setTermConfig({
+      fontSize: p.terminalFontSize,
+      fontFamily: p.terminalFontFamily,
+      cursorStyle: p.terminalCursorStyle,
+      cursorBlink: p.terminalCursorBlink,
+      scrollback: p.terminalScrollback,
+      theme: xtermTheme,
     });
+    setDisplayFontSize(p.terminalFontSize);
   }, [prefsService]);
+
+  // Live-swap the terminal palette when the user changes mode/slot preferences
+  // or when the OS scheme flips under Auto mode. Never mutates termConfig
+  // (which would invalidate xtermHtml and reload the WebView).
+  const osScheme = useColorScheme();
+  const prefs = useObservable(prefsService.prefs$, prefsService.get());
+  const activeSlot = resolveEffectiveMode(prefs.themeMode, osScheme === 'dark' ? 'dark' : 'light');
+  const effectiveThemeName = resolveEffectiveThemeName(
+    prefs.themeMode,
+    osScheme === 'dark' ? 'dark' : 'light',
+    prefs.darkThemeName,
+    prefs.lightThemeName
+  );
+
+  useEffect(() => {
+    if (!termConfig) {
+      return;
+    }
+    const theme = THEME_MAP.get(effectiveThemeName);
+    if (!theme) {
+      return;
+    }
+    const xtermTheme = base46ToXterm(theme);
+    webviewRef.current?.injectJavaScript(`window.__termlnkTerm && window.__termlnkTerm.setTheme(${JSON.stringify(xtermTheme)}); true;`);
+    if (xtermTheme.background) {
+      setLiveThemeBg(xtermTheme.background);
+    }
+  }, [effectiveThemeName, termConfig]);
 
   // Font-size changes persist and apply live to the running terminal.
   const onFontDelta = useCallback((delta: number) => {
@@ -133,12 +166,18 @@ export default function TerminalScreen() {
     webviewRef.current?.injectJavaScript(`window.__termlnkTerm.write(${JSON.stringify(b64)}); true;`);
   }, []);
 
-  // Live theme switch: paint via injectJavaScript only. Mutating termConfig
-  // would invalidate the xtermHtml useMemo, reload the WebView, and wipe the
-  // live session — the whole point of injectJavaScript was to avoid that.
+  // Live theme switch from the in-terminal picker: only accept themes that
+  // match the active slot's type. Cross-type picks (e.g. selecting a light
+  // theme while Auto+OS=dark) would either silently write the opposite slot
+  // (confusing — no immediate visual change) or force a mode switch (an
+  // overreach for a single tap). We reject them instead; the picker itself
+  // should filter to prevent this from ever happening.
   const onSetThemeLive = useCallback((themeName: string) => {
     const theme = THEME_MAP.get(themeName);
     if (!theme) {
+      return;
+    }
+    if (theme.type !== activeSlot) {
       return;
     }
     const xtermTheme = base46ToXterm(theme);
@@ -146,8 +185,12 @@ export default function TerminalScreen() {
     if (xtermTheme.background) {
       setLiveThemeBg(xtermTheme.background);
     }
-    void prefsService.update({ terminalThemeName: themeName });
-  }, [prefsService]);
+    if (activeSlot === 'dark') {
+      void prefsService.update({ darkThemeName: themeName });
+    } else {
+      void prefsService.update({ lightThemeName: themeName });
+    }
+  }, [prefsService, activeSlot]);
 
   // Subscribe to the public hosts stream for the row metadata (label, addr, port).
   useEffect(() => {

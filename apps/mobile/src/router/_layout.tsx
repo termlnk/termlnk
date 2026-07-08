@@ -16,146 +16,147 @@
 import { PortalHost } from '@rn-primitives/portal';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BiometricGate } from '../components/auth/biometric-gate';
+import { PreferencesBootGate } from '../components/preferences-boot-gate';
 import { CoreProvider } from '../core/core-context';
-import { ThemeProvider } from '../theme/theme-provider';
+import { ThemeProvider, useThemeColors } from '../theme/theme-provider';
 import '../../global.css';
 
-// Screen options cannot read Tailwind classes, so the native header/transition
-// colors still need raw hex. Keep these in sync with the `surface`/`content`
-// tokens in global.css / theme-provider.ts.
-const SURFACE_DARK = '#1e222a';
-const SURFACE_LIGHT = '#eceef0';
-const CONTENT_DARK = '#d7dae0';
-const CONTENT_LIGHT = '#10233f';
-
 export default function RootLayout() {
-  const scheme = useColorScheme();
-  const dark = scheme === 'dark';
-  const surface = dark ? SURFACE_DARK : SURFACE_LIGHT;
-  const content = dark ? CONTENT_DARK : CONTENT_LIGHT;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <CoreProvider>
-          <ThemeProvider>
-            <BiometricGate>
-              <StatusBar style="auto" />
-              <Stack
-                screenOptions={{
-                  headerStyle: { backgroundColor: surface },
-                  headerTintColor: content,
-                  headerShadowVisible: false,
-                  headerBackButtonDisplayMode: 'minimal',
-                  contentStyle: { backgroundColor: surface },
-                }}
-              >
-                {/* Screens that render their own ScreenHeader opt out of the native header; others keep a themed native header until migrated. */}
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="hosts" options={{ headerShown: false }} />
-                <Stack.Screen name="ai" options={{ headerShown: false }} />
-                <Stack.Screen name="ai-chat" options={{ headerShown: false }} />
-                <Stack.Screen name="ai-settings" />
-                <Stack.Screen name="ai-add-provider" options={{ title: 'Add Provider' }} />
-                <Stack.Screen name="ai-provider-detail" />
-                <Stack.Screen name="account" options={{ headerShown: false }} />
-                <Stack.Screen name="change-password" options={{ headerShown: false }} />
-                <Stack.Screen name="devices" options={{ headerShown: false }} />
-                <Stack.Screen name="settings" options={{ headerShown: false }} />
-                <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="vault/keychain" options={{ headerShown: false }} />
-                <Stack.Screen name="vault/known-hosts" options={{ headerShown: false }} />
-                <Stack.Screen name="vault/logs" options={{ headerShown: false }} />
-                <Stack.Screen name="vault/port-forwarding" options={{ headerShown: false }} />
-                <Stack.Screen name="vault/port-forwarding-edit" options={{ headerShown: false }} />
-                <Stack.Screen name="vault/snippets" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="vault/snippet-edit"
-                  options={{
-                    presentation: 'formSheet',
-                    headerShown: false,
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.6, 0.95] as number[],
-                    sheetCornerRadius: 28,
-                    contentStyle: { flex: 1 },
-                  }}
-                />
-                <Stack.Screen
-                  name="vault/snippet-package-edit"
-                  options={{
-                    presentation: 'formSheet',
-                    headerShown: false,
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.4, 0.95] as number[],
-                    sheetCornerRadius: 28,
-                    contentStyle: { flex: 1 },
-                  }}
-                />
-                <Stack.Screen
-                  name="vault/snippet-package-picker"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.5, 0.95] as number[],
-                    sheetCornerRadius: 20,
-                    contentStyle: { flex: 1 },
-                  }}
-                />
-                <Stack.Screen name="keychain/identity" options={{ headerShown: false }} />
-                <Stack.Screen name="keychain/key" options={{ headerShown: false }} />
-                <Stack.Screen name="keychain/new-key" options={{ headerShown: false }} />
-                <Stack.Screen name="keychain/generate-key" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="host/edit"
-                  options={{
-                    presentation: 'formSheet',
-                    headerShown: false,
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.5, 0.95] as number[],
-                    sheetCornerRadius: 28,
-                    contentStyle: { flex: 1 },
-                  }}
-                />
-                <Stack.Screen
-                  name="group-picker"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.6, 0.95] as number[],
-                    sheetCornerRadius: 20,
-                    contentStyle: { flex: 1 },
-                  }}
-                />
-                <Stack.Screen
-                  name="keychain-picker"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.6, 0.95] as number[],
-                    sheetCornerRadius: 20,
-                    contentStyle: { flex: 1 },
-                  }}
-                />
-                <Stack.Screen
-                  name="vault/port-forwarding-host-picker"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.6, 0.95] as number[],
-                    sheetCornerRadius: 20,
-                    contentStyle: { flex: 1 },
-                  }}
-                />
-              </Stack>
-              <PortalHost />
-            </BiometricGate>
-          </ThemeProvider>
+          <PreferencesBootGate>
+            <ThemeProvider>
+              <BiometricGate>
+                <StatusBar style="auto" />
+                <ThemedStack />
+                <PortalHost />
+              </BiometricGate>
+            </ThemeProvider>
+          </PreferencesBootGate>
         </CoreProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+// Native header/transition colors read from the same NativeWind palette used
+// by className consumers. Lives inside CoreProvider + PreferencesBootGate +
+// ThemeProvider so it can call useThemeColors() (which reads the resolved mode
+// from ThemeModeContext).
+function ThemedStack() {
+  const colors = useThemeColors();
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.content,
+        headerShadowVisible: false,
+        headerBackButtonDisplayMode: 'minimal',
+        contentStyle: { backgroundColor: colors.surface },
+      }}
+    >
+      {/* Screens that render their own ScreenHeader opt out of the native header; others keep a themed native header until migrated. */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="hosts" options={{ headerShown: false }} />
+      <Stack.Screen name="ai" options={{ headerShown: false }} />
+      <Stack.Screen name="ai-chat" options={{ headerShown: false }} />
+      <Stack.Screen name="ai-settings" />
+      <Stack.Screen name="ai-add-provider" options={{ title: 'Add Provider' }} />
+      <Stack.Screen name="ai-provider-detail" />
+      <Stack.Screen name="account" options={{ headerShown: false }} />
+      <Stack.Screen name="change-password" options={{ headerShown: false }} />
+      <Stack.Screen name="devices" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="vault/keychain" options={{ headerShown: false }} />
+      <Stack.Screen name="vault/known-hosts" options={{ headerShown: false }} />
+      <Stack.Screen name="vault/logs" options={{ headerShown: false }} />
+      <Stack.Screen name="vault/port-forwarding" options={{ headerShown: false }} />
+      <Stack.Screen name="vault/port-forwarding-edit" options={{ headerShown: false }} />
+      <Stack.Screen name="vault/snippets" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="vault/snippet-edit"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.6, 0.95] as number[],
+          sheetCornerRadius: 28,
+          contentStyle: { flex: 1 },
+        }}
+      />
+      <Stack.Screen
+        name="vault/snippet-package-edit"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.4, 0.95] as number[],
+          sheetCornerRadius: 28,
+          contentStyle: { flex: 1 },
+        }}
+      />
+      <Stack.Screen
+        name="vault/snippet-package-picker"
+        options={{
+          presentation: 'formSheet',
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.5, 0.95] as number[],
+          sheetCornerRadius: 20,
+          contentStyle: { flex: 1 },
+        }}
+      />
+      <Stack.Screen name="keychain/identity" options={{ headerShown: false }} />
+      <Stack.Screen name="keychain/key" options={{ headerShown: false }} />
+      <Stack.Screen name="keychain/new-key" options={{ headerShown: false }} />
+      <Stack.Screen name="keychain/generate-key" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="host/edit"
+        options={{
+          presentation: 'formSheet',
+          headerShown: false,
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.5, 0.95] as number[],
+          sheetCornerRadius: 28,
+          contentStyle: { flex: 1 },
+        }}
+      />
+      <Stack.Screen
+        name="group-picker"
+        options={{
+          presentation: 'formSheet',
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.6, 0.95] as number[],
+          sheetCornerRadius: 20,
+          contentStyle: { flex: 1 },
+        }}
+      />
+      <Stack.Screen
+        name="keychain-picker"
+        options={{
+          presentation: 'formSheet',
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.6, 0.95] as number[],
+          sheetCornerRadius: 20,
+          contentStyle: { flex: 1 },
+        }}
+      />
+      <Stack.Screen
+        name="vault/port-forwarding-host-picker"
+        options={{
+          presentation: 'formSheet',
+          sheetGrabberVisible: true,
+          sheetAllowedDetents: [0.6, 0.95] as number[],
+          sheetCornerRadius: 20,
+          contentStyle: { flex: 1 },
+        }}
+      />
+    </Stack>
   );
 }

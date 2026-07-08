@@ -27,26 +27,36 @@ interface IThemePickerSheetProps {
   readonly value: string;
   readonly onSelect: (themeName: string) => void;
   readonly onClose: () => void;
+  /**
+   * When set, restricts the picker to the given palette family. The terminal
+   * view uses this to prevent cross-slot picks that would either silently
+   * miss (writing the opposite slot) or force a mode switch.
+   */
+  readonly filterType?: 'dark' | 'light';
 }
 
 const DARK_THEMES = ALL_THEMES.filter((t) => t.type === 'dark');
 const LIGHT_THEMES = ALL_THEMES.filter((t) => t.type === 'light');
 
-export function ThemePickerSheet({ visible, value, onSelect, onClose }: IThemePickerSheetProps) {
+export function ThemePickerSheet({ visible, value, onSelect, onClose, filterType }: IThemePickerSheetProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
+    const filterDark = filterType === undefined || filterType === 'dark';
+    const filterLight = filterType === undefined || filterType === 'light';
+    const darkPool = filterDark ? DARK_THEMES : [];
+    const lightPool = filterLight ? LIGHT_THEMES : [];
     if (!q) {
-      return { dark: DARK_THEMES, light: LIGHT_THEMES };
+      return { dark: darkPool, light: lightPool };
     }
     return {
-      dark: DARK_THEMES.filter((t) => t.name.toLowerCase().includes(q)),
-      light: LIGHT_THEMES.filter((t) => t.name.toLowerCase().includes(q)),
+      dark: darkPool.filter((t) => t.name.toLowerCase().includes(q)),
+      light: lightPool.filter((t) => t.name.toLowerCase().includes(q)),
     };
-  }, [query]);
+  }, [query, filterType]);
 
   const sections = useMemo(() => {
     const items: Array<{ type: 'header'; title: string } | { type: 'theme'; theme: ITheme }> = [];

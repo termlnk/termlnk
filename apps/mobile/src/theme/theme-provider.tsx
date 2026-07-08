@@ -13,10 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IMobilePreferences } from '@termlnk/database-mobile';
 import type { ReactNode } from 'react';
 import { VariableContextProvider } from 'nativewind';
 import { createContext, useContext } from 'react';
 import { useColorScheme } from 'react-native';
+import { resolveEffectiveMode } from './theme-resolver';
+import { useObservable, usePreferencesService } from '../core/core-context';
 
 // Semantic chrome color tokens fed to NativeWind's VariableContextProvider.
 //
@@ -27,8 +30,7 @@ import { useColorScheme } from 'react-native';
 // keys here resolve correctly; bare names like `surface` would NOT.
 //
 // Values mirror the two palettes declared in global.css: LIGHT is the Termius
-// management chrome, DARK is Base46 onedark. The terminal subtree re-wraps with
-// DARK_VARS so it stays dark even when the OS is in light mode.
+// management chrome, DARK is Base46 onedark.
 type IThemeVars = Readonly<Record<string, string>>;
 
 export const LIGHT_VARS: IThemeVars = {
@@ -63,9 +65,6 @@ export const DARK_VARS: IThemeVars = {
 
 interface IThemeProviderProps {
   readonly children: ReactNode;
-  // Force a fixed palette regardless of the OS scheme. The terminal passes
-  // 'dark' so its chrome stays dark under a light system appearance.
-  readonly force?: 'light' | 'dark';
 }
 
 // Active resolved mode, so non-className consumers (lucide icon `color` props,
@@ -73,11 +72,22 @@ interface IThemeProviderProps {
 // so useThemeMode falls back to the OS scheme outside any provider.
 const ThemeModeContext = createContext<'light' | 'dark' | null>(null);
 
-export function ThemeProvider({ children, force }: IThemeProviderProps) {
+/**
+ * Reads the user's themeMode preference and the current OS color scheme, then
+ * exposes the resolved mode ('light'/'dark') to descendants through both a
+ * NativeWind CSS variable context and a React context (for hex consumers).
+ *
+ * Must be rendered inside {@link CoreProvider} and after
+ * {@link PreferencesBootGate} — the prefs service must be `ready()` by the
+ * time this component subscribes.
+ */
+export function ThemeProvider({ children }: IThemeProviderProps) {
+  const prefsService = usePreferencesService();
+  const prefs = useObservable<IMobilePreferences>(prefsService.prefs$, prefsService.get());
   // react-native's useColorScheme subscribes to Appearance and re-renders on
   // OS theme changes; nativewind's own hook is deprecated in v5.
   const scheme = useColorScheme();
-  const mode = force ?? (scheme === 'dark' ? 'dark' : 'light');
+  const mode = resolveEffectiveMode(prefs.themeMode, scheme === 'dark' ? 'dark' : 'light');
   const value = mode === 'dark' ? DARK_VARS : LIGHT_VARS;
   return (
     <ThemeModeContext.Provider value={mode}>

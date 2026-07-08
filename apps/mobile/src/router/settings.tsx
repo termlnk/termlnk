@@ -13,15 +13,15 @@
  * governing permissions and limitations under the License.
  */
 
-import type { TerminalCursorStyle } from '@termlnk/database-mobile';
+import type { TerminalCursorStyle, ThemeMode } from '@termlnk/database-mobile';
 import type { ITheme } from '@termlnk/themes';
 import { DEFAULT_PREFERENCES } from '@termlnk/database-mobile';
 import { SyncState } from '@termlnk/sync';
 import { ALL_THEMES } from '@termlnk/themes';
 import { useRouter } from 'expo-router';
-import { Activity, Cpu, Eye, FlaskConical, Gauge, Hash, Keyboard, Languages, MapPin, Moon, RefreshCw, Rows3, Search, ShieldCheck, SquareChevronUp, TextCursor, Timer, Type, Vibrate } from 'lucide-react-native';
+import { Activity, Cpu, Eye, FlaskConical, Gauge, Hash, Keyboard, Languages, MapPin, Monitor, Moon, RefreshCw, Rows3, Search, ShieldCheck, SquareChevronUp, Sun, TextCursor, Timer, Type, Vibrate } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FontSizePreviewRow } from '../components/terminal/font-size-preview-row';
 import { ThemeMiniCard } from '../components/terminal/theme-mini-card';
@@ -34,6 +34,7 @@ import { SectionLabel } from '../components/ui/section-label';
 import { SelectSheet } from '../components/ui/select-sheet';
 import { useObservable, usePreferencesService, useSyncService } from '../core/core-context';
 import { getFontLabel, getTerminalFonts, KEEP_ALIVE_OPTIONS, SCROLLBACK_OPTIONS } from '../lib/terminal-config';
+import { resolveEffectiveMode } from '../theme/theme-resolver';
 
 const SYNC_STATE_LABEL: Record<SyncState, string> = {
   [SyncState.Disabled]: 'Disabled',
@@ -92,11 +93,34 @@ export default function SettingsScreen() {
   const themeCardWidth = Math.floor((screenWidth - 32 - THEME_PADDING * 2 - THEME_GAP * (THEME_COUNT - 1)) / THEME_COUNT);
   const themeItemLength = themeCardWidth + THEME_GAP;
 
+  const osScheme = useColorScheme();
+  const activeSlot = resolveEffectiveMode(prefs.themeMode, osScheme === 'dark' ? 'dark' : 'light');
+  const activeSlotThemeName = activeSlot === 'dark' ? prefs.darkThemeName : prefs.lightThemeName;
+  const filteredThemes = useMemo(
+    () => ALL_THEMES.filter((t) => t.type === activeSlot),
+    [activeSlot]
+  );
+
   const themeListRef = useRef<FlatList<ITheme>>(null);
 
   const handleThemeSelect = useCallback((themeName: string) => {
-    void prefsService.update({ terminalThemeName: themeName });
-  }, [prefsService]);
+    // Writes into the slot the resolved mode currently reads from — so the
+    // switch takes effect immediately for Auto users and doesn't cross-write
+    // the opposite slot for Day/Night users. This also implicitly enforces
+    // type match: filteredThemes only exposes themes matching activeSlot.
+    if (activeSlot === 'dark') {
+      void prefsService.update({ darkThemeName: themeName });
+    } else {
+      void prefsService.update({ lightThemeName: themeName });
+    }
+  }, [prefsService, activeSlot]);
+
+  const handleThemeModeSelect = useCallback((next: ThemeMode) => {
+    if (prefs.themeMode === next) {
+      return;
+    }
+    void prefsService.update({ themeMode: next });
+  }, [prefsService, prefs.themeMode]);
 
   const handleFontSelect = useCallback((fontFamily: string) => {
     void prefsService.update({ terminalFontFamily: fontFamily });
@@ -121,11 +145,11 @@ export default function SettingsScreen() {
   const themeRenderItem = useCallback(({ item }: { item: (typeof ALL_THEMES)[number] }) => (
     <ThemeMiniCard
       theme={item}
-      selected={item.name === prefs.terminalThemeName}
+      selected={item.name === activeSlotThemeName}
       width={themeCardWidth}
       onPress={() => handleThemeSelect(item.name)}
     />
-  ), [prefs.terminalThemeName, handleThemeSelect, themeCardWidth]);
+  ), [activeSlotThemeName, handleThemeSelect, themeCardWidth]);
 
   const themeKeyExtractor = useCallback((t: (typeof ALL_THEMES)[number]) => t.name, []);
 
@@ -137,15 +161,16 @@ export default function SettingsScreen() {
         <Card>
           <View>
             <FontSizePreviewRow value={prefs.terminalFontSize} onChange={handleFontSizeChange} />
+            <ThemeModeToggle mode={prefs.themeMode} onChange={handleThemeModeSelect} />
             <FlatList
               ref={themeListRef}
               horizontal
               showsHorizontalScrollIndicator={false}
-              data={ALL_THEMES}
+              data={filteredThemes}
               keyExtractor={themeKeyExtractor}
               contentContainerStyle={{ paddingHorizontal: THEME_PADDING, paddingBottom: 12, gap: THEME_GAP }}
               renderItem={themeRenderItem}
-              initialScrollIndex={Math.max(0, ALL_THEMES.findIndex((t) => t.name === prefs.terminalThemeName))}
+              initialScrollIndex={Math.max(0, filteredThemes.findIndex((t) => t.name === activeSlotThemeName))}
               getItemLayout={(_, index) => ({ length: themeItemLength, offset: themeItemLength * index, index })}
             />
           </View>
@@ -295,5 +320,50 @@ export default function SettingsScreen() {
         onClose={() => setKeepAlivePickerOpen(false)}
       />
     </ScreenContainer>
+  );
+}
+
+interface IThemeModeToggleProps {
+  readonly mode: ThemeMode;
+  readonly onChange: (next: ThemeMode) => void;
+}
+
+// Three-way segmented control. Filters the horizontal theme picker below to
+// the slot the resolved mode reads from — Auto uses the current OS scheme, so
+// switching mode also switches which slot is being edited.
+function ThemeModeToggle({ mode, onChange }: IThemeModeToggleProps) {
+  return (
+    <View className="mx-4 mb-2 mt-1 flex-row items-center gap-1 rounded-lg bg-surface-sunken p-1">
+      <ThemeModeToggleItem icon={Monitor} label="Auto" active={mode === 'auto'} onPress={() => onChange('auto')} />
+      <ThemeModeToggleItem icon={Sun} label="Day" active={mode === 'light'} onPress={() => onChange('light')} />
+      <ThemeModeToggleItem icon={Moon} label="Night" active={mode === 'dark'} onPress={() => onChange('dark')} />
+    </View>
+  );
+}
+
+interface IThemeModeToggleItemProps {
+  readonly icon: typeof Monitor;
+  readonly label: string;
+  readonly active: boolean;
+  readonly onPress: () => void;
+}
+
+function ThemeModeToggleItem({ icon: Icon, label, active, onPress }: IThemeModeToggleItemProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      className={
+        active
+          ? 'flex-1 flex-row items-center justify-center gap-1.5 rounded-md bg-surface-raised px-2 py-2'
+          : 'flex-1 flex-row items-center justify-center gap-1.5 rounded-md px-2 py-2'
+      }
+    >
+      <Icon size={14} className={active ? 'text-accent' : 'text-content-secondary'} />
+      <Text className={active ? 'text-[13px] font-semibold text-content' : 'text-[13px] font-medium text-content-secondary'}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
