@@ -16,14 +16,14 @@
 import type { Dependency, LocaleType } from '@termlnk/core';
 import type { IUIConfig } from '@termlnk/ui';
 import type { ISettingsUIConfig } from './controllers/config.schema';
-import { DependentOn, IConfigService, Inject, Injector, IThemeService, LocaleService, merge, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { DependentOn, IConfigService, Inject, Injector, LocaleService, merge, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { IConfigManagerService, RPCClientPlugin } from '@termlnk/rpc-client';
-import { THEME_MAP } from '@termlnk/themes';
-import { DEFAULT_UI_FONT_SIZE, injectUIFontToDOM, UI_PLUGIN_CONFIG_KEY, UIPlugin } from '@termlnk/ui';
+import { DEFAULT_UI_FONT_SIZE, injectUIFontToDOM, IThemeModeService, UI_PLUGIN_CONFIG_KEY, UIPlugin } from '@termlnk/ui';
 import { defaultPluginConfig, SETTINGS_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { SettingsController } from './controllers/settings/settings.controller';
 import { ISettingsTabRegistryService, SettingsTabRegistryService } from './services/settings-tab-registry/settings-tab-registry.service';
 import { SettingsService } from './services/settings/settings.service';
+import { ThemeModeService } from './services/theme-mode/theme-mode.service';
 
 export const SETTINGS_UI_PLUGIN_NAME = 'SETTINGS_UI_PLUGIN';
 
@@ -50,12 +50,12 @@ export class SettingsUIPlugin extends Plugin {
     this._initDependencies();
 
     touchDependencies(this._injector, [
+      [IThemeModeService],
       [SettingsController],
     ]);
   }
 
   override onReady(): void {
-    this._loadPersistedTheme();
     this._loadPersistedLocale();
     this._loadPersistedUIFont();
   }
@@ -64,25 +64,10 @@ export class SettingsUIPlugin extends Plugin {
     const dependencies: Dependency[] = [
       [ISettingsTabRegistryService, { useClass: SettingsTabRegistryService }],
       [SettingsService, { useClass: SettingsService }],
+      [IThemeModeService, { useClass: ThemeModeService }],
       [SettingsController],
     ];
     registerDependencies(this._injector, dependencies);
-  }
-
-  private async _loadPersistedTheme(): Promise<void> {
-    try {
-      const configManager = this._injector.get(IConfigManagerService);
-      const savedThemeName = await configManager.getField<string>(UI_PLUGIN_CONFIG_KEY, 'theme');
-      if (savedThemeName) {
-        const theme = THEME_MAP.get(savedThemeName);
-        if (theme) {
-          const themeService = this._injector.get(IThemeService);
-          themeService.setTheme(theme);
-        }
-      }
-    } catch {
-      // ignore - use default theme
-    }
   }
 
   private async _loadPersistedLocale(): Promise<void> {

@@ -128,6 +128,12 @@ const locale: typeof enUS = {
       'inline-suggest-model-empty': '未找到匹配的模型',
     },
     'color-scheme': {
+      'mode-title': '主題模式',
+      'mode-description': '跟隨系統外觀，或鎖定為淺色/深色。',
+      'mode-auto': '自動',
+      'mode-light': '淺色',
+      'mode-dark': '深色',
+      'theme-unavailable': '目前主題不可用，已回退到預設主題。',
       'dark-theme-title': '深色主題',
       'dark-theme-description': '選擇深色主題配色套用到終端機介面。',
       'light-theme-title': '淺色主題',

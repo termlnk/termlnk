@@ -126,6 +126,12 @@ const locale = {
       'inline-suggest-model-empty': 'No matching model',
     },
     'color-scheme': {
+      'mode-title': 'Theme Mode',
+      'mode-description': 'Follow the system appearance, or lock the app to Light or Dark.',
+      'mode-auto': 'Auto',
+      'mode-light': 'Light',
+      'mode-dark': 'Dark',
+      'theme-unavailable': 'The selected theme is unavailable; a default was applied.',
       'dark-theme-title': 'Dark Themes',
       'dark-theme-description': 'Choose a dark theme color scheme to apply in the terminal UI.',
       'light-theme-title': 'Light Themes',

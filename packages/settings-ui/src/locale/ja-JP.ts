@@ -128,6 +128,12 @@ const locale: typeof enUS = {
       'inline-suggest-model-empty': '一致するモデルが見つかりません',
     },
     'color-scheme': {
+      'mode-title': 'テーマモード',
+      'mode-description': 'システムの外観に従うか、ライト/ダークに固定します。',
+      'mode-auto': '自動',
+      'mode-light': 'ライト',
+      'mode-dark': 'ダーク',
+      'theme-unavailable': '選択されたテーマは使用できません。デフォルトに戻しました。',
       'dark-theme-title': 'ダークテーマ',
       'dark-theme-description': 'ターミナルUIに適用するダークテーマの配色を選択。',
       'light-theme-title': 'ライトテーマ',

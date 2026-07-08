@@ -23,6 +23,7 @@ import { DesktopUIController } from './controllers/ui/desktop-ui.controller';
 import { IUIController } from './controllers/ui/ui.controller';
 import { UpdaterUIController } from './controllers/updater/updater-ui.controller';
 import { ComponentManagerService } from './services/component/component-manager.service';
+import { IColorSchemeService, WebColorSchemeService } from './services/color-scheme/color-scheme.service';
 import { DesktopConfirmService } from './services/confirm/desktop-confirm.service';
 import { ContentRouterService, IContentRouterService } from './services/content-router/content-router.service';
 import { ContextMenuService, IContextMenuService } from './services/contextmenu/contextmenu.service';
@@ -36,6 +37,7 @@ import { ResizableService } from './services/resizable/resizable.service';
 import { IShortcutService, ShortcutService } from './services/shortcut/shortcut.service';
 import { SideTabBarService } from './services/side-tab-bar/side-tab-bar.service';
 import { IStatusBarService, StatusBarService } from './services/status-bar/status-bar.service';
+import { IThemeRegistryService, ThemeRegistryService } from './services/theme-registry/theme-registry.service';
 import { ThemeSwitcherService } from './services/theme-switcher/theme-switcher.service';
 
 export const UI_PLUGIN_NAME = 'UI_PLUGIN';
@@ -84,6 +86,8 @@ export class UIPlugin extends Plugin {
     const dependencies: Dependency[] = [
       [ComponentManagerService],
       [ThemeSwitcherService],
+      [IColorSchemeService, { useClass: WebColorSchemeService }],
+      [IThemeRegistryService, { useClass: ThemeRegistryService }],
       [SideTabBarService],
       [ResizableService],
       [IContentRouterService, { useClass: ContentRouterService }],

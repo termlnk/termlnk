@@ -27,7 +27,29 @@ export interface IUIConfig extends IWorkbenchOptions {
   override?: DependencyOverride;
   fontFamily?: string;
   fontSize?: number;
+
+  /**
+   * Theme mode. Drives the theme-mode resolver together with the OS scheme.
+   */
+  themeMode?: 'auto' | 'dark' | 'light';
+
+  /**
+   * Theme name used when the resolved mode is 'dark' (either explicit or
+   * derived from OS scheme in 'auto').
+   */
+  darkThemeName?: string;
+
+  /**
+   * Theme name used when the resolved mode is 'light'.
+   */
+  lightThemeName?: string;
+
+  /**
+   * @deprecated Legacy single-slot theme name. Kept for read-through migration
+   * only — never written by new code. Do not delete: rollback safety.
+   */
   theme?: string;
+
   locale?: string;
 }
 

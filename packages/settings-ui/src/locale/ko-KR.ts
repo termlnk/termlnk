@@ -128,6 +128,12 @@ const locale: typeof enUS = {
       'inline-suggest-model-empty': '일치하는 모델을 찾을 수 없습니다',
     },
     'color-scheme': {
+      'mode-title': '테마 모드',
+      'mode-description': '시스템 외관을 따르거나 라이트/다크로 고정합니다.',
+      'mode-auto': '자동',
+      'mode-light': '라이트',
+      'mode-dark': '다크',
+      'theme-unavailable': '선택한 테마를 사용할 수 없어 기본 테마로 되돌렸습니다.',
       'dark-theme-title': '다크 테마',
       'dark-theme-description': '터미널 UI에 적용할 다크 테마 색상 구성을 선택.',
       'light-theme-title': '라이트 테마',

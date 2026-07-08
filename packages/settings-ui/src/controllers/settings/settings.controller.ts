@@ -17,6 +17,7 @@ import type { ISettingsTabDescriptor } from '../../services/settings-tab-registr
 import { Disposable, ICommandService, Inject } from '@termlnk/core';
 import { BuiltInUIPart, ComponentManagerService, IDialogService, IShortcutService, IUIPartsService } from '@termlnk/ui';
 import { Info, Keyboard, LayoutDashboard, Monitor, Palette, Terminal, Unplug, Wand2, Wifi } from 'lucide-react';
+import { SetDarkThemeCommand, SetLightThemeCommand, SetThemeModeCommand } from '../../commands/set-theme-mode.command';
 import { ToggleSettingsCommand } from '../../commands/toggle-settings.command';
 import { SettingsTab } from '../../models/settings.state';
 import { ISettingsTabRegistryService } from '../../services/settings-tab-registry/settings-tab-registry.service';
@@ -154,6 +155,9 @@ export class SettingsController extends Disposable {
     );
 
     this.disposeWithMe(this._commandService.registerCommand(ToggleSettingsCommand));
+    this.disposeWithMe(this._commandService.registerCommand(SetThemeModeCommand));
+    this.disposeWithMe(this._commandService.registerCommand(SetDarkThemeCommand));
+    this.disposeWithMe(this._commandService.registerCommand(SetLightThemeCommand));
     this.disposeWithMe(this._shortcutService.registerShortcut(ToggleSettingsShortcut));
   }
 

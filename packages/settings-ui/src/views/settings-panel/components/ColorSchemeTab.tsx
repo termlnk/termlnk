@@ -14,34 +14,101 @@
  */
 
 import type { ITheme } from '@termlnk/themes';
-import { IThemeService, LocaleService } from '@termlnk/core';
-import { Card, CardContent, CardDescription, CardHeader, useDependency, useObservable } from '@termlnk/design';
-import { IConfigManagerService } from '@termlnk/rpc-client';
+import type { ThemeMode } from '@termlnk/ui';
+import { LocaleService } from '@termlnk/core';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, ToggleGroup, ToggleGroupItem, useDependency, useObservable } from '@termlnk/design';
 import { ALL_THEMES } from '@termlnk/themes';
 import { ThemePicker } from '@termlnk/themes-ui';
-import { UI_PLUGIN_CONFIG_KEY } from '@termlnk/ui';
-import { Moon, Sun } from 'lucide-react';
+import { IThemeModeService, IThemeRegistryService } from '@termlnk/ui';
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 
+const MODE_TOGGLE_ITEM_CLASS = `
+  tm:gap-2 tm:text-white
+  tm:data-[state=off]:hover:bg-blue/25 tm:data-[state=off]:hover:text-white
+  tm:data-[state=on]:bg-blue/90 tm:data-[state=on]:text-[#ffffff] tm:data-[state=on]:hover:text-[#ffffff]
+`;
+
 export function ColorSchemeTab() {
-  const themeService = useDependency(IThemeService);
+  const themeModeService = useDependency(IThemeModeService);
+  const themeRegistry = useDependency(IThemeRegistryService);
   const localeService = useDependency(LocaleService);
-  const configManagerService = useDependency(IConfigManagerService);
-  const currentTheme = useObservable<ITheme | null>(themeService.currentTheme$, null);
+
+  const mode = useObservable<ThemeMode>(themeModeService.mode$, themeModeService.mode);
+  const darkThemeName = useObservable<string>(themeModeService.darkThemeName$, themeModeService.darkThemeName);
+  const lightThemeName = useObservable<string>(themeModeService.lightThemeName$, themeModeService.lightThemeName);
 
   const darkThemes = useMemo(() => ALL_THEMES.filter((t) => t.type === 'dark'), []);
   const lightThemes = useMemo(() => ALL_THEMES.filter((t) => t.type === 'light'), []);
 
-  const handleThemeChange = useCallback(
-    (theme: ITheme) => {
-      themeService.setTheme(theme);
-      void configManagerService.setField(UI_PLUGIN_CONFIG_KEY, 'theme', theme.name).catch(() => { });
+  const darkTheme = useMemo<ITheme | null>(
+    () => (darkThemeName ? themeRegistry.resolveTheme(darkThemeName) : null),
+    [darkThemeName, themeRegistry]
+  );
+  const lightTheme = useMemo<ITheme | null>(
+    () => (lightThemeName ? themeRegistry.resolveTheme(lightThemeName) : null),
+    [lightThemeName, themeRegistry]
+  );
+
+  const handleModeChange = useCallback(
+    (next: string): void => {
+      if (next !== 'auto' && next !== 'dark' && next !== 'light') {
+        return;
+      }
+      void themeModeService.setMode(next).catch(() => { /* surfaced via notification */ });
     },
-    [themeService, configManagerService]
+    [themeModeService]
+  );
+
+  const handleDarkChange = useCallback(
+    (theme: ITheme): void => {
+      void themeModeService.setDarkTheme(theme.name).catch(() => { /* surfaced via notification */ });
+    },
+    [themeModeService]
+  );
+
+  const handleLightChange = useCallback(
+    (theme: ITheme): void => {
+      void themeModeService.setLightTheme(theme.name).catch(() => { /* surfaced via notification */ });
+    },
+    [themeModeService]
   );
 
   return (
     <div className="tm:flex tm:flex-col tm:gap-6">
+      {/* Mode selector */}
+      <Card>
+        <CardHeader>
+          <h3 className="tm:text-base tm:font-semibold tm:text-white">
+            {localeService.t('settings-ui.color-scheme.mode-title')}
+          </h3>
+          <CardDescription className="tm:mt-2 tm:text-xs/5">
+            {localeService.t('settings-ui.color-scheme.mode-description')}
+          </CardDescription>
+          <CardAction className="tm:self-center">
+            <ToggleGroup
+              type="single"
+              value={mode ?? 'auto'}
+              onValueChange={handleModeChange}
+              spacing={4}
+            >
+              <ToggleGroupItem value="auto" className={MODE_TOGGLE_ITEM_CLASS}>
+                <Monitor className="tm:size-4" />
+                {localeService.t('settings-ui.color-scheme.mode-auto')}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="light" className={MODE_TOGGLE_ITEM_CLASS}>
+                <Sun className="tm:size-4" />
+                {localeService.t('settings-ui.color-scheme.mode-light')}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="dark" className={MODE_TOGGLE_ITEM_CLASS}>
+                <Moon className="tm:size-4" />
+                {localeService.t('settings-ui.color-scheme.mode-dark')}
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </CardAction>
+        </CardHeader>
+      </Card>
+
       {/* Dark themes */}
       <Card className="tm:gap-0 tm:py-0">
         <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
@@ -58,8 +125,8 @@ export function ColorSchemeTab() {
         <CardContent className="tm:py-4">
           <ThemePicker
             themes={darkThemes}
-            currentTheme={currentTheme}
-            onThemeChange={handleThemeChange}
+            currentTheme={darkTheme}
+            onThemeChange={handleDarkChange}
           />
         </CardContent>
       </Card>
@@ -80,8 +147,8 @@ export function ColorSchemeTab() {
         <CardContent className="tm:py-4">
           <ThemePicker
             themes={lightThemes}
-            currentTheme={currentTheme}
-            onThemeChange={handleThemeChange}
+            currentTheme={lightTheme}
+            onThemeChange={handleLightChange}
           />
         </CardContent>
       </Card>
