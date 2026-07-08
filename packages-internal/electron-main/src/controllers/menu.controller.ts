@@ -18,6 +18,8 @@ import process from 'node:process';
 import { Disposable } from '@termlnk/core';
 import { app, Menu } from 'electron';
 
+const APPLICATION_NAME = 'Termlnk';
+
 export class MenuController extends Disposable {
   constructor(
   ) {
@@ -26,7 +28,7 @@ export class MenuController extends Disposable {
     this._init();
   }
 
-  private _init() {
+  private _init(): void {
     this._setupApplicationMenu();
   }
 
@@ -42,11 +44,13 @@ export class MenuController extends Disposable {
       return;
     }
 
+    app.setName(APPLICATION_NAME);
+
     const template: MenuItemConstructorOptions[] = [
       {
-        label: app.name,
+        label: APPLICATION_NAME,
         submenu: [
-          { role: 'about' },
+          { label: `About ${APPLICATION_NAME}`, role: 'about' },
           { type: 'separator' },
           { role: 'services' },
           { type: 'separator' },
@@ -54,7 +58,7 @@ export class MenuController extends Disposable {
           { role: 'hideOthers' },
           { role: 'unhide' },
           { type: 'separator' },
-          { role: 'quit' },
+          { label: `Quit ${APPLICATION_NAME}`, role: 'quit' },
         ],
       },
       {
