@@ -6,7 +6,7 @@ Termlnk
 </h1>
 
 為開發者打造的現代化、可擴展智慧終端。<br />
-**SSH &amp; SFTP &middot; AI Agent with MCP &middot; 71 款主題 &middot; 外掛生態 &middot; 跨平台。**
+**SSH &amp; SFTP &middot; 內建 AI &middot; 程式碼片段 &middot; 埠轉發 &middot; 多裝置同步 &middot; 71 款主題 &middot; 外掛擴充 &middot; 跨平台。**
 
 [English][readme-en-link] | [简体中文][readme-zh-cn-link] | **繁體中文** | [日本語][readme-ja-link] | [한국어][readme-ko-link]
 
@@ -44,18 +44,26 @@ Termlnk
 
 ## 🌈 亮點
 
-Termlnk 將快速的原生終端、功能完備的 SSH/SFTP 用戶端與內建 AI Agent 整合在單一應用中 —— 既可在桌面執行，也可自架後從任意瀏覽器存取。
+Termlnk 將一款快速的智慧終端、一個 SSH & SFTP 用戶端、一個可以執行命令的 AI 助手整合在同一個應用中。既可以直接在桌面使用，也可以自行部署後端，從瀏覽器打開。
 
-- 🖥 **終端與工作階段** — 同一工作區並存本地 PTY 與遠端 SSH，遞迴分割 / 放大佈局，完整 xterm.js 渲染（連字、全彩、Sixel、影像協定），緩衝區搜尋、超連結、IME 輸入、Shell 整合（OSC 633）與工作階段恢復。
-- 🔐 **SSH 與 SFTP** — 階層式主機樹，支援密碼 / 金鑰 / SSH Agent 驗證、`ProxyJump` 跳板鏈、SOCKS5 與 X11 轉發，外加雙面板 SFTP 瀏覽器（傳輸佇列、`trzsz` / `zmodem`、權限編輯）。
-- 🤖 **AI Agent** — 多輪對話 + MCP 工具伺服器，可在 OpenAI、Claude、Gemini、DeepSeek、Qwen 或任意 OpenAI 相容端點間切換，並提供需使用者確認的 `terminal_run` 工具與按工作階段啟用的 Skill。
-- 🧩 **外掛系統** — 類 VS Code 貢獻點（命令、選單、UI 部件、設定），外掛市集一鍵安裝，穩定的 TypeScript API，可將 React 元件注入任意 UI 位置。
-- 🎨 **主題與視窗** — 71 款內建 Base46 主題（56 深色、15 淺色）+ 即時預覽編輯器，可配置模糊、透明度、字型與快捷鍵。
-- 💻 **跨平台 + 離線優先** — 面向 macOS（Intel 與 Apple Silicon）、Windows、Linux 的原生應用，完全離線可用。
-- 🌐 **可自架的 Web 版** — 在任意瀏覽器中使用同一套終端、SSH、AI Agent 與 SFTP，一條命令完成 Docker 部署，內建 Caddy 自動 HTTPS。
-- 🏝 **靈動島（macOS）** — 適配瀏海屏的 AI Agent 會話浮動狀態提示，支援啟動、完成、待審批與錯誤音效。
+- 🖥 **所有終端集中在一個視窗** — 本地命令列與 SSH 工作階段可並排開啟，靈活分割，需要專注時可放大單一窗格；關閉軟體後再次開啟，會自動恢復到上次的工作狀態。
+- 🔐 **主機、金鑰、檔案統一管理** — 以資料夾結構管理主機，支援密碼、金鑰、SSH Agent 登入，也支援跳板機；雙面板 SFTP 瀏覽器支援拖曳上傳下載；所有 SSH 金鑰與主機指紋都集中在金鑰管理頁面，便於查找與維護。
+- 🔀 **埠轉發** — 支援將本機服務開放到遠端、將遠端服務映射回本機，也可以把 SSH 連線當作 SOCKS5 代理使用。所有設定都在介面中完成，一鍵啟停。
+- ✂️ **程式碼片段（Snippets）** — 將常用命令儲存並分組管理，在任意工作階段中一鍵執行；綁定到指定主機後，可在連線成功時自動執行。
+- 🤖 **AI Agent** — 支援 OpenAI、Claude、Gemini、DeepSeek、Qwen 及任意 OpenAI 相容模型，可自由切換。AI 可在您授權後協助執行終端命令，並在長對話中保持脈絡連貫。
+- ☁️ **多裝置同步，端對端加密** — 主機、金鑰、程式碼片段、埠轉發規則可在多台裝置間自動同步；資料在本機加密後才上傳，主密碼可隨時修改，修改後原有資料仍能正常讀取。
+- 🔄 **自動更新** — 在設定中一鍵檢查、下載並安裝新版本，涵蓋 macOS、Windows、Linux。
+- 🧩 **外掛市集** — 一鍵安裝擴充，可為軟體新增命令、選單、側邊欄或設定項；亦可透過穩定的 TypeScript API 開發自訂外掛。
+- 🎨 **71 款主題，亦可自訂** — 內建 71 款主題，並提供支援即時預覽的主題編輯器；「Auto / Light / Dark」模式可跟隨系統自動切換明暗主題；模糊、透明度、字型、快捷鍵均可自訂。
+- 💻 **跨平台 + 離線優先** — 面向 macOS（Intel 與 Apple Silicon）、Windows、Linux 提供原生安裝包，完全離線即可使用。
+- 🌐 **也可在瀏覽器中使用** — 透過一條 Docker 命令即可將同一款應用部署到您自己的伺服器，內建自動 HTTPS，之後從瀏覽器開啟即可，使用體驗與桌面版一致。
+- 🏝 **macOS 靈動島** — 在配備瀏海屏的 Mac 上，頂部會顯示 AI 助手的即時狀態，並附帶啟動、完成、等待確認、錯誤等音效提示。
 
 ## 🚀 快速開始
+
+### 下載安裝
+
+macOS、Windows、Linux（x64 與 arm64）的預編譯安裝包已在 [GitHub Releases][releases-link] 發佈。安裝後可在設定中一鍵自動升級。
 
 ### 從原始碼建置
 
@@ -72,12 +80,10 @@ pnpm dev
 
 ```bash
 cd apps/desktop
-pnpm make:mac      # macOS .dmg / .zip
-pnpm make:win      # Windows .exe / .msi
-pnpm make:linux    # Linux .AppImage / .deb / .rpm
+pnpm make:mac      # macOS .dmg / .zip（x64 & arm64）
+pnpm make:win      # Windows .exe / .msi（x64 & arm64）
+pnpm make:linux    # Linux .AppImage / .deb / .rpm（x64 & arm64）
 ```
-
-> **說明：** 預編譯二進位檔尚未發佈。建置產物可用後會出現在 [GitHub Releases][releases-link] 頁面。
 
 ## 💻 平台與安裝說明
 
@@ -109,9 +115,9 @@ xattr -cr /Applications/Termlnk.app
 
 ## 🌐 Web 版自架部署
 
-除桌面應用外，Termlnk 還提供 **termlnk-web** —— 一個可自架的伺服器孿生版本，執行與桌面端完全相同的 DI 容器、業務外掛與 vault，只是把 Electron IPC 換成了 HTTP + WebSocket。你可以在任意現代瀏覽器中存取自己的終端、主機、AI Agent、SFTP 與 skill。
+**termlnk-web** 是同一款應用的自架版本，可在瀏覽器中使用。終端、主機、AI 助手、SFTP 的使用方式與桌面版完全一致，區別只是透過網址存取，而不是啟動桌面用戶端。
 
-> ⚠ **termlnk-web 只能部署在你信任的機器上。** 它持有 vault master key，與桌面端主行程擁有相同的執行權限（直連 SSH/SFTP、跑 AI 推理、讀取本機檔案系統），**不是** zero-knowledge 公共後端。
+> ⚠ **termlnk-web 只能部署在您信任的機器上。** 它保管著您的主密碼，可連線至您的伺服器、呼叫 AI、讀取本機檔案，與桌面版擁有相同權限。請勿在沒有保護的情況下將其暴露到公網。
 
 預建置多架構映像（amd64 / arm64）已發佈到 GHCR，無需 clone 整個 monorepo。
 
@@ -202,6 +208,7 @@ Termlnk 開箱支援 5 種語言：
 
 - [GitHub Discussions][github-community-link] — 提問、交流想法。
 - [GitHub Issues][github-issues-link] — 回報 bug、提出功能需求。
+- [CHANGELOG][changelog-link] — 完整發佈歷史。
 
 ## 🙏 致謝
 
@@ -236,4 +243,5 @@ Copyright © 2026-present Termlnk。
 [releases-link]: https://github.com/termlnk/termlnk/releases
 [github-issues-link]: https://github.com/termlnk/termlnk/issues
 [github-community-link]: https://github.com/termlnk/termlnk/discussions
+[changelog-link]: ./CHANGELOG.md
 [trademark-link]: ../TRADEMARK.md

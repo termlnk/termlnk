@@ -6,7 +6,7 @@ Termlnk
 </h1>
 
 開発者のためのモダンで拡張可能なスマートターミナル。<br />
-**SSH &amp; SFTP &middot; AI Agent with MCP &middot; 71 テーマ &middot; プラグインエコシステム &middot; クロスプラットフォーム。**
+**SSH &amp; SFTP &middot; 内蔵 AI &middot; スニペット &middot; ポート転送 &middot; デバイス間同期 &middot; 71 テーマ &middot; 拡張機能 &middot; クロスプラットフォーム。**
 
 [English][readme-en-link] | [简体中文][readme-zh-cn-link] | [繁體中文][readme-zh-tw-link] | **日本語** | [한국어][readme-ko-link]
 
@@ -44,18 +44,26 @@ Termlnk
 
 ## 🌈 ハイライト
 
-Termlnk は、高速なネイティブターミナル、フル機能の SSH/SFTP クライアント、内蔵 AI Agent を 1 つのアプリに統合しています —— デスクトップでも、セルフホストしてブラウザからでも利用できます。
+Termlnk は、高速なスマートターミナル、SSH & SFTP クライアント、そしてコマンドを実行できる AI アシスタントを 1 つのアプリに統合しています。デスクトップにインストールしてそのまま使うことも、自分でバックエンドをホストしてブラウザから開くこともできます。
 
-- 🖥 **ターミナルとセッション** — 同一ワークスペースにローカル PTY とリモート SSH を併存。再帰的な分割 / 拡大レイアウト、フル xterm.js レンダリング（リガチャ、トゥルーカラー、Sixel、画像プロトコル）、バッファ検索、ハイパーリンク、IME 入力、Shell 統合（OSC 633）、セッション復元。
-- 🔐 **SSH と SFTP** — 階層化ホストツリーとパスワード / 鍵 / SSH Agent 認証、`ProxyJump` チェーン、SOCKS5 と X11 転送、さらに転送キュー・`trzsz` / `zmodem`・パーミッション編集を備えたデュアルペイン SFTP ブラウザ。
-- 🤖 **AI Agent** — MCP ツールサーバーを使ったマルチターン対話。OpenAI / Claude / Gemini / DeepSeek / Qwen または OpenAI 互換エンドポイントを切り替え可能。ユーザー承認制の `terminal_run` ツールとセッション単位の Skill も。
-- 🧩 **プラグインシステム** — VS Code 風コントリビューションポイント（コマンド、メニュー、UI パーツ、設定）、ワンクリックのマーケットプレイス、安定した TypeScript API、任意の UI 位置に React コンポーネントを注入。
-- 🎨 **テーマとウィンドウ** — 71 種類の Base46 テーマ内蔵（ダーク 56、ライト 15）+ ライブプレビューエディタ、ブラー・不透明度・フォント・キーバインドを設定可能。
-- 💻 **クロスプラットフォーム + オフラインファースト** — macOS（Intel および Apple Silicon）、Windows、Linux 向けのネイティブアプリで、完全オフラインで動作。
-- 🌐 **セルフホスト可能な Web 版** — 同じターミナル / SSH / AI Agent / SFTP をブラウザから。Docker のワンコマンド配置と Caddy 自動 HTTPS を内蔵。
-- 🏝 **Dynamic Island（macOS）** — ノッチに対応した AI Agent セッション用の浮動ステータスオーバーレイ。開始・完了・承認・エラーのサウンドに対応。
+- 🖥 **すべてのターミナルを 1 つのウィンドウに集約** — ローカルシェルと SSH セッションを並べて開き、柔軟に分割、集中したいときは 1 つのペインを拡大。アプリを再起動しても、直前のワークスペースが自動的に復元されます。
+- 🔐 **サーバー、鍵、ファイルを一元管理** — サーバーはフォルダ構造で整理でき、パスワード / 鍵 / SSH Agent でのログイン、および踏み台経由の接続に対応。デュアルペイン SFTP でリモートファイルをドラッグで転送できます。すべての SSH 鍵と接続履歴のあるホスト情報はキーチェーンページに集約されます。
+- 🔀 **ポート転送** — ローカルサービスをリモートに公開する、リモートサービスをローカルに戻す、SSH 接続を SOCKS5 プロキシとして使う —— これらをすべて UI 上で設定し、ワンクリックで開始・停止できます。
+- ✂️ **スニペット（Snippets）** — よく使うコマンドを保存してグループ管理。任意のセッションからワンクリックで実行できます。サーバーに紐付けると、接続成功時に自動実行することも可能です。
+- 🤖 **AI Agent** — OpenAI / Claude / Gemini / DeepSeek / Qwen、および OpenAI 互換モデルを自由に切り替え可能。ユーザーの承認を得たうえでターミナルコマンドを実行し、長時間の会話でも文脈を維持します。
+- ☁️ **デバイス間同期、エンドツーエンド暗号化** — サーバー、鍵、スニペット、ポート転送ルールを複数デバイス間で自動同期。データは端末で暗号化してから送信され、マスターパスワードはいつでも変更でき、変更後も既存データは問題なく読み取れます。
+- 🔄 **アプリ内自動更新** — 新バージョンは設定画面からワンクリックで確認・ダウンロード・インストール。macOS・Windows・Linux に対応。
+- 🧩 **拡張機能マーケット** — 拡張機能をワンクリックで追加し、コマンド・メニュー・サイドパネル・設定項目を拡充できます。開発者は安定した TypeScript API でカスタム拡張を作成できます。
+- 🎨 **71 種のテーマ、カスタマイズも可能** — 71 種類のプリセットに加え、ライブプレビュー付きのテーマエディタを搭載。「Auto / Light / Dark」モードでシステムに合わせて明暗を自動切り替え。ブラー、透明度、フォント、キーバインドもすべてカスタマイズできます。
+- 💻 **クロスプラットフォーム + オフラインファースト** — macOS（Intel と Apple Silicon）・Windows・Linux にネイティブインストーラーを提供。ネット接続がなくても使えます。
+- 🌐 **ブラウザからも利用可能** — 同じアプリを Docker 1 コマンドで自分のサーバーにデプロイでき、自動 HTTPS も内蔵。以降はブラウザから開くだけで、デスクトップ版と同じ体験が得られます。
+- 🏝 **macOS Dynamic Island** — ノッチ搭載の Mac では、上部のピル領域に AI アシスタントのリアルタイム状態が表示されます。開始・完了・承認待ち・エラーのサウンド通知にも対応。
 
 ## 🚀 クイックスタート
+
+### ダウンロード
+
+macOS、Windows、Linux（x64 と arm64）のビルド済みインストーラーは [GitHub Releases][releases-link] で公開されています。インストール後は設定画面からワンクリックで自動更新できます。
 
 ### ソースからビルド
 
@@ -72,12 +80,10 @@ pnpm dev
 
 ```bash
 cd apps/desktop
-pnpm make:mac      # macOS .dmg / .zip
-pnpm make:win      # Windows .exe / .msi
-pnpm make:linux    # Linux .AppImage / .deb / .rpm
+pnpm make:mac      # macOS .dmg / .zip（x64 & arm64）
+pnpm make:win      # Windows .exe / .msi（x64 & arm64）
+pnpm make:linux    # Linux .AppImage / .deb / .rpm（x64 & arm64）
 ```
-
-> **注：** ビルド済みバイナリはまだ公開されていません。公開準備が整い次第 [GitHub Releases][releases-link] に掲載されます。
 
 ## 💻 プラットフォームとインストール上の注意
 
@@ -109,9 +115,9 @@ xattr -cr /Applications/Termlnk.app
 
 ## 🌐 Web 版セルフホスティング
 
-デスクトップアプリに加え、Termlnk は **termlnk-web** —— セルフホスト可能なサーバー版を提供します。デスクトップと完全に同じ DI コンテナ・業務プラグイン・vault を実行し、Electron IPC を HTTP + WebSocket に置き換えただけです。あらゆるモダンブラウザから、ターミナル・ホスト・AI Agent・SFTP・スキルにアクセスできます。
+**termlnk-web** は同じアプリのセルフホスト版で、ブラウザから利用できます。ターミナル・サーバー・AI アシスタント・SFTP の使用感はデスクトップ版とまったく同じで、デスクトップクライアントを起動する代わりに URL を開くという違いだけです。
 
-> ⚠ **termlnk-web は信頼できるマシンでのみ実行してください。** vault のマスターキーを保持し、デスクトップのメインプロセスと同じ実行権限（SSH/SFTP への直接接続、AI 推論、ローカルファイルシステムへのアクセス）を持ちます。zero-knowledge な公開バックエンドでは **ありません**。
+> ⚠ **termlnk-web は信頼できるマシンでのみ運用してください。** マスターパスワードを保持し、あなたのサーバーへの接続、AI の呼び出し、ホストマシン上のファイル読み取りが可能で、デスクトップ版と同等の権限を持ちます。保護なしで公開インターネットに露出させないでください。
 
 ビルド済みのマルチアーキテクチャイメージ（amd64 / arm64）が GHCR で公開されており、monorepo 全体を clone する必要はありません。
 
@@ -202,6 +208,7 @@ Termlnk は標準で 5 言語をサポートします。
 
 - [GitHub Discussions][github-community-link] — 質問・アイデアの共有。
 - [GitHub Issues][github-issues-link] — バグ報告・機能要望。
+- [CHANGELOG][changelog-link] — 全リリース履歴。
 
 ## 🙏 謝辞
 
@@ -236,4 +243,5 @@ Copyright © 2026-present Termlnk.
 [releases-link]: https://github.com/termlnk/termlnk/releases
 [github-issues-link]: https://github.com/termlnk/termlnk/issues
 [github-community-link]: https://github.com/termlnk/termlnk/discussions
+[changelog-link]: ./CHANGELOG.md
 [trademark-link]: ../TRADEMARK.md

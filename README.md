@@ -6,7 +6,7 @@ Termlnk
 </h1>
 
 A modern, extensible smart terminal for developers.<br />
-**SSH &amp; SFTP &middot; AI Agent with MCP &middot; 71 themes &middot; Plugin ecosystem &middot; Cross-platform.**
+**SSH &amp; SFTP &middot; Built-in AI &middot; Snippets &middot; Port forwarding &middot; Cross-device sync &middot; 71 themes &middot; Extensions &middot; Cross-platform.**
 
 **English** | [简体中文][readme-zh-cn-link] | [繁體中文][readme-zh-tw-link] | [日本語][readme-ja-link] | [한국어][readme-ko-link]
 
@@ -44,18 +44,26 @@ A modern, extensible smart terminal for developers.<br />
 
 ## 🌈 Highlights
 
-Termlnk packs a fast native terminal, a complete SSH/SFTP client, and a built-in AI agent into a single app — on your desktop, or self-hosted in any browser.
+Termlnk combines a fast smart terminal, an SSH &amp; SFTP client, and a built-in AI assistant that can execute commands for you — all in one app. Use it on your desktop, or self-host it and open it in any browser.
 
-- 🖥 **Terminal &amp; sessions** — local PTY and remote SSH in one workspace, with recursive split / magnify layouts, full xterm.js rendering (ligatures, true color, Sixel, image protocols), buffer search, hyperlinks, IME input, shell integration (OSC 633), and session restore.
-- 🔐 **SSH &amp; SFTP** — a hierarchical host tree with password / key / agent auth, `ProxyJump` chains, SOCKS5 and X11 forwarding, plus a dual-pane SFTP browser with transfer queue, `trzsz` / `zmodem`, and a permission editor.
-- 🤖 **AI agent** — multi-turn chat with MCP tool servers, swappable across OpenAI, Claude, Gemini, DeepSeek, Qwen or any OpenAI-compatible endpoint, plus an approval-gated `terminal_run` tool and per-session skills.
-- 🧩 **Extensions** — VS Code-style contribution points (commands, menus, UI parts, settings) with a one-click marketplace, a stable TypeScript API, and React components injectable into any UI slot.
-- 🎨 **Theming &amp; window** — 71 built-in Base46 themes (56 dark, 15 light) with a live editor, plus configurable blur, opacity, fonts, and keybindings.
-- 💻 **Cross-platform &amp; offline-first** — a native app for macOS (Intel &amp; Apple Silicon), Windows and Linux that runs fully offline.
-- 🌐 **Self-hostable web edition** — the same terminals, SSH, AI agent and SFTP from any browser, via a one-command Docker deploy with built-in Caddy auto-HTTPS.
-- 🏝 **Dynamic Island (macOS)** — a notch-aware status overlay for AI agent sessions, with sounds for start, completion, approvals and errors.
+- 🖥 **All your terminals in one window** — open local shells and SSH sessions side by side, split panes flexibly, magnify a single pane when you need focus, and let Termlnk restore your workspace after a restart.
+- 🔐 **Servers, keys and files in one place** — organize servers in a folder tree, log in with a password, key or ssh-agent (jump hosts included), and browse or transfer remote files with a dual-pane SFTP browser. All SSH keys and known hosts are centralized in the keychain page.
+- 🔀 **Port forwarding** — expose a local service to a remote server, map a remote service back to your machine, or use any SSH connection as a SOCKS5 proxy. All configured in the UI and toggled with one click.
+- ✂️ **Snippets** — save commands you use often, organize them into groups, and run them in any session with a single click. Attach a snippet to a server and it runs the moment you connect.
+- 🤖 **AI Agent** — chat with OpenAI, Claude, Gemini, DeepSeek, Qwen or any OpenAI-compatible model, and switch freely between them. With your approval, it can run terminal commands on your behalf and stays coherent during long conversations.
+- ☁️ **Cross-device sync, end-to-end encrypted** — servers, keys, snippets and port-forwarding rules sync automatically across your devices. Data is encrypted on your device before it leaves, and your master password can be changed at any time without losing existing data.
+- 🔄 **In-app auto-updates** — check, download and install new releases in one click from Settings, on macOS, Windows and Linux.
+- 🧩 **Extension marketplace** — install extensions in one click to add commands, menus, side panels or settings. Developers can build custom extensions with a stable TypeScript API.
+- 🎨 **71 themes, or bring your own** — pick from 71 built-in themes with a live-preview editor, or set separate light and dark themes and let Termlnk follow the system automatically. Blur, transparency, fonts and keyboard shortcuts are all customizable.
+- 💻 **Cross-platform &amp; offline-first** — proper installers for macOS (Intel &amp; Apple Silicon), Windows and Linux. No internet connection required.
+- 🌐 **Also runs in a browser** — deploy the same app to your own server with one Docker command, HTTPS included, then use it from any modern browser with the same experience as the desktop.
+- 🏝 **Dynamic Island on macOS** — on notch-equipped Macs, the top pill area shows live AI status, complete with sounds for start, completion, approval needed and errors.
 
 ## 🚀 Quick Start
+
+### Download
+
+Prebuilt installers for macOS, Windows and Linux (x64 &amp; arm64) are published on the [GitHub Releases][releases-link] page. The desktop app self-updates from Settings once installed.
 
 ### Build from source
 
@@ -72,12 +80,10 @@ pnpm dev
 
 ```bash
 cd apps/desktop
-pnpm make:mac      # macOS .dmg / .zip
-pnpm make:win      # Windows .exe / .msi
-pnpm make:linux    # Linux .AppImage / .deb / .rpm
+pnpm make:mac      # macOS .dmg / .zip (x64 & arm64)
+pnpm make:win      # Windows .exe / .msi (x64 & arm64)
+pnpm make:linux    # Linux .AppImage / .deb / .rpm (x64 & arm64)
 ```
-
-> **Note:** prebuilt binaries are not published yet. Releases will appear on the [GitHub Releases][releases-link] page once they are available.
 
 ## 💻 Platform &amp; Installation Notes
 
@@ -109,9 +115,9 @@ xattr -cr /Applications/Termlnk.app
 
 ## 🌐 Web Edition (Self-Hosting)
 
-Beyond the desktop app, Termlnk ships **termlnk-web** — a self-hosted server twin that runs the exact same DI container, business plugins, and vault, with Electron IPC swapped for HTTP + WebSocket. Reach your terminals, hosts, AI agent, SFTP, and skills from any modern browser.
+**termlnk-web** is a self-hosted version of the same app that runs in the browser. Your terminals, servers, AI assistant and SFTP work exactly as they do on the desktop — the only difference is that you open a URL instead of launching a desktop client.
 
-> ⚠ **Run termlnk-web only on a machine you trust.** It holds the vault master key and has the same execution power as the desktop's main process (direct SSH/SFTP, AI inference, local filesystem access). It is *not* a zero-knowledge public backend.
+> ⚠ **Only run termlnk-web on a machine you trust.** It holds your master password and can connect to your servers, invoke AI, and read files on the host machine — it has the same privileges as the desktop app. Do not expose it to the public internet without protection.
 
 Prebuilt multi-arch images (amd64 / arm64) are published to GHCR — no need to clone the monorepo.
 
@@ -202,6 +208,7 @@ Contributions are welcome. Before submitting a pull request, please:
 
 - [GitHub Discussions][github-community-link] — ask questions, share ideas.
 - [GitHub Issues][github-issues-link] — report bugs and request features.
+- [CHANGELOG][changelog-link] — full release history.
 
 ## 🙏 Acknowledgements
 
@@ -236,4 +243,5 @@ The "Termlnk" name, logo and other Termlnk marks are trademarks of the Termlnk p
 [releases-link]: https://github.com/termlnk/termlnk/releases
 [github-issues-link]: https://github.com/termlnk/termlnk/issues
 [github-community-link]: https://github.com/termlnk/termlnk/discussions
+[changelog-link]: ./docs/CHANGELOG.md
 [trademark-link]: ./TRADEMARK.md
