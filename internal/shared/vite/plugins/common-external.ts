@@ -58,7 +58,7 @@ export default {
   electron: {
     global: 'electron',
     name: 'electron',
-    version: '41.9.0',
+    version: '42.6.1',
   },
 
   // Node.js native / server-side packages (not bundleable by Rollup)
@@ -97,7 +97,7 @@ export default {
   'lucide-react': {
     global: 'lucide-react',
     name: 'lucide-react',
-    version: '^1.21.0',
+    version: '^1.23.0',
   },
   dayjs: {
     global: 'dayjs',
@@ -112,6 +112,6 @@ export default {
   'react-resizable-panels': {
     global: 'react-resizable-panels',
     name: 'react-resizable-panels',
-    version: '^4.11.2',
+    version: '^4.12.1',
   },
 };

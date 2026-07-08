@@ -33,7 +33,7 @@
     "@termlnk/react-native-russh": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "expo-secure-store": "^56.0.4",
-    "lucide-react-native": "^1.17.0"
+    "lucide-react-native": "^1.23.0"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",

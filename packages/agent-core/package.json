@@ -58,8 +58,8 @@
     "socks": "^2.8.9"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "^0.80.2",
-    "@earendil-works/pi-ai": "^0.80.2",
+    "@earendil-works/pi-agent-core": "^0.80.3",
+    "@earendil-works/pi-ai": "^0.80.3",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sinclair/typebox": "^0.34.49",
     "@termlnk/agent": "workspace:*",
@@ -69,7 +69,7 @@
     "@termlnk/rpc": "workspace:*",
     "partial-json": "^0.1.7",
     "socks": "^2.8.9",
-    "undici": "^8.5.0",
+    "undici": "^8.7.0",
     "zod": "^4.4.3"
   },
   "optionalDependencies": {
@@ -80,7 +80,7 @@
     "@termlnk/terminal": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.1.0",
-    "vitest": "^4.1.9"
+    "vite": "^8.1.3",
+    "vitest": "^4.1.10"
   }
 }

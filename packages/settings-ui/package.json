@@ -64,7 +64,7 @@
     "@termlnk/themes": "workspace:*",
     "@termlnk/themes-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "lucide-react": "^1.21.0",
+    "lucide-react": "^1.23.0",
     "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
     "rxjs": ">=7.0.0"
   },
@@ -77,15 +77,15 @@
     "@termlnk/themes": "workspace:*",
     "@termlnk/themes-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "lucide-react": "^1.21.0"
+    "lucide-react": "^1.23.0"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
-    "tailwindcss": "^4.3.1",
+    "tailwindcss": "^4.3.2",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^6.0.3",
-    "vite": "^8.1.0",
-    "vitest": "^4.1.9"
+    "vite": "^8.1.3",
+    "vitest": "^4.1.10"
   }
 }
