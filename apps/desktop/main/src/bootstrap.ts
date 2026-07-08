@@ -24,7 +24,7 @@ import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
 import { AuthPlugin, IDeviceNameProvider, IIdleProbe } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, ILogService, IUpdaterService, LocaleType, LogLevel } from '@termlnk/core';
-import { DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
+import { ConfigRepository, DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
 import { ElectronPlugin } from '@termlnk/electron';
 import { ElectronIdleProbe, ElectronMainPlugin, FileDialogService, MockUpdaterService, SafeStorageCipher } from '@termlnk/electron-main';
 import { IExtensionStateService, IExtensionStorageService } from '@termlnk/extension';
@@ -38,7 +38,7 @@ import { SharedTerminalCorePlugin } from '@termlnk/shared-terminal-core';
 import { SyncPlugin } from '@termlnk/sync';
 import { SyncCorePlugin } from '@termlnk/sync-core';
 import { termlnkDark } from '@termlnk/themes';
-import { app, protocol } from 'electron';
+import { app, ipcMain, protocol } from 'electron';
 import { dirname, join, relative } from 'pathe';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
 import { OsHostnameDeviceNameProvider } from './platform/os-hostname-device-name-provider.service';
@@ -90,6 +90,29 @@ fixProcessPath();
 if (!app.requestSingleInstanceLock()) {
   app.exit(0);
 }
+
+// Boot UI config channel: renderer awaits this via `window.__TERMLNK_BOOT__.getUIConfig()`
+// during Core creation so the initial theme reflects the persisted preference and
+// avoids a mid-boot flash (default -> user pref). The handler is registered once at
+// module top level (before app.whenReady) so the IPC channel exists before any window
+// loads; it resolves only after DatabasePlugin + core.start() bind ConfigRepository.
+const BOOT_UI_CONFIG_CHANNEL = 'termlnk:boot-ui-config';
+let bootConfigResolve!: (repo: ConfigRepository) => void;
+let bootConfigReject!: (err: unknown) => void;
+const bootConfigReadyPromise = new Promise<ConfigRepository>((resolve, reject) => {
+  bootConfigResolve = resolve;
+  bootConfigReject = reject;
+});
+
+ipcMain.handle(BOOT_UI_CONFIG_CHANNEL, async () => {
+  try {
+    const repo = await bootConfigReadyPromise;
+    return await repo.get('ui.config');
+  } catch (err) {
+    console.error('[boot-ui-config] failed:', err);
+    return null;
+  }
+});
 
 // Must be set before app.whenReady() per Chromium requirements.
 app.commandLine.appendSwitch('enable-gpu-rasterization');
@@ -363,6 +386,13 @@ app.whenReady().then(async () => {
   core.start();
 
   const injector = core.getInjector();
+  // Unblock the boot-ui-config IPC handler now that DatabasePlugin has bound
+  // ConfigRepository. Any renderer invoke that landed earlier will resolve.
+  try {
+    bootConfigResolve(injector.get(ConfigRepository));
+  } catch (err) {
+    bootConfigReject(err);
+  }
   const extensionStateService = injector.get(IExtensionStateService);
   await extensionStateService.load();
   const extensionStorageService = injector.get(IExtensionStorageService);

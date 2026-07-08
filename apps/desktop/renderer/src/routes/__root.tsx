@@ -14,24 +14,10 @@
  */
 
 import { createRootRoute, Outlet } from '@tanstack/react-router';
-import { useAtomValue } from 'jotai';
 import { useEffect } from 'react';
-import { themeAtom } from '../atom/theme';
 
 const RootLayout = () => {
-  const theme = useAtomValue(themeAtom);
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.classList.add(systemTheme);
-      return;
-    }
-    root.classList.add(theme);
-  }, [theme]);
-
-  // Prevent Electron from navigating when files are dragged onto the window
+  // Prevent Electron from navigating when files are dragged onto the window.
   useEffect(() => {
     const preventDefault = (e: Event) => {
       e.preventDefault();

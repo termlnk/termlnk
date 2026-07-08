@@ -14,26 +14,11 @@
  */
 
 import { createRootRoute, Outlet } from '@tanstack/react-router';
-import { useAtomValue } from 'jotai';
 import { useEffect } from 'react';
-import { themeAtom } from '../atom/theme';
 
 const RootLayout = () => {
-  const theme = useAtomValue(themeAtom);
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.classList.add(systemTheme);
-      return;
-    }
-    root.classList.add(theme);
-  }, [theme]);
-
   // Prevent the browser from navigating away when files are dragged onto the
-  // window — same affordance the desktop renderer uses, but here it guards
-  // against the default browser file-open behaviour rather than Electron.
+  // window — guards against the default browser file-open behaviour.
   useEffect(() => {
     const preventDefault = (e: Event) => {
       e.preventDefault();

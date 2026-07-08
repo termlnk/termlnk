@@ -407,13 +407,26 @@ interface IWorkbenchProps {
 function Workbench({ onLogout, demo }: IWorkbenchProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const coreRef = useRef<Core | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) {
       return;
     }
-    coreRef.current = createCore(containerRef.current);
+    let cancelled = false;
+
+    (async () => {
+      const core = await createCore(containerRef.current!);
+      if (cancelled) {
+        core.dispose();
+        return;
+      }
+      coreRef.current = core;
+      setReady(true);
+    })();
+
     return () => {
+      cancelled = true;
       if (coreRef.current) {
         coreRef.current.dispose();
         coreRef.current = null;
@@ -431,8 +444,15 @@ function Workbench({ onLogout, demo }: IWorkbenchProps) {
   }, [onLogout, demo]);
 
   // tm:size-full only sets width/height (no color vars), so it is safe even
-  // before ThemeService has injected the Base46 palette.
-  return <div ref={containerRef} className="tm:size-full" />;
+  // before ThemeService has injected the Base46 palette. Inline black
+  // background covers the async gap between mount and Core init.
+  return (
+    <div
+      ref={containerRef}
+      className="tm:size-full"
+      style={ready ? undefined : { backgroundColor: '#000' }}
+    />
+  );
 }
 
 interface IIconProps {

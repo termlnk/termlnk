@@ -36,8 +36,8 @@ import { SyncPlugin } from '@termlnk/sync';
 import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
 import { TerminalUIPlugin } from '@termlnk/terminal-ui';
-import { termlnkDark } from '@termlnk/themes';
-import { UIPlugin } from '@termlnk/ui';
+import { ALL_THEMES, termlnkDark, termlnkLight } from '@termlnk/themes';
+import { DEFAULT_DARK_THEME_NAME, DEFAULT_LIGHT_THEME_NAME, resolveEffectiveThemeName, UIPlugin } from '@termlnk/ui';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
 import '@termlnk/design/global.css';
 import '@fontsource/jetbrains-mono/400.css';
@@ -55,15 +55,74 @@ export interface ICreateTermlnkConfig extends ICoreConfig {
   terminalUIConfig?: ITerminalUIConfig;
 }
 
-export function createCore(ref: string | HTMLElement, options?: Partial<ICreateTermlnkConfig>) {
+interface IBootUIConfig {
+  readonly themeMode?: 'auto' | 'dark' | 'light';
+  readonly darkThemeName?: string;
+  readonly lightThemeName?: string;
+  readonly theme?: string;
+}
+
+declare global {
+  interface Window {
+    readonly __TERMLNK_BOOT__?: {
+      getUIConfig(): Promise<IBootUIConfig | null>;
+    };
+  }
+}
+
+/**
+ * Reads persisted UI config from the main process (via preload IPC) and picks
+ * the theme the user actually wants — before Core is constructed. This makes
+ * the first paint match the persisted preference and eliminates the historical
+ * "boot with termlnkDark, then flip after SettingsUIPlugin finishes async
+ * config load" flash on cold start.
+ *
+ * All branches must return a valid built-in ITheme; ThemeModeService will
+ * reconcile against config once it initializes and swap to an extension theme
+ * if the stored slot points there.
+ */
+async function seedInitialTheme() {
+  const bootConfig = await window.__TERMLNK_BOOT__?.getUIConfig?.().catch(() => null) ?? null;
+  const osScheme = readOSColorScheme();
+
+  const mode = bootConfig?.themeMode ?? inferModeFromLegacy(bootConfig?.theme) ?? 'auto';
+  const darkName = bootConfig?.darkThemeName ?? DEFAULT_DARK_THEME_NAME;
+  const lightName = bootConfig?.lightThemeName ?? DEFAULT_LIGHT_THEME_NAME;
+  const effectiveName = resolveEffectiveThemeName(mode, osScheme, darkName, lightName);
+
+  return findBuiltinTheme(effectiveName) ?? (osScheme === 'dark' ? termlnkDark : termlnkLight);
+}
+
+function readOSColorScheme(): 'dark' | 'light' {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return 'dark';
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function inferModeFromLegacy(legacyTheme: string | undefined): 'auto' | 'dark' | 'light' | null {
+  if (!legacyTheme) {
+    return null;
+  }
+  const theme = findBuiltinTheme(legacyTheme);
+  return theme ? theme.type : null;
+}
+
+function findBuiltinTheme(name: string) {
+  return ALL_THEMES.find((t) => t.name === name);
+}
+
+export async function createCore(ref: string | HTMLElement, options?: Partial<ICreateTermlnkConfig>): Promise<Core> {
   const {
     terminalUIConfig,
     ...restOptions
   } = options || {};
 
+  const initialTheme = await seedInitialTheme();
+
   const defaultOptions: Partial<ICoreConfig> = merge(
     {
-      theme: termlnkDark,
+      theme: initialTheme,
       logLevel: LogLevel.INFO,
       locale: LocaleType.EN_US,
       locales: { enUS, zhCN, jaJP, koKR, zhTW },

@@ -34,8 +34,8 @@ import { SyncPlugin } from '@termlnk/sync';
 import { SyncUIPlugin } from '@termlnk/sync-ui';
 import { TerminalPlugin } from '@termlnk/terminal';
 import { TerminalUIPlugin } from '@termlnk/terminal-ui';
-import { termlnkDark } from '@termlnk/themes';
-import { UIPlugin } from '@termlnk/ui';
+import { ALL_THEMES, termlnkDark, termlnkLight } from '@termlnk/themes';
+import { DEFAULT_DARK_THEME_NAME, DEFAULT_LIGHT_THEME_NAME, resolveEffectiveThemeName, UIPlugin } from '@termlnk/ui';
 import { WebRendererPlugin } from '@termlnk/web-renderer';
 import { enUS, jaJP, koKR, zhCN, zhTW } from './locales';
 import '@termlnk/design/global.css';
@@ -55,15 +55,79 @@ export interface ICreateTermlnkConfig extends ICoreConfig {
   terminalUIConfig?: ITerminalUIConfig;
 }
 
-export function createCore(ref: string | HTMLElement, options?: Partial<ICreateTermlnkConfig>) {
+interface IBootUIConfig {
+  readonly themeMode?: 'auto' | 'dark' | 'light';
+  readonly darkThemeName?: string;
+  readonly lightThemeName?: string;
+  readonly theme?: string;
+}
+
+/**
+ * Fetches persisted UI config from the web server's `/boot/ui-config` endpoint
+ * and picks the initial theme before Core is constructed. Mirrors the
+ * Electron preload IPC (`__TERMLNK_BOOT__.getUIConfig`) — same purpose, HTTP
+ * transport. Fails soft: if the fetch errors (e.g. server slow to boot), we
+ * fall back to matchMedia + built-in defaults so first paint is still correct
+ * for auto-mode users.
+ */
+async function seedInitialTheme() {
+  const bootConfig = await fetchBootConfig();
+  const osScheme = readOSColorScheme();
+
+  const mode = bootConfig?.themeMode ?? inferModeFromLegacy(bootConfig?.theme) ?? 'auto';
+  const darkName = bootConfig?.darkThemeName ?? DEFAULT_DARK_THEME_NAME;
+  const lightName = bootConfig?.lightThemeName ?? DEFAULT_LIGHT_THEME_NAME;
+  const effectiveName = resolveEffectiveThemeName(mode, osScheme, darkName, lightName);
+
+  return findBuiltinTheme(effectiveName) ?? (osScheme === 'dark' ? termlnkDark : termlnkLight);
+}
+
+async function fetchBootConfig(): Promise<IBootUIConfig | null> {
+  try {
+    const resp = await fetch('/boot/ui-config', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { accept: 'application/json' },
+    });
+    if (!resp.ok) {
+      return null;
+    }
+    return await resp.json() as IBootUIConfig | null;
+  } catch {
+    return null;
+  }
+}
+
+function readOSColorScheme(): 'dark' | 'light' {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return 'dark';
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function inferModeFromLegacy(legacyTheme: string | undefined): 'auto' | 'dark' | 'light' | null {
+  if (!legacyTheme) {
+    return null;
+  }
+  const theme = findBuiltinTheme(legacyTheme);
+  return theme ? theme.type : null;
+}
+
+function findBuiltinTheme(name: string) {
+  return ALL_THEMES.find((t) => t.name === name);
+}
+
+export async function createCore(ref: string | HTMLElement, options?: Partial<ICreateTermlnkConfig>): Promise<Core> {
   const {
     terminalUIConfig,
     ...restOptions
   } = options || {};
 
+  const initialTheme = await seedInitialTheme();
+
   const defaultOptions: Partial<ICoreConfig> = merge(
     {
-      theme: termlnkDark,
+      theme: initialTheme,
       logLevel: LogLevel.INFO,
       locale: LocaleType.EN_US,
       locales: { enUS, zhCN, jaJP, koKR, zhTW },

@@ -26,6 +26,7 @@
   "peerDependencies": {
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "rxjs": ">=7.0.0"
   },
@@ -33,6 +34,7 @@
     "@noble/hashes": "^2.2.0",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/database": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@trpc/server": "^11.17.0",
     "hash-wasm": "^4.12.0",

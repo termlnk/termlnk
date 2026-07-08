@@ -18,6 +18,7 @@ import type { IWebServerConfig } from './controllers/config.schema';
 import { DependentOn, IConfigService, Inject, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { RPCServerPlugin } from '@termlnk/rpc-server';
 import { AuthController } from './controllers/auth.controller';
+import { BootConfigController } from './controllers/boot-config.controller';
 import { defaultPluginConfig, WEB_SERVER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { IWebServerRouterProvider, WebServerController } from './controllers/web-server.controller';
 import { IMasterKeyHolderService, MasterKeyHolderService } from './services/master-key-holder.service';
@@ -71,6 +72,7 @@ export class WebServerPlugin extends Plugin {
       }],
       [WebServerController],
       [AuthController],
+      [BootConfigController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config?.override));
   }
@@ -79,6 +81,7 @@ export class WebServerPlugin extends Plugin {
     touchDependencies(this._injector, [
       [WebServerController],
       [AuthController],
+      [BootConfigController],
     ]);
 
     // Mount auth routes before starting the server so login/status are reachable
@@ -86,6 +89,10 @@ export class WebServerPlugin extends Plugin {
     // initialize() runs fire-and-forget — its result is published on state$.
     const authController = this._injector.get(AuthController);
     authController.mountAndInit();
+
+    // Mount /boot/ui-config so the SPA can seed the initial theme without a
+    // session (unauthenticated, UI-preference-only endpoint).
+    this._injector.get(BootConfigController).mount();
 
     // start() is async; Plugin.onReady does not await it — state$ surfaces the result.
     const controller = this._injector.get(WebServerController);
