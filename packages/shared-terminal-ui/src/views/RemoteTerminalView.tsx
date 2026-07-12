@@ -18,7 +18,7 @@ import type { ITerminalViewProps } from '@termlnk/terminal-ui';
 import { ILogService, Quantity } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
 import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-terminal';
-import { ITerminalInputService, ITerminalUIService, TerminalProgressOverlay, TerminalSearch, useGlobalTerminalAppearance, useTerminalSearch, useXterm, XTERM_PROGRESS_STATE } from '@termlnk/terminal-ui';
+import { ITerminalInputService, ITerminalUIService, TerminalProgressOverlay, TerminalSearch, useGlobalTerminalAppearance, useTerminalSearch, useXterm, useXtermGridProjection, XTERM_PROGRESS_STATE } from '@termlnk/terminal-ui';
 import { useCallback, useEffect, useRef } from 'react';
 import { EMPTY } from 'rxjs';
 import { DriverChangeOverlay } from './DriverChangeOverlay';
@@ -36,6 +36,11 @@ import { DriverChangeOverlay } from './DriverChangeOverlay';
  *
  * Driver/observer affordances (role badge, request/release keyboard,
  * connection state, last error) live in the tab's `RemoteTabAdornment`.
+ *
+ * Geometry: the owner PTY's cols/rows are authoritative and never change
+ * locally. When the local window differs from the owner's, the grid is
+ * PROJECTED into it via `useXtermGridProjection` — the font size scales so
+ * the full grid stays visible, centered with letterboxing.
  */
 export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element | null {
   const { sessionId, theme, allowTransparency } = props;
@@ -46,6 +51,7 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
   const globalAppearance = useGlobalTerminalAppearance();
   const activeSessionId = useObservable(terminalUIService.activeSessionId$, null);
   const terminalScopeRef = useRef<HTMLDivElement>(null);
+  const projectionContainerRef = useRef<HTMLDivElement>(null);
   const connectedRef = useRef(false);
 
   const stateObservable = remoteService?.status$(sessionId) ?? EMPTY;
@@ -100,6 +106,20 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
     terminalInputService,
   });
 
+  // The owner PTY fixes the grid; project it into the local window instead
+  // of resizing it — the font size scales so the full grid always fits, and
+  // the centered mount element letterboxes the leftover space. Must be
+  // called after useXterm so its appearance effect runs first and the
+  // projected font size wins over the user-configured one.
+  const { gridStyle, refit } = useXtermGridProjection({
+    enabled: globalAppearance.isReady,
+    xtermRef,
+    containerRef: projectionContainerRef,
+    fontFamily: globalAppearance.fontFamily,
+    fontSize: globalAppearance.fontSize,
+    letterSpacing: globalAppearance.letterSpacing,
+  });
+
   // Hydrate the buffer from the inbound snapshot and follow owner-side resize.
   useEffect(() => {
     if (!remoteService || !globalAppearance.isReady) {
@@ -116,6 +136,7 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
         } catch (err) {
           logService.warn('[RemoteTerminalView] xterm.resize failed:', err);
         }
+        refit();
         term.reset();
         if (event.serialized) {
           term.write(event.serialized);
@@ -128,10 +149,11 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
         } catch (err) {
           logService.warn('[RemoteTerminalView] xterm.resize failed:', err);
         }
+        refit();
       }
     });
     return () => sub.unsubscribe();
-  }, [remoteService, sessionId, xtermRef, globalAppearance.isReady, logService]);
+  }, [remoteService, sessionId, xtermRef, globalAppearance.isReady, logService, refit]);
 
   // Stream inbound PTY bytes into the terminal.
   useEffect(() => {
@@ -165,9 +187,19 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
   return (
     <div ref={terminalScopeRef} className={cn('tm:relative tm:size-full')}>
       <div
-        ref={terminalRef}
-        className={cn('tm-terminal-view tm:size-full tm:overflow-hidden tm:bg-black')}
-      />
+        ref={projectionContainerRef}
+        className={cn('tm:flex tm:size-full tm:items-center tm:justify-center tm:overflow-hidden tm:bg-black')}
+        style={theme?.background ? { backgroundColor: theme.background } : undefined}
+        onMouseDown={() => focus()}
+      >
+        <div
+          ref={terminalRef}
+          className={cn('tm-terminal-view tm:overflow-hidden', {
+            'tm:size-full': !gridStyle,
+          })}
+          style={gridStyle}
+        />
+      </div>
       <TerminalSearch
         isOpen={isSearchOpen}
         isActive={isSessionActive}

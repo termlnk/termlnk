@@ -38,6 +38,8 @@ export type { AddSessionParams, ITerminalSession, TerminalSessionStatus } from '
 export { ITerminalViewRegistry, TerminalViewRegistry } from './services/terminal/terminal-view-registry.service';
 export type { ITabAdornmentProps, ITerminalViewProps } from './services/terminal/terminal-view-registry.service';
 export { IWorkspaceService, WorkspaceService } from './services/workspace/workspace.service';
+export { estimateProjectedFontSize } from './utils/grid-projection';
+export type { IProjectedFontSizeInput } from './utils/grid-projection';
 export { detectShellType, escapePathForShell, escapePathsForShell } from './utils/shell-path-escape';
 export type { ShellType } from './utils/shell-path-escape';
 export { useGlobalTerminalAppearance, useXterm, XTERM_PROGRESS_STATE } from './views/hooks';
@@ -56,5 +58,7 @@ export { useTerminalDrop } from './views/terminal/use-terminal-drop';
 export type { IUseTerminalDropOptions, IUseTerminalDropResult } from './views/terminal/use-terminal-drop';
 export { useTerminalSearch } from './views/terminal/use-terminal-search';
 export type { IUseTerminalSearchOptions, IUseTerminalSearchResult } from './views/terminal/use-terminal-search';
+export { useXtermGridProjection } from './views/use-grid-projection';
+export type { IUseXtermGridProjectionOptions, IUseXtermGridProjectionResult } from './views/use-grid-projection';
 export { useShellIntegration } from './views/use-shell-integration';
 export type { IUseShellIntegrationOptions } from './views/use-shell-integration';

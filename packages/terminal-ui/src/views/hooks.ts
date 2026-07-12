@@ -474,7 +474,7 @@ function createLegacyTerminalInputBinding(
 // Invalidate xterm's cached font metrics by toggling fontSize.
 // CharSizeService only re-measures on fontFamily/fontSize option changes,
 // not on web font load — without this, fit() reads stale cell dimensions.
-function invalidateXtermFontMetrics(term: Terminal): void {
+export function invalidateXtermFontMetrics(term: Terminal): void {
   const size = term.options.fontSize;
   if (typeof size === 'number') {
     term.options.fontSize = size + 1;
