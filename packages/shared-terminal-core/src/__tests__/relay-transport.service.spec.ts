@@ -191,7 +191,10 @@ describe('RelayTransportService', () => {
     sockets[0]!.emit('open', {});
     await connectPromise;
 
-    await expect(service.rekey(new Uint8Array(32).fill(5))).rejects.toThrow(/daemon mode/);
+    // rekey is deliberately mode-agnostic: client transports feed the
+    // re-wrapped session key back through it (see rekey() JSDoc), so only
+    // revokeConnection is daemon-gated.
+    await expect(service.rekey(new Uint8Array(32).fill(5))).resolves.toBeUndefined();
     await expect(service.revokeConnection('c1')).rejects.toThrow(/daemon mode/);
   });
 
@@ -207,5 +210,60 @@ describe('RelayTransportService', () => {
     // silently resolving and leaving the caller to think the join succeeded.
     sockets[0]!.emit('close', {});
     await expect(connectPromise).rejects.toThrow(/closed before open/);
+  });
+
+  it('connects with only the relay-claim subprotocol for anonymous joiners', async () => {
+    // Anonymous joiners have no JWT — the relay routes them into the owner's
+    // bucket off the one-shot RelayToken alone, so accountToken must be absent.
+    const connectPromise = service.connect({
+      relayBaseUrl: 'wss://relay.example.test/v1',
+      sessionId: 'session-1',
+      mode: 'client',
+      relayClaimToken: 'claim-token-1',
+    }, { bytes: new Uint8Array(32).fill(8) });
+    sockets[0]!.emit('open', {});
+    await connectPromise;
+
+    expect(sockets[0]!.protocols).toEqual(['RelayToken.claim-token-1']);
+  });
+
+  it('connects with both subprotocols, bearer before relay-claim token', async () => {
+    // Cross-account joiner attaching with both a JWT and a relay-claim token —
+    // order matters for the server-side parser, which reads Bearer first.
+    const connectPromise = service.connect({
+      relayBaseUrl: 'wss://relay.example.test/v1',
+      sessionId: 'session-1',
+      mode: 'client',
+      accountToken: 'account-token-a',
+      relayClaimToken: 'claim-token-b',
+    }, { bytes: new Uint8Array(32).fill(9) });
+    sockets[0]!.emit('open', {});
+    await connectPromise;
+
+    expect(sockets[0]!.protocols).toEqual(['Bearer.account-token-a', 'RelayToken.claim-token-b']);
+  });
+
+  it('rejects connect synchronously when neither accountToken nor relayClaimToken is provided', async () => {
+    await expect(service.connect({
+      relayBaseUrl: 'wss://relay.example.test/v1',
+      sessionId: 'session-1',
+      mode: 'client',
+    }, { bytes: new Uint8Array(32).fill(10) })).rejects.toThrow(/accountToken or relayClaimToken/);
+    // No socket should have been opened — the guard fires before _openSocket.
+    expect(sockets).toHaveLength(0);
+  });
+
+  it('rejects daemon-mode connect with only a relayClaimToken (no accountToken)', async () => {
+    // A relay-claim token identifies an anonymous joiner, not the owner's
+    // account bucket — daemon sockets must present a Bearer JWT regardless
+    // of what other credential is attached.
+    await expect(service.connect({
+      relayBaseUrl: 'wss://relay.example.test/v1',
+      sessionId: 'session-1',
+      mode: 'daemon',
+      relayClaimToken: 'claim-token-1',
+    }, { bytes: new Uint8Array(32).fill(11) })).rejects.toThrow(/daemon mode requires accountToken/);
+    // No socket should have been opened — the guard fires before _openSocket.
+    expect(sockets).toHaveLength(0);
   });
 });

@@ -35,6 +35,7 @@ const locale: typeof enUS = {
       unparsable: '無法解析此邀請連結。請發起方重新發送。',
       'join-failed': '加入會話失敗：',
       'error-invite-not-active': '這個邀請連結已經被使用或已失效。請讓主機重新發送新的邀請連結。',
+      'error-anonymous-join-unavailable': '無法以訪客身份加入：伺服器暫不支援匿名加入。請登入後重試，或聯絡分享者。',
     },
     remote: {
       'tab-name': '共享會話',

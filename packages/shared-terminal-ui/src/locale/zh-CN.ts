@@ -35,6 +35,7 @@ const locale: typeof enUS = {
       unparsable: '无法解析此邀请链接。请发起方重新发送。',
       'join-failed': '加入会话失败：',
       'error-invite-not-active': '这个邀请链接已经被使用或已失效。请让主机重新发送新的邀请链接。',
+      'error-anonymous-join-unavailable': '无法以访客身份加入：服务器暂不支持匿名加入。请登录后重试，或联系分享者。',
     },
     remote: {
       'tab-name': '共享会话',

@@ -43,6 +43,9 @@ export class TokenManager extends Disposable implements ITokenManager {
   }
 
   // Returns null when the user is logged out or the refresh chain has broken.
+  // An empty-string token is normalized to null: token values come verbatim
+  // from server responses / storage, and an empty bearer is unusable — callers
+  // branching on `!token` must never see a signed-in-but-empty state.
   async getAccessToken(): Promise<string | null> {
     const tokens = await this._loadTokens();
     if (!tokens) {
@@ -51,7 +54,7 @@ export class TokenManager extends Disposable implements ITokenManager {
 
     const now = Date.now();
     if (tokens.accessTokenExpiresAt > now + ACCESS_TOKEN_REFRESH_MARGIN_MS) {
-      return tokens.accessToken;
+      return tokens.accessToken || null;
     }
 
     if (tokens.refreshTokenExpiresAt <= now) {
@@ -62,7 +65,7 @@ export class TokenManager extends Disposable implements ITokenManager {
 
     try {
       const refreshed = await this._refreshOnce(tokens.refreshToken);
-      return refreshed.accessToken;
+      return refreshed.accessToken || null;
     } catch (err) {
       this._logService.warn('[TokenManager] token refresh failed; clearing local session:', err);
       await this.clear();

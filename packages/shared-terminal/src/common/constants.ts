@@ -48,5 +48,14 @@ export const SHARED_TERMINAL_INVITE_DEFAULT_TTL_MS = 15 * 60 * 1000;
 
 export const SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE = 'shared-terminal.invite-not-active';
 
+// The deployment cannot admit anonymous joiners AS A MATTER OF POLICY: the
+// server rejected the anonymous claim (401/403 on older deployments that
+// require auth, or 503 `anonymous_join_unavailable` when the relay-claim
+// secret is not configured), the claim succeeded without minting a
+// relay-claim token, or no invite transport is wired client-side. Transient
+// claim failures (5xx, network) deliberately do NOT map here — they surface
+// as-is so the user retries instead of being told to sign in.
+export const SHARED_TERMINAL_ANONYMOUS_JOIN_UNAVAILABLE_ERROR_CODE = 'shared-terminal.anonymous-join-unavailable';
+
 // Default cloud url
 export const DEFAULT_CLOUD_BASE_URL = 'https://cloud.termlnk.com/v1';

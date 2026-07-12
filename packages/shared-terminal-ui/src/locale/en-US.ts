@@ -33,6 +33,7 @@ const locale = {
       unparsable: 'This invite URL could not be parsed. Ask the host to resend.',
       'join-failed': 'Could not join the session:',
       'error-invite-not-active': 'This invite has already been used or is no longer active. Ask the host to send a new invite link.',
+      'error-anonymous-join-unavailable': 'Unable to join as a guest: the server does not currently allow anonymous joining. Sign in and try again, or contact the person who shared this session.',
     },
     remote: {
       'tab-name': 'Shared session',

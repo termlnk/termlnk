@@ -35,6 +35,7 @@ const locale: typeof enUS = {
       unparsable: 'この招待 URL を解析できませんでした。発信者に再送を依頼してください。',
       'join-failed': 'セッションへの参加に失敗しました:',
       'error-invite-not-active': 'この招待リンクはすでに使用済み、または無効です。ホストに新しい招待リンクの送信を依頼してください。',
+      'error-anonymous-join-unavailable': 'ゲストとして参加できません:サーバーが匿名参加を許可していません。サインインして再試行するか、共有者にお問い合わせください。',
     },
     remote: {
       'tab-name': '共有セッション',

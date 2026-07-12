@@ -163,6 +163,7 @@ function buildService(transport: ICollabInviteTransportService | undefined = und
   injector.add([IConfigServiceId, { useValue: config }]);
   config.setConfig(SHARED_TERMINAL_PLUGIN_CONFIG_KEY, {
     relayBaseUrl: 'wss://relay.example.test/v1/',
+    inviteBaseUrl: 'https://invite.example.test',
   });
   const repo = new FakeCollabInviteTokenRepository();
   const service = new PairingService(

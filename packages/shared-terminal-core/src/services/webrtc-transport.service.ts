@@ -176,6 +176,13 @@ export class WebRTCTransportService extends Disposable implements ISharedTermina
   }
 
   async connect(options: ITransportConnectOptions, sharedKey: ISharedKey): Promise<void> {
+    if (!options.accountToken) {
+      // The signaling endpoint (`/multiplayer/signal`) authenticates via
+      // createWsBearerAuthMiddleware — Bearer JWT only, no RelayToken support.
+      // Anonymous joins are relay-only; fail fast so CompositeTransportService
+      // falls back to relay immediately instead of sending `Bearer.undefined`.
+      throw new Error('[WebRTCTransportService] signaling requires accountToken; anonymous joins are relay-only');
+    }
     this._options = options;
     this._sharedKey = sharedKey;
     if (!this.isSupported()) {

@@ -109,6 +109,12 @@ describe('TokenManager', () => {
     expect(refresher.callCount).toBe(0);
   });
 
+  it('normalizes a stored empty-string access token to null', async () => {
+    storage.data = makeTokens({ accessToken: '' });
+    expect(await manager.getAccessToken()).toBeNull();
+    expect(refresher.callCount).toBe(0);
+  });
+
   it('caches the storage load — second getAccessToken does not re-read from disk', async () => {
     storage.data = makeTokens();
     await manager.getAccessToken();

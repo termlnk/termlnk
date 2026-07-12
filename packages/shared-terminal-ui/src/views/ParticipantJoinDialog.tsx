@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ICapability } from '@termlnk/shared-terminal';
+import type { ICapability, SharedTerminalErrorCode } from '@termlnk/shared-terminal';
 import { ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, Dialog, Spinner, useDependency } from '@termlnk/design';
-import { IInviteService, IRemoteSessionService, SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE } from '@termlnk/shared-terminal';
+import { getSharedTerminalErrorCode, IInviteService, IRemoteSessionService, SHARED_TERMINAL_ANONYMOUS_JOIN_UNAVAILABLE_ERROR_CODE, SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE } from '@termlnk/shared-terminal';
 import { CheckIcon, ClipboardCopyIcon, LinkIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { RemoteSessionBridgeController } from '../controllers/remote-session-bridge.controller';
@@ -250,13 +250,23 @@ interface IFormattedJoinError {
   readonly expected: boolean;
 }
 
+// Exhaustive by construction: adding a code to SharedTerminalErrorCode fails
+// compilation here until a locale key is mapped.
+const JOIN_ERROR_LOCALE_KEYS: Record<SharedTerminalErrorCode, string> = {
+  [SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE]: 'shared-terminal-ui.join-dialog.error-invite-not-active',
+  [SHARED_TERMINAL_ANONYMOUS_JOIN_UNAVAILABLE_ERROR_CODE]: 'shared-terminal-ui.join-dialog.error-anonymous-join-unavailable',
+};
+
 function formatJoinError(err: unknown, localeService: LocaleService): IFormattedJoinError {
-  const message = err instanceof Error ? err.message : String(err);
-  if (message.includes(SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE)) {
+  const code = getSharedTerminalErrorCode(err);
+  if (code) {
     return {
-      message: localeService.t('shared-terminal-ui.join-dialog.error-invite-not-active'),
+      message: localeService.t(JOIN_ERROR_LOCALE_KEYS[code]),
       expected: true,
     };
   }
-  return { message, expected: false };
+  return {
+    message: err instanceof Error ? err.message : String(err),
+    expected: false,
+  };
 }

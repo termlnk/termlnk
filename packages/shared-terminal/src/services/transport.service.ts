@@ -35,14 +35,24 @@ export enum TransportState {
 export interface ITransportConnectOptions {
   readonly relayBaseUrl: string;
   readonly sessionId: string;
-  readonly accountToken: string;
+  /**
+   * Joiner/daemon account JWT, presented as the `Bearer.<jwt>` subprotocol.
+   * Optional ONLY for anonymous client-mode joins over the RELAY transport,
+   * which must instead carry `relayClaimToken` as their sole credential.
+   * Daemon mode always requires it, and so does the WebRTC transport — its
+   * signaling endpoint authenticates via Bearer JWT only, so anonymous joins
+   * are relay-only.
+   */
+  readonly accountToken?: string;
   readonly mode: 'daemon' | 'client';
   readonly connectionId?: string;
   /**
-   * One-shot relay-claim token minted by /v1/collab/invite/:id/claim.
-   * Required for cross-account joiners; presented to the relay via a second
-   * subprotocol entry `RelayToken.<token>` alongside the Bearer JWT.
-   * Same-account flows leave this undefined.
+   * Relay-claim token minted by /v1/collab/invite/:id/claim. NOT single-use:
+   * its TTL is a reconnect window (server-side default 12h) and the transport
+   * re-presents it on every WS reconnect. Required for cross-account joiners
+   * (and it is the ONLY credential for anonymous joiners); presented to the
+   * relay via a `RelayToken.<token>` subprotocol entry. Same-account flows
+   * leave this undefined.
    */
   readonly relayClaimToken?: string;
 }

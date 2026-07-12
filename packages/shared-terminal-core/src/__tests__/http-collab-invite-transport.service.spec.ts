@@ -175,4 +175,50 @@ describe('HttpCollabInviteTransportService', () => {
       singleUse: true,
     })).rejects.toThrow(/409/);
   });
+
+  it('claim omits the Authorization header for anonymous (unauthenticated) callers', async () => {
+    // claim is the one receiver-side call that admits anonymous callers —
+    // invite possession is the admission proof, so a missing token must not
+    // block the request.
+    const claimResponse = {
+      sessionId: 'sess',
+      ephPubB64: 'pub',
+      role: SharedTerminalRole.CoPilot,
+      connectionId: 'conn-1',
+      consumedAt: '2026-05-10T00:00:00.000Z',
+      relayClaimToken: 'relay-claim-token',
+    };
+    const calls = stubFetch({
+      'POST https://example.test/v1/collab/invite/inv-1/claim': { ok: true, status: 200, body: claimResponse },
+    });
+    const svc = buildService('https://example.test/v1', null);
+    const result = await svc.claim('inv-1', { capabilityHash: 'h' });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.headers?.Authorization).toBeUndefined();
+    expect(result).toEqual(claimResponse);
+  });
+
+  it('claim includes the Authorization header when a token is available', async () => {
+    const claimResponse = {
+      sessionId: 'sess',
+      ephPubB64: 'pub',
+      role: SharedTerminalRole.CoPilot,
+      connectionId: 'conn-1',
+      consumedAt: '2026-05-10T00:00:00.000Z',
+    };
+    const calls = stubFetch({
+      'POST https://example.test/v1/collab/invite/inv-1/claim': { ok: true, status: 200, body: claimResponse },
+    });
+    const svc = buildService('https://example.test/v1', 'my-jwt');
+    await svc.claim('inv-1', { capabilityHash: 'h' });
+    expect(calls[0]!.headers?.Authorization).toBe('Bearer my-jwt');
+  });
+
+  it('list rejects as unauthenticated when no access token is available', async () => {
+    // Unlike claim, list is an owner-side call and must stay strictly
+    // authenticated even though the token manager returns null.
+    stubFetch({});
+    const svc = buildService('https://example.test/v1', null);
+    await expect(svc.list()).rejects.toThrow(/unauthenticated/);
+  });
 });

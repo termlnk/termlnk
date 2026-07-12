@@ -35,6 +35,7 @@ const locale: typeof enUS = {
       unparsable: '이 초대 URL을 분석할 수 없습니다. 발신자에게 재전송을 요청하세요.',
       'join-failed': '세션 참여에 실패했습니다:',
       'error-invite-not-active': '이 초대 링크는 이미 사용되었거나 더 이상 활성 상태가 아닙니다. 호스트에게 새 초대 링크를 요청하세요.',
+      'error-anonymous-join-unavailable': '게스트로 참가할 수 없습니다: 서버가 익명 참가를 허용하지 않습니다. 로그인 후 다시 시도하거나 공유한 사람에게 문의하세요.',
     },
     remote: {
       'tab-name': '공유 세션',

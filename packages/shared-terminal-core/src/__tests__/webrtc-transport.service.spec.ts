@@ -209,3 +209,44 @@ describe('WebRTCTransportService peer leg cleanup', () => {
     expect(pc.closeCalls).toBe(1);
   });
 });
+
+describe('WebRTCTransportService connect guards', () => {
+  let sockets: FakeSignalingSocket[];
+  let service: WebRTCTransportService;
+
+  beforeEach(() => {
+    sockets = [];
+    vi.stubGlobal('WebSocket', class extends FakeSignalingSocket {
+      constructor(url: string, protocols?: string[]) {
+        super(url, protocols);
+        sockets.push(this);
+      }
+    });
+    vi.stubGlobal('RTCPeerConnection', FakePeerConnection);
+    const codecStub: IFrameCodecService = {
+      encode: vi.fn(),
+      decode: vi.fn(),
+      encrypt: vi.fn(),
+      decrypt: vi.fn(),
+    } as unknown as IFrameCodecService;
+    service = new WebRTCTransportService(codecStub, new FakeLogService());
+  });
+
+  afterEach(() => {
+    service.dispose();
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects connect without accountToken even when a relayClaimToken is present', async () => {
+    // relayClaimToken proves the guard is keyed on accountToken specifically —
+    // signaling only understands Bearer JWTs, anonymous joins must fall back to relay.
+    await expect(service.connect({
+      relayBaseUrl: 'wss://relay.example.test/v1',
+      sessionId: 'session-1',
+      mode: 'client',
+      relayClaimToken: 'claim-token',
+    }, KEY)).rejects.toThrow(/anonymous joins are relay-only/);
+    // No signaling WebSocket should have been opened — the guard fires before negotiation.
+    expect(sockets).toHaveLength(0);
+  });
+});

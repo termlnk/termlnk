@@ -138,6 +138,18 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
   }
 
   async connect(options: ITransportConnectOptions, sharedKey: ISharedKey): Promise<void> {
+    if (options.mode === 'daemon' && !options.accountToken) {
+      // The relay identifies the owner's bucket by the Bearer JWT; a daemon
+      // socket without one can never be routed. The type allows the absence
+      // only for anonymous client-mode joins, so enforce the daemon invariant
+      // here at the boundary.
+      throw new Error('[RelayTransportService] daemon mode requires accountToken');
+    }
+    if (!options.accountToken && !options.relayClaimToken) {
+      // The relay accepts either credential but not neither; fail fast here
+      // instead of surfacing an opaque WS upgrade rejection later.
+      throw new Error('[RelayTransportService] connect requires accountToken or relayClaimToken');
+    }
     this._options = options;
     this._sharedKey = sharedKey;
     this._sessionKey = null;
@@ -229,12 +241,14 @@ export class RelayTransportService extends Disposable implements ISharedTerminal
     // from createWsBearerAuthMiddleware). Steady-state 'close' after a successful
     // open feeds _scheduleReconnect; settled is the guard between these phases.
     return new Promise<void>((resolve, reject) => {
-      // sec-websocket-protocol: Bearer.<jwt> is always present. If the caller
-      // supplied a relay-claim token (cross-account joiner), include it as a
-      // second subprotocol entry — the server's shared-terminal controller
-      // verifies its HMAC and routes the attach into the OWNER's session
-      // bucket instead of the joiner's own.
-      const subprotocols = [`Bearer.${this._options!.accountToken}`];
+      // Credentials ride sec-websocket-protocol: `Bearer.<jwt>` when signed in,
+      // plus `RelayToken.<token>` when the caller holds a relay-claim token
+      // (cross-account joiner). Anonymous joiners present ONLY the RelayToken —
+      // the server routes them into the owner's bucket off the token alone.
+      const subprotocols: string[] = [];
+      if (this._options!.accountToken) {
+        subprotocols.push(`Bearer.${this._options!.accountToken}`);
+      }
       if (this._options!.relayClaimToken) {
         subprotocols.push(`RelayToken.${this._options!.relayClaimToken}`);
       }

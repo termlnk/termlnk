@@ -17,7 +17,7 @@ import type { ICapability, ICollabInviteTransportService, IFrameCodecService, IR
 import type { Observable } from 'rxjs';
 import { HttpRequestError, ITokenManager } from '@termlnk/auth';
 import { Disposable, IConfigService, ILogService, Optional } from '@termlnk/core';
-import { ICollabInviteTransportService as ICollabInviteTransportServiceId, IFrameCodecService as IFrameCodecServiceId, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/shared-terminal';
+import { ICollabInviteTransportService as ICollabInviteTransportServiceId, IFrameCodecService as IFrameCodecServiceId, ISharedTerminalCryptoService as ISharedTerminalCryptoServiceId, SHARED_TERMINAL_ANONYMOUS_JOIN_UNAVAILABLE_ERROR_CODE, SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE, SHARED_TERMINAL_PLUGIN_CONFIG_KEY, SharedTerminalError } from '@termlnk/shared-terminal';
 import { BehaviorSubject, EMPTY, Subject } from 'rxjs';
 import { computeCapabilityHash } from '../utils/capability-hash';
 import { RelayTransportService } from './relay-transport.service';
@@ -166,17 +166,14 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
       throw new Error('shared-terminal: relayBaseUrl not configured (set ISharedTerminalPluginConfig.relayBaseUrl or deploy a relay).');
     }
 
+    // Anonymous join is supported: no access token means the collab claim
+    // below MUST succeed and MUST return a relay-claim token — that token is
+    // the joiner's only relay credential (no JWT bucket to fall back to).
     const accountToken = await this._tokenManager?.getAccessToken();
-    if (!accountToken) {
-      throw new Error('shared-terminal: sign in before joining a shared session — the relay requires the joiner\'s access token.');
-    }
+    const anonymous = !accountToken;
 
-    const ephPriv = base64UrlToBytes(parsed.ephPriv);
-    const daemonPub = base64UrlToBytes(parsed.capability.daemonPub);
-    const sharedKey = this._crypto.deriveSharedKey(daemonPub, ephPriv);
-
-    const userKp = this._crypto.generateKeypair();
-
+    // The claim needs nothing from the key derivation below, so run it first:
+    // every claim failure then rejects before any crypto work.
     let claimedConnectionId: string | undefined;
     let relayClaimToken: string | undefined;
     if (this._inviteTransport) {
@@ -188,11 +185,34 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
       } catch (err) {
         if (isInactiveInviteClaimError(err)) {
           this._logService.warn('[RemoteSessionService] invite claim rejected because the invite is inactive:', err);
-          throw new Error(SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE);
+          throw new SharedTerminalError(SHARED_TERMINAL_INVITE_NOT_ACTIVE_ERROR_CODE, { cause: err });
+        }
+        if (anonymous) {
+          this._logService.warn('[RemoteSessionService] anonymous invite claim failed:', err);
+          if (isAnonymousClaimRefusedError(err)) {
+            // The server stated a policy (anonymous joining not admitted) —
+            // map to the structured code so the join dialog can localize it.
+            throw new SharedTerminalError(SHARED_TERMINAL_ANONYMOUS_JOIN_UNAVAILABLE_ERROR_CODE, { cause: err });
+          }
+          // Transient failure (5xx, network). No same-account fallback exists
+          // without a JWT, but this is not a policy statement — surface the
+          // real error so the user retries instead of being told to sign in.
+          throw err;
         }
         this._logService.warn('[RemoteSessionService] invite claim failed; falling back to same-account attach:', err);
       }
     }
+    if (anonymous && !relayClaimToken) {
+      // Covers: invite transport not wired, or the server accepted the claim
+      // but minted no token (older deployment without relay-claim support).
+      throw new SharedTerminalError(SHARED_TERMINAL_ANONYMOUS_JOIN_UNAVAILABLE_ERROR_CODE);
+    }
+
+    const ephPriv = base64UrlToBytes(parsed.ephPriv);
+    const daemonPub = base64UrlToBytes(parsed.capability.daemonPub);
+    const sharedKey = this._crypto.deriveSharedKey(daemonPub, ephPriv);
+
+    const userKp = this._crypto.generateKeypair();
 
     const transport = new RelayTransportService(this._codec, this._logService);
     const session = new RemoteSession(
@@ -211,8 +231,8 @@ export class RemoteSessionService extends Disposable implements IRemoteSessionSe
       await transport.connect({
         relayBaseUrl,
         sessionId,
-        accountToken,
         mode: 'client',
+        accountToken: accountToken ?? undefined,
         connectionId: claimedConnectionId,
         relayClaimToken,
       }, sharedKey);
@@ -291,6 +311,16 @@ function base64UrlToBytes(input: string): Uint8Array {
 
 function isInactiveInviteClaimError(err: unknown): boolean {
   return err instanceof HttpRequestError && (err.status === 410 || err.serverCode === 'invite_not_active');
+}
+
+// The server signals "anonymous joining is not admitted" as a policy, not a
+// fault: 503 `anonymous_join_unavailable` when the relay-claim secret is not
+// configured (collab.service.ts server-side), or 401/403 from older
+// deployments whose claim route still requires auth. Anything else (5xx,
+// network) is transient and must NOT be classified as policy.
+function isAnonymousClaimRefusedError(err: unknown): boolean {
+  return err instanceof HttpRequestError
+    && (err.serverCode === 'anonymous_join_unavailable' || err.status === 401 || err.status === 403);
 }
 
 // Keep symbol exported for tests and DI plugin registration; the same identifier

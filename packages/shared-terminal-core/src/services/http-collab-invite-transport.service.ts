@@ -75,7 +75,11 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
 
   async claim(inviteId: string, input: ICollabInviteClaimInput): Promise<ICollabInviteClaimResponse> {
     const url = this._joinUrl(`/collab/invite/${encodeURIComponent(inviteId)}/claim`);
-    const resp = await this._fetchAuthorized(url, 'POST', input);
+    // Claim is the one receiver-side call: it accepts anonymous callers
+    // (invite possession is the admission proof), so a missing access token
+    // just means the Authorization header is omitted. Owner-side calls above
+    // stay strictly authenticated.
+    const resp = await this._fetch(url, 'POST', input, { requireAuth: false });
     return await resp.json() as ICollabInviteClaimResponse;
   }
 
@@ -97,14 +101,20 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
   }
 
   private async _fetchAuthorized(url: string, method: 'POST' | 'GET', body?: unknown): Promise<{ json: () => Promise<unknown>; text: () => Promise<string> }> {
+    return await this._fetch(url, method, body, { requireAuth: true });
+  }
+
+  private async _fetch(url: string, method: 'POST' | 'GET', body: unknown, options: { requireAuth: boolean }): Promise<{ json: () => Promise<unknown>; text: () => Promise<string> }> {
     const token = await this._tokenManager.getAccessToken();
-    if (!token) {
+    if (!token && options.requireAuth) {
       throw new Error('[HttpCollabInviteTransportService] unauthenticated: no access token available');
     }
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${token}`,
       Accept: 'application/json',
     };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
     }
