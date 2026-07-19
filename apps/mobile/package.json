@@ -46,8 +46,8 @@
     "@termlnk/terminal-mobile": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "@wendellhu/redi": "1.1.2",
-    "@xterm/addon-fit": "^0.12.0-beta.288",
-    "@xterm/xterm": "^6.1.0-beta.288",
+    "@xterm/addon-fit": "^0.12.0-beta.290",
+    "@xterm/xterm": "^6.1.0-beta.290",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "expo": "^56.0.12",
@@ -71,7 +71,7 @@
     "expo-status-bar": "^56.0.4",
     "expo-symbols": "^56.0.6",
     "hash-wasm": "^4.12.0",
-    "lucide-react-native": "^1.23.0",
+    "lucide-react-native": "^1.25.0",
     "nativewind": "5.0.0-preview.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -92,14 +92,14 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
-    "@tailwindcss/postcss": "^4.3.2",
+    "@tailwindcss/postcss": "^4.3.3",
     "@termlnk/shared": "workspace:*",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "babel-plugin-typescript-decorators": "^1.0.5",
     "babel-preset-expo": "^56.0.15",
     "prettier-plugin-tailwindcss": "^0.8.0",
-    "tailwindcss": "^4.3.2",
+    "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3"
   }
 }

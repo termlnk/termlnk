@@ -58,7 +58,7 @@ export default {
   electron: {
     global: 'electron',
     name: 'electron',
-    version: '42.6.1',
+    version: '42.7.0',
   },
 
   // Node.js native / server-side packages (not bundleable by Rollup)
@@ -97,7 +97,7 @@ export default {
   'lucide-react': {
     global: 'lucide-react',
     name: 'lucide-react',
-    version: '^1.23.0',
+    version: '^1.25.0',
   },
   dayjs: {
     global: 'dayjs',
