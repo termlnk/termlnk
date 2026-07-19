@@ -129,7 +129,7 @@ export interface IXtermProgressState {
 export interface IUseXtermResult {
   terminalRef: RefObject<HTMLDivElement | null>;
   xtermRef: RefObject<Terminal | null>;
-  write: (data: string) => void;
+  write: (data: string | Uint8Array, callback?: () => void) => void;
   fit: () => void;
   clear: () => void;
   focus: () => void;
@@ -166,8 +166,12 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
   }, [options.onData, options.onResize, options.onTitleChange, options.ctrlOrMetaOpenTerminalLink]);
 
   useEffect(() => {
-    if (options.enabled === false) return;
-    if (!terminalRef.current) return;
+    if (options.enabled === false) {
+      return;
+    }
+    if (!terminalRef.current) {
+      return;
+    }
 
     const rendererEngine = rendererEngineRef.current ?? DEFAULT_TERMINAL_RENDERER_ENGINE;
     const term = new Terminal({
@@ -293,9 +297,15 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
   }, [options.enabled]);
 
   useEffect(() => {
-    if (options.enabled === false) return;
-    if (!options.shouldFocusOnOpen) return;
-    if (!xtermRef.current) return;
+    if (options.enabled === false) {
+      return;
+    }
+    if (!options.shouldFocusOnOpen) {
+      return;
+    }
+    if (!xtermRef.current) {
+      return;
+    }
 
     const frameId = requestAnimationFrame(() => {
       xtermRef.current?.focus();
@@ -312,7 +322,9 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
 
   useEffect(() => {
     const term = xtermRef.current;
-    if (!term) return;
+    if (!term) {
+      return;
+    }
 
     let needsFit = false;
     const fontFamily = options.fontFamily || DEFAULT_FONT_FAMILY;
@@ -341,7 +353,9 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
 
   useEffect(() => {
     const term = xtermRef.current;
-    if (!term) return;
+    if (!term) {
+      return;
+    }
 
     const cursorStyle = options.cursorStyle ?? DEFAULT_CURSOR_STYLE;
     const cursorBlink = options.cursorBlink ?? DEFAULT_CURSOR_BLINK;
@@ -354,8 +368,13 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
     }
   }, [options.cursorStyle, options.cursorBlink]);
 
-  const write = useCallback((data: string) => {
-    xtermRef.current?.write(data);
+  const write = useCallback((data: string | Uint8Array, callback?: () => void) => {
+    const terminal = xtermRef.current;
+    if (!terminal) {
+      callback?.();
+      return;
+    }
+    terminal.write(data, callback);
   }, []);
 
   const fit = useCallback(() => {
@@ -382,7 +401,9 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
   const serialize = useCallback((scrollback: number = 100) => {
     const term = xtermRef.current;
     const addon = serializeAddonRef.current;
-    if (!term || !addon) return null;
+    if (!term || !addon) {
+      return null;
+    }
     return {
       serializedBuffer: addon.serialize({ scrollback }),
       cols: term.cols,
@@ -423,7 +444,9 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
 function handleLinkClick(event: MouseEvent, uri: string, ctrlOrMetaRequired?: boolean): void {
   if (ctrlOrMetaRequired) {
     const modifierHeld = isMacintosh ? event.metaKey : event.ctrlKey;
-    if (!modifierHeld) return;
+    if (!modifierHeld) {
+      return;
+    }
   }
 
   const nativeShell = (window as any).nativeShell;
@@ -450,7 +473,9 @@ function createLegacyTerminalInputBinding(
   onDataRef: RefObject<(data: string) => void>
 ): { dispose(): void } {
   term.attachCustomKeyEventHandler((event: KeyboardEvent): boolean => {
-    if (event.type !== 'keydown') return true;
+    if (event.type !== 'keydown') {
+      return true;
+    }
 
     if (isShiftEnterKey(event) && !event.isComposing) {
       onDataRef.current('\n');
@@ -458,8 +483,12 @@ function createLegacyTerminalInputBinding(
       return false;
     }
 
-    if (event.ctrlKey || event.metaKey || event.altKey) return true;
-    if (!isAsciiPunctuationKey(event.key)) return true;
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return true;
+    }
+    if (!isAsciiPunctuationKey(event.key)) {
+      return true;
+    }
 
     // Bypass xterm keydown translation for punctuation so browser/IME can emit
     // the actual character (e.g. full-width Chinese punctuation) downstream.
@@ -487,12 +516,18 @@ function setupResizeObserver(container: HTMLDivElement, fitAddon: FitAddon): () 
 
   const observer = new ResizeObserver((entries) => {
     const entry = entries[0];
-    if (!entry) return;
+    if (!entry) {
+      return;
+    }
 
     const { width, height } = entry.contentRect;
-    if (width === 0 || height === 0) return;
+    if (width === 0 || height === 0) {
+      return;
+    }
 
-    if (resizeTimeout) clearTimeout(resizeTimeout);
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout);
+    }
     resizeTimeout = window.setTimeout(() => {
       try {
         fitAddon.fit();
@@ -535,7 +570,9 @@ export function useGlobalTerminalAppearance(): IGlobalTerminalAppearance {
     let active = true;
 
     const applyConfig = (config: ITerminalAppearanceConfig | null) => {
-      if (!active) return;
+      if (!active) {
+        return;
+      }
       if (config) {
         setFontFamily(config.fontFamily || undefined);
         setFontSize(config.fontSize || undefined);
@@ -609,7 +646,9 @@ export function useWindowTransparency(): IWindowTransparencyState {
     let active = true;
 
     const applyConfig = (config: IWindowTransparencyConfig | null) => {
-      if (!active) return;
+      if (!active) {
+        return;
+      }
       if (config && config.enabled) {
         setEnabled(true);
         setOpacity(typeof config.opacity === 'number' && config.opacity >= 0.3 && config.opacity <= 1

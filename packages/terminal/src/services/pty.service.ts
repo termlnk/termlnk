@@ -16,6 +16,7 @@
 import type { Observable } from 'rxjs';
 import type { ILocalTerminalShellOption } from '../config/config';
 import type { PTYSessionStatus } from '../models/pty';
+import type { ITerminalOutputChunk } from './terminal-output-transport.service';
 import { createIdentifier } from '@termlnk/core';
 
 export interface IPTYCreateSessionOptions {
@@ -38,7 +39,7 @@ export interface IPTYService {
   closeSession(sessionId: string): Promise<void>;
   resize(sessionId: string, rows: number, cols: number): Promise<void>;
   write(sessionId: string, data: string): Promise<void>;
-  data$(sessionId: string): Observable<string>;
+  data$(sessionId: string): Observable<ITerminalOutputChunk>;
   status$(sessionId: string): Observable<PTYSessionStatus>;
   getShellPath(sessionId: string): Promise<string>;
   getCurrentCwd(sessionId: string): Promise<string>;

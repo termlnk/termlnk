@@ -43,6 +43,7 @@ import { SSHSessionService } from './services/ssh-session/ssh-session.service';
 import { SSHToolService } from './services/ssh-tool.service';
 import { ISSHHostChainService, SSHHostChainService } from './services/ssh/ssh-host-chain.service';
 import { ISSHSocketService, SSHSocketService } from './services/ssh/ssh-socket.service';
+import { ITerminalOutputStreamService, TerminalOutputStreamService } from './services/terminal-output/terminal-output-stream.service';
 import { TerminalSessionNotifyService } from './services/terminal-session-notify.service';
 import { TerminalSuggestService } from './services/terminal-suggest/terminal-suggest.service';
 
@@ -88,6 +89,7 @@ export class RPCServerPlugin extends Plugin {
       [ICommandBlockService, { useClass: CommandBlockService }],
       [ITerminalSessionEnvService, { useClass: TerminalSessionEnvService }],
       [IPTYSessionService, { useClass: PTYSessionService }],
+      [ITerminalOutputStreamService, { useClass: TerminalOutputStreamService }],
       [ITerminalSuggestService, { useClass: TerminalSuggestService }],
       [ISharedSessionService, { useClass: SharedSessionService }],
       [IDeepLinkRouterService, { useClass: DeepLinkRouterService }],

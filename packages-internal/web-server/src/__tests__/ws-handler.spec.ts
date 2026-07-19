@@ -16,6 +16,7 @@
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { IWebServerConfig } from '../controllers/config.schema';
 import { ConfigService, IConfigService, ILogService as ILogServiceId, Injector } from '@termlnk/core';
+import { ITerminalOutputStreamService } from '@termlnk/rpc-server';
 import { initTRPC } from '@trpc/server';
 import { observable } from '@trpc/server/observable';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -24,7 +25,7 @@ import { TRPC_WS_PATH, WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/confi
 import { IStaticFileService, StaticFileService } from '../services/static-file.service';
 import { IWebServerService, WebServerService } from '../services/web-server.service';
 import { IWebSessionService } from '../services/web-session.service';
-import { FakeWebSessionService } from './test-helpers';
+import { FakeTerminalOutputStreamService, FakeWebSessionService } from './test-helpers';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -52,6 +53,7 @@ function createTestBed(port: number = pickPort()): ITestBed {
   injector.add([IConfigService, { useClass: ConfigService }]);
   injector.add([IStaticFileService, { useClass: StaticFileService }]);
   injector.add([IWebSessionService, { useValue: new FakeWebSessionService('allow-all') }]);
+  injector.add([ITerminalOutputStreamService, { useClass: FakeTerminalOutputStreamService }]);
   injector.add([IWebServerService, { useClass: WebServerService }]);
 
   const config = injector.get(IConfigService);

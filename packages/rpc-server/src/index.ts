@@ -37,6 +37,8 @@ export { SSHToolService } from './services/ssh-tool.service';
 export { createSSHChannel } from './services/ssh/ssh-channel';
 export type { ISSHChannel, ISSHChannelExitEvent } from './services/ssh/ssh-channel';
 export { ISSHSocketService, SSHSocketService } from './services/ssh/ssh-socket.service';
+export { ITerminalOutputStreamService, TerminalOutputStreamService } from './services/terminal-output/terminal-output-stream.service';
+export type { ITerminalOutputFrame, ITerminalOutputSink, ITerminalOutputSource, ITerminalOutputStreamHandle } from './services/terminal-output/terminal-output-stream.service';
 export { appRouter } from './trpc/router';
 export type { AppRouter } from './trpc/router';
 export { aiRouter } from './trpc/routers/ai';

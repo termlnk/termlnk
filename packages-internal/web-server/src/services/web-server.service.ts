@@ -18,6 +18,7 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { Server as HttpsServer } from 'node:https';
 import type { Observable } from 'rxjs';
 import type { IWebServerConfig } from '../controllers/config.schema';
+import type { ITerminalOutputWSHandlerHandle } from '../terminal-output/terminal-output-ws-handler';
 import type { AnyRouter } from '../trpc/types';
 import type { ITRPCWSHandlerHandle } from '../trpc/ws-handler';
 import type { IRouteHandler } from './static-file.service';
@@ -25,8 +26,11 @@ import { readFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { createIdentifier, Disposable, IConfigService, ILogService, Inject, Injector } from '@termlnk/core';
+import { ITerminalOutputStreamService } from '@termlnk/rpc-server';
+import { TERMINAL_OUTPUT_WEB_SOCKET_PATH } from '@termlnk/terminal';
 import { BehaviorSubject } from 'rxjs';
 import { TRPC_WS_PATH, WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/config.schema';
+import { createTerminalOutputWSHandler } from '../terminal-output/terminal-output-ws-handler';
 import { createTRPCStandaloneHandler } from '../trpc/http-handler';
 import { createTRPCWSHandler } from '../trpc/ws-handler';
 import { IStaticFileService } from './static-file.service';
@@ -102,6 +106,7 @@ export class WebServerService extends Disposable implements IWebServerService {
   private _router: AnyRouter | null = null;
   private _trpcHandler: ((req: IncomingMessage, res: ServerResponse) => Promise<void> | void) | null = null;
   private _wsHandle: ITRPCWSHandlerHandle | null = null;
+  private _terminalOutputWSHandle: ITerminalOutputWSHandlerHandle | null = null;
   private _upgradeListener: ((req: IncomingMessage, socket: import('node:net').Socket, head: Buffer) => void) | null = null;
   private readonly _customRoutes: Array<{ prefix: string; handler: IRouteHandler }> = [];
 
@@ -109,6 +114,7 @@ export class WebServerService extends Disposable implements IWebServerService {
     @IConfigService private readonly _configService: IConfigService,
     @IStaticFileService private readonly _staticFileService: IStaticFileService,
     @IWebSessionService private readonly _sessionService: IWebSessionService,
+    @ITerminalOutputStreamService private readonly _terminalOutputStreamService: ITerminalOutputStreamService,
     @Inject(Injector) private readonly _injector: Injector,
     @ILogService private readonly _logService: ILogService
   ) {
@@ -177,6 +183,7 @@ export class WebServerService extends Disposable implements IWebServerService {
           ? () => true
           : (req) => this._sessionService.resolveFromRequest(req) !== null,
       });
+      this._terminalOutputWSHandle = createTerminalOutputWSHandler(this._terminalOutputStreamService);
 
       // Single upgrade dispatcher: route /trpc-ws to the tRPC WS handler;
       // everything else is rejected immediately so unmatched upgrades don't
@@ -185,6 +192,15 @@ export class WebServerService extends Disposable implements IWebServerService {
         const pathname = (req.url ?? '').split('?')[0];
         if (pathname === TRPC_WS_PATH) {
           this._wsHandle?.handleUpgrade(req, socket, head);
+          return;
+        }
+        if (pathname === TERMINAL_OUTPUT_WEB_SOCKET_PATH) {
+          if (!demo && this._sessionService.resolveFromRequest(req) === null) {
+            socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+          this._terminalOutputWSHandle?.handleUpgrade(req, socket, head);
           return;
         }
         socket.destroy();
@@ -206,12 +222,14 @@ export class WebServerService extends Disposable implements IWebServerService {
   async stop(): Promise<void> {
     const server = this._server;
     const wsHandle = this._wsHandle;
+    const terminalOutputWSHandle = this._terminalOutputWSHandle;
     const upgradeListener = this._upgradeListener;
     if (!server) {
       return;
     }
     this._server = null;
     this._wsHandle = null;
+    this._terminalOutputWSHandle = null;
     this._upgradeListener = null;
 
     // Order matters: detach upgrade listener first so no new WS connections
@@ -223,6 +241,9 @@ export class WebServerService extends Disposable implements IWebServerService {
     }
     if (wsHandle) {
       await wsHandle.close();
+    }
+    if (terminalOutputWSHandle) {
+      await terminalOutputWSHandle.close();
     }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());

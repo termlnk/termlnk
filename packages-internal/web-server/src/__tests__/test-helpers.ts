@@ -13,10 +13,23 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ITerminalOutputSink, ITerminalOutputStreamHandle, ITerminalOutputStreamService } from '@termlnk/rpc-server';
+import type { TerminalOutputSourceType } from '@termlnk/terminal';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Observable } from 'rxjs';
 import type { IWebSession, IWebSessionService } from '../services/web-session.service';
 import { BehaviorSubject } from 'rxjs';
+
+export class FakeTerminalOutputStreamService implements ITerminalOutputStreamService {
+  open(_source: TerminalOutputSourceType, _sessionId: string, _sink: ITerminalOutputSink): ITerminalOutputStreamHandle {
+    return {
+      acknowledge: () => {},
+      dispose: () => {},
+    };
+  }
+
+  dispose(): void {}
+}
 
 /**
  * In-memory IWebSessionService stub used by transport-layer specs that need a

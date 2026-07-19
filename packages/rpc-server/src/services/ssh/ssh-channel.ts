@@ -34,6 +34,8 @@ export interface ISSHChannel extends IDisposable {
   exit(signalName: string, coreDumped?: boolean, msg?: string): void;
   close(...args: any[]): void;
   destroy(): void;
+  pause(): void;
+  resume(): void;
 
   data$: Observable<Uint8Array>;
   error$: Observable<Uint8Array>;
@@ -60,6 +62,8 @@ export function createSSHChannel(socket: ISSHSocket, channel: ClientChannel): IS
     eof: channel.eof.bind(channel),
     close: channel.close.bind(channel),
     destroy: channel.destroy.bind(channel),
+    pause: channel.pause.bind(channel),
+    resume: channel.resume.bind(channel),
 
     data$: new Observable<Uint8Array>((subscriber) => {
       const callback = (data: Buffer) => subscriber.next(new Uint8Array(data));

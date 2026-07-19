@@ -14,8 +14,8 @@
  */
 
 import type { IDisposable, Nullable } from '@termlnk/core';
-import type { Buffer } from 'node:buffer';
 import type { IPTYProcess } from './pty-process';
+import { Buffer } from 'node:buffer';
 import { Disposable, IConfigService, ILogService } from '@termlnk/core';
 import { resolveConfigPath } from '@termlnk/rpc';
 import { PTYSessionStatus } from '@termlnk/terminal';
@@ -30,17 +30,9 @@ export interface IPTYSessionOptions {
   restored?: boolean;
 }
 
-/**
- * Bounded buffer count for `_data$` replay. The window time is what matters
- * functionally (the renderer's tRPC subscription lands a few hundred ms after
- * session creation and needs to receive the ConPTY/shell startup banner); the
- * byte cap is a safety net so a single high-throughput command (`cat`, build
- * logs) cannot lock multi-MB of PTY chunks in memory for the full 5s window.
- *
- * ConPTY's banner + first interactive prompt are usually <10 chunks; 64 gives
- * a 6x margin for slow-starting shells without unbounded growth.
- */
-const PTY_REPLAY_BUFFER_LIMIT = 64;
+const PTY_OUTPUT_CHUNK_MAX_BYTES = 64 * 1024;
+const PTY_REPLAY_BUFFER_BYTES = 256 * 1024;
+const PTY_REPLAY_BUFFER_LIMIT = PTY_REPLAY_BUFFER_BYTES / PTY_OUTPUT_CHUNK_MAX_BYTES;
 
 export class PTYSession extends Disposable implements IDisposable {
   private readonly _status$ = new BehaviorSubject<PTYSessionStatus>(PTYSessionStatus.IDLE);
@@ -106,6 +98,14 @@ export class PTYSession extends Disposable implements IDisposable {
     this._process.resize(cols, rows);
   }
 
+  pauseOutput(): void {
+    this._process?.pause();
+  }
+
+  resumeOutput(): void {
+    this._process?.resume();
+  }
+
   async close(): Promise<void> {
     if (!this._process || this._isClosing || this.status === PTYSessionStatus.CLOSED) {
       return;
@@ -143,7 +143,12 @@ export class PTYSession extends Disposable implements IDisposable {
       this._shellPath = result.shellPath;
 
       this.disposeWithMe(
-        this._process.data$.subscribe((data) => this._data$.next(data))
+        this._process.data$.subscribe((data) => {
+          for (let offset = 0; offset < data.byteLength; offset += PTY_OUTPUT_CHUNK_MAX_BYTES) {
+            const end = Math.min(offset + PTY_OUTPUT_CHUNK_MAX_BYTES, data.byteLength);
+            this._data$.next(data.byteLength <= PTY_OUTPUT_CHUNK_MAX_BYTES ? data : Buffer.from(data.subarray(offset, end)));
+          }
+        })
       );
 
       this.disposeWithMe(

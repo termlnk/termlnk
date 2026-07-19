@@ -16,6 +16,8 @@
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { IWebServerConfig } from '../controllers/config.schema';
 import { ConfigService, IConfigService, ILogService as ILogServiceId, Injector } from '@termlnk/core';
+import { ITerminalOutputStreamService } from '@termlnk/rpc-server';
+import { TERMINAL_OUTPUT_WEB_SOCKET_PATH } from '@termlnk/terminal';
 import { initTRPC } from '@trpc/server';
 import { observable } from '@trpc/server/observable';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -24,7 +26,7 @@ import { TRPC_WS_PATH, WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/confi
 import { IStaticFileService, StaticFileService } from '../services/static-file.service';
 import { IWebServerService, WebServerService } from '../services/web-server.service';
 import { IWebSessionService } from '../services/web-session.service';
-import { FakeWebSessionService } from './test-helpers';
+import { FakeTerminalOutputStreamService, FakeWebSessionService } from './test-helpers';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -39,6 +41,7 @@ interface ITestBed {
   injector: Injector;
   webServerService: IWebServerService;
   origin: string;
+  terminalOutputWSUrl: string;
   wsUrl: string;
 }
 
@@ -57,6 +60,7 @@ function createTestBed(): ITestBed {
   // else. That's the only way to verify the gate without standing up the full
   // Argon2id login flow.
   injector.add([IWebSessionService, { useValue: new FakeWebSessionService('cookie-required') }]);
+  injector.add([ITerminalOutputStreamService, { useClass: FakeTerminalOutputStreamService }]);
   injector.add([IWebServerService, { useClass: WebServerService }]);
 
   const config = injector.get(IConfigService);
@@ -67,6 +71,7 @@ function createTestBed(): ITestBed {
     injector,
     webServerService: injector.get(IWebServerService),
     origin: `http://127.0.0.1:${port}`,
+    terminalOutputWSUrl: `ws://127.0.0.1:${port}${TERMINAL_OUTPUT_WEB_SOCKET_PATH}`,
     wsUrl: `ws://127.0.0.1:${port}${TRPC_WS_PATH}`,
   };
 }
@@ -187,5 +192,35 @@ describe('webServerService P7.5 — cookie-based transport authentication', () =
 
     const dataFrames = messages.filter((m) => m.result?.type === 'data');
     expect(dataFrames.map((m) => m.result.data.value)).toEqual([1, 2]);
+  });
+
+  it('rejects terminal output WebSocket upgrades without a session cookie', { timeout: 10000 }, async () => {
+    bed = createTestBed();
+    bed.webServerService.setRouter(createTestRouter() as any);
+    await bed.webServerService.start();
+
+    const ws = new WebSocket(bed.terminalOutputWSUrl);
+    const opened = await new Promise<boolean>((resolve) => {
+      ws.on('error', () => resolve(false));
+      ws.on('open', () => resolve(true));
+    });
+
+    expect(opened).toBe(false);
+    expect(ws.readyState).not.toBe(WebSocket.OPEN);
+  });
+
+  it('accepts terminal output WebSocket upgrades with a valid session cookie', { timeout: 10000 }, async () => {
+    bed = createTestBed();
+    bed.webServerService.setRouter(createTestRouter() as any);
+    await bed.webServerService.start();
+
+    const ws = new WebSocket(bed.terminalOutputWSUrl, { headers: { cookie: 'termlnk-web-sid=test-session' } });
+    const opened = await new Promise<boolean>((resolve) => {
+      ws.on('error', () => resolve(false));
+      ws.on('open', () => resolve(true));
+    });
+
+    expect(opened).toBe(true);
+    ws.close(1000);
   });
 });

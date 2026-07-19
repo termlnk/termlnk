@@ -14,11 +14,9 @@
  */
 
 import type { IHostChainHandle } from '../../services/ssh/ssh-host-chain.service';
-import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { ISSHSessionService, ITerminalSessionNotifyService, observableToAsyncGenerator } from '@termlnk/rpc';
 import { HOST_CHAIN_MAX_DEPTH, HostType } from '@termlnk/terminal';
-import { bufferTime, filter, map } from 'rxjs';
 import { Client } from 'ssh2';
 import { z } from 'zod';
 import { DEFAULT_SSH_CONNECTION_TIMEOUT } from '../../config/config';
@@ -108,31 +106,6 @@ export const sshRouter = router({
     .mutation(async ({ ctx, input }) => {
       const session = ctx.injector.get(ISSHSessionService).getSession(input.sessionId);
       session?.respondHostKeyVerify(input.action);
-    }),
-
-  data$: publicProcedure
-    .input(sessionIdSchema)
-    .subscription(async function* ({ ctx, input }) {
-      const sshSessionService = ctx.injector.get(ISSHSessionService);
-      const session = sshSessionService.getSession(input);
-      if (!session) {
-        throw new Error(`Session ${input} not found`);
-      }
-      const base64$ = session.data$.pipe(
-        bufferTime(8),
-        filter((chunks: Uint8Array[]) => chunks.length > 0),
-        map((chunks: Uint8Array[]) => {
-          const total = chunks.reduce((sum, c) => sum + c.length, 0);
-          const merged = new Uint8Array(total);
-          let offset = 0;
-          for (const chunk of chunks) {
-            merged.set(chunk, offset);
-            offset += chunk.length;
-          }
-          return Buffer.from(merged).toString('base64');
-        })
-      );
-      yield* observableToAsyncGenerator(base64$);
     }),
 
   status$: publicProcedure

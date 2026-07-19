@@ -39,7 +39,7 @@ export interface IUseSSHConnectionOptions {
   terminalUIService: ITerminalUIService;
   subscriptions: ReturnType<typeof useSubscriptionManager>;
   connectedRef: RefObject<boolean>;
-  onData: (data: string) => void;
+  onData: (data: string | Uint8Array, callback?: () => void) => void;
   getSize: () => { cols: number; rows: number };
 }
 
@@ -106,8 +106,9 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
       }
     }));
 
-    subscriptions.setSub('output', sshService.data$(backendId).subscribe((data) => {
-      if (data.length === 0) {
+    subscriptions.setSub('output', sshService.data$(backendId).subscribe((chunk) => {
+      if (chunk.data.byteLength === 0) {
+        chunk.acknowledge();
         return;
       }
       if (!dataReadyRef.current) {
@@ -115,7 +116,7 @@ export function useSSHConnection(options: IUseSSHConnectionOptions) {
         setStatus('ready');
         terminalUIService.updateSessionStatus(sessionId, 'ready');
       }
-      onData(data);
+      onData(chunk.data, chunk.acknowledge);
     }));
   }, [sshService, terminalUIService, sessionId, subscriptions, connectedRef, onData]);
 

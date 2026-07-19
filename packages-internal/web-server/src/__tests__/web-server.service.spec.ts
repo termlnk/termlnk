@@ -19,13 +19,14 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigService, IConfigService, ILogService as ILogServiceId, Injector } from '@termlnk/core';
+import { ITerminalOutputStreamService } from '@termlnk/rpc-server';
 import { initTRPC } from '@trpc/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/config.schema';
 import { IStaticFileService, StaticFileService } from '../services/static-file.service';
 import { IWebServerService, WebServerService } from '../services/web-server.service';
 import { IWebSessionService } from '../services/web-session.service';
-import { FakeWebSessionService } from './test-helpers';
+import { FakeTerminalOutputStreamService, FakeWebSessionService } from './test-helpers';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -59,6 +60,7 @@ function createTestBed(opts: { staticRoot?: string; port?: number } = {}): ITest
   // Always-allow stub keeps these P7.1a transport specs orthogonal to the
   // P7.5 cookie-gate behaviour, which has its own dedicated spec.
   injector.add([IWebSessionService, { useValue: new FakeWebSessionService('allow-all') }]);
+  injector.add([ITerminalOutputStreamService, { useClass: FakeTerminalOutputStreamService }]);
   injector.add([IWebServerService, { useClass: WebServerService }]);
 
   const config = injector.get(IConfigService);

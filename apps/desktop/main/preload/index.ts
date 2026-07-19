@@ -13,14 +13,29 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ITerminalOutputOpenRequest } from '@termlnk/terminal';
 import process from 'process';
 import { electronAPI } from '@electron-toolkit/preload';
 import { exposeElectronTRPC } from '@janwirth/electron-trpc-link/main';
+import { TERMINAL_OUTPUT_ELECTRON_CANCEL_CHANNEL, TERMINAL_OUTPUT_ELECTRON_OPEN_CHANNEL, TERMINAL_OUTPUT_ELECTRON_PORT_CHANNEL } from '@termlnk/terminal';
 import { contextBridge, ipcRenderer, shell, webUtils } from 'electron';
 
 // Expose electron-trpc for tRPC communication
 process.once('loaded', async () => {
   exposeElectronTRPC();
+});
+
+const terminalOutput = {
+  open: (request: ITerminalOutputOpenRequest): void => ipcRenderer.send(TERMINAL_OUTPUT_ELECTRON_OPEN_CHANNEL, request),
+  cancel: (requestId: string): void => ipcRenderer.send(TERMINAL_OUTPUT_ELECTRON_CANCEL_CHANNEL, requestId),
+};
+
+ipcRenderer.on(TERMINAL_OUTPUT_ELECTRON_PORT_CHANNEL, (event, response) => {
+  window.postMessage(
+    { type: TERMINAL_OUTPUT_ELECTRON_PORT_CHANNEL, ...response },
+    '*',
+    event.ports
+  );
 });
 
 const nativeFileUtils = {
@@ -47,6 +62,7 @@ if (process.contextIsolated) {
     contextBridge.exposeInMainWorld('nativeFileUtils', nativeFileUtils);
     contextBridge.exposeInMainWorld('nativeShell', nativeShell);
     contextBridge.exposeInMainWorld('__TERMLNK_BOOT__', termlnkBoot);
+    contextBridge.exposeInMainWorld('__TERMLNK_TERMINAL_OUTPUT__', terminalOutput);
   } catch (error) {
     console.error(error);
   }
@@ -59,4 +75,6 @@ if (process.contextIsolated) {
   window.nativeShell = nativeShell;
   // @ts-ignore (define in dts)
   window.__TERMLNK_BOOT__ = termlnkBoot;
+  // @ts-ignore (define in dts)
+  window.__TERMLNK_TERMINAL_OUTPUT__ = terminalOutput;
 }

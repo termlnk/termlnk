@@ -13,10 +13,8 @@
  * governing permissions and limitations under the License.
  */
 
-import { Buffer } from 'node:buffer';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { IPTYSessionService } from '@termlnk/terminal';
-import { bufferTime, filter, map } from 'rxjs';
 import { z } from 'zod';
 import { publicProcedure, router } from '../trpc';
 
@@ -65,22 +63,6 @@ export const ptyRouter = router({
     .mutation(async ({ ctx, input }) => {
       const ptySessionService = ctx.injector.get(IPTYSessionService);
       return ptySessionService.write(input.sessionId, input.data);
-    }),
-
-  data$: publicProcedure
-    .input(sessionIdSchema)
-    .subscription(async function* ({ ctx, input }) {
-      const ptySessionService = ctx.injector.get(IPTYSessionService);
-      const session = ptySessionService.getSession(input);
-      if (!session) {
-        throw new Error(`PTY session ${input} not found`);
-      }
-      const base64$ = session.data$.pipe(
-        bufferTime(8),
-        filter((chunks: Array<Buffer | Uint8Array>) => chunks.length > 0),
-        map((chunks: Array<Buffer | Uint8Array>) => Buffer.concat(chunks).toString('base64'))
-      );
-      yield* observableToAsyncGenerator(base64$);
     }),
 
   status$: publicProcedure

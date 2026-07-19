@@ -49,6 +49,8 @@ export interface IPTYProcess extends IDisposable {
   write(data: string): void;
   resize(cols: number, rows: number): void;
   kill(signal?: string): void;
+  pause(): void;
+  resume(): void;
   data$: Observable<Buffer>;
   exit$: Observable<IPTYExitEvent>;
 }
@@ -237,6 +239,14 @@ export function createPTYProcess(options: IPTYSpawnOptions = {}): IPTYProcessRes
 
     kill(signal?: string) {
       pty.kill(signal);
+    },
+
+    pause() {
+      pty.pause();
+    },
+
+    resume() {
+      pty.resume();
     },
 
     data$: dataSubject.asObservable().pipe(share()),

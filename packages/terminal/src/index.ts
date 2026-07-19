@@ -29,6 +29,8 @@ export type { IIdentity, IIdentityChangeEvent, IPublicIdentity, IPublicSshKey, I
 export type { IKnownHost, IKnownHostChangeEvent, IKnownHostMatch, KnownHostVerdict } from './models/known-host';
 export { PTYSessionStatus } from './models/pty';
 export type { IOscEvent, ITerminalCommand, OscEventType } from './models/shell-integration';
+export { decodeTerminalOutputFrame, encodeTerminalOutputFrame, isTerminalOutputAckMessage, isTerminalOutputOpenRequest, parseTerminalOutputServerMessage, TERMINAL_OUTPUT_ACK_BATCH_BYTES, TERMINAL_OUTPUT_ACK_INTERVAL_MS, TERMINAL_OUTPUT_CREDIT_BYTES, TERMINAL_OUTPUT_CREDIT_FRAMES, TERMINAL_OUTPUT_ELECTRON_CANCEL_CHANNEL, TERMINAL_OUTPUT_ELECTRON_OPEN_CHANNEL, TERMINAL_OUTPUT_ELECTRON_PORT_CHANNEL, TERMINAL_OUTPUT_FRAME_INTERVAL_MS, TERMINAL_OUTPUT_MAX_FRAME_BYTES, TERMINAL_OUTPUT_WEB_SOCKET_PATH } from './models/terminal-output';
+export type { ITerminalOutputAckMessage, ITerminalOutputCloseMessage, ITerminalOutputDataMessage, ITerminalOutputErrorMessage, ITerminalOutputOpenRequest, TerminalOutputClientMessage, TerminalOutputServerMessage, TerminalOutputSourceType } from './models/terminal-output';
 export { parseCsi } from './parsers/csi-parser';
 export type { CsiCommand, ICursorBackwardCommand, ICursorBackwardTabCommand, ICursorDownCommand, ICursorForwardCommand, ICursorHorizontalTabCommand, ICursorNextLineCommand, ICursorPositionCommand, ICursorPreviousLineCommand, ICursorUpCommand, IDeleteCharacterCommand, IDeleteLineCommand, IDeviceAttributesPrimaryCommand, IDeviceAttributesSecondaryCommand, IDeviceAttributesTertiaryCommand, IDeviceStatusReportCommand, IEraseCharacterCommand, IEraseInDisplayCommand, IEraseInLineCommand, IHorizontalPositionAbsoluteCommand, IHorizontalPositionRelativeCommand, IInsertCharacterCommand, IInsertLineCommand, IKittyKeyboardPopCommand, IKittyKeyboardPushCommand, IKittyKeyboardQueryCommand, IKittyKeyboardSetCommand, IRepeatCharacterCommand, IRequestModeCommand, IResetModeCommand, IRestoreCursorCommand, ISaveCursorCommand, IScrollDownCommand, IScrollUpCommand, ISelectCharProtectionCommand, ISelectGraphicRenditionCommand, ISetCursorStyleCommand, ISetLeftRightMarginsCommand, ISetModeCommand, ISetTopBottomMarginsCommand, ITabClearCommand, IUnknownCsiCommand, IVerticalPositionAbsoluteCommand, IVerticalPositionRelativeCommand, IWindowManipulationCommand, IXtVersionCommand } from './parsers/csi-parser';
 export { CsiStreamParser } from './parsers/csi-stream-parser';
@@ -52,3 +54,6 @@ export { IPTYSessionService } from './services/pty-session';
 export type { IPTYCreateSessionOptions } from './services/pty.service';
 export { IPTYService } from './services/pty.service';
 export { IShellIntegrationService, ShellIntegrationService } from './services/shell-integration.service';
+export { TerminalOutputAckBuffer } from './services/terminal-output-ack-buffer';
+export { ITerminalOutputTransportService } from './services/terminal-output-transport.service';
+export type { ITerminalOutputChunk } from './services/terminal-output-transport.service';

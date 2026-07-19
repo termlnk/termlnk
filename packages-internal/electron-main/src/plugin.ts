@@ -28,6 +28,7 @@ import { MenuController } from './controllers/menu.controller';
 import { OAuthController } from './controllers/oauth.controller';
 import { RPCController } from './controllers/rpc.controller';
 import { SingleInstanceController } from './controllers/single-instance.controller';
+import { TerminalOutputController } from './controllers/terminal-output.controller';
 import { WindowFocusSyncController } from './controllers/window-focus-sync.controller';
 import { WindowStateController } from './controllers/window-state.controller';
 import { DiskFileService } from './services/file/disk-file.service';
@@ -66,6 +67,7 @@ export class ElectronMainPlugin extends Plugin {
       [MainController],
       [MenuController],
       [RPCController],
+      [TerminalOutputController],
       [AppSettingsController],
       [WindowFocusSyncController],
       [DeepLinkController],
@@ -104,6 +106,7 @@ export class ElectronMainPlugin extends Plugin {
       [MainController],
       [MenuController],
       [RPCController],
+      [TerminalOutputController],
       [AppSettingsController],
       [DynamicIslandController],
       [WindowFocusSyncController],

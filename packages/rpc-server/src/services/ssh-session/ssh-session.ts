@@ -63,6 +63,7 @@ export class SSHSession extends Disposable implements IDisposable {
   private _closeReason: 'auth_failed' | 'error' | undefined;
 
   private _channel: Nullable<ISSHChannel>;
+  private _isOutputPaused = false;
   // Set once close() is requested: blocks _ensureChannel from opening an
   // orphan shell if the socket becomes ready after the session was closed.
   private _closed = false;
@@ -190,6 +191,16 @@ export class SSHSession extends Disposable implements IDisposable {
 
   pushData(data: Uint8Array): void {
     this._data$.next(data);
+  }
+
+  pauseOutput(): void {
+    this._isOutputPaused = true;
+    this._channel?.pause();
+  }
+
+  resumeOutput(): void {
+    this._isOutputPaused = false;
+    this._channel?.resume();
   }
 
   async write(data: string | Uint8Array): Promise<void> {
@@ -367,6 +378,9 @@ export class SSHSession extends Disposable implements IDisposable {
         this._data$.next(processed);
       }
     })));
+    if (this._isOutputPaused) {
+      this._channel.pause();
+    }
     this._channelDisposables.add(toDisposable(this._channel.error$.subscribe((err) => {
       this._error$.next(new TextDecoder().decode(err));
       this._setStatus(SSHSessionStatus.ERROR);

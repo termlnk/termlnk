@@ -17,6 +17,7 @@ import type { ILogService, LogLevel } from '@termlnk/core';
 import type { IWebServerConfig } from '../controllers/config.schema';
 import process from 'node:process';
 import { ConfigService, IConfigService, ILogService as ILogServiceId, Injector } from '@termlnk/core';
+import { ITerminalOutputStreamService } from '@termlnk/rpc-server';
 import { initTRPC } from '@trpc/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TERMLNK_WEB_AUTH_PATH_PREFIX, WEB_SERVER_PLUGIN_CONFIG_KEY } from '../controllers/config.schema';
@@ -25,6 +26,7 @@ import { IStaticFileService, StaticFileService } from '../services/static-file.s
 import { IWebServerService, WebServerService } from '../services/web-server.service';
 import { IWebSessionService, SESSION_COOKIE_NAME, WebSessionService } from '../services/web-session.service';
 import { createAuthRouteHandler } from '../trpc/auth-routes';
+import { FakeTerminalOutputStreamService } from './test-helpers';
 
 class NoopLogService implements ILogService {
   debug(): void {}
@@ -60,6 +62,7 @@ async function setupBed(opts: { masterPassword?: string; sessionIdleTimeoutMs?: 
   injector.add([ILogServiceId, { useClass: NoopLogService }]);
   injector.add([IConfigService, { useClass: ConfigService }]);
   injector.add([IStaticFileService, { useClass: StaticFileService }]);
+  injector.add([ITerminalOutputStreamService, { useClass: FakeTerminalOutputStreamService }]);
   injector.add([IWebServerService, { useClass: WebServerService }]);
   injector.add([IMasterKeyHolderService, { useClass: MasterKeyHolderService }]);
   injector.add([IWebSessionService, { useClass: WebSessionService }]);

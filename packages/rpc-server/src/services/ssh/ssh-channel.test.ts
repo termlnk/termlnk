@@ -30,6 +30,8 @@ function createMockChannel() {
     exit: () => void;
     close: () => void;
     destroy: () => void;
+    pause: () => void;
+    resume: () => void;
   };
 
   channel.server = false;
@@ -43,6 +45,8 @@ function createMockChannel() {
   channel.exit = () => {};
   channel.close = () => {};
   channel.destroy = () => {};
+  channel.pause = () => {};
+  channel.resume = () => {};
 
   return channel;
 }

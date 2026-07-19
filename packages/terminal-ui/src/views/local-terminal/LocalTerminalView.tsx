@@ -163,7 +163,9 @@ export function LocalTerminalView(props: ITerminalViewProps) {
       (params) => {
         // XTVERSION: only respond when param is 0 (default) per spec
         const param = typeof params[0] === 'number' ? params[0] : 0;
-        if (param !== 0) return false;
+        if (param !== 0) {
+          return false;
+        }
 
         ptyService.write(sessionId, formatXtVersionResponse('Teal', '0.0.0')).catch(console.error);
         return true;
@@ -224,11 +226,13 @@ export function LocalTerminalView(props: ITerminalViewProps) {
 
         // Best-effort shell path detection for drag-and-drop path escaping
         ptyService.getShellPath(sessionId).then((sp) => {
-          if (!disposed) setShellPath(sp);
+          if (!disposed) {
+            setShellPath(sp);
+          }
         }).catch(() => {});
 
         dataSub = ptyService.data$(sessionId).subscribe({
-          next: write,
+          next: (chunk) => write(chunk.data, chunk.acknowledge),
           error: (err) => {
             console.error('[LocalTerminal] Data error:', err);
             terminalUIService.updateSessionStatus(sessionId, 'error');

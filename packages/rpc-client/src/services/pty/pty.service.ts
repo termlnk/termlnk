@@ -13,15 +13,17 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ILocalTerminalShellOption, IPTYCreateSessionOptions, IPTYService, PTYSessionStatus } from '@termlnk/terminal';
+import type { ILocalTerminalShellOption, IPTYCreateSessionOptions, IPTYService, ITerminalOutputChunk, PTYSessionStatus } from '@termlnk/terminal';
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
-import { decodeBase64Utf8Stream, trpcSubscriptionToObservable } from '@termlnk/rpc';
+import { trpcSubscriptionToObservable } from '@termlnk/rpc';
+import { ITerminalOutputTransportService } from '@termlnk/terminal';
 import { IRPCClientService } from '../rpc-client.service';
 
 export class PTYService extends Disposable implements IPTYService {
   constructor(
-    @IRPCClientService private readonly _rpcClientService: IRPCClientService
+    @IRPCClientService private readonly _rpcClientService: IRPCClientService,
+    @ITerminalOutputTransportService private readonly _terminalOutputTransportService: ITerminalOutputTransportService
   ) {
     super();
   }
@@ -46,12 +48,8 @@ export class PTYService extends Disposable implements IPTYService {
     await this._client.write.mutate({ sessionId, data });
   }
 
-  data$(sessionId: string): Observable<string> {
-    return decodeBase64Utf8Stream(
-      trpcSubscriptionToObservable<string>((opts) =>
-        this._client.data$.subscribe(sessionId, opts)
-      )
-    );
+  data$(sessionId: string): Observable<ITerminalOutputChunk> {
+    return this._terminalOutputTransportService.data$('pty', sessionId);
   }
 
   status$(sessionId: string): Observable<PTYSessionStatus> {

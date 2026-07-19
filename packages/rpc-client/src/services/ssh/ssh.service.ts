@@ -14,9 +14,11 @@
  */
 
 import type { ITerminalSessionClosedEvent, ITerminalSessionCreatedEvent, SSHSessionEvent, SSHSessionStatus } from '@termlnk/rpc';
+import type { ITerminalOutputChunk } from '@termlnk/terminal';
 import type { Observable } from 'rxjs';
 import { createIdentifier, Disposable } from '@termlnk/core';
-import { decodeBase64Utf8Stream, trpcSubscriptionToObservable } from '@termlnk/rpc';
+import { trpcSubscriptionToObservable } from '@termlnk/rpc';
+import { ITerminalOutputTransportService } from '@termlnk/terminal';
 import { IRPCClientService } from '../rpc-client.service';
 
 export interface ISSHTestConnectionInput {
@@ -43,7 +45,7 @@ export interface ISSHService {
   retrySession(sessionId: string, password: string): Promise<void>;
   resize(sessionId: string, rows: number, cols: number): Promise<void>;
   write(sessionId: string, data: string): Promise<void>;
-  data$(sessionId: string): Observable<string>;
+  data$(sessionId: string): Observable<ITerminalOutputChunk>;
   status$(sessionId: string): Observable<SSHSessionStatus>;
   event$(sessionId: string): Observable<SSHSessionEvent>;
   error$(sessionId: string): Observable<string>;
@@ -57,7 +59,8 @@ export const ISSHService = createIdentifier<ISSHService>('rpc-client.ssh-service
 
 export class SSHService extends Disposable implements ISSHService {
   constructor(
-    @IRPCClientService private readonly _rpcClientService: IRPCClientService
+    @IRPCClientService private readonly _rpcClientService: IRPCClientService,
+    @ITerminalOutputTransportService private readonly _terminalOutputTransportService: ITerminalOutputTransportService
   ) {
     super();
   }
@@ -86,12 +89,8 @@ export class SSHService extends Disposable implements ISSHService {
     await this._client.write.mutate({ sessionId, data });
   }
 
-  data$(sessionId: string): Observable<string> {
-    return decodeBase64Utf8Stream(
-      trpcSubscriptionToObservable<string>((opts) =>
-        this._client.data$.subscribe(sessionId, opts)
-      )
-    );
+  data$(sessionId: string): Observable<ITerminalOutputChunk> {
+    return this._terminalOutputTransportService.data$('ssh', sessionId);
   }
 
   status$(sessionId: string): Observable<SSHSessionStatus> {

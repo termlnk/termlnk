@@ -20,6 +20,7 @@ import { DependentOn, IConfigService, Inject, InjectSelf, IUpdaterService, merge
 import { IWindowManagerService } from '@termlnk/electron';
 import { IRPCClientService, RPCClientPlugin } from '@termlnk/rpc-client';
 import { IBrowserFileTransferService } from '@termlnk/sftp-ui';
+import { ITerminalOutputTransportService } from '@termlnk/terminal';
 import { IHostEnvironmentService, UIPlugin, WebHostEnvironmentService } from '@termlnk/ui';
 import { defaultPluginConfig, WEB_RENDERER_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { WebHeaderController } from './controllers/header.controller';
@@ -27,6 +28,7 @@ import { WebDeepLinkController } from './controllers/web-deep-link.controller';
 import { WebGoogleSignInLauncher } from './services/auth/google-sign-in-launcher.service';
 import { WebRPCClientService } from './services/rpc/web-rpc-client.service';
 import { BrowserFileTransferService } from './services/sftp/browser-file-transfer.service';
+import { WebTerminalOutputTransportService } from './services/terminal-output/terminal-output-transport.service';
 import { WebUpdaterService } from './services/updater/web-updater.service';
 import { NoopWindowManagerService } from './services/window-manager/noop-window-manager.service';
 
@@ -54,6 +56,7 @@ export class WebRendererPlugin extends Plugin {
   override onStarting(): void {
     const dependencies: Dependency[] = [
       [IRPCClientService, { useClass: WebRPCClientService }],
+      [ITerminalOutputTransportService, { useClass: WebTerminalOutputTransportService }],
       [IWindowManagerService, { useClass: NoopWindowManagerService }],
       [IUpdaterService, { useClass: WebUpdaterService }],
       [IBrowserFileTransferService, { useClass: BrowserFileTransferService }],

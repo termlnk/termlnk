@@ -20,6 +20,7 @@ import { DependentOn, IConfigService, Inject, Injector, IUpdaterService, merge, 
 import { IWindowManagerService } from '@termlnk/electron';
 import { IRPCClientService, RPCClientPlugin } from '@termlnk/rpc-client';
 import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
+import { ITerminalOutputTransportService } from '@termlnk/terminal';
 import { UIPlugin } from '@termlnk/ui';
 import { Cog } from 'lucide-react';
 import { CompositorWarmupController } from './controllers/compositor-warmup.controller';
@@ -28,6 +29,7 @@ import { HeaderController } from './controllers/header.controller';
 import { TransparencyController } from './controllers/transparency.controller';
 import { ElectronGoogleSignInLauncher } from './services/auth/google-sign-in-launcher.service';
 import { RPCClientService } from './services/rpc/rpc-client.service';
+import { ElectronTerminalOutputTransportService } from './services/terminal-output/terminal-output-transport.service';
 import { UpdaterService } from './services/updater/updater.service';
 import { WindowManagerService } from './services/window-manager/window-manager.service';
 import { PlatformTab } from './views/settings/PlatformTab';
@@ -91,6 +93,7 @@ export class ElectronRendererPlugin extends Plugin {
   private _initDependencies(): void {
     const dependencies: Dependency[] = [
       [IRPCClientService, { useClass: RPCClientService }],
+      [ITerminalOutputTransportService, { useClass: ElectronTerminalOutputTransportService }],
       [IWindowManagerService, { useClass: WindowManagerService }],
       [IUpdaterService, { useClass: UpdaterService }],
       [IGoogleSignInLauncher, { useClass: ElectronGoogleSignInLauncher }],
