@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { Api, AssistantMessage, AssistantMessageEventStream, Context, KnownProvider, Model, ProviderStreams, SimpleStreamOptions } from '@earendil-works/pi-ai';
+import type { Api, AssistantMessage, AssistantMessageEventStream, Context, Model, ProviderStreams, SimpleStreamOptions } from '@earendil-works/pi-ai';
 import type { ICustomModelDefinition, ILLMProvider, ILLMProviderService, IModelOption, IModelOverrides, IModelUserConfig, IProviderGroup, IProviderUserConfig } from '@termlnk/agent';
 import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity } from '@termlnk/database';
 import type { Observable } from 'rxjs';
@@ -234,8 +234,8 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     };
 
     // Determine if this is a builtin provider
-    const builtinProviders = new Set(getBuiltinProviders());
-    const isBuiltin = builtinProviders.has(providerId as KnownProvider);
+    const builtinProviders = new Set<string>(getBuiltinProviders());
+    const isBuiltin = builtinProviders.has(providerId);
 
     await this._providerRepository.upsertProvider({
       id: providerId,
@@ -289,8 +289,8 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     }
 
     // Save fetched models as custom models for this provider
-    const builtinProviders = new Set(getBuiltinProviders());
-    if (!builtinProviders.has(providerId as KnownProvider)) {
+    const builtinProviders = new Set<string>(getBuiltinProviders());
+    if (!builtinProviders.has(providerId)) {
       for (const modelId of modelIds) {
         const compositeId = `${providerId}/${modelId}`;
         await this._providerRepository.upsertCustomModel({
@@ -653,10 +653,10 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
         return;
       }
 
-      const builtinProviders = new Set(getBuiltinProviders());
+      const builtinProviders = new Set<string>(getBuiltinProviders());
 
       for (const legacy of legacyProviders) {
-        const isBuiltin = builtinProviders.has(legacy.provider as KnownProvider);
+        const isBuiltin = builtinProviders.has(legacy.provider);
 
         await this._providerRepository.upsertProvider({
           id: legacy.provider,
