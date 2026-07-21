@@ -17,6 +17,12 @@ import type enUS from './en-US';
 
 const locale: typeof enUS = {
   ui: {
+    'icon-picker': {
+      'search-placeholder': '絵文字を検索...',
+      style: '背景色',
+      'reset-default': 'デフォルトに戻す',
+      'no-results': '絵文字が見つかりません',
+    },
     'notification-panel': {
       title: '通知',
       filter: {

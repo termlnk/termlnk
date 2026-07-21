@@ -17,6 +17,12 @@ import type enUS from './en-US';
 
 const locale: typeof enUS = {
   ui: {
+    'icon-picker': {
+      'search-placeholder': '이모지 검색...',
+      style: '배경색',
+      'reset-default': '기본값으로 복원',
+      'no-results': '이모지를 찾을 수 없습니다',
+    },
     'notification-panel': {
       title: '알림',
       filter: {

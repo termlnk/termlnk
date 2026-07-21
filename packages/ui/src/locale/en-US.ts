@@ -15,6 +15,12 @@
 
 const locale = {
   ui: {
+    'icon-picker': {
+      'search-placeholder': 'Search emojis...',
+      style: 'Background',
+      'reset-default': 'Reset to default',
+      'no-results': 'No emojis found',
+    },
     'notification-panel': {
       title: 'Notifications',
       filter: {

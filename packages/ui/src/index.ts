@@ -23,10 +23,10 @@ export { DEFAULT_UI_FONT_FAMILY, DEFAULT_UI_FONT_SIZE, UI_PLUGIN_CONFIG_KEY } fr
 export type { IUIConfig } from './controllers/config.schema';
 export { UI_PLUGIN_NAME, UIPlugin } from './plugin';
 
-export { ComponentManagerService } from './services/component/component-manager.service';
-export type { ComponentList, ComponentType, IComponent, IComponentOptions } from './services/component/component-manager.service';
 export { IColorSchemeService, WebColorSchemeService } from './services/color-scheme/color-scheme.service';
 export type { OSColorScheme } from './services/color-scheme/color-scheme.service';
+export { ComponentManagerService } from './services/component/component-manager.service';
+export type { ComponentList, ComponentType, IComponent, IComponentOptions } from './services/component/component-manager.service';
 export { DesktopConfirmService } from './services/confirm/desktop-confirm.service';
 export { ContentRouterService, DEFAULT_PAGE_ID, IContentRouterService } from './services/content-router/content-router.service';
 export type { IContentPage } from './services/content-router/content-router.service';
@@ -62,6 +62,8 @@ export { ComponentContainer, useComponentsOfPart } from './views/components/Comp
 export type { IComponentContainerProps } from './views/components/ComponentContainer';
 export type { ICustomWrapperProps } from './views/components/custom-wrapper';
 export { CustomWrapper } from './views/components/custom-wrapper';
+export { ICON_PICKER_BACKGROUNDS, IconBadge, IconPicker } from './views/components/icon-picker';
+export type { IIconBadgeProps, IIconPickerProps, IIconPickerValue } from './views/components/icon-picker';
 export { NotificationIcon, NotificationPanel } from './views/components/notification';
 export { TooltipWrapper } from './views/components/tooltip/TooltipWrapper';
 export type { ITooltipWrapperProps } from './views/components/tooltip/TooltipWrapper';
