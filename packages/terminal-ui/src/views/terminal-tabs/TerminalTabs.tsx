@@ -445,6 +445,8 @@ export function TerminalTabs(props: ITerminalTabsProps) {
           id={item.id}
           label={item.label}
           sessionCount={item.sessionCount ?? 0}
+          icon={item.icon}
+          pinned={item.pinned}
           isActive={item.id === activeTabItemId}
           isDragging={dragState?.id === item.id}
           isMergeTarget={isMergeTarget}
@@ -542,6 +544,8 @@ export function TerminalTabs(props: ITerminalTabsProps) {
                   id={draggedItem.id}
                   label={draggedItem.label}
                   sessionCount={draggedItem.sessionCount ?? 0}
+                  icon={draggedItem.icon}
+                  pinned={draggedItem.pinned}
                   isActive={draggedItem.id === activeTabItemId}
                   isFloating
                   onPointerDown={undefined}

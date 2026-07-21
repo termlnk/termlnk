@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITabDisplayItem, ITabItem } from '../../models/workspace.model';
+import type { ITabDisplayItem, ITabItem, IWorkspaceTabMeta } from '../../models/workspace.model';
 import type { ITerminalSession } from '../../services/terminal/terminal-ui.service';
 import type { IWorkspaceService } from '../../services/workspace/workspace.service';
 import { useMemo } from 'react';
@@ -21,14 +21,18 @@ import { useMemo } from 'react';
 export function useTabDisplayItems(
   tabItems: ITabItem[],
   sessions: ITerminalSession[],
+  workspaces: IWorkspaceTabMeta[],
   workspaceService: IWorkspaceService
 ): ITabDisplayItem[] {
   return useMemo<ITabDisplayItem[]>(() => {
     const sessionMap = new Map(sessions.map((s) => [s.id, s]));
+    const workspaceMap = new Map(workspaces.map((w) => [w.id, w]));
     return tabItems.map((tab): ITabDisplayItem | null => {
       if (tab.type === 'session') {
         const session = sessionMap.get(tab.sessionId);
-        if (!session) return null;
+        if (!session) {
+          return null;
+        }
         return {
           id: session.id,
           tabType: 'session',
@@ -37,14 +41,18 @@ export function useTabDisplayItems(
           sessionStatus: session.status,
         };
       }
-      const ws = workspaceService.getWorkspace(tab.workspaceId);
-      if (!ws) return null;
+      const ws = workspaceMap.get(tab.workspaceId);
+      if (!ws) {
+        return null;
+      }
       return {
         id: ws.id,
         tabType: 'workspace',
         label: ws.name,
+        icon: ws.icon,
+        pinned: ws.pinned,
         sessionCount: workspaceService.getSessionCountInWorkspace(ws.id),
       };
     }).filter((item): item is ITabDisplayItem => item !== null);
-  }, [tabItems, sessions, workspaceService]);
+  }, [tabItems, sessions, workspaces, workspaceService]);
 }

@@ -318,6 +318,15 @@ const locale: typeof enUS = {
         'view-only-hint': '加入者只能觀看，無法輸入。適合示範場景。',
       },
     },
+    'terminal-tab': {
+      'context-menu': {
+        'customize-icon': '自訂圖示',
+        rename: '重新命名',
+        pin: '釘選分頁',
+        unpin: '取消釘選',
+        close: '關閉',
+      },
+    },
   },
 };
 

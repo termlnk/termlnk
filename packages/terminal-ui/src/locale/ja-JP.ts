@@ -318,6 +318,15 @@ const locale: typeof enUS = {
         'view-only-hint': '参加者は閲覧のみで入力できません。デモに最適です。',
       },
     },
+    'terminal-tab': {
+      'context-menu': {
+        'customize-icon': 'アイコンをカスタマイズ',
+        rename: '名前を変更',
+        pin: 'タブを固定',
+        unpin: 'タブの固定を解除',
+        close: '閉じる',
+      },
+    },
   },
 };
 

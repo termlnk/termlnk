@@ -316,6 +316,15 @@ const locale = {
         'view-only-hint': 'Joiners can watch but cannot type. Recommended for demos.',
       },
     },
+    'terminal-tab': {
+      'context-menu': {
+        'customize-icon': 'Customize icon',
+        rename: 'Rename',
+        pin: 'Pin tab',
+        unpin: 'Unpin tab',
+        close: 'Close',
+      },
+    },
   },
 };
 

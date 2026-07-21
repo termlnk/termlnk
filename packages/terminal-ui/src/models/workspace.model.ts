@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IIconPickerValue } from '@termlnk/ui';
 import type { TerminalSessionStatus } from '../services/terminal/terminal-ui.service';
 
 // Layout direction
@@ -45,6 +46,10 @@ export interface IWorkspace {
   name: string;
   layout: IWorkspaceLayoutNode;
   activeSessionId: string | null;
+  /** Custom tab icon; undefined renders the default LayoutGrid glyph. */
+  icon?: IIconPickerValue;
+  /** Pinned tabs collapse to an icon-only chip locked to the front of the tab bar. */
+  pinned?: boolean;
 }
 
 // Tab item union types for tab bar rendering
@@ -73,6 +78,13 @@ export interface IPaneToTabDragState {
   dropIndex: number;
 }
 
+/**
+ * Tab-bar projection of a workspace — the only fields tab rendering depends on.
+ * Subscribing to this instead of the full `IWorkspace` keeps splitter-drag layout
+ * mutations from re-rendering the tab bar.
+ */
+export type IWorkspaceTabMeta = Pick<IWorkspace, 'id' | 'name' | 'icon' | 'pinned'>;
+
 // Tab bar display item (unified rendering interface)
 export interface ITabDisplayItem {
   id: string;
@@ -81,4 +93,6 @@ export interface ITabDisplayItem {
   sessionType?: string;
   sessionStatus?: TerminalSessionStatus;
   sessionCount?: number;
+  icon?: IIconPickerValue;
+  pinned?: boolean;
 }

@@ -151,7 +151,7 @@ export function TerminalContainer(): React.JSX.Element {
     return () => subscription.unsubscribe();
   }, [workspaceService, restoreSessionHost]);
 
-  const displayItems = useTabDisplayItems(tabItems, sessions, workspaceService);
+  const displayItems = useTabDisplayItems(tabItems, sessions, workspaces, workspaceService);
 
   const handleSelectTab = useCallback((id: string) => {
     workspaceService.setActiveTabItem(id);

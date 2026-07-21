@@ -318,6 +318,15 @@ const locale: typeof enUS = {
         'view-only-hint': '참여자는 보기만 가능하고 입력할 수 없습니다. 데모에 적합합니다.',
       },
     },
+    'terminal-tab': {
+      'context-menu': {
+        'customize-icon': '아이콘 사용자 지정',
+        rename: '이름 바꾸기',
+        pin: '탭 고정',
+        unpin: '탭 고정 해제',
+        close: '닫기',
+      },
+    },
   },
 };
 

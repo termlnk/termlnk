@@ -318,6 +318,15 @@ const locale: typeof enUS = {
         'view-only-hint': '加入者只能观看，无法输入。适合演示场景。',
       },
     },
+    'terminal-tab': {
+      'context-menu': {
+        'customize-icon': '自定义图标',
+        rename: '重命名',
+        pin: '固定标签',
+        unpin: '取消固定',
+        close: '关闭',
+      },
+    },
   },
 };
 

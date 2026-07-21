@@ -14,11 +14,16 @@
  */
 
 import { Disposable, ICommandService } from '@termlnk/core';
-import { IShortcutService } from '@termlnk/ui';
+import { IMenuManagerService, IShortcutService } from '@termlnk/ui';
 import { CloseActiveTabCommand } from '../../commands/close-active-tab.command';
+import { CloseWorkspaceTabCommand } from '../../commands/close-workspace-tab.command';
+import { CustomizeWorkspaceIconCommand } from '../../commands/customize-workspace-icon.command';
 import { MaximizeSessionCommand } from '../../commands/maximize-session.command';
+import { RenameWorkspaceCommand } from '../../commands/rename-workspace.command';
 import { SelectTabByIndexCommand } from '../../commands/select-tab-by-index.command';
 import { SplitSessionCommand } from '../../commands/split-session.command';
+import { TogglePinWorkspaceCommand } from '../../commands/toggle-pin-workspace.command';
+import { terminalTabMenuSchema } from '../../menus/terminal-tab.menu';
 import {
   CloseActiveTabShortcut,
   MaximizeSessionShortcut,
@@ -30,6 +35,7 @@ import {
 export class WorkspaceController extends Disposable {
   constructor(
     @ICommandService private readonly _commandService: ICommandService,
+    @IMenuManagerService private readonly _menuManagerService: IMenuManagerService,
     @IShortcutService private readonly _shortcutService: IShortcutService
   ) {
     super();
@@ -42,6 +48,12 @@ export class WorkspaceController extends Disposable {
     this.disposeWithMe(this._commandService.registerCommand(MaximizeSessionCommand));
     this.disposeWithMe(this._commandService.registerCommand(SplitSessionCommand));
     this.disposeWithMe(this._commandService.registerCommand(SelectTabByIndexCommand));
+    this.disposeWithMe(this._commandService.registerCommand(CustomizeWorkspaceIconCommand));
+    this.disposeWithMe(this._commandService.registerCommand(RenameWorkspaceCommand));
+    this.disposeWithMe(this._commandService.registerCommand(TogglePinWorkspaceCommand));
+    this.disposeWithMe(this._commandService.registerCommand(CloseWorkspaceTabCommand));
+
+    this.disposeWithMe(this._menuManagerService.appendRootMenu(terminalTabMenuSchema));
 
     this.disposeWithMe(this._shortcutService.registerShortcut(CloseActiveTabShortcut));
     this.disposeWithMe(this._shortcutService.registerShortcut(MaximizeSessionShortcut));

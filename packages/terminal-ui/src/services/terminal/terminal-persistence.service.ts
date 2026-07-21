@@ -15,6 +15,7 @@
 
 import type { IDisposable } from '@termlnk/core';
 import type { ITerminalAppearanceConfig } from '@termlnk/terminal';
+import type { IIconPickerValue } from '@termlnk/ui';
 import type { IWorkspaceLayoutNode } from '../../models/workspace.model';
 import type { ISerializeResult } from '../../views/hooks';
 import { createIdentifier, Disposable, ILogService } from '@termlnk/core';
@@ -48,6 +49,8 @@ export interface IPersistedWorkspace {
   name: string;
   layout: IWorkspaceLayoutNode;
   activeSessionId: string | null;
+  icon?: IIconPickerValue;
+  pinned?: boolean;
 }
 
 export interface IPersistedTerminalStateV2 {
@@ -148,6 +151,8 @@ export class TerminalPersistenceService extends Disposable implements ITerminalP
         name: ws.name,
         layout: ws.layout,
         activeSessionId: ws.activeSessionId,
+        icon: ws.icon,
+        pinned: ws.pinned,
       }));
       const tabItemOrder = this._workspaceService.getTabItemOrder();
       const activeTabItemId = this._workspaceService.getActiveTabItemId();

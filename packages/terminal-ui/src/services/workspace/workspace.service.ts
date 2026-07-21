@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { IIconPickerValue } from '@termlnk/ui';
 import type { Observable } from 'rxjs';
 import type { DropSide, IMagnifyState, IPaneToTabDragState, ITabItem, IWorkspace, IWorkspaceLayoutBranch, IWorkspaceLayoutNode, WorkspaceLayoutDirection } from '../../models/workspace.model';
 import type { ITerminalSession } from '../terminal/terminal-ui.service';
@@ -218,6 +219,27 @@ export interface IWorkspaceService {
   getWorkspace(workspaceId: string): IWorkspace | undefined;
   getAllWorkspaces(): IWorkspace[];
 
+  // Appearance & pinning
+  renameWorkspace(workspaceId: string, name: string): void;
+  setWorkspaceIcon(workspaceId: string, icon: IIconPickerValue | null): void;
+  setWorkspacePinned(workspaceId: string, pinned: boolean): void;
+  isTabItemPinned(tabItemId: string): boolean;
+
+  /**
+   * Context menu target — the view writes the right-clicked workspace id here
+   * before triggering the menu, and commands read it instead of receiving the
+   * target via parameters.
+   */
+  readonly menuTarget$: Observable<string | null>;
+  setMenuTarget(workspaceId: string | null): void;
+  getMenuTarget(): string | null;
+
+  /** One-shot UI intent buses: commands push the intent, the tab item view drives it. */
+  readonly renameRequest$: Observable<string>;
+  requestRename(workspaceId: string): void;
+  readonly iconPickerRequest$: Observable<string>;
+  requestIconPicker(workspaceId: string): void;
+
   // Merge operations
   mergeSessionIntoWorkspace(sessionId: string, workspaceId: string, targetSessionId: string, side: DropSide): void;
   mergeTwoSessions(sessionIdA: string, sessionIdB: string, side?: DropSide): string;
@@ -272,6 +294,15 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   private readonly _paneToTabDrag$ = new BehaviorSubject<IPaneToTabDragState | null>(null);
   readonly paneToTabDrag$: Observable<IPaneToTabDragState | null> = this._paneToTabDrag$.asObservable();
+
+  private readonly _menuTarget$ = new BehaviorSubject<string | null>(null);
+  readonly menuTarget$: Observable<string | null> = this._menuTarget$.asObservable();
+
+  private readonly _renameRequest$ = new Subject<string>();
+  readonly renameRequest$: Observable<string> = this._renameRequest$.asObservable();
+
+  private readonly _iconPickerRequest$ = new Subject<string>();
+  readonly iconPickerRequest$: Observable<string> = this._iconPickerRequest$.asObservable();
 
   readonly tabItems$: Observable<ITabItem[]>;
 
@@ -552,17 +583,39 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
   moveTabItem(sourceId: string, targetId: string, position: 'before' | 'after'): void {
     const order = [...this._tabItemOrder$.value];
     const fromIndex = order.indexOf(sourceId);
-    if (fromIndex === -1) return;
+    if (fromIndex === -1) {
+      return;
+    }
 
     order.splice(fromIndex, 1);
     const targetIndex = order.indexOf(targetId);
-    if (targetIndex === -1) {
-      order.push(sourceId);
-    } else {
-      const insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
-      order.splice(insertIndex, 0, sourceId);
-    }
+    const insertIndex = targetIndex === -1
+      ? order.length
+      : position === 'after' ? targetIndex + 1 : targetIndex;
+    order.splice(this._clampInsertIndex(sourceId, order, insertIndex), 0, sourceId);
     this._tabItemOrder$.next(order);
+  }
+
+  /** Length of the leading run of pinned tabs in the given order. */
+  private _pinnedTabCount(order: string[]): number {
+    let count = 0;
+    while (count < order.length && this.isTabItemPinned(order[count])) {
+      count++;
+    }
+    return count;
+  }
+
+  /**
+   * Clamp an insert index so pinned tabs stay inside the leading pinned segment and
+   * regular tabs can never enter it. Must be called with the moved tab already
+   * removed from `order` so the pinned count reflects the remaining tabs.
+   */
+  private _clampInsertIndex(tabItemId: string, order: string[], index: number): number {
+    const pinnedCount = this._pinnedTabCount(order);
+    if (this.isTabItemPinned(tabItemId)) {
+      return Math.min(Math.max(index, 0), pinnedCount);
+    }
+    return Math.min(Math.max(index, pinnedCount), order.length);
   }
 
   createWorkspace(sessionIds: string[], name?: string): string {
@@ -641,6 +694,88 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   getAllWorkspaces(): IWorkspace[] {
     return [...this._workspaces$.value];
+  }
+
+  renameWorkspace(workspaceId: string, name: string): void {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const ws = this.getWorkspace(workspaceId);
+    if (!ws || ws.name === trimmed) {
+      return;
+    }
+
+    this._workspaces$.next(
+      this._workspaces$.value.map((w) => w.id === workspaceId ? { ...w, name: trimmed } : w)
+    );
+  }
+
+  setWorkspaceIcon(workspaceId: string, icon: IIconPickerValue | null): void {
+    const ws = this.getWorkspace(workspaceId);
+    if (!ws) {
+      return;
+    }
+
+    this._workspaces$.next(
+      this._workspaces$.value.map((w) => {
+        if (w.id !== workspaceId) {
+          return w;
+        }
+        const next = { ...w };
+        if (icon) {
+          next.icon = { ...icon };
+        } else {
+          delete next.icon;
+        }
+        return next;
+      })
+    );
+  }
+
+  setWorkspacePinned(workspaceId: string, pinned: boolean): void {
+    const ws = this.getWorkspace(workspaceId);
+    if (!ws || Boolean(ws.pinned) === pinned) {
+      return;
+    }
+
+    this._workspaces$.next(
+      this._workspaces$.value.map((w) => w.id === workspaceId ? { ...w, pinned } : w)
+    );
+
+    // A freshly pinned tab locks to the front, right after the last pinned tab.
+    if (pinned) {
+      const order = [...this._tabItemOrder$.value];
+      const fromIndex = order.indexOf(workspaceId);
+      if (fromIndex === -1) {
+        return;
+      }
+
+      order.splice(fromIndex, 1);
+      order.splice(this._pinnedTabCount(order), 0, workspaceId);
+      this._tabItemOrder$.next(order);
+    }
+  }
+
+  isTabItemPinned(tabItemId: string): boolean {
+    return this.getWorkspace(tabItemId)?.pinned === true;
+  }
+
+  setMenuTarget(workspaceId: string | null): void {
+    this._menuTarget$.next(workspaceId);
+  }
+
+  getMenuTarget(): string | null {
+    return this._menuTarget$.value;
+  }
+
+  requestRename(workspaceId: string): void {
+    this._renameRequest$.next(workspaceId);
+  }
+
+  requestIconPicker(workspaceId: string): void {
+    this._iconPickerRequest$.next(workspaceId);
   }
 
   mergeSessionIntoWorkspace(sessionId: string, workspaceId: string, targetSessionId: string, side: DropSide): void {
@@ -967,7 +1102,7 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
       const targetIndex = order.indexOf(targetTabId);
       if (targetIndex >= 0) {
         const insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
-        order.splice(insertIndex, 0, sessionId);
+        order.splice(this._clampInsertIndex(sessionId, order, insertIndex), 0, sessionId);
         return;
       }
     }
@@ -975,7 +1110,7 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
     if (fallbackAnchorId) {
       const anchorIndex = order.indexOf(fallbackAnchorId);
       if (anchorIndex >= 0) {
-        order.splice(anchorIndex + 1, 0, sessionId);
+        order.splice(this._clampInsertIndex(sessionId, order, anchorIndex + 1), 0, sessionId);
         return;
       }
     }
@@ -1015,6 +1150,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
     this._activeTabItemId$.complete();
     this._magnifyState$.complete();
     this._paneToTabDrag$.complete();
+    this._menuTarget$.complete();
+    this._renameRequest$.complete();
+    this._iconPickerRequest$.complete();
     super.dispose();
   }
 }
