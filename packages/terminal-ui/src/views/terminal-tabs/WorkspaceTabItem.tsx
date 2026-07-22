@@ -134,7 +134,7 @@ export function WorkspaceTabItem(props: IWorkspaceTabItemProps) {
     <PopoverContent
       align="start"
       sideOffset={6}
-      className={cn('tm:w-[320px] tm:p-3')}
+      className={cn('tm:w-[320px] tm:bg-black tm:p-3')}
       // A non-modal popover dismisses itself on ANY focusin outside its content.
       // When the picker is opened from the workspace context menu, the menu's
       // teardown performs programmatic focus moves (react-menu refocuses its

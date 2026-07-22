@@ -16,6 +16,7 @@
 import type { IEmojiGridEntry } from './emoji-data';
 import { LocaleService } from '@termlnk/core';
 import { Button, cn, Input, useDependency } from '@termlnk/design';
+import { RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ALL_EMOJIS, searchEmojis } from './emoji-data';
 
@@ -154,10 +155,10 @@ export function IconPicker(props: IIconPickerProps) {
               title={color}
               className={cn(
                 `
-                  tm:size-5 tm:rounded-full tm:transition-transform
-                  tm:hover:scale-110
+                  tm:size-6 tm:rounded-full tm:transition-transform
+                  tm:hover:scale-115 tm:hover:ring-2 tm:hover:ring-light-grey/50
                 `,
-                { 'tm:ring-2 tm:ring-blue tm:ring-offset-1 tm:ring-offset-one-bg': background === color }
+                { 'tm:ring-2 tm:ring-blue tm:ring-offset-1 tm:ring-offset-black': background === color }
               )}
               style={{ backgroundColor: color }}
               onClick={() => handleSelectBackground(color)}
@@ -167,7 +168,16 @@ export function IconPicker(props: IIconPickerProps) {
       </div>
 
       <div className={cn('tm:flex tm:justify-end')}>
-        <Button variant="ghost" size="sm" onClick={onReset}>
+        <Button
+          variant="ghost"
+          size="xs"
+          className={cn(`
+            tm:text-grey-fg
+            tm:hover:text-light-grey
+          `)}
+          onClick={onReset}
+        >
+          <RotateCcw />
           {localeService.t('ui.icon-picker.reset-default')}
         </Button>
       </div>
