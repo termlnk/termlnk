@@ -15,7 +15,7 @@
 
 import type { IIconPickerValue } from '@termlnk/ui';
 import type { MouseEvent, PointerEventHandler } from 'react';
-import { Button, cn, Popover, PopoverContent, PopoverTrigger, useDependency } from '@termlnk/design';
+import { Button, cn, Popover, PopoverAnchor, PopoverContent, PopoverTrigger, useDependency } from '@termlnk/design';
 import { IconBadge, IconPicker, IContextMenuService } from '@termlnk/ui';
 import { LayoutGrid, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -130,37 +130,65 @@ export function WorkspaceTabItem(props: IWorkspaceTabItemProps) {
     </div>
   );
   const iconBadge = <IconBadge icon={icon} fallback={defaultGlyph} />;
-  const iconArea = interactive
-    ? (
-      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            aria-label={label}
-            className={cn('tm:flex tm:shrink-0 tm:items-center tm:justify-center tm:rounded-[4px]')}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {iconBadge}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={6} className={cn('tm:w-[320px] tm:p-3')}>
-          <IconPicker
-            value={icon}
-            onSelect={(value) => {
-              workspaceService.setWorkspaceIcon(id, value);
-              setPickerOpen(false);
-            }}
-            onBackgroundChange={(value) => workspaceService.setWorkspaceIcon(id, value)}
-            onReset={() => {
-              workspaceService.setWorkspaceIcon(id, null);
-              setPickerOpen(false);
-            }}
-          />
-        </PopoverContent>
-      </Popover>
-    )
-    : iconBadge;
+  const iconPicker = (
+    <PopoverContent
+      align="start"
+      sideOffset={6}
+      className={cn('tm:w-[320px] tm:p-3')}
+      // A non-modal popover dismisses itself on ANY focusin outside its content.
+      // When the picker is opened from the workspace context menu, the menu's
+      // teardown performs programmatic focus moves (react-menu refocuses its
+      // content on the synthesized pointerleave when the menu DOM is removed
+      // under the cursor, plus close-auto-focus), which are not user outside
+      // interactions. Close on pointer-down-outside and Escape only.
+      onFocusOutside={(event) => event.preventDefault()}
+    >
+      <IconPicker
+        value={icon}
+        onSelect={(value) => {
+          workspaceService.setWorkspaceIcon(id, value);
+          setPickerOpen(false);
+        }}
+        onBackgroundChange={(value) => workspaceService.setWorkspaceIcon(id, value)}
+        onReset={() => {
+          workspaceService.setWorkspaceIcon(id, null);
+          setPickerOpen(false);
+        }}
+      />
+    </PopoverContent>
+  );
+  const iconArea = !interactive
+    ? iconBadge
+    : pinned
+      // Pinned tabs are icon-only, so the icon must not swallow the click that
+      // switches the tab: use a plain anchor and let the event bubble up. The
+      // picker is opened via the context-menu command (iconPickerRequest$).
+      ? (
+        <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+          <PopoverAnchor asChild>
+            <span className={cn('tm:flex tm:shrink-0 tm:items-center tm:justify-center')}>
+              {iconBadge}
+            </span>
+          </PopoverAnchor>
+          {iconPicker}
+        </Popover>
+      )
+      : (
+        <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={label}
+              className={cn('tm:flex tm:shrink-0 tm:items-center tm:justify-center tm:rounded-[4px]')}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {iconBadge}
+            </button>
+          </PopoverTrigger>
+          {iconPicker}
+        </Popover>
+      );
 
   return (
     <div

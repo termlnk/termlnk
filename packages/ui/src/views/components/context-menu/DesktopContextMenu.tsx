@@ -102,6 +102,12 @@ export function DesktopContextMenu() {
         align="start"
         sideOffset={0}
         className="tm:max-w-[280px] tm:min-w-[160px]"
+        // The trigger above is a 1px invisible positioning anchor (aria-hidden,
+        // tabIndex -1), so Radix's default focus restoration on close would move
+        // focus to a meaningless element — and every outside focusin is treated
+        // by other open layers (e.g. the icon picker popover a command just
+        // opened) as an outside interaction that closes them.
+        onCloseAutoFocus={(event) => event.preventDefault()}
       >
         {state.schemas.map((schema) => (
           <ContextMenuItemNode
