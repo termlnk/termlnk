@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/sftp-mobile",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": true,
   "description": "Mobile SFTP plugin — per-session SFTP client factory backed by russh SFTP subsystem.",
   "author": "telan <telanflow@gmail.com>",

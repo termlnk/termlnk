@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/electron-main",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": true,
   "description": "Electron main process plugin (electron-builder, window manager, PTY, IPC).",
   "author": "telan <telanflow@gmail.com>",
