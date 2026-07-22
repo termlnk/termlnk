@@ -21,7 +21,7 @@ import type { IWebSession, IWebSessionService } from '../services/web-session.se
 import { BehaviorSubject } from 'rxjs';
 
 export class FakeTerminalOutputStreamService implements ITerminalOutputStreamService {
-  open(_source: TerminalOutputSourceType, _sessionId: string, _sink: ITerminalOutputSink): ITerminalOutputStreamHandle {
+  async open(_source: TerminalOutputSourceType, _sessionId: string, _sink: ITerminalOutputSink): Promise<ITerminalOutputStreamHandle> {
     return {
       acknowledge: () => {},
       dispose: () => {},

@@ -14,6 +14,7 @@
  */
 
 import type { ITerminalOutputStreamHandle } from '@termlnk/rpc-server';
+import type { ITerminalOutputOpenRequest } from '@termlnk/terminal';
 import type { IpcMainEvent, MessagePortMain } from 'electron';
 import { Disposable } from '@termlnk/core';
 import { ITerminalOutputStreamService } from '@termlnk/rpc-server';
@@ -77,12 +78,28 @@ export class TerminalOutputController extends Disposable {
     port2.on('close', () => this._closeConnection(connection));
     port2.start();
 
+    void this._openStream(event, request, connection, port1);
+  };
+
+  private async _openStream(
+    event: IpcMainEvent,
+    request: ITerminalOutputOpenRequest,
+    connection: ITerminalOutputConnection,
+    port1: MessagePortMain
+  ): Promise<void> {
     try {
-      connection.stream = this._terminalOutputStreamService.open(request.source, request.sessionId, {
-        send: (frame) => port2.postMessage({ type: 'data', sequence: frame.sequence, data: frame.data }),
-        complete: () => port2.postMessage({ type: 'close' }),
-        error: (error) => port2.postMessage({ type: 'error', message: error.message }),
+      const stream = await this._terminalOutputStreamService.open(request.source, request.sessionId, {
+        send: (frame) => connection.port.postMessage({ type: 'data', sequence: frame.sequence, data: frame.data }),
+        complete: () => connection.port.postMessage({ type: 'close' }),
+        error: (error) => connection.port.postMessage({ type: 'error', message: error.message }),
       });
+      // The renderer may have cancelled while the stream was waiting for the
+      // session to appear; drop the handle instead of leaking it.
+      if (connection.isClosed) {
+        stream.dispose();
+        return;
+      }
+      connection.stream = stream;
       const senderFrame = event.senderFrame;
       if (!senderFrame) {
         throw new Error('Terminal output request has no sender frame');
@@ -94,12 +111,16 @@ export class TerminalOutputController extends Disposable {
       );
     } catch (error) {
       this._closeConnection(connection);
-      event.reply(TERMINAL_OUTPUT_ELECTRON_PORT_CHANNEL, {
-        requestId: request.requestId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      try {
+        event.reply(TERMINAL_OUTPUT_ELECTRON_PORT_CHANNEL, {
+          requestId: request.requestId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } catch {
+        // The renderer frame may already be gone; nothing left to notify.
+      }
     }
-  };
+  }
 
   private readonly _handleCancel = (event: IpcMainEvent, requestId: unknown): void => {
     if (typeof requestId !== 'string') {

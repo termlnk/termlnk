@@ -30,7 +30,7 @@ class RecordingTerminalOutputStreamService implements ITerminalOutputStreamServi
   source: TerminalOutputSourceType | null = null;
   sessionId: string | null = null;
 
-  open(source: TerminalOutputSourceType, sessionId: string, sink: ITerminalOutputSink): ITerminalOutputStreamHandle {
+  async open(source: TerminalOutputSourceType, sessionId: string, sink: ITerminalOutputSink): Promise<ITerminalOutputStreamHandle> {
     this.source = source;
     this.sessionId = sessionId;
     this.sink = sink;

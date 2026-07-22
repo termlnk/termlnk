@@ -13,11 +13,13 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ISSHSessionService, ITerminalSessionCreatedEvent, ITerminalSessionNotifyService } from '@termlnk/rpc';
+import type { IPTYSessionService } from '@termlnk/terminal';
 import type { ITerminalOutputFrame, ITerminalOutputSink, ITerminalOutputSource } from '../terminal-output-stream.service';
 import { TERMINAL_OUTPUT_CREDIT_BYTES, TERMINAL_OUTPUT_CREDIT_FRAMES, TERMINAL_OUTPUT_MAX_FRAME_BYTES } from '@termlnk/terminal';
 import { Observable, Subject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TerminalOutputFlow } from '../terminal-output-stream.service';
+import { TerminalOutputFlow, TerminalOutputStreamService } from '../terminal-output-stream.service';
 
 interface ISourceFixture {
   readonly source: ITerminalOutputSource;
@@ -292,5 +294,95 @@ describe('TerminalOutputFlow', () => {
     handle.acknowledge(sinkFixture.frames[0]!.sequence);
 
     expect(sinkFixture.error).toHaveBeenCalledWith(expect.objectContaining({ message: 'source failed' }));
+  });
+});
+
+describe('TerminalOutputStreamService', () => {
+  interface IServiceFixture {
+    readonly service: TerminalOutputStreamService;
+    readonly sessions: Map<string, ITerminalOutputSource>;
+    readonly sessionCreated$: Subject<ITerminalSessionCreatedEvent>;
+  }
+
+  function createServiceFixture(): IServiceFixture {
+    const sessions = new Map<string, ITerminalOutputSource>();
+    const ptySessionService = {
+      getSession: (sessionId: string) => sessions.get(sessionId),
+    } as unknown as IPTYSessionService;
+    const sshSessionService = {
+      getSession: () => undefined,
+    } as unknown as ISSHSessionService;
+    const sessionCreated$ = new Subject<ITerminalSessionCreatedEvent>();
+    const sessionNotifyService = {
+      sessionCreated$: sessionCreated$.asObservable(),
+    } as unknown as ITerminalSessionNotifyService;
+    const service = new TerminalOutputStreamService(ptySessionService, sshSessionService, sessionNotifyService);
+    return { service, sessions, sessionCreated$ };
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('attaches immediately when the source session already exists', async () => {
+    const { service, sessions } = createServiceFixture();
+    const sourceFixture = createSourceFixture();
+    sessions.set('session-1', sourceFixture.source);
+    const sinkFixture = createSinkFixture();
+
+    const handle = await service.open('pty', 'session-1', sinkFixture.sink);
+    sourceFixture.data$.next(new Uint8Array([0x41]));
+    sourceFixture.data$.complete();
+
+    expect(sinkFixture.frames).toHaveLength(1);
+    handle.acknowledge(sinkFixture.frames[0]!.sequence);
+    expect(sinkFixture.complete).toHaveBeenCalledTimes(1);
+    service.dispose();
+  });
+
+  it('waits for the source session to be created before attaching', async () => {
+    const { service, sessions, sessionCreated$ } = createServiceFixture();
+    const sourceFixture = createSourceFixture();
+    const sinkFixture = createSinkFixture();
+
+    let resolved = false;
+    const openPromise = service.open('pty', 'session-2', sinkFixture.sink).then((handle) => {
+      resolved = true;
+      return handle;
+    });
+
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    // A creation event for a different session must not release the wait.
+    sessionCreated$.next({ sessionId: 'other-session', type: 'local' });
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    // Session services register the session before notifying.
+    sessions.set('session-2', sourceFixture.source);
+    sessionCreated$.next({ sessionId: 'session-2', type: 'local' });
+
+    const handle = await openPromise;
+    sourceFixture.data$.next(new Uint8Array([0x42]));
+    sourceFixture.data$.complete();
+
+    expect(sinkFixture.frames).toHaveLength(1);
+    handle.acknowledge(sinkFixture.frames[0]!.sequence);
+    expect(sinkFixture.complete).toHaveBeenCalledTimes(1);
+    service.dispose();
+  });
+
+  it('rejects when the source session never appears', async () => {
+    vi.useFakeTimers();
+    const { service } = createServiceFixture();
+    const sinkFixture = createSinkFixture();
+
+    const openPromise = service.open('pty', 'missing-session', sinkFixture.sink);
+    const rejection = expect(openPromise).rejects.toThrow('Terminal output source pty:missing-session not found');
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    await rejection;
+    service.dispose();
   });
 });

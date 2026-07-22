@@ -32,6 +32,7 @@ export function createTerminalOutputWSHandler(
 
   wss.on('connection', (socket) => {
     let stream: ITerminalOutputStreamHandle | null = null;
+    let openRequested = false;
 
     socket.on('message', (data, isBinary) => {
       if (isBinary) {
@@ -47,44 +48,56 @@ export function createTerminalOutputWSHandler(
         return;
       }
 
-      if (!stream) {
+      if (!openRequested) {
+        openRequested = true;
         if (!isTerminalOutputOpenRequest(message)) {
           socket.close(1008, 'Expected terminal output open request');
           return;
         }
-        try {
-          stream = streamService.open(message.source, message.sessionId, {
-            send: (frame) => {
-              if (socket.readyState !== WebSocket.OPEN) {
-                throw new Error('Terminal output WebSocket is not open');
-              }
-              socket.send(encodeTerminalOutputFrame(frame.sequence, frame.data), { binary: true });
-            },
-            complete: () => {
-              if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'close' }));
-                socket.close(1000);
-              }
-            },
-            error: (error) => {
-              if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'error', message: error.message }));
-                socket.close(1011);
-              }
-            },
-          });
-        } catch (error) {
-          socket.send(JSON.stringify({
-            type: 'error',
-            message: error instanceof Error ? error.message : String(error),
-          }));
-          socket.close(1008);
-        }
+        void (async () => {
+          try {
+            const handle = await streamService.open(message.source, message.sessionId, {
+              send: (frame) => {
+                if (socket.readyState !== WebSocket.OPEN) {
+                  throw new Error('Terminal output WebSocket is not open');
+                }
+                socket.send(encodeTerminalOutputFrame(frame.sequence, frame.data), { binary: true });
+              },
+              complete: () => {
+                if (socket.readyState === WebSocket.OPEN) {
+                  socket.send(JSON.stringify({ type: 'close' }));
+                  socket.close(1000);
+                }
+              },
+              error: (error) => {
+                if (socket.readyState === WebSocket.OPEN) {
+                  socket.send(JSON.stringify({ type: 'error', message: error.message }));
+                  socket.close(1011);
+                }
+              },
+            });
+            // The socket may have closed while the stream was waiting for the
+            // session to appear; drop the handle instead of leaking it.
+            if (socket.readyState !== WebSocket.OPEN) {
+              handle.dispose();
+              return;
+            }
+            stream = handle;
+          } catch (error) {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'error',
+                message: error instanceof Error ? error.message : String(error),
+              }));
+              socket.close(1008);
+            }
+          }
+        })();
         return;
       }
 
       if (isTerminalOutputAckMessage(message)) {
-        stream.acknowledge(message.sequence);
+        stream?.acknowledge(message.sequence);
         return;
       }
       socket.close(1008, 'Expected terminal output acknowledgement');

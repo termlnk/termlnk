@@ -41,7 +41,11 @@ export class PTYSession extends Disposable implements IDisposable {
     return this._status$.getValue();
   }
 
-  private readonly _data$ = new ReplaySubject<Buffer>(PTY_REPLAY_BUFFER_LIMIT, 5000);
+  // Replay recent output to late-attaching consumers (a restored session's
+  // renderer subscribes after spawn). Eviction is bounded by bytes only — a
+  // wall-clock deadline would reintroduce the spawn-vs-subscribe race this
+  // buffer exists to absorb.
+  private readonly _data$ = new ReplaySubject<Buffer>(PTY_REPLAY_BUFFER_LIMIT);
   readonly data$ = this._data$.asObservable();
 
   private readonly _resize$ = new Subject<{ cols: number; rows: number }>();

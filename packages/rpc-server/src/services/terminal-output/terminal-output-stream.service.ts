@@ -18,8 +18,9 @@ import type { ISSHSessionService } from '@termlnk/rpc';
 import type { IPTYSessionService, TerminalOutputSourceType } from '@termlnk/terminal';
 import type { Observable, Subscription } from 'rxjs';
 import { createIdentifier, Disposable } from '@termlnk/core';
-import { ISSHSessionService as ISSHSessionServiceIdentifier } from '@termlnk/rpc';
+import { ISSHSessionService as ISSHSessionServiceIdentifier, ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { IPTYSessionService as IPTYSessionServiceIdentifier, TERMINAL_OUTPUT_CREDIT_BYTES, TERMINAL_OUTPUT_CREDIT_FRAMES, TERMINAL_OUTPUT_FRAME_INTERVAL_MS, TERMINAL_OUTPUT_MAX_FRAME_BYTES } from '@termlnk/terminal';
+import { catchError, filter, firstValueFrom, take, throwError, timeout } from 'rxjs';
 
 export interface ITerminalOutputFrame {
   readonly sequence: number;
@@ -37,7 +38,13 @@ export interface ITerminalOutputStreamHandle extends IDisposable {
 }
 
 export interface ITerminalOutputStreamService extends IDisposable {
-  open(source: TerminalOutputSourceType, sessionId: string, sink: ITerminalOutputSink): ITerminalOutputStreamHandle;
+  /**
+   * Attach a sink to a session's output stream. When the session is not
+   * registered yet — the renderer may open the stream before the backend
+   * finishes recreating a restored session — waits for its creation event
+   * and rejects with "not found" only if it never appears.
+   */
+  open(source: TerminalOutputSourceType, sessionId: string, sink: ITerminalOutputSink): Promise<ITerminalOutputStreamHandle>;
 }
 
 export const ITerminalOutputStreamService = createIdentifier<ITerminalOutputStreamService>('rpc-server.terminal-output-stream-service');
@@ -363,27 +370,37 @@ export class TerminalOutputFlow extends Disposable {
   }
 }
 
+const SOURCE_WAIT_TIMEOUT_MS = 10_000;
+
 export class TerminalOutputStreamService extends Disposable implements ITerminalOutputStreamService {
   private readonly _flows = new Map<string, TerminalOutputFlow>();
 
   constructor(
     @IPTYSessionServiceIdentifier private readonly _ptySessionService: IPTYSessionService,
-    @ISSHSessionServiceIdentifier private readonly _sshSessionService: ISSHSessionService
+    @ISSHSessionServiceIdentifier private readonly _sshSessionService: ISSHSessionService,
+    @ITerminalSessionNotifyService private readonly _sessionNotifyService: ITerminalSessionNotifyService
   ) {
     super();
   }
 
-  open(source: TerminalOutputSourceType, sessionId: string, sink: ITerminalOutputSink): ITerminalOutputStreamHandle {
+  async open(source: TerminalOutputSourceType, sessionId: string, sink: ITerminalOutputSink): Promise<ITerminalOutputStreamHandle> {
     this.ensureNotDisposed();
     const key = `${source}:${sessionId}`;
     let flow = this._flows.get(key);
     if (!flow) {
-      flow = new TerminalOutputFlow(this._resolveSource(source, sessionId), (terminatedFlow) => {
-        if (this._flows.get(key) === terminatedFlow) {
-          this._flows.delete(key);
-        }
-      });
-      this._flows.set(key, flow);
+      const outputSource = await this._resolveSource(source, sessionId);
+      this.ensureNotDisposed();
+      // Another concurrent open() may have created the flow while this one
+      // was waiting for the session to appear.
+      flow = this._flows.get(key);
+      if (!flow) {
+        flow = new TerminalOutputFlow(outputSource, (terminatedFlow) => {
+          if (this._flows.get(key) === terminatedFlow) {
+            this._flows.delete(key);
+          }
+        });
+        this._flows.set(key, flow);
+      }
     }
 
     const handle = flow.attach(sink);
@@ -411,13 +428,36 @@ export class TerminalOutputStreamService extends Disposable implements ITerminal
     this._flows.clear();
   }
 
-  private _resolveSource(source: TerminalOutputSourceType, sessionId: string): ITerminalOutputSource {
+  private _lookupSource(source: TerminalOutputSourceType, sessionId: string): ITerminalOutputSource | undefined {
     const session = source === 'pty'
       ? this._ptySessionService.getSession(sessionId)
       : this._sshSessionService.getSession(sessionId);
-    if (!session) {
+    return session as ITerminalOutputSource | undefined;
+  }
+
+  private async _resolveSource(source: TerminalOutputSourceType, sessionId: string): Promise<ITerminalOutputSource> {
+    const existing = this._lookupSource(source, sessionId);
+    if (existing) {
+      return existing;
+    }
+
+    // The lookup above and the subscription inside firstValueFrom happen in
+    // the same synchronous run, so a creation event cannot slip through.
+    // Session services register the session before notifying, so the event
+    // guarantees the follow-up lookup succeeds.
+    await firstValueFrom(
+      this._sessionNotifyService.sessionCreated$.pipe(
+        filter((event) => event.sessionId === sessionId),
+        take(1),
+        timeout({ first: SOURCE_WAIT_TIMEOUT_MS }),
+        catchError(() => throwError(() => new Error(`Terminal output source ${source}:${sessionId} not found`)))
+      )
+    );
+
+    const resolved = this._lookupSource(source, sessionId);
+    if (!resolved) {
       throw new Error(`Terminal output source ${source}:${sessionId} not found`);
     }
-    return session as ITerminalOutputSource;
+    return resolved;
   }
 }
