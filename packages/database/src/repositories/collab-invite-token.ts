@@ -13,8 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { ICollabInviteTokenEntity, ICollabInviteTokenEntityInsert } from '../entities/collab-invite-token';
 import { Disposable } from '@termlnk/core';
 import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm';
@@ -55,7 +53,7 @@ export class CollabInviteTokenRepository extends Disposable {
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   private _decryptRow(row: ICollabInviteTokenEntity): ICollabInviteTokenEntity {

@@ -14,10 +14,9 @@
  */
 
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as entities from '../entities';
 import { createIdentifier } from '@termlnk/core';
 
-export type Database = BetterSQLite3Database<typeof entities>;
+export type Database = BetterSQLite3Database;
 
 export interface IDBAdaptorService {
   readonly db: Database;

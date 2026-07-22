@@ -16,7 +16,6 @@
 import type { McpServerConfig } from '@termlnk/agent';
 import type { ICredential } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../../entities';
 import type { ISecretCipherService } from '../../services/secret-cipher.service';
 import { eq } from 'drizzle-orm';
 import { hostEntity } from '../../entities/host';
@@ -44,7 +43,7 @@ export interface IEncryptSecretsResult {
 const OAUTH_SENSITIVE_FIELDS = ['accessToken', 'refreshToken', 'clientSecret', 'codeVerifier'] as const;
 
 export async function runEncryptSecretsRuntimeMigration(
-  db: BetterSQLite3Database<typeof schema>,
+  db: BetterSQLite3Database,
   cipher: ISecretCipherService
 ): Promise<IEncryptSecretsResult> {
   const result: IEncryptSecretsResult = {
@@ -157,7 +156,7 @@ function _canDecrypt(value: string, cipher: ISecretCipherService): boolean {
 }
 
 async function _sanitizeCorruptedFields(
-  db: BetterSQLite3Database<typeof schema>,
+  db: BetterSQLite3Database,
   cipher: ISecretCipherService
 ): Promise<number> {
   let cleared = 0;

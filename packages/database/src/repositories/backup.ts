@@ -13,8 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity, IConfigEntity, IHostEntity, IMcpServerEntity, ISkillEntity } from '../entities';
 import { Disposable } from '@termlnk/core';
 import { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity, configEntity, hostEntity, mcpServerEntity, skillEntity } from '../entities';
@@ -81,7 +79,7 @@ export class BackupRepository extends Disposable {
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   /** Export every syncable resource; sensitive fields are decrypted in-memory. */

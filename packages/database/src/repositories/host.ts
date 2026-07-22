@@ -16,7 +16,6 @@
 import type { IHostSyncRepository } from '@termlnk/sync';
 import type { HostItem, HostTree, IHost, IHostChangeEvent } from '@termlnk/terminal';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { IHostEntity, IHostEntityInsert } from '../entities';
 import { Disposable } from '@termlnk/core';
 import { DEFAULT_HOST_ROOT, HOST_CHAIN_MAX_DEPTH, HostType } from '@termlnk/terminal';
@@ -66,7 +65,7 @@ export class HostRepository extends Disposable implements IHostSyncRepository {
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   private _decryptEntity<T extends IHostEntity>(entity: T): T {
@@ -635,7 +634,7 @@ export class HostRepository extends Disposable implements IHostSyncRepository {
   }
 
   private _updateDescendantsTreeSync(
-    tx: BetterSQLite3Database<typeof schema>,
+    tx: BetterSQLite3Database,
     parentId: string,
     oldParentTree: string,
     newParentTree: string

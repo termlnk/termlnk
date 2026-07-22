@@ -13,8 +13,6 @@
  * governing permissions and limitations under the License.
  */
 
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import { Disposable } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
 import { terminalSessionBackupEntity } from '../entities/terminal-session-backup';
@@ -36,7 +34,7 @@ export class TerminalSessionBackupRepository extends Disposable {
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   async load<T = unknown>(): Promise<T | null> {

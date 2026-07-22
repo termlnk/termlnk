@@ -17,7 +17,6 @@ import type { ISnippetChangeEvent, SnippetTree } from '@termlnk/snippet';
 import type { ISnippetSyncRepository, ISyncEntityRow, ISyncRowChangeEvent } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { Observable } from 'rxjs';
-import type * as schema from '../entities';
 import type { ISnippetEntity, ISnippetEntityInsert } from '../entities';
 import { Disposable } from '@termlnk/core';
 import { SnippetType } from '@termlnk/snippet';
@@ -38,7 +37,7 @@ export class SnippetRepository extends Disposable {
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   // --- Sync-engine adapter ---
@@ -468,7 +467,7 @@ export class SnippetRepository extends Disposable {
   }
 
   private _updateDescendantsTreeSync(
-    tx: BetterSQLite3Database<typeof schema>,
+    tx: BetterSQLite3Database,
     parentId: string,
     oldParentTree: string,
     newParentTree: string

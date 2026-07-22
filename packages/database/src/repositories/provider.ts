@@ -14,8 +14,6 @@
  */
 
 import type { IProviderSyncRepository } from '@termlnk/sync';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntityInsert } from '../entities/provider';
 import { Disposable } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
@@ -57,7 +55,7 @@ export class ProviderRepository extends Disposable implements IProviderSyncRepos
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   private _decryptProvider(row: IAIProviderEntity): IAIProviderEntity {

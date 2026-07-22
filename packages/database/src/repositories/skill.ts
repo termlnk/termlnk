@@ -15,8 +15,6 @@
 
 import type { ISkillChangeEvent } from '@termlnk/agent';
 import type { ISkillSyncRepository } from '@termlnk/sync';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { ISkillEntity, ISkillEntityInsert } from '../entities';
 import { Disposable } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
@@ -36,7 +34,7 @@ export class SkillRepository extends Disposable implements ISkillSyncRepository 
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   async getAll(): Promise<ISkillEntity[]> {

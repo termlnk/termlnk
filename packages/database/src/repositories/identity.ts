@@ -15,8 +15,6 @@
 
 import type { IIdentitySyncRepository } from '@termlnk/sync';
 import type { IIdentityChangeEvent } from '@termlnk/terminal';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { IIdentityEntity, IIdentityEntityInsert } from '../entities';
 import { Disposable } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
@@ -39,7 +37,7 @@ export class IdentityRepository extends Disposable implements IIdentitySyncRepos
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   private _decryptEntity(entity: IIdentityEntity): IIdentityEntity {

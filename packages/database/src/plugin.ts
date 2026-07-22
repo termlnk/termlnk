@@ -14,9 +14,7 @@
  */
 
 import type { Dependency, Injector } from '@termlnk/core';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { IDatabaseConfig } from './controllers/config.schema';
-import type * as entities from './entities';
 import { IAuthKeyValueStorage } from '@termlnk/auth';
 import { IConfigService, ILogService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies } from '@termlnk/core';
 import { IBackupRepository, IHostSyncRepository, IIdentitySyncRepository, IKnownHostSyncRepository, IMcpServerSyncRepository, IPortForwardingRuleSyncRepository, IProviderSyncRepository, ISkillSyncRepository, ISnippetSyncRepository, ISshKeySyncRepository, ISyncConfigRepository, ISyncCursorRepository, ISyncFieldMetaRepository, ISyncOutboxRepository, ISyncRowMetaRepository } from '@termlnk/sync';
@@ -147,7 +145,7 @@ export class DatabasePlugin extends Plugin {
     try {
       const dbService = this._injector.get(IDBAdaptorService);
       const cipher = this._injector.get(ISecretCipherService);
-      const db = dbService.db as BetterSQLite3Database<typeof entities>;
+      const db = dbService.db;
       const result = await runEncryptSecretsRuntimeMigration(db, cipher);
       if (result.sanitized > 0) {
         this._logService.warn(
@@ -174,7 +172,7 @@ export class DatabasePlugin extends Plugin {
   private async _runSkillRelativePathMigration(): Promise<void> {
     try {
       const dbService = this._injector.get(IDBAdaptorService);
-      const db = dbService.db as BetterSQLite3Database<typeof entities>;
+      const db = dbService.db;
       const result = await runSkillRelativePathRuntimeMigration(db);
       if (result.rewritten > 0) {
         this._logService.log(

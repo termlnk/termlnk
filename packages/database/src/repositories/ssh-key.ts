@@ -15,8 +15,6 @@
 
 import type { ISshKeySyncRepository } from '@termlnk/sync';
 import type { ISshKeyChangeEvent } from '@termlnk/terminal';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { ISshKeyEntity, ISshKeyEntityInsert } from '../entities';
 import { Disposable, Inject } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
@@ -41,7 +39,7 @@ export class SshKeyRepository extends Disposable implements ISshKeySyncRepositor
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   private _decryptEntity(entity: ISshKeyEntity): ISshKeyEntity {

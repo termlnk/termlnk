@@ -14,7 +14,6 @@
  */
 
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../../entities';
 import { eq } from 'drizzle-orm';
 import { skillEntity } from '../../entities/skill';
 
@@ -28,7 +27,7 @@ export interface ISkillRelativePathResult {
 }
 
 export async function runSkillRelativePathRuntimeMigration(
-  db: BetterSQLite3Database<typeof schema>
+  db: BetterSQLite3Database
 ): Promise<ISkillRelativePathResult> {
   const result: ISkillRelativePathResult = { rewritten: 0, scanned: 0 };
   const skills = await db.select().from(skillEntity);

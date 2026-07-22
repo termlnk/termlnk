@@ -15,8 +15,6 @@
 
 import type { IKnownHostSyncRepository } from '@termlnk/sync';
 import type { IKnownHostChangeEvent, KnownHostVerdict } from '@termlnk/terminal';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { IKnownHostEntity, IKnownHostEntityInsert } from '../entities';
 import { createHash } from 'node:crypto';
 import { Disposable } from '@termlnk/core';
@@ -83,7 +81,7 @@ export class KnownHostRepository extends Disposable implements IKnownHostSyncRep
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   async getList(): Promise<IKnownHostEntity[]> {

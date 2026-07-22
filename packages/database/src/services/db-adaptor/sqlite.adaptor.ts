@@ -14,7 +14,6 @@
  */
 
 import type { ILogService, Nullable } from '@termlnk/core';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import type { Database, IDBAdaptorService } from '../db-adaptor.service';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -23,7 +22,6 @@ import BetterSqlite3 from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { DEFAULT_DRIZZLE_MIGRATIONS_TABLE } from '../../config/migrations';
-import * as entities from '../../entities';
 
 export interface ISQLiteDatabaseOptions {
   filename?: string;
@@ -75,7 +73,6 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
 
     this._db = drizzle({
       client: this._sqlite,
-      schema: entities,
     });
 
     this._migration();
@@ -101,7 +98,7 @@ export class SQLiteAdaptor extends Disposable implements IDBAdaptorService {
     }
 
     try {
-      migrate(this._db! as BetterSQLite3Database<typeof entities>, {
+      migrate(this._db!, {
         migrationsFolder: this._migrationsFolder,
         migrationsTable: this._migrationsTable,
       });

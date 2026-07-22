@@ -14,8 +14,6 @@
  */
 
 import type { ISyncRowMetaRepository, SyncResourceId } from '@termlnk/sync';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { ISyncRowMetaEntity } from '../entities/sync-row-meta';
 import { Disposable } from '@termlnk/core';
 import { and, eq } from 'drizzle-orm';
@@ -37,7 +35,7 @@ export class SyncRowMetaRepository extends Disposable implements ISyncRowMetaRep
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   async get(resource: SyncResourceId, entityId: string): Promise<ISyncRowMetaEntity | null> {

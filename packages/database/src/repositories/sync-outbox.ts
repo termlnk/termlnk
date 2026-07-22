@@ -14,8 +14,6 @@
  */
 
 import type { ISyncOutboxInsert, ISyncOutboxRepository, ISyncOutboxRow, SyncResourceId } from '@termlnk/sync';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { ISyncOutboxEntity } from '../entities/sync-outbox';
 import { Buffer } from 'node:buffer';
 import { Disposable } from '@termlnk/core';
@@ -43,7 +41,7 @@ export class SyncOutboxRepository extends Disposable implements ISyncOutboxRepos
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   /**

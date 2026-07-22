@@ -15,8 +15,6 @@
 
 import type { IMcpServerChangeEvent, McpConnectionStatus } from '@termlnk/agent';
 import type { IMcpServerSyncRepository } from '@termlnk/sync';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { IMcpServerEntity, IMcpServerEntityInsert } from '../entities';
 import { Disposable } from '@termlnk/core';
 import { eq } from 'drizzle-orm';
@@ -39,7 +37,7 @@ export class McpServerRepository extends Disposable implements IMcpServerSyncRep
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   private _decryptEntity(entity: IMcpServerEntity): IMcpServerEntity {

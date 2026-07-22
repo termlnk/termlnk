@@ -15,7 +15,6 @@
 
 import type { ISyncConfigRepository } from '@termlnk/sync';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { IConfigChangeEvent, IConfigEntry } from '../models/config';
 import { Disposable } from '@termlnk/core';
 import { eq, inArray } from 'drizzle-orm';
@@ -34,10 +33,10 @@ export class ConfigRepository extends Disposable implements ISyncConfigRepositor
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
-  private _getObjSync(tx: BetterSQLite3Database<typeof schema>, key: string): Record<string, unknown> | null {
+  private _getObjSync(tx: BetterSQLite3Database, key: string): Record<string, unknown> | null {
     const rows = tx
       .select()
       .from(configEntity)
@@ -49,7 +48,7 @@ export class ConfigRepository extends Disposable implements ISyncConfigRepositor
     return (value && typeof value === 'object') ? value as Record<string, unknown> : null;
   }
 
-  private _rawSetSync(tx: BetterSQLite3Database<typeof schema>, key: string, value: unknown): void {
+  private _rawSetSync(tx: BetterSQLite3Database, key: string, value: unknown): void {
     tx
       .insert(configEntity)
       .values({ key, value, updatedAt: new Date().toISOString() })

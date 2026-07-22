@@ -14,8 +14,6 @@
  */
 
 import type { IPortForwardingRuleSyncRepository, ISyncRowChangeEvent } from '@termlnk/sync';
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import type * as schema from '../entities';
 import type { IPortForwardingRuleEntity, IPortForwardingRuleEntityInsert, PortForwardingType } from '../entities';
 import { Disposable } from '@termlnk/core';
 import { eq, sql } from 'drizzle-orm';
@@ -62,7 +60,7 @@ export class PortForwardingRuleRepository extends Disposable implements IPortFor
   }
 
   private get _db() {
-    return this._dbService.db as BetterSQLite3Database<typeof schema>;
+    return this._dbService.db;
   }
 
   async getList(): Promise<IPortForwardingRuleEntity[]> {
