@@ -68,8 +68,10 @@ export function TerminalTabItem(props: ITerminalTabItemProps) {
     onClose?.();
   };
 
-  const handleClick = (e: MouseEvent) => {
-    e.stopPropagation();
+  // The tab click must bubble up to document: Radix defers outside-dismissal of
+  // open popovers (e.g. the workspace icon picker) to the document-level click
+  // event, so stopPropagation here would leave them stuck open on tab switch.
+  const handleClick = () => {
     onClick?.();
   };
 
