@@ -39,7 +39,7 @@
     "clean": "rm -rf lib android ios cpp src/generated rust/target"
   },
   "peerDependencies": {
-    "react": "^19.2.7",
+    "react": "^19.2.8",
     "react-native": "^0.85.3"
   },
   "dependencies": {

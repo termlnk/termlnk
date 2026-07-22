@@ -70,8 +70,8 @@
     "@termlnk/shared-terminal": "workspace:*",
     "@termlnk/terminal-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "@xterm/addon-fit": "^0.12.0-beta.287",
-    "@xterm/xterm": "^6.1.0-beta.287",
+    "@xterm/addon-fit": "^0.12.0-beta.291",
+    "@xterm/xterm": "^6.1.0-beta.291",
     "lucide-react": "^1.25.0"
   },
   "devDependencies": {

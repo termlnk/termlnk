@@ -92,7 +92,7 @@ export default {
   '@lobehub/icons': {
     global: '@lobehub/icons',
     name: '@lobehub/icons',
-    version: '^5.8.0',
+    version: '^5.14.0',
   },
   'lucide-react': {
     global: 'lucide-react',
@@ -112,6 +112,6 @@ export default {
   'react-resizable-panels': {
     global: 'react-resizable-panels',
     name: 'react-resizable-panels',
-    version: '^4.12.1',
+    version: '^4.12.2',
   },
 };
