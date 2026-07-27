@@ -533,14 +533,21 @@ export class SyncService extends Disposable implements ISyncService, IVaultRekey
           return;
         }
 
+        let cursor: string | null = fullPull.cursor;
         if (fullPull.patch.length > 0) {
           // Apply with per-row tolerance: `put` rewrites the local row + writes meta;
           // `del` tombstones cascade through the synchroniser's repository (and clear meta
           // for that entityId). _applyingPatch flag in each synchroniser suppresses the
           // changed$ self-echo that would otherwise loop back into the outbox. Failed rows
-          // are logged and skipped — the next pull retries them.
+          // are logged and skipped; the cursor is held back so the next pull retries them.
           const result = await synchroniser.applyPatch([...fullPull.patch]);
           this._logApplyFailures(resource, result.failures);
+          if (result.failures.length > 0) {
+            // Partial apply also means this resource cannot claim a completed initial
+            // pull — the connect-driven pull below must still run.
+            anyFailed = true;
+            cursor = this._safeCursorAfterPartialApply(fullPull.patch, result.failures, null);
+          }
         }
 
         // Authoritative server-side entityId set. Include both 'put' (still exists) and
@@ -561,11 +568,14 @@ export class SyncService extends Disposable implements ISyncService, IVaultRekey
         }
 
         // Update cursor so the regular pull/poke loop continues from the latest position.
-        await this._cursors.upsert({
-          resource,
-          cursor: fullPull.cursor,
-          lastPulledAt: Date.now(),
-        });
+        // Null means not even the first row applied — leave the stored cursor alone.
+        if (cursor !== null) {
+          await this._cursors.upsert({
+            resource,
+            cursor,
+            lastPulledAt: Date.now(),
+          });
+        }
       } catch (err) {
         // Network down / repository write blew up — surface as a lastError so the UI can
         // show a banner. Don't abort enable(): the regular connect-driven pull below will
@@ -676,8 +686,8 @@ export class SyncService extends Disposable implements ISyncService, IVaultRekey
 
   // Single-resource pull, shared by _doRunPull, the rebase path and prepareForRekey.
   // Returns the number of patch rows that failed to apply (decrypt/parse) — the regular
-  // pull path logs and moves on, the rekey pre-flight treats any failure as fatal. Throws
-  // on transport failure so callers decide handling.
+  // pull path logs and retries them on the next round, the rekey pre-flight treats any
+  // failure as fatal. Throws on transport failure so callers decide handling.
   private async _pullResource(resource: SyncResourceId, epoch: number): Promise<number> {
     const clientId = this._clientId;
     const synchroniser = this._synchronisers.get(resource);
@@ -694,10 +704,14 @@ export class SyncService extends Disposable implements ISyncService, IVaultRekey
       return 0;
     }
     let failedCount = 0;
+    let cursor: string | null = resp.cursor;
     if (resp.patch.length > 0) {
       const result = await synchroniser.applyPatch([...resp.patch]);
       failedCount = result.failures.length;
       this._logApplyFailures(resource, result.failures);
+      if (failedCount > 0) {
+        cursor = this._safeCursorAfterPartialApply(resp.patch, result.failures, cursorRow?.cursor ?? null);
+      }
     }
     if (epoch !== this._epoch) {
       return failedCount;
@@ -707,12 +721,38 @@ export class SyncService extends Disposable implements ISyncService, IVaultRekey
       // we crashed mid-push this keeps the outbox in sync with what the server has.
       await this._outboxService.ack([resp.lastMutationId]);
     }
-    await this._cursors.upsert({
-      resource,
-      cursor: resp.cursor,
-      lastPulledAt: Date.now(),
-    });
+    if (cursor !== null) {
+      await this._cursors.upsert({
+        resource,
+        cursor,
+        lastPulledAt: Date.now(),
+      });
+    }
     return failedCount;
+  }
+
+  // The cursor may only advance over rows we actually applied. Committing the server's
+  // tail cursor after a partial apply moves the stream past the failed rows, and the next
+  // incremental pull — which asks for `version > cursor` — can never see them again; those
+  // rows stay permanently stale until a forceFullResync. Park the cursor on the highest
+  // version applied *below* the earliest failure instead, so the next round re-delivers it.
+  //
+  // Returns null when not even the first row applied: there is no safe forward position,
+  // so the caller leaves the stored cursor untouched.
+  private _safeCursorAfterPartialApply(
+    patch: readonly { readonly version: number }[],
+    failures: readonly { readonly version: number }[],
+    previousCursor: string | null
+  ): string | null {
+    const firstFailedVersion = Math.min(...failures.map((f) => f.version));
+    // Rows arrive ordered by version, but do not rely on it.
+    let highestApplied = -1;
+    for (const item of patch) {
+      if (item.version < firstFailedVersion && item.version > highestApplied) {
+        highestApplied = item.version;
+      }
+    }
+    return highestApplied >= 0 ? String(highestApplied) : previousCursor;
   }
 
   private _logApplyFailures(resource: SyncResourceId, failures: readonly { entityId: string | null; version: number; error: string }[]): void {

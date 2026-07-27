@@ -1165,9 +1165,10 @@ describe('SyncService — tolerant applyPatch handling', () => {
     bed.service.dispose();
   });
 
-  // Regular pull path: a failing row is logged and skipped; the cursor still advances so
-  // one poisoned row cannot wedge the pipeline forever.
-  it('pull advances the cursor even when some patch rows fail to apply', async () => {
+  // Regular pull path: a failing row is logged and skipped rather than aborting the batch,
+  // but the cursor must NOT move past it — an incremental pull asks for `version > cursor`,
+  // so advancing would make the row unreachable until a forceFullResync.
+  it('holds the cursor back when the only patch row fails to apply', async () => {
     const sk = new FakeSynchroniser('skill');
     sk.applyPatchResult = { failures: [{ entityId: 's-bad', version: 3, error: 'decrypt failed' }] };
     bed.service.register(sk);
@@ -1181,7 +1182,48 @@ describe('SyncService — tolerant applyPatch handling', () => {
     await flushAsync(50);
 
     expect(sk.appliedPatches.length).toBeGreaterThan(0);
-    expect((await bed.cursors.get('skill'))?.cursor).toBe('cursor-after-skill');
+    // Nothing applied → no safe forward position → cursor stays unset so the next pull
+    // re-delivers the row.
+    expect(await bed.cursors.get('skill')).toBeNull();
+    // A poisoned row must not wedge the pipeline into an error state either.
     expect(await firstValue(bed.service.state$)).not.toBe('error');
+  });
+
+  it('advances the cursor only up to the row before the first failure', async () => {
+    const sk = new FakeSynchroniser('skill');
+    sk.applyPatchResult = { failures: [{ entityId: 's-bad', version: 5, error: 'decrypt failed' }] };
+    bed.service.register(sk);
+    bed.transport.pullResponseFor.set('skill', {
+      cursor: 'cursor-after-skill',
+      patch: [
+        { op: 'put', resource: 'skill', entityId: 's-ok', payload: new Uint8Array([1]), version: 4 },
+        { op: 'put', resource: 'skill', entityId: 's-bad', payload: new Uint8Array([2]), version: 5 },
+        { op: 'put', resource: 'skill', entityId: 's-later', payload: new Uint8Array([3]), version: 6 },
+      ],
+      lastMutationId: 0,
+    });
+
+    await bed.service.enable();
+    await flushAsync(50);
+
+    // v4 applied, v5 failed: park on 4 so the next pull re-delivers 5 (and 6, which is
+    // idempotent to re-apply) instead of skipping straight to the server tail.
+    expect((await bed.cursors.get('skill'))?.cursor).toBe('4');
+    expect(await firstValue(bed.service.state$)).not.toBe('error');
+  });
+
+  it('advances to the server cursor when every row applies', async () => {
+    const sk = new FakeSynchroniser('skill');
+    bed.service.register(sk);
+    bed.transport.pullResponseFor.set('skill', {
+      cursor: 'cursor-after-skill',
+      patch: [{ op: 'put', resource: 'skill', entityId: 's-ok', payload: new Uint8Array([1]), version: 3 }],
+      lastMutationId: 0,
+    });
+
+    await bed.service.enable();
+    await flushAsync(50);
+
+    expect((await bed.cursors.get('skill'))?.cursor).toBe('cursor-after-skill');
   });
 });

@@ -55,6 +55,19 @@ export interface IPullRequest {
   readonly cursor: string | null;
 }
 
+/**
+ * Protocol constraint: a pull returns EVERY row with `version > cursor` for the resource —
+ * it is not paginated, and `patch` is ordered by ascending version.
+ *
+ * SyncService relies on this. Its reconcile pass issues a `cursor: null` pull and treats
+ * the returned entityIds as the authoritative server-side set, deleting local meta for
+ * anything absent (ghost meta from a cloud reset). Under pagination that pass would see
+ * only the first page and wipe the meta for every row beyond it, forcing a full re-push.
+ * `prepareForRekey`'s remote-data probe makes the same assumption.
+ *
+ * If the server ever needs to page this response, add an explicit `hasMore` flag and gate
+ * ghost-meta reconciliation on it — do not let the client infer completeness from length.
+ */
 export interface IPullResponse {
   readonly cursor: string;
   readonly patch: readonly ISyncPatchItem[];
