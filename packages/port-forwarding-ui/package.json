@@ -47,7 +47,7 @@
     "lib"
   ],
   "scripts": {
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsgo --noEmit",
