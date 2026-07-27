@@ -100,6 +100,13 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
     return config?.cloudBaseUrl || DEFAULT_CLOUD_BASE_URL;
   }
 
+  // Read per call rather than cached in the constructor: the plugin config is set during
+  // plugin construction, which may run after this service is instantiated.
+  private _getFetchFn(): CollabHttpFetchFn {
+    const config = this._configService.getConfig<ISharedTerminalPluginConfig>(SHARED_TERMINAL_PLUGIN_CONFIG_KEY);
+    return config?.fetchFn ?? DEFAULT_FETCH_FN;
+  }
+
   private async _fetchAuthorized(url: string, method: 'POST' | 'GET', body?: unknown): Promise<{ json: () => Promise<unknown>; text: () => Promise<string> }> {
     return await this._fetch(url, method, body, { requireAuth: true });
   }
@@ -119,7 +126,7 @@ export class HttpCollabInviteTransportService extends Disposable implements ICol
       headers['Content-Type'] = 'application/json';
     }
 
-    const resp = await DEFAULT_FETCH_FN(url, {
+    const resp = await this._getFetchFn()(url, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,

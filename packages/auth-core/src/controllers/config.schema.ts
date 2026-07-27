@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { DependencyOverride } from '@termlnk/core';
+import type { CloudFetchFn, DependencyOverride } from '@termlnk/core';
 
 export const AUTH_CORE_PLUGIN_CONFIG_KEY = 'auth-core.config';
 
@@ -24,6 +24,10 @@ export interface IAuthCorePluginConfig {
   // their HTTP implementations; when unset, both stay unbound and optional consumers
   // resolve to null.
   cloudBaseUrl?: string;
+
+  // Fetch used for every cloud call. Defaults to globalThis.fetch, which bypasses the
+  // user's configured proxy — Node hosts should pass IFetchProvider.fetch here.
+  fetchFn?: CloudFetchFn;
 }
 
 export const defaultPluginConfig: IAuthCorePluginConfig = {};

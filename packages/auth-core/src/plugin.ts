@@ -84,17 +84,18 @@ export class AuthCorePlugin extends Plugin {
 
     if (this._config.cloudBaseUrl) {
       const baseUrl = this._config.cloudBaseUrl;
+      const fetchFn = this._config.fetchFn;
       dependencies.push(
         [ITokenRefresher, {
           // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
-          useFactory: (logService: ILogService) => new HttpTokenRefresher({ baseUrl }, logService),
+          useFactory: (logService: ILogService) => new HttpTokenRefresher({ baseUrl, fetchFn }, logService),
           deps: [ILogService],
         }],
         [IAuthService, {
           // eslint-disable-next-line react/no-unnecessary-use-prefix, react/component-hook-factories
           useFactory: (masterKey: IMasterKeyServiceType, srp: ISrpClientServiceType, tokenManager: ITokenManagerType, storage: IAuthKeyValueStorageType, userStorage: IUserStorageServiceType, logService: ILogService, deviceNameProvider: IDeviceNameProviderType, rekeyHandler: IVaultRekeyHandlerType | null) =>
             new HttpAuthService(
-              { baseUrl },
+              { baseUrl, fetchFn },
               masterKey,
               srp,
               tokenManager,

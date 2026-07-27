@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { DependencyOverride } from '@termlnk/core';
+import type { CloudFetchFn, DependencyOverride } from '@termlnk/core';
 
 export const SHARED_TERMINAL_PLUGIN_CONFIG_KEY = 'shared-terminal.config';
 
@@ -48,6 +48,13 @@ export interface ISharedTerminalPluginConfig {
    * invite state local — relay still works because invites are signed offline.
    */
   cloudBaseUrl?: string;
+
+  /**
+   * Fetch used for the owner-side collaboration endpoints. Defaults to
+   * `globalThis.fetch`, which bypasses the user's configured proxy — Node hosts
+   * should pass `IFetchProvider.fetch` here.
+   */
+  fetchFn?: CloudFetchFn;
 
   /**
    * Whether to start the daemon automatically after sign-in — architecture

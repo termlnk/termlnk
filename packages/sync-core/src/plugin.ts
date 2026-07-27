@@ -77,9 +77,10 @@ export class SyncCorePlugin extends Plugin {
   }
 
   private _buildHttpTransportBinding(baseUrl: string): Dependency {
+    const fetchFn = this._config.fetchFn;
     return [ISyncTransportService, {
       useFactory: (tokenManager: ITokenManager, logService: ILogService) =>
-        new HttpSyncTransportService({ baseUrl }, tokenManager, logService),
+        new HttpSyncTransportService({ baseUrl, fetchFn }, tokenManager, logService),
       deps: [ITokenManager, ILogService],
     }];
   }

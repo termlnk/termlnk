@@ -24,6 +24,7 @@ export * from './common/di';
 export * from './common/environment';
 export * from './common/error';
 export * from './common/extpath';
+export * from './common/http';
 export * from './common/ip';
 export * from './common/lifecycle';
 export * from './common/locale';

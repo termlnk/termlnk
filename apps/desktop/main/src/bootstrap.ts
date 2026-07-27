@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { CloudFetchFn } from '@termlnk/core';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -240,6 +241,25 @@ function resolveInviteBaseUrl(cloudBaseUrl: string | undefined): string | undefi
   return cloudBaseUrl.replace(/\/v\d+\/?$/, '').replace(/\/+$/, '');
 }
 
+// Every cloud transport (auth, sync, collab invites) takes a `fetchFn` so it can be routed
+// through the user's configured SOCKS5 / HTTP proxy. They default to `globalThis.fetch`,
+// which ignores that setting entirely — behind a proxy that means sign-in and sync simply
+// never reach the server. IFetchProvider is resolved lazily because plugins bind their
+// dependencies in onStarting(), i.e. after registerPlugin() runs.
+function createProxyAwareCloudFetch(core: Core): CloudFetchFn {
+  return async (url, init) => {
+    const provider = core.getInjector().get(IFetchProvider);
+    const resp = await provider.fetch(url, init as RequestInit);
+    return {
+      ok: resp.ok,
+      status: resp.status,
+      statusText: resp.statusText,
+      json: () => resp.json() as Promise<unknown>,
+      text: () => resp.text(),
+    };
+  };
+}
+
 function resolveRendererAssetPath(requestURL: string): string | null {
   const { hostname, pathname } = new URL(requestURL);
   if (hostname !== 'termlnk') {
@@ -324,8 +344,10 @@ app.whenReady().then(async () => {
   logService.log(`[Bootstrap] relayBaseUrl = ${relayBaseUrl ?? '(unset — shared-terminal disabled)'}`);
   logService.log(`[Bootstrap] inviteBaseUrl = ${inviteBaseUrl ?? '(unset — invite URL cannot be stamped)'}`);
   core.registerPlugin(AuthPlugin);
+  const cloudFetch = createProxyAwareCloudFetch(core);
   core.registerPlugin(AuthCorePlugin, {
     cloudBaseUrl,
+    fetchFn: cloudFetch,
     // Electron-only overrides for IIdleProbe / IDeviceNameProvider; the adapters live in
     // ./platform/ so auth-core stays free of node:os imports.
     override: [
@@ -334,13 +356,13 @@ app.whenReady().then(async () => {
     ],
   });
   core.registerPlugin(SyncPlugin);
-  core.registerPlugin(SyncCorePlugin, { cloudBaseUrl });
+  core.registerPlugin(SyncCorePlugin, { cloudBaseUrl, fetchFn: cloudFetch });
 
   // Shared-terminal must follow AuthCorePlugin because HttpCollabInviteTransportService
   // resolves TokenManager from the same singleton AuthCorePlugin binds. DatabasePlugin
   // is already up so CollabInviteTokenRepository / ConfigRepository / ISecretCipherService
   // are available for DaemonKeypairService and PairingService.
-  core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl, relayBaseUrl, inviteBaseUrl });
+  core.registerPlugin(SharedTerminalPlugin, { cloudBaseUrl, relayBaseUrl, inviteBaseUrl, fetchFn: cloudFetch });
   core.registerPlugin(SharedTerminalCorePlugin);
 
   // Bundled skills must live outside app.asar — Node's fs APIs throw ENOENT

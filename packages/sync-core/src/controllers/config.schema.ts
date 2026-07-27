@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { DependencyOverride } from '@termlnk/core';
+import type { CloudFetchFn, DependencyOverride } from '@termlnk/core';
 
 export const SYNC_CORE_PLUGIN_CONFIG_KEY = 'sync-core.config';
 
@@ -25,6 +25,10 @@ export interface ISyncCorePluginConfig {
   // immediately transitions to Offline; backup / import still work because they do not
   // depend on the network.
   cloudBaseUrl?: string;
+
+  // Fetch used for sync push/pull. Defaults to globalThis.fetch, which bypasses the
+  // user's configured proxy — Node hosts should pass IFetchProvider.fetch here.
+  fetchFn?: CloudFetchFn;
 }
 
 export const defaultPluginConfig: ISyncCorePluginConfig = {};
