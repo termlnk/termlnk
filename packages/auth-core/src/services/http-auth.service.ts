@@ -498,11 +498,20 @@ export class HttpAuthService extends Disposable implements IAuthService {
       this._authState$.next(AuthState.Authenticated);
     }
 
-    // getAccessToken auto-refreshes when within the 30 s margin and fail-soft clears
-    // both cache and storage when refresh fails. Either outcome is durable: null means
-    // "no usable token left", non-null means "token verified usable for the next call".
+    // getAccessToken auto-refreshes when within the 30 s margin. It returns null both when
+    // the session is really gone and when the token merely could not be renewed right now
+    // (offline, server restarting) — peekCached() separates the two: the token manager only
+    // drops the cached pair when the server definitively rejected the refresh token.
     const token = await this._tokenManager.getAccessToken();
     if (!token) {
+      if (cachedUser && this._tokenManager.peekCached() !== null) {
+        // Session intact, just unrenewable at this moment. Cold-starting before Wi-Fi
+        // associates must not sign the user out; stay Authenticated on the cached user and
+        // let the next authorized call (or the sync transport's retry) recover.
+        this._logService.warn('[HttpAuthService] restore: token not renewable right now; keeping cached session');
+        await this._reconcileVaultState(null);
+        return;
+      }
       if (cachedUser) {
         await this._userStorage.clear();
         this._currentUser$.next(null);
@@ -1098,10 +1107,7 @@ export class HttpAuthService extends Disposable implements IAuthService {
     path: string,
     method: 'POST' | 'GET'
   ): Promise<{ json: () => Promise<unknown> }> {
-    const token = await this._tokenManager.getAccessToken();
-    if (!token) {
-      throw new AuthError('session_expired', friendlyMessageFor('session_expired'));
-    }
+    const token = await this._requireAccessToken();
     return this._request(operation, method, path, { token });
   }
 
@@ -1112,12 +1118,21 @@ export class HttpAuthService extends Disposable implements IAuthService {
 
   // Bearer-authenticated POST with a JSON body (e2e/setup).
   private async _fetchAuthorizedJson<T = unknown>(operation: string, path: string, body: unknown): Promise<T> {
-    const token = await this._tokenManager.getAccessToken();
-    if (!token) {
-      throw new AuthError('session_expired', friendlyMessageFor('session_expired'));
-    }
+    const token = await this._requireAccessToken();
     const resp = await this._request(operation, 'POST', path, { token, jsonBody: body });
     return resp.json() as Promise<T>;
+  }
+
+  // A null access token means either "signed out" or "could not renew right now". Only the
+  // first warrants session_expired — telling a user to sign in again because their Wi-Fi
+  // dropped sends them down the wrong recovery path.
+  private async _requireAccessToken(): Promise<string> {
+    const token = await this._tokenManager.getAccessToken();
+    if (token) {
+      return token;
+    }
+    const code: AuthErrorCode = this._tokenManager.peekCached() !== null ? 'network' : 'session_expired';
+    throw new AuthError(code, friendlyMessageFor(code));
   }
 
   private _joinUrl(path: string): string {

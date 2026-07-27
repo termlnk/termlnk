@@ -15,6 +15,7 @@
 
 import type { ITokenPair, ITokenRefresher, ITokenStorageService } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
+import { HttpRequestError } from '@termlnk/auth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TokenManager } from '../services/token-manager.service';
 
@@ -169,14 +170,84 @@ describe('TokenManager', () => {
     expect(storage.clearCount).toBeGreaterThan(0);
   });
 
-  it('returns null and clears state when the refresher itself fails', async () => {
+  it('returns null and clears state when the server rejects the refresh token', async () => {
     const now = Date.now();
     storage.data = makeTokens({ accessTokenExpiresAt: now - 1_000 });
-    refresher.error = new Error('refresh token revoked');
+    refresher.error = new HttpRequestError(
+      'POST /auth/refresh',
+      401,
+      'Unauthorized',
+      JSON.stringify({ error: { code: 'invalid_refresh' } })
+    );
 
     expect(await manager.getAccessToken()).toBeNull();
     expect(refresher.callCount).toBe(1);
     expect(storage.data).toBeNull();
+    expect(manager.peekCached()).toBeNull();
+  });
+
+  // Regression: a transient failure used to wipe the persisted tokens, so a laptop waking
+  // before Wi-Fi associated (or a server redeploy) permanently ended a 30-day session.
+  it.each([
+    ['offline / DNS failure', new TypeError('fetch failed')],
+    ['server error', new HttpRequestError('POST /auth/refresh', 503, 'Service Unavailable', '')],
+    ['rate limited', new HttpRequestError('POST /auth/refresh', 429, 'Too Many Requests', '')],
+    ['malformed response', new TypeError('[HttpTokenRefresher] malformed refresh response')],
+  ])('keeps the session when the refresh fails transiently (%s)', async (_label, error) => {
+    const now = Date.now();
+    storage.data = makeTokens({ accessTokenExpiresAt: now - 1_000 });
+    refresher.error = error;
+
+    expect(await manager.getAccessToken()).toBeNull();
+    expect(refresher.callCount).toBe(1);
+    // Tokens survive on both layers so a later attempt can recover the session.
+    expect(storage.data).not.toBeNull();
+    expect(storage.clearCount).toBe(0);
+    expect(manager.peekCached()).not.toBeNull();
+  });
+
+  it('backs off after a transient failure instead of re-refreshing on every call', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    storage.data = makeTokens({ accessTokenExpiresAt: now - 1_000 });
+    refresher.error = new TypeError('fetch failed');
+
+    expect(await manager.getAccessToken()).toBeNull();
+    expect(refresher.callCount).toBe(1);
+
+    // Inside the backoff window: no further requests hit the network.
+    await manager.getAccessToken();
+    await manager.getAccessToken();
+    expect(refresher.callCount).toBe(1);
+
+    // Past the window the manager tries again — and succeeds this time.
+    await vi.advanceTimersByTimeAsync(5_001);
+    refresher.error = null;
+    refresher.next = makeTokens({ accessToken: 'recovered', accessTokenExpiresAt: Date.now() + 15 * 60_000 });
+
+    expect(await manager.getAccessToken()).toBe('recovered');
+    expect(refresher.callCount).toBe(2);
+  });
+
+  it('resets the backoff once a refresh succeeds', async () => {
+    vi.useFakeTimers();
+    storage.data = makeTokens({ accessTokenExpiresAt: Date.now() - 1_000 });
+    refresher.error = new TypeError('fetch failed');
+    await manager.getAccessToken();
+
+    await vi.advanceTimersByTimeAsync(5_001);
+    refresher.error = null;
+    refresher.next = makeTokens({ accessToken: 'ok', accessTokenExpiresAt: Date.now() - 1_000 });
+    await manager.getAccessToken();
+
+    // Fails again — the wait must be the initial 5 s, not the doubled 10 s.
+    refresher.error = new TypeError('fetch failed');
+    await manager.getAccessToken();
+    const callsAfterSecondFailure = refresher.callCount;
+
+    await vi.advanceTimersByTimeAsync(5_001);
+    await manager.getAccessToken();
+    expect(refresher.callCount).toBe(callsAfterSecondFailure + 1);
   });
 
   it('setTokens updates both cache and storage', async () => {
