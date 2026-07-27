@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IAuthError, IAuthService, IIdleProbe, IMasterKey, IMasterKeyService, IUserAccount } from '@termlnk/auth';
+import type { IIdleProbe, IMasterKey, IMasterKeyService } from '@termlnk/auth';
 import type { ILogService, LogLevel } from '@termlnk/core';
 import type { Observable } from 'rxjs';
-import { AUTH_PLUGIN_CONFIG_KEY, AuthState, MasterKeyState, VaultState } from '@termlnk/auth';
+import { AUTH_PLUGIN_CONFIG_KEY, MasterKeyState } from '@termlnk/auth';
 import { ConfigService } from '@termlnk/core';
 import { BehaviorSubject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +35,8 @@ class FakeMasterKeyService implements IMasterKeyService {
   private readonly _state$ = new BehaviorSubject<MasterKeyState>(MasterKeyState.Locked);
   readonly state$: Observable<MasterKeyState> = this._state$.asObservable();
   lockCalls = 0;
+  clearPersistedKeyCalls = 0;
+  clearPersistedKeyShouldThrow = false;
 
   setState(state: MasterKeyState): void {
     this._state$.next(state);
@@ -61,7 +63,12 @@ class FakeMasterKeyService implements IMasterKeyService {
     return false;
   }
 
-  async clearPersistedKey(): Promise<void> {}
+  async clearPersistedKey(): Promise<void> {
+    this.clearPersistedKeyCalls++;
+    if (this.clearPersistedKeyShouldThrow) {
+      throw new Error('keystore unavailable');
+    }
+  }
 
   getState(): MasterKeyState {
     return this._state$.getValue();
@@ -83,64 +90,25 @@ class StubIdleProbe implements IIdleProbe {
   }
 }
 
-class FakeAuthService implements IAuthService {
-  readonly currentUser$ = new BehaviorSubject<IUserAccount | null>(null).asObservable();
-  readonly authState$ = new BehaviorSubject<AuthState>(AuthState.Authenticated).asObservable();
-  readonly lastError$ = new BehaviorSubject<IAuthError | null>(null).asObservable();
-  readonly vaultState$ = new BehaviorSubject<VaultState>(VaultState.Unlocked).asObservable();
-  logoutCalls = 0;
-  logoutShouldThrow = false;
-  constructor(private readonly _master: FakeMasterKeyService) {}
-
-  async register(): Promise<void> { throw new Error('not used'); }
-  async login(): Promise<void> { throw new Error('not used'); }
-  async logout(): Promise<void> {
-    this.logoutCalls++;
-    if (this.logoutShouldThrow) {
-      throw new Error('logout boundary exception');
-    }
-    // Mirrors HttpAuthService.logout: lock master key, clear tokens, push Unauthenticated.
-    this._master.lock();
-  }
-
-  getCurrentUser(): IUserAccount | null { return null; }
-  async getAccessToken(): Promise<string | null> { return null; }
-  async restore(): Promise<void> {}
-  async listDevices() { return []; }
-  async revokeDevice(): Promise<void> {}
-  async getGoogleAuthorizeUrl(): Promise<string> { return ''; }
-  async loginWithGoogle(): Promise<void> { throw new Error('not used'); }
-  async beginGoogleWebSignIn(): Promise<{ authorizeUrl: string }> { throw new Error('not used'); }
-  async pollGoogleWebSignIn(): Promise<'pending' | 'complete' | 'expired'> { throw new Error('not used'); }
-  async setupEncryptionPassword(): Promise<void> { throw new Error('not used'); }
-  async unlockVault(): Promise<void> { throw new Error('not used'); }
-  async changePassword(): Promise<void> { throw new Error('not used'); }
-  async resumePendingPasswordChange(): Promise<void> {}
-  async getServerCapabilities() { return { googleOAuth: false }; }
-}
-
 interface ITestBed {
   master: FakeMasterKeyService;
   probe: StubIdleProbe;
   config: ConfigService;
   controller: IdleLockController;
-  authService: FakeAuthService | undefined;
 }
 
-function createBed(opts: { autoLockMinutes: number; withAuthService?: boolean }): ITestBed {
+function createBed(opts: { autoLockMinutes: number }): ITestBed {
   const master = new FakeMasterKeyService();
   const probe = new StubIdleProbe();
   const config = new ConfigService();
   config.setConfig(AUTH_PLUGIN_CONFIG_KEY, { autoLockIdleMinutes: opts.autoLockMinutes });
-  const authService = opts.withAuthService ? new FakeAuthService(master) : undefined;
   const controller = new IdleLockController(
     master,
     probe,
     config,
-    new NoopLogService(),
-    authService
+    new NoopLogService()
   );
-  return { master, probe, config, controller, authService };
+  return { master, probe, config, controller };
 }
 
 describe('IdleLockController', () => {
@@ -180,7 +148,7 @@ describe('IdleLockController', () => {
     bed.controller.dispose();
   });
 
-  it('locks via bare master-key lock when no IAuthService is bound', async () => {
+  it('locks the master key once idle passes the threshold', async () => {
     const bed = createBed({ autoLockMinutes: 5 });
     bed.probe.seconds = 999;
     bed.master.setState(MasterKeyState.Unlocked);
@@ -189,34 +157,37 @@ describe('IdleLockController', () => {
     bed.controller.dispose();
   });
 
-  it('prefers IAuthService.logout when bound (clears tokens + state coherently)', async () => {
-    const bed = createBed({ autoLockMinutes: 5, withAuthService: true });
+  // Regression: auto-lock used to prefer IAuthService.logout(), which revokes the session
+  // server-side — and /auth/logout revokes EVERY session on the account. A backgrounded
+  // phone (autoLockIdleMinutes=5) therefore signed the user out of all their devices.
+  it('drops the persisted wrap so the encryption password is required again', async () => {
+    const bed = createBed({ autoLockMinutes: 5 });
     bed.probe.seconds = 999;
     bed.master.setState(MasterKeyState.Unlocked);
     await vi.advanceTimersByTimeAsync(15_000);
-    expect(bed.authService!.logoutCalls).toBe(1);
-    expect(bed.master.lockCalls).toBe(1); // FakeAuthService.logout cascades to master.lock()
+    expect(bed.master.clearPersistedKeyCalls).toBe(1);
+    expect(bed.master.lockCalls).toBe(1);
     bed.controller.dispose();
   });
 
-  it('falls back to bare lock if IAuthService.logout throws', async () => {
-    const bed = createBed({ autoLockMinutes: 5, withAuthService: true });
-    bed.authService!.logoutShouldThrow = true;
+  it('still locks the in-memory key when clearing the persisted wrap throws', async () => {
+    const bed = createBed({ autoLockMinutes: 5 });
+    bed.master.clearPersistedKeyShouldThrow = true;
     bed.probe.seconds = 999;
     bed.master.setState(MasterKeyState.Unlocked);
     await vi.advanceTimersByTimeAsync(15_000);
-    expect(bed.authService!.logoutCalls).toBe(1);
-    expect(bed.master.lockCalls).toBe(1); // fallback path
+    expect(bed.master.clearPersistedKeyCalls).toBe(1);
+    expect(bed.master.lockCalls).toBe(1);
     bed.controller.dispose();
   });
 
   it('autoLockIdleMinutes=0 disables locking entirely (idle has no effect)', async () => {
-    const bed = createBed({ autoLockMinutes: 0, withAuthService: true });
+    const bed = createBed({ autoLockMinutes: 0 });
     bed.probe.seconds = 9999;
     bed.master.setState(MasterKeyState.Unlocked);
     await vi.advanceTimersByTimeAsync(15_000);
     expect(bed.master.lockCalls).toBe(0);
-    expect(bed.authService!.logoutCalls).toBe(0);
+    expect(bed.master.clearPersistedKeyCalls).toBe(0);
     bed.controller.dispose();
   });
 
