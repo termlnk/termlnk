@@ -19,6 +19,8 @@ export { DEFAULT_TERMINAL_INPUT_CONFIG, TERMINAL_INPUT_CONFIG_KEY } from './conf
 export type { ITerminalInputConfig } from './config/input-config';
 export { DEFAULT_SHELL_INTEGRATION_CONFIG, normalizeShellIntegrationConfig } from './config/shell-integration-config';
 export type { IShellIntegrationConfig, ISSHShellIntegrationConfig } from './config/shell-integration-config';
+export { DEFAULT_TERMINAL_IDENTITY_CONFIG, normalizeTerminalIdentityConfig, resolveTerminalIdentityEnv, TERMINAL_IDENTITIES, TERMINAL_IDENTITY_ENV_KEYS } from './config/terminal-identity-config';
+export type { ITerminalIdentityConfig, TerminalIdentity } from './config/terminal-identity-config';
 export type { ITerminalConfig } from './controllers/config.schema';
 export { TERMINAL_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 export { CharProtection, CursorShape, DeviceAttributeType, EraseDisplayMode, EraseLineMode, TabClearMode } from './models/csi';

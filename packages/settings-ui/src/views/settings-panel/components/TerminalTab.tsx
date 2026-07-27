@@ -14,13 +14,13 @@
  */
 
 import type { IProviderGroup, ITerminalSuggestConfig } from '@termlnk/agent';
-import type { CursorStyle, ILocalTerminalConfig, ILocalTerminalShellOption, IShellIntegrationConfig, ITerminalAppearanceConfig, LocalTerminalShell, TerminalRendererEngine } from '@termlnk/terminal';
+import type { CursorStyle, ILocalTerminalConfig, ILocalTerminalShellOption, IShellIntegrationConfig, ITerminalAppearanceConfig, ITerminalIdentityConfig, LocalTerminalShell, TerminalIdentity, TerminalRendererEngine } from '@termlnk/terminal';
 import type { ReactElement } from 'react';
 import { AGENT_PLUGIN_CONFIG_KEY, AGENT_TERMINAL_SUGGEST_CONFIG_SUB_KEY, DEFAULT_TERMINAL_SUGGEST_CONFIG } from '@termlnk/agent';
 import { LocaleService, platform } from '@termlnk/core';
 import { Card, CardContent, CardHeader, cn, Combobox, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxList, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch, useDependency, useObservable } from '@termlnk/design';
 import { IConfigManagerService, IProviderConfigService } from '@termlnk/rpc-client';
-import { createMissingShellOption, DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LETTER_SPACING, DEFAULT_PERSISTENCE_SCROLLBACK, DEFAULT_TERMINAL_RENDERER_ENGINE, getDefaultLocalTerminalConfig, IPTYService, normalizeLocalTerminalConfig, normalizeShellIntegrationConfig, resolveLegacyShellValue, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
+import { createMissingShellOption, DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LETTER_SPACING, DEFAULT_PERSISTENCE_SCROLLBACK, DEFAULT_TERMINAL_RENDERER_ENGINE, getDefaultLocalTerminalConfig, IPTYService, normalizeLocalTerminalConfig, normalizeShellIntegrationConfig, normalizeTerminalIdentityConfig, resolveLegacyShellValue, TERMINAL_IDENTITIES, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_TERMINAL_FONT_FAMILIES, PERSISTENCE_SCROLLBACK_MAX, PERSISTENCE_SCROLLBACK_MIN, TERMINAL_FONT_SIZE_MAX, TERMINAL_FONT_SIZE_MIN, TERMINAL_LETTER_SPACING_MAX, TERMINAL_LETTER_SPACING_MIN } from '../../../config/config';
 
@@ -212,6 +212,9 @@ export function TerminalTab(): ReactElement {
   const [shellIntegrationConfig, setShellIntegrationConfig] = useState<IShellIntegrationConfig>(
     () => normalizeShellIntegrationConfig(null)
   );
+  const [identityConfig, setIdentityConfig] = useState<ITerminalIdentityConfig>(
+    () => normalizeTerminalIdentityConfig(null)
+  );
   const [suggestConfig, setSuggestConfig] = useState<ITerminalSuggestConfig>(
     () => ({ ...DEFAULT_TERMINAL_SUGGEST_CONFIG })
   );
@@ -279,6 +282,17 @@ export function TerminalTab(): ReactElement {
           ssh: { ...prev.ssh, ...patch },
         });
         void configManagerService.setField(TERMINAL_PLUGIN_CONFIG_KEY, 'shellIntegration', next).catch(() => { });
+        return next;
+      });
+    },
+    [configManagerService]
+  );
+
+  const updateIdentity = useCallback(
+    (identity: TerminalIdentity) => {
+      setIdentityConfig(() => {
+        const next = normalizeTerminalIdentityConfig({ identity });
+        void configManagerService.setField(TERMINAL_PLUGIN_CONFIG_KEY, 'identity', next).catch(() => { });
         return next;
       });
     },
@@ -364,6 +378,30 @@ export function TerminalTab(): ReactElement {
     };
 
     loadShellIntegration();
+
+    return () => {
+      active = false;
+    };
+  }, [configManagerService]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadIdentity = async () => {
+      try {
+        const stored = await configManagerService.getField<Partial<ITerminalIdentityConfig>>(TERMINAL_PLUGIN_CONFIG_KEY, 'identity');
+        if (!active) {
+          return;
+        }
+        setIdentityConfig(normalizeTerminalIdentityConfig(stored));
+      } catch {
+        if (active) {
+          setIdentityConfig(normalizeTerminalIdentityConfig(null));
+        }
+      }
+    };
+
+    loadIdentity();
 
     return () => {
       active = false;
@@ -785,6 +823,48 @@ export function TerminalTab(): ReactElement {
                 onCheckedChange={(checked) => updateShellIntegrationSsh({ fallbackHeuristic: checked })}
               />
             </div>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
+      <Card className="tm:gap-0 tm:py-0">
+        <CardHeader className="tm:border-b tm:border-line tm:bg-black/10 tm:py-3">
+          <h3 className="tm:text-sm tm:font-semibold tm:text-white">
+            {localeService.t('settings-ui.terminal.identity-title')}
+          </h3>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup className="tm:my-4 tm:gap-4">
+            <Field orientation="horizontal" className="tm:items-start">
+              <FieldLabel
+                htmlFor="terminal-identity"
+                className={cn('tm:min-w-0 tm:flex-1 tm:flex-col tm:items-start tm:gap-1 tm:text-white')}
+              >
+                <span className="tm:text-sm tm:font-normal">
+                  {localeService.t('settings-ui.terminal.identity')}
+                </span>
+                <span className="tm:text-xs tm:font-normal tm:text-grey-fg">
+                  {localeService.t('settings-ui.terminal.identity-description')}
+                </span>
+              </FieldLabel>
+              <FieldContent className="tm:flex-none tm:items-end">
+                <Select
+                  value={identityConfig.identity}
+                  onValueChange={(value: string) => updateIdentity(value as TerminalIdentity)}
+                >
+                  <SelectTrigger id="terminal-identity" className={cn('tm:w-36')}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TERMINAL_IDENTITIES.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {localeService.t(`settings-ui.terminal.identity-option-${value}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
           </FieldGroup>
         </CardContent>
       </Card>

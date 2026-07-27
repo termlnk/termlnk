@@ -14,11 +14,11 @@
  */
 
 import type { Injector } from '@termlnk/core';
-import type { ILocalTerminalConfig, ILocalTerminalShellOption, IPTYCreateSessionOptions, IPTYSessionService } from '@termlnk/terminal';
+import type { ILocalTerminalConfig, ILocalTerminalShellOption, IPTYCreateSessionOptions, IPTYSessionService, ITerminalIdentityConfig } from '@termlnk/terminal';
 import { Disposable, ILogService, Inject, InjectSelf, Platform, platform } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { ITerminalSessionNotifyService } from '@termlnk/rpc';
-import { PTYSessionStatus, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
+import { normalizeTerminalIdentityConfig, PTYSessionStatus, resolveTerminalIdentityEnv, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
 import { filter, take } from 'rxjs';
 import { v4 } from 'uuid';
 import { ICommandBlockService } from '../shell-integration/command-block.service';
@@ -55,7 +55,8 @@ export class PTYSessionService extends Disposable implements IPTYSessionService 
       throw new Error(`PTY session ${sessionId} already exists`);
     }
     const shell = options.shell ?? await this._resolveDefaultShell();
-    const sessionOptions = shell ? { ...options, shell } : options;
+    const identityEnv = await this._resolveIdentityEnv();
+    const sessionOptions = { ...options, identityEnv, ...(shell ? { shell } : {}) };
 
     const sessionInstance = this._injector.createInstance(PTYSession, sessionId, sessionOptions);
     this._sessions.set(sessionId, sessionInstance);
@@ -155,6 +156,21 @@ export class PTYSessionService extends Disposable implements IPTYSessionService 
     } catch (error) {
       this._logService.error('[PTYSessionService] Failed to resolve local terminal shell:', error);
       return undefined;
+    }
+  }
+
+  /**
+   * Which terminal emulator the spawned shell sees us as. Falls back to the
+   * 'termlnk' identity so a config read failure never changes announced
+   * capabilities behind the user's back.
+   */
+  private async _resolveIdentityEnv(): Promise<Record<string, string>> {
+    try {
+      const stored = await this._configRepository.getField<Partial<ITerminalIdentityConfig>>(TERMINAL_PLUGIN_CONFIG_KEY, 'identity');
+      return resolveTerminalIdentityEnv(normalizeTerminalIdentityConfig(stored).identity);
+    } catch (error) {
+      this._logService.error('[PTYSessionService] Failed to resolve terminal identity:', error);
+      return resolveTerminalIdentityEnv('termlnk');
     }
   }
 }

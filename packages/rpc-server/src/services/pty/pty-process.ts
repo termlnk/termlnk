@@ -22,6 +22,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as process from 'node:process';
 import { DisposableCollection, Platform, platform, toDisposable } from '@termlnk/core';
+import { resolveTerminalIdentityEnv, TERMINAL_IDENTITY_ENV_KEYS } from '@termlnk/terminal';
 import { spawn } from 'node-pty';
 import { share, Subject } from 'rxjs';
 import { applyEnvOverrides, BASH_INJECTION_DELAY_MS, prepareShellIntegration, restoreEnvOverrides } from './shell-integration';
@@ -35,6 +36,11 @@ export interface IPTYSpawnOptions {
   sessionId?: string;
   /** Application config root directory for shell integration scripts */
   configPath?: string;
+  /**
+   * Terminal identity env vars (TERM_PROGRAM and friends) produced by
+   * `resolveTerminalIdentityEnv`. Defaults to the 'termlnk' identity.
+   */
+  identityEnv?: Record<string, string>;
   /** When true on Windows, spawn ConPTY with PSEUDOCONSOLE_INHERIT_CURSOR so the initial output does not clear the pre-written scrollback. */
   restored?: boolean;
 }
@@ -147,8 +153,17 @@ export function createPTYProcess(options: IPTYSpawnOptions = {}): IPTYProcessRes
   // instead of building a custom env object (which can cause posix_spawnp failures)
   process.env.COLORTERM = 'truecolor';
   process.env.TERM = 'xterm-256color';
-  process.env.TERM_PROGRAM = 'termlnk';
-  process.env.TERM_PROGRAM_VERSION = '0.0.0';
+
+  // Identity markers are cleared first: process.env is shared across spawns, so
+  // switching away from an identity that sets extra markers (KITTY_WINDOW_ID,
+  // ITERM_SESSION_ID) would otherwise leak them into every later session.
+  for (const key of TERMINAL_IDENTITY_ENV_KEYS) {
+    delete process.env[key];
+  }
+  const identityEnv = options.identityEnv ?? resolveTerminalIdentityEnv('termlnk');
+  for (const [key, value] of Object.entries(identityEnv)) {
+    process.env[key] = value;
+  }
 
   if (platform === Platform.Mac && !process.env.LC_ALL) {
     const locale = process.env.LC_CTYPE || 'en_US.UTF-8';

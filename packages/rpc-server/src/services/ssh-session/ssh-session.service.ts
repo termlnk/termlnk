@@ -15,13 +15,13 @@
 
 import type { Injector } from '@termlnk/core';
 import type { ISSHSessionService } from '@termlnk/rpc';
-import type { IHost, IShellIntegrationConfig } from '@termlnk/terminal';
+import type { IHost, IShellIntegrationConfig, ITerminalIdentityConfig } from '@termlnk/terminal';
 import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
 import type { ISSHSocket } from '../ssh/ssh-socket';
 import { Disposable, ILogService, Inject, InjectSelf, Optional } from '@termlnk/core';
 import { ConfigRepository, HostRepository, SnippetRepository } from '@termlnk/database';
 import { IFileTransferService, ITerminalSessionNotifyService, SSHSessionStatus, SSHSocketStatus } from '@termlnk/rpc';
-import { getCredentialUsername, normalizeShellIntegrationConfig, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
+import { getCredentialUsername, normalizeShellIntegrationConfig, normalizeTerminalIdentityConfig, resolveTerminalIdentityEnv, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
 import { filter, take } from 'rxjs';
 import { v4 } from 'uuid';
 import { resolveHostWithProxy } from '../proxy/resolve-effective-proxy';
@@ -93,7 +93,10 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
     // If shell integration is disabled or SSH auto-inject is off, we fall back
     // to a plain interactive shell channel (bootstrapCommand = null).
     const shellIntegrationConfig = await this._readShellIntegrationConfig();
-    const bootstrapCommand = this._resolveBootstrapCommand(shellIntegrationConfig);
+    const bootstrapCommand = this._resolveBootstrapCommand(
+      shellIntegrationConfig,
+      await this._resolveIdentityEnv()
+    );
 
     let session: SSHSession;
     const initialPassword = password ?? (host.credential?.type === 'password' ? host.credential.password : undefined);
@@ -344,15 +347,24 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
    * interactive shell starts. Returns null when shell integration is disabled
    * by config — in which case the session opens a plain interactive shell
    * channel and no OSC 633 hooks are provisioned.
+   *
+   * The bootstrap is also the only place we can export the terminal identity on
+   * a remote: OpenSSH's default `AcceptEnv` only allows LANG/LC_*, so an ssh2
+   * env request for TERM_PROGRAM would be silently refused. That means a user
+   * who turns shell integration off gets no identity on SSH either — the
+   * settings UI states this.
    */
-  private _resolveBootstrapCommand(config: IShellIntegrationConfig): string | null {
+  private _resolveBootstrapCommand(
+    config: IShellIntegrationConfig,
+    identityEnv: Record<string, string>
+  ): string | null {
     if (config.mode === 'disabled') {
       return null;
     }
     if (!config.ssh.autoInject) {
       return null;
     }
-    return buildSshBootstrapCommand();
+    return buildSshBootstrapCommand({ identityEnv });
   }
 
   private async _readShellIntegrationConfig(): Promise<IShellIntegrationConfig> {
@@ -364,6 +376,18 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
       return normalizeShellIntegrationConfig(raw);
     } catch {
       return normalizeShellIntegrationConfig(null);
+    }
+  }
+
+  private async _resolveIdentityEnv(): Promise<Record<string, string>> {
+    try {
+      const raw = await this._configRepository.getField<Partial<ITerminalIdentityConfig>>(
+        TERMINAL_PLUGIN_CONFIG_KEY,
+        'identity'
+      );
+      return resolveTerminalIdentityEnv(normalizeTerminalIdentityConfig(raw).identity);
+    } catch {
+      return resolveTerminalIdentityEnv('termlnk');
     }
   }
 

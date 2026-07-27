@@ -439,7 +439,37 @@ export function getBashSshRcFile(): string {
  * PTY that ssh2 allocated via pty-req, so the user's shell reads from the
  * real terminal as expected.
  */
-export function buildSshBootstrapCommand(): string {
+export interface ISshBootstrapOptions {
+  /**
+   * Terminal identity env vars (TERM_PROGRAM and friends) to export on the
+   * remote before `exec`ing the user's shell. Note TERM is never among them —
+   * overriding it would break remotes whose terminfo lacks that entry.
+   */
+  identityEnv?: Record<string, string>;
+}
+
+// Values are embedded into single-quoted `export` lines, so anything outside
+// this charset is DROPPED rather than escaped: a missing identity marker only
+// costs an inline image, while a mis-escaped value would break the login shell.
+const IDENTITY_ENV_KEY_RE = /^[A-Z_][A-Z0-9_]*$/;
+const IDENTITY_ENV_VALUE_RE = /^[\w.:-]+$/;
+
+function buildIdentityExportLines(identityEnv: Record<string, string> | undefined): string[] {
+  if (!identityEnv) {
+    return [];
+  }
+
+  const lines: string[] = [];
+  for (const [key, value] of Object.entries(identityEnv)) {
+    if (!IDENTITY_ENV_KEY_RE.test(key) || !IDENTITY_ENV_VALUE_RE.test(value)) {
+      continue;
+    }
+    lines.push(`export ${key}='${value}'`);
+  }
+  return lines;
+}
+
+export function buildSshBootstrapCommand(options: ISshBootstrapOptions = {}): string {
   const bashRc = b64(getBashSshRcFile());
   const zshenv = b64(getZshEnvBootstrap());
   const zshScript = b64(getZshIntegrationScript());
@@ -448,6 +478,8 @@ export function buildSshBootstrapCommand(): string {
   // POSIX sh. Any `exec` here replaces the `sh` process with the user's shell.
   const inner = [
     '# Termlnk SSH shell-integration bootstrap',
+    // Exported before any `exec` below so the user's shell inherits them.
+    ...buildIdentityExportLines(options.identityEnv),
     'dir="${XDG_DATA_HOME:-$HOME/.local/share}/termlnk/si"',
     'mkdir -p "$dir/zdotdir" 2>/dev/null',
     '__tlk_w() {',

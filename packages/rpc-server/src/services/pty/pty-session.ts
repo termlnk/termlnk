@@ -28,6 +28,8 @@ export interface IPTYSessionOptions {
   cwd?: string;
   shell?: string;
   restored?: boolean;
+  /** Terminal identity env vars, resolved by PTYSessionService from user config. */
+  identityEnv?: Record<string, string>;
 }
 
 const PTY_OUTPUT_CHUNK_MAX_BYTES = 64 * 1024;
@@ -141,6 +143,7 @@ export class PTYSession extends Disposable implements IDisposable {
         sessionId: this._sessionId,
         configPath: resolveConfigPath(this._configService),
         restored: options.restored,
+        identityEnv: options.identityEnv,
       });
 
       this._process = result.process;
