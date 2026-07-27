@@ -125,6 +125,8 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
   readonly poke$: Observable<IPokeMessage> = this._poke$.asObservable();
 
   private _ws: IHttpWebSocket | null = null;
+  // Guards the await window inside _openSocket, where _ws is still null.
+  private _opening = false;
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private _heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   // Refreshed by every inbound frame. The heartbeat tick force-closes when this falls
@@ -271,9 +273,22 @@ export class HttpSyncTransportService extends Disposable implements ISyncTranspo
   }
 
   private async _openSocket(): Promise<void> {
-    if (this._ws) {
+    // `this._ws` is only assigned at the end of this method, after an await. Without a
+    // separate in-flight flag, connect() racing the reconnect timer lets both callers past
+    // the guard and create a socket; the loser's socket is then orphaned — every listener
+    // bails on the `this._ws !== ws` identity check, so nothing ever closes it.
+    if (this._ws || this._opening) {
       return;
     }
+    this._opening = true;
+    try {
+      await this._doOpenSocket();
+    } finally {
+      this._opening = false;
+    }
+  }
+
+  private async _doOpenSocket(): Promise<void> {
     const token = await this._tokenManager.getAccessToken();
     if (!token) {
       this._logService.warn('[HttpSyncTransportService] cannot open WS: no access token');
