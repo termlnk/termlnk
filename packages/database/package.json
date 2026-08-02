@@ -75,11 +75,11 @@
     "@termlnk/shared": "workspace:*",
     "@termlnk/snippet": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.1.2",
     "drizzle-kit": "1.0.0-rc.4",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.1.5",
+    "vite": "^8.2.0",
     "vitest": "^4.1.10"
   }
 }

@@ -47,8 +47,8 @@ allowBuilds:
   ssh2: false
 
 overrides:
-  '@types/react': ^19.2.17
-  '@types/react-dom': ^19.2.3
+  '@types/react': ^19.2.18
+  '@types/react-dom': ^19.2.4
   react: ^19.2.8
   react-dom: ^19.2.8
   # apps/mobile must pin react to the exact version react-native 0.85.3's bundled
@@ -59,34 +59,35 @@ overrides:
   hermes-compiler: 0.15.0
   # electron pinned to 41.x: better-sqlite3 ships no Electron 42 prebuild and
   # fails to build against V8 14.x (v8::External::New signature changed)
-  electron: 42.7.0
-  tar: ^7.5.13
-  undici: ^8.8.0
-  file-type: ^22.0.0
+  electron: 42.8.0
+  tar: ^7.5.21
+  undici: ^8.9.0
+  file-type: ^22.0.1
   '@tootallnate/once': ^3.0.1
-  tmp: ^0.2.6
-  defu: ^6.1.6
+  tmp: ^0.2.7
+  defu: ^6.1.7
   lodash: ^4.18.1
   lightningcss: 1.30.1
   # Dependabot security fixes (transitive)
   '@xmldom/xmldom': ^0.8.13
-  protobufjs: ^7.5.6
-  '@protobufjs/utf8': ^1.1.1
+  protobufjs: ^7.6.5
+  '@protobufjs/utf8': ^1.1.2
   basic-ftp: ^5.3.1
-  dompurify: ^3.4.0
-  hono: ^4.12.18
+  dompurify: ^3.4.12
+  hono: ^4.12.33
   follow-redirects: ^1.16.0
-  '@hono/node-server': ^1.19.13
-  fast-xml-parser: ^5.7.0
-  fast-xml-builder: ^1.1.7
-  fast-uri: ^3.1.2
-  mermaid: ^11.15.0
-  ip-address: ^10.1.1
-  postcss: ^8.5.20
-  js-cookie: ^3.0.7
-  qs: ^6.15.2
+  '@hono/node-server': ^2.0.12
+  fast-xml-parser: ^5.10.1
+  fast-xml-builder: ^1.3.0
+  fast-uri: ^3.1.5
+  mermaid: ^11.16.0
+  ip-address: ^10.4.0
+  postcss: ^8.5.25
+  js-cookie: ^3.0.8
+  qs: ^6.15.3
+  shell-quote: ^1.9.0
   # scoped to the vulnerable 5.0.x line; other majors (1.x/2.x) stay untouched
-  brace-expansion@>=5.0.0 <5.0.6: ^5.0.6
+  brace-expansion@>=5.0.0 <5.0.7: ^5.0.7
   # uuid GHSA-w5hq-g745-h8pq (v3/v5/v6 buf bounds): patched only in >=11.1.1.
   # uuid 7.0.3 (expo>xcode, mobile build) and 8.3.2 (drizzle>@types/mssql>tedious>
   # @azure/msal-node, optional mssql driver) are left as-is: a 4-major bump on these

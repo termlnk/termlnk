@@ -58,7 +58,7 @@ export default {
   electron: {
     global: 'electron',
     name: 'electron',
-    version: '42.7.0',
+    version: '42.8.0',
   },
 
   // Node.js native / server-side packages (not bundleable by Rollup)
