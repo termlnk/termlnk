@@ -22,7 +22,7 @@ import { tmpdir } from 'node:os';
 import { basename, extname, resolve } from 'node:path';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
-import yaml from 'js-yaml';
+import { dump, load } from 'js-yaml';
 
 interface IManifestFile {
   url: string;
@@ -85,7 +85,7 @@ function run(command: string, commandArgs: string[], cwd?: string): string {
 }
 
 function readManifest(raw: string): IUpdateManifest {
-  const parsed = yaml.load(raw);
+  const parsed = load(raw);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new TypeError(`${MANIFEST_PATH} is not a YAML mapping.`);
   }
@@ -412,7 +412,7 @@ async function main(): Promise<void> {
 
   await writeFile(
     MANIFEST_PATH,
-    yaml.dump(manifest, { lineWidth: -1, noRefs: true }),
+    dump(manifest, { lineWidth: -1, noRefs: true }),
     'utf8'
   );
 

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
-import yaml from 'js-yaml';
+import { dump, load } from 'js-yaml';
 
 /**
  * Merge electron-builder per-arch update manifests into the channel files
@@ -69,7 +69,7 @@ async function readManifest(filePath) {
   }
 
   const raw = await readFile(filePath, 'utf8');
-  const parsed = yaml.load(raw);
+  const parsed = load(raw);
 
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new TypeError(`${filePath} is not a YAML mapping`);
@@ -136,7 +136,7 @@ async function main() {
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(
       outputPath,
-      yaml.dump(result, { lineWidth: -1, noRefs: true }),
+      dump(result, { lineWidth: -1, noRefs: true }),
       'utf8'
     );
     console.log(`[ok] ${output} ← ${manifests.length} input(s), ${result.files.length} file entr${result.files.length === 1 ? 'y' : 'ies'}`);

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 
 /**
  * Prune stale desktop release artifacts from the Cloudflare R2 update bucket.
@@ -125,7 +125,7 @@ function listObjects() {
  */
 function readManifestReferences(key) {
   const raw = aws(['s3', 'cp', `s3://${BUCKET}/${key}`, '-', '--endpoint-url', ENDPOINT]);
-  const doc = yaml.load(raw);
+  const doc = load(raw);
   const names = new Set();
 
   if (doc !== null && typeof doc === 'object' && !Array.isArray(doc)) {
