@@ -35,6 +35,9 @@ allowBuilds:
   # Native modules are built by apps/desktop/scripts/postinstall.mjs against the
   # Electron ABI, not Node's. Letting pnpm run these build scripts would produce
   # wrong-ABI binaries; ssh2/cpu-features/msgpackr-extract fall back to pure JS.
+  # node-pty is N-API: its npm tarball ships darwin/win32 prebuilds that work
+  # under Electron as-is, and on Linux (no shipped prebuild) postinstall.mjs
+  # compiles it from source into build/Release/pty.node.
   '@google/genai': false
   better-sqlite3: false
   cpu-features: false

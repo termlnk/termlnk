@@ -464,6 +464,29 @@ async function stripBuildArtifacts(): Promise<void> {
 }
 
 /**
+ * Fails fast when a runtime native module has no binary for the target
+ * platform. node-pty's npm tarball ships prebuilds only for darwin/win32; the
+ * Linux build/Release/pty.node is produced by apps/desktop/scripts/postinstall.mjs
+ * during `pnpm install`. Without this check a missing binary would silently
+ * ship a broken package (see issue #7 — Linux RPM crashed at startup).
+ */
+async function verifyNativeBinaries(): Promise<void> {
+  const ptyNode = [
+    resolve(TARGET_NODE_MODULES, 'node-pty', 'prebuilds', `${platform}-${arch}`, 'pty.node'),
+    resolve(TARGET_NODE_MODULES, 'node-pty', 'build', 'Release', 'pty.node'),
+    resolve(TARGET_NODE_MODULES, 'node-pty', 'build', 'Debug', 'pty.node'),
+  ].find((path) => existsSync(path));
+
+  if (!ptyNode) {
+    throw new Error(
+      `node-pty has no native pty.node for ${platform}-${arch} after staging. `
+      + 'On Linux run `pnpm install` (apps/desktop/scripts/postinstall.mjs compiles it from source); '
+      + 'on macOS/Windows the npm tarball prebuilds are used. Refusing to package a broken app.'
+    );
+  }
+}
+
+/**
  * Generates a minimal package.json for the staged app. Only the top-level
  * runtime modules are declared as dependencies — transitive packages are
  * present on disk but not advertised, so `npm ls` against the staged tree
@@ -593,6 +616,9 @@ async function main(): Promise<void> {
 
   // 11. Strip build artifacts from staged modules
   await stripBuildArtifacts();
+
+  // 12. Verify runtime native binaries exist for the target platform
+  await verifyNativeBinaries();
 
   const elapsed = ((performance.now() - start) / 1000).toFixed(1);
   console.log(`Staged build/app/ in ${elapsed}s (${platform}-${arch})`);
