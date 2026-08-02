@@ -1,15 +1,23 @@
-## [0.3.6](https://github.com/termlnk/termlnk/compare/v0.3.5...v0.3.6) (2026-08-02)
+# Desktop v0.3.6
 
-### Bug Fixes
+This release makes sessions more reliable, sync more robust, and gives you control over how Termlnk presents itself to the tools running inside it.
 
-* **auth:** keep session on transient token refresh failure ([dc98adb](https://github.com/termlnk/termlnk/commit/dc98adb0e7159e7b52ba783842e28cb8b9b3c1c3))
-* **auth:** lock the vault on idle instead of signing out ([ac8b0e3](https://github.com/termlnk/termlnk/commit/ac8b0e3d12b481ad8260c76dc59fcd1987f6361e))
-* **deps:** align earendil-works deps to 0.83.0 ([6d27cfe](https://github.com/termlnk/termlnk/commit/6d27cfecb42b4cc2f524a74e5a74427f0995d806))
-* **desktop:** build node-pty from source on linux ([4365ed1](https://github.com/termlnk/termlnk/commit/4365ed178690ee2ca4df73bb13d2191f13002e85))
-* **network:** route cloud requests through the configured proxy ([c56747f](https://github.com/termlnk/termlnk/commit/c56747f28eeefaf0bf6ac82d4a0e50af83b89106))
-* **sync:** guard against concurrent websocket open ([a26bb38](https://github.com/termlnk/termlnk/commit/a26bb38faf2ec397db700eaf761407bdf358ae4e))
-* **sync:** hold pull cursor behind unapplied patch rows ([40c56eb](https://github.com/termlnk/termlnk/commit/40c56ebd1a57a6ae4102c45c772de84547be3f47))
+## New
 
-### Features
+- **Configurable terminal identity** — choose which terminal emulator Termlnk announces itself as (`TERM_PROGRAM` and related variables) for local and SSH shells: **Termlnk** (default), **Ghostty**, **Kitty**, or **iTerm2**. Many CLI tools gate inline-image support behind a hardcoded list of terminal names, so they render a text placeholder in Termlnk even though its renderer supports images fine. Announcing a listed terminal lets those images display — honest, since Termlnk implements the Kitty graphics, iTerm2 inline-image, and OSC 8 protocols. Find it under **Settings → Terminal → Terminal Identity**.
 
-* **terminal:** add configurable terminal identity ([ed0f9fc](https://github.com/termlnk/termlnk/commit/ed0f9fccd61104ab85b0b57f75d1dc0cfddf578a))
+## Fixes
+
+- **Auth: idle timeout locks the vault instead of signing out** — after the idle timeout you stay signed in and simply re-enter your passphrase. No more losing your session (and sync state) after stepping away.
+- **Auth: session survives transient token-refresh failures** — a flaky network no longer signs you out mid-session.
+- **Network: cloud requests now honor your configured proxy** — sign-in, sync, and collab-invite traffic route through the SOCKS5/HTTP proxy configured in Settings, fixing cases where cloud features silently failed behind a proxy.
+- **Sync: pull cursor held behind unapplied patch rows** — pending updates are no longer skipped when a patch can't be applied, preventing dropped changes.
+- **Sync: guarded against concurrent WebSocket connections** — eliminates a race that could open duplicate sync connections.
+- **Linux: build node-pty from source during packaging** — Linux installers no longer ship without the PTY native module, fixing startup failures on systems without prebuilt binaries.
+- **Build: deduplicated `@earendil-works` dependencies** — fixes duplicate-type errors in the agent build.
+
+## Install
+
+Grab the installer for your platform from the assets below.
+
+Full changelog: https://github.com/termlnk/termlnk/compare/v0.3.5...v0.3.6
