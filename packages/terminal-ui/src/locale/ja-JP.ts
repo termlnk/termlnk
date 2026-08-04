@@ -262,12 +262,10 @@ const locale: typeof enUS = {
     },
     progress: {
       title: 'ターミナル進捗',
-      source: 'OSC 9;4',
-      indeterminateValue: '--',
+      source: 'ターミナル報告',
       state: {
         running: '実行中',
         error: 'エラー',
-        indeterminate: '不定',
         paused: '一時停止',
       },
     },

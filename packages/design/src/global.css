@@ -9,3 +9,17 @@
     transform: translateX(220%);
   }
 }
+
+/*
+ * Indeterminate sweep for a bar occupying 1/4 of its track. 300% is exactly the
+ * travel needed to move it from the left edge to the right edge; pair with
+ * `alternate` so it retraces instead of jumping back.
+ */
+@keyframes tm-indeterminate-sweep {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}

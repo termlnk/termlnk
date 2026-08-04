@@ -260,12 +260,10 @@ const locale = {
     },
     progress: {
       title: 'Terminal Progress',
-      source: 'OSC 9;4',
-      indeterminateValue: '--',
+      source: 'Reported by terminal',
       state: {
         running: 'Running',
         error: 'Error',
-        indeterminate: 'Indeterminate',
         paused: 'Paused',
       },
     },

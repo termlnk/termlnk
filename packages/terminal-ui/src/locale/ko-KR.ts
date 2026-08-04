@@ -262,12 +262,10 @@ const locale: typeof enUS = {
     },
     progress: {
       title: '터미널 진행률',
-      source: 'OSC 9;4',
-      indeterminateValue: '--',
+      source: '터미널 보고',
       state: {
         running: '실행 중',
         error: '오류',
-        indeterminate: '불확정',
         paused: '일시 정지',
       },
     },

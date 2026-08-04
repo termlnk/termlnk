@@ -262,12 +262,10 @@ const locale: typeof enUS = {
     },
     progress: {
       title: '终端进度',
-      source: 'OSC 9;4',
-      indeterminateValue: '--',
+      source: '终端上报',
       state: {
         running: '进行中',
         error: '错误',
-        indeterminate: '无法确定',
         paused: '已暂停',
       },
     },

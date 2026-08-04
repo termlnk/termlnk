@@ -14,11 +14,11 @@
  */
 
 import type { ReactElement } from 'react';
-import type { IXtermProgressState } from '../hooks';
+import type { IXtermProgressState } from '../../models/terminal-progress.model';
 import { LocaleService } from '@termlnk/core';
 import { cn, useDependency } from '@termlnk/design';
 import { AlertCircle, Loader2, PauseCircle } from 'lucide-react';
-import { XTERM_PROGRESS_STATE } from '../hooks';
+import { XTERM_PROGRESS_STATE } from '../../models/terminal-progress.model';
 
 export interface ITerminalProgressOverlayProps {
   progress: IXtermProgressState;
@@ -39,8 +39,6 @@ function getProgressMeta(state: IXtermProgressState['state']): IProgressMeta {
   switch (state) {
     case XTERM_PROGRESS_STATE.ERROR:
       return { labelKey: 'terminal-ui.progress.state.error', barClassName: 'tm:bg-red', textClassName: 'tm:text-red' };
-    case XTERM_PROGRESS_STATE.INDETERMINATE:
-      return { labelKey: 'terminal-ui.progress.state.indeterminate', barClassName: 'tm:bg-blue', textClassName: 'tm:text-blue' };
     case XTERM_PROGRESS_STATE.PAUSED:
       return { labelKey: 'terminal-ui.progress.state.paused', barClassName: 'tm:bg-yellow', textClassName: 'tm:text-yellow' };
     default:
@@ -55,18 +53,13 @@ function renderProgressIcon(state: IXtermProgressState['state']): ReactElement |
     case XTERM_PROGRESS_STATE.PAUSED:
       return <PauseCircle className="tm:size-3.5 tm:text-yellow" />;
     case XTERM_PROGRESS_STATE.RUNNING:
-    case XTERM_PROGRESS_STATE.INDETERMINATE:
       return <Loader2 className="tm:size-3.5 tm:animate-spin tm:text-blue" />;
     default:
       return null;
   }
 }
 
-function renderProgressFill(state: IXtermProgressState['state'], barClassName: string, percent: number): ReactElement {
-  if (state === XTERM_PROGRESS_STATE.INDETERMINATE) {
-    return <div className={cn('tm:h-full tm:w-2/5 tm:animate-pulse tm:rounded-full', barClassName)} />;
-  }
-
+function renderProgressFill(barClassName: string, percent: number): ReactElement {
   return (
     <div
       className={cn('tm:h-full tm:rounded-full tm:transition-all tm:duration-300', barClassName)}
@@ -79,9 +72,6 @@ export function TerminalProgressOverlay({ progress, className }: ITerminalProgre
   const localeService = useDependency(LocaleService);
   const percent = clampPercent(progress.value);
   const progressMeta = getProgressMeta(progress.state);
-  const valueText = progress.state === XTERM_PROGRESS_STATE.INDETERMINATE
-    ? localeService.t('terminal-ui.progress.indeterminateValue')
-    : `${percent}%`;
 
   return (
     <div
@@ -102,7 +92,7 @@ export function TerminalProgressOverlay({ progress, className }: ITerminalProgre
       </div>
 
       <div className="tm:h-1.5 tm:w-full tm:overflow-hidden tm:rounded-full tm:bg-one-bg3">
-        {renderProgressFill(progress.state, progressMeta.barClassName, percent)}
+        {renderProgressFill(progressMeta.barClassName, percent)}
       </div>
 
       <div className="tm:flex tm:items-center tm:justify-between tm:text-xs tm:text-grey-fg">
@@ -112,7 +102,7 @@ export function TerminalProgressOverlay({ progress, className }: ITerminalProgre
         </span>
 
         <span className="tm:font-medium tm:text-light-grey">
-          {valueText}
+          {`${percent}%`}
         </span>
       </div>
     </div>

@@ -22,9 +22,11 @@ import { ISSHService } from '@termlnk/rpc-client';
 import { IPTYService } from '@termlnk/terminal';
 import { TooltipWrapper } from '@termlnk/ui';
 import { Columns2, Loader2, Maximize2, Minimize2, Rows2, Terminal, X } from 'lucide-react';
-import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CloseActiveTabCommand } from '../../commands/close-active-tab.command';
 import { MaximizeSessionCommand } from '../../commands/maximize-session.command';
+import { DEFAULT_PROGRESS_STATE, XTERM_PROGRESS_STATE } from '../../models/terminal-progress.model';
+import { ITerminalProgressService } from '../../services/terminal/terminal-progress.service';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
 import { splitTerminalSession } from '../../services/workspace/split-session';
 import { IWorkspaceService } from '../../services/workspace/workspace.service';
@@ -51,12 +53,15 @@ const MAGNIFY_EXIT_ANIMATION_MS = 180;
 export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }: IWorkspacePaneProps) {
   const terminalUIService = useDependency(ITerminalUIService);
   const workspaceService = useDependency(IWorkspaceService);
+  const progressService = useDependency(ITerminalProgressService);
   const ptyService = useDependency(IPTYService);
   const sshService = useDependency(ISSHService);
   const logService = useDependency(ILogService);
   const portal = useContext(SessionPortalContext);
   const { dragState, setDragState, dragTarget, setDragTarget, onDrop } = useContext(WorkspaceDragContext);
   const sessions = useObservable(terminalUIService.sessions$, []);
+  const progress$ = useMemo(() => progressService.progress$(sessionId), [progressService, sessionId]);
+  const progress = useObservable(progress$, DEFAULT_PROGRESS_STATE);
   const transparency = useWindowTransparency();
   const isTransparent = platform !== Platform.Windows && transparency.enabled && transparency.opacity < 1;
 
@@ -287,7 +292,7 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
       <div
         className={cn(
           `
-            tm:flex tm:h-7 tm:shrink-0 tm:cursor-grab tm:items-center tm:gap-2 tm:border-b tm:px-2.5
+            tm:relative tm:flex tm:h-7 tm:shrink-0 tm:cursor-grab tm:items-center tm:gap-2 tm:border-b tm:px-2.5
             tm:transition-colors tm:duration-150 tm:select-none
             tm:active:cursor-grabbing
           `,
@@ -362,6 +367,18 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
             <X size={12} strokeWidth={1.5} />
           </PaneActionButton>
         </div>
+
+        {/* Indeterminate progress carries no percentage — show motion, not a fill level. */}
+        {progress.state === XTERM_PROGRESS_STATE.INDETERMINATE && (
+          <div className="tm:pointer-events-none tm:absolute tm:inset-x-0 tm:-bottom-px tm:h-px tm:overflow-hidden">
+            <div
+              className={`
+                tm:h-full tm:w-1/4 tm:animate-[tm-indeterminate-sweep_1.4s_ease-in-out_infinite_alternate]
+                tm:rounded-full tm:bg-nord-blue
+              `}
+            />
+          </div>
+        )}
       </div>
 
       <div ref={contentRef} className={cn('tm:relative tm:flex-1 tm:overflow-hidden', { 'tm:bg-black/10': !isTransparent })} />

@@ -262,12 +262,10 @@ const locale: typeof enUS = {
     },
     progress: {
       title: '終端機進度',
-      source: 'OSC 9;4',
-      indeterminateValue: '--',
+      source: '終端機回報',
       state: {
         running: '進行中',
         error: '錯誤',
-        indeterminate: '無法確定',
         paused: '已暫停',
       },
     },
