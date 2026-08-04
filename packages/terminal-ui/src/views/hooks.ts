@@ -19,6 +19,7 @@ import type { ISearchOptions, ISearchResultChangeEvent } from '@xterm/addon-sear
 import type { ITerminalOptions, IWindowsPty } from '@xterm/xterm';
 import type { RefObject } from 'react';
 import type { Subscription } from 'rxjs';
+import type { IXtermProgressState } from '../models/terminal-progress.model';
 import type { ITerminalInputService } from '../services/terminal-input/terminal-input.service';
 import { isMacintosh } from '@termlnk/core';
 import { useDependency } from '@termlnk/design';
@@ -35,6 +36,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_PROGRESS_STATE, XTERM_PROGRESS_STATE } from '../models/terminal-progress.model';
 import { isAsciiPunctuationKey, isShiftEnterKey } from '../services/terminal-input/key-utils';
 
 const SCROLLBACK_SIZE = 10000;
@@ -113,19 +115,6 @@ export interface IUseXtermOptions {
   terminalInputService?: ITerminalInputService;
 }
 
-export const XTERM_PROGRESS_STATE = {
-  NONE: 0,
-  RUNNING: 1,
-  ERROR: 2,
-  INDETERMINATE: 3,
-  PAUSED: 4,
-} as const;
-
-export interface IXtermProgressState {
-  state: (typeof XTERM_PROGRESS_STATE)[keyof typeof XTERM_PROGRESS_STATE];
-  value: number;
-}
-
 export interface IUseXtermResult {
   terminalRef: RefObject<HTMLDivElement | null>;
   xtermRef: RefObject<Terminal | null>;
@@ -140,10 +129,35 @@ export interface IUseXtermResult {
   clearSearchDecorations: () => void;
   searchResult: ISearchResultChangeEvent;
   progressState: IXtermProgressState;
+  /**
+   * Force the progress indicator back to idle. The addon keeps its own state and
+   * only fires onChange on transitions, so clearing React state alone would make
+   * it miss the next identical report.
+   */
+  resetProgress: () => void;
 }
 
-const DEFAULT_PROGRESS_STATE: IXtermProgressState = { state: XTERM_PROGRESS_STATE.NONE, value: 0 };
+interface IXtermProgressTracking {
+  progressState: IXtermProgressState;
+  setProgressState: (state: IXtermProgressState) => void;
+  progressAddonRef: RefObject<ProgressAddon | null>;
+  resetProgress: () => void;
+}
 
+function useXtermProgress(): IXtermProgressTracking {
+  const [progressState, setProgressState] = useState<IXtermProgressState>(DEFAULT_PROGRESS_STATE);
+  const progressAddonRef = useRef<ProgressAddon | null>(null);
+
+  const resetProgress = useCallback(() => {
+    const addon = progressAddonRef.current;
+    if (addon) {
+      addon.progress = { state: XTERM_PROGRESS_STATE.NONE, value: 0 };
+    }
+    setProgressState(DEFAULT_PROGRESS_STATE);
+  }, []);
+
+  return { progressState, setProgressState, progressAddonRef, resetProgress };
+}
 export function useXterm(options: IUseXtermOptions): IUseXtermResult {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
@@ -156,7 +170,7 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
   const rendererEngineRef = useRef(options.rendererEngine);
   const ctrlOrMetaOpenTerminalLinkRef = useRef(options.ctrlOrMetaOpenTerminalLink);
   const [searchResult, setSearchResult] = useState<ISearchResultChangeEvent>(DEFAULT_SEARCH_RESULT);
-  const [progressState, setProgressState] = useState<IXtermProgressState>(DEFAULT_PROGRESS_STATE);
+  const { progressState, setProgressState, progressAddonRef, resetProgress } = useXtermProgress();
 
   useEffect(() => {
     onDataRef.current = options.onData;
@@ -261,6 +275,7 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
       fitAddonRef.current = fitAddon;
     }
     searchAddonRef.current = searchAddon;
+    progressAddonRef.current = progressAddon;
     serializeAddonRef.current = serializeAddon;
 
     const disposeResizeObserver = autoFit
@@ -291,6 +306,7 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
       fitAddonRef.current = null;
       serializeAddonRef.current = null;
       searchAddonRef.current = null;
+      progressAddonRef.current = null;
       setSearchResult(DEFAULT_SEARCH_RESULT);
       setProgressState(DEFAULT_PROGRESS_STATE);
     };
@@ -438,6 +454,7 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
     clearSearchDecorations,
     searchResult,
     progressState,
+    resetProgress,
   };
 }
 

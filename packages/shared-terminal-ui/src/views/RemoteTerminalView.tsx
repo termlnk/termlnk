@@ -18,7 +18,7 @@ import type { ITerminalViewProps } from '@termlnk/terminal-ui';
 import { ILogService, Quantity } from '@termlnk/core';
 import { cn, useDependency, useObservable } from '@termlnk/design';
 import { IRemoteSessionService, RemoteSessionStatus } from '@termlnk/shared-terminal';
-import { ITerminalInputService, ITerminalUIService, TerminalProgressOverlay, TerminalSearch, useGlobalTerminalAppearance, useTerminalSearch, useXterm, useXtermGridProjection, XTERM_PROGRESS_STATE } from '@termlnk/terminal-ui';
+import { hasMeasurableProgress, ITerminalInputService, ITerminalUIService, TerminalProgressOverlay, TerminalSearch, useGlobalTerminalAppearance, useReportTerminalProgress, useTerminalSearch, useXterm, useXtermGridProjection } from '@termlnk/terminal-ui';
 import { useCallback, useEffect, useRef } from 'react';
 import { EMPTY } from 'rxjs';
 import { DriverChangeOverlay } from './DriverChangeOverlay';
@@ -105,6 +105,8 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
     ctrlOrMetaOpenTerminalLink: globalAppearance.ctrlOrMetaOpenTerminalLink,
     terminalInputService,
   });
+
+  useReportTerminalProgress(sessionId, progressState);
 
   // The owner PTY fixes the grid; project it into the local window instead
   // of resizing it — the font size scales so the full grid always fits, and
@@ -209,7 +211,7 @@ export function RemoteTerminalView(props: ITerminalViewProps): React.JSX.Element
         onSearch={handleSearch}
         onClearSearch={clearSearchDecorations}
       />
-      {progressState.state !== XTERM_PROGRESS_STATE.NONE && (
+      {hasMeasurableProgress(progressState.state) && (
         <TerminalProgressOverlay progress={progressState} />
       )}
       <DriverChangeOverlay sessionId={sessionId} />

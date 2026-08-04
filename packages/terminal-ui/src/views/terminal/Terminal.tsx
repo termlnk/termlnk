@@ -21,12 +21,14 @@ import { IFileTransferService } from '@termlnk/rpc';
 import { IHostManagerService, ISSHService } from '@termlnk/rpc-client';
 import { getCredentialUsername, HostType, IShellIntegrationService } from '@termlnk/terminal';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { hasMeasurableProgress } from '../../models/terminal-progress.model';
 import { ITerminalInputService } from '../../services/terminal-input/terminal-input.service';
 import { ITerminalPersistenceService } from '../../services/terminal/terminal-persistence.service';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
-import { useGlobalTerminalAppearance, useSubscriptionManager, useXterm, XTERM_PROGRESS_STATE } from '../hooks';
+import { useGlobalTerminalAppearance, useSubscriptionManager, useXterm } from '../hooks';
 import { useErrorFixNotice } from '../use-error-fix-notice';
 import { useOscNotification } from '../use-osc-notification';
+import { useReportTerminalProgress } from '../use-report-terminal-progress';
 import { useShellIntegration } from '../use-shell-integration';
 import { useSuggestionSpinner } from '../use-suggestion-spinner';
 import { FileTransferOverlay } from './FileTransferOverlay';
@@ -68,7 +70,7 @@ export function TerminalView(props: ITerminalViewProps) {
   // the hook needs xtermRef from useXterm) can reach the latest version.
   const notifyUserInputRef = useRef<() => void>(() => {});
 
-  const { terminalRef, xtermRef, write, focus, getSize, serialize, findNext, findPrevious, clearSearchDecorations, searchResult, progressState } = useXterm({
+  const { terminalRef, xtermRef, write, focus, getSize, serialize, findNext, findPrevious, clearSearchDecorations, searchResult, progressState, resetProgress } = useXterm({
     enabled: globalAppearance.isReady,
     onData: useCallback((data: string) => {
       if (connectedRef.current) {
@@ -105,6 +107,7 @@ export function TerminalView(props: ITerminalViewProps) {
     notifyUserInputRef.current = notifyUserInput;
   }, [notifyUserInput]);
   useErrorFixNotice({ sessionId, xtermRef });
+  useReportTerminalProgress(sessionId, progressState);
 
   const shellIntegrationService = useDependency(IShellIntegrationService);
   const { onOsc633 } = useShellIntegration({
@@ -151,6 +154,14 @@ export function TerminalView(props: ITerminalViewProps) {
     onData: write,
     getSize,
   });
+
+  // Retrying reuses this xterm instance, so the progress addon would still hold
+  // its pre-disconnect state and swallow the next identical report.
+  useEffect(() => {
+    if (connection.status === 'connecting') {
+      resetProgress();
+    }
+  }, [connection.status, resetProgress]);
 
   const { isSearchOpen, isSessionActive, handleSearch, closeSearch } = useTerminalSearch({
     sessionId,
@@ -379,7 +390,7 @@ export function TerminalView(props: ITerminalViewProps) {
         {transferEvent && (
           <FileTransferOverlay event={transferEvent} onCancel={cancelTransfer} />
         )}
-        {!showConnectionPanel && progressState.state !== XTERM_PROGRESS_STATE.NONE && (
+        {!showConnectionPanel && hasMeasurableProgress(progressState.state) && (
           <TerminalProgressOverlay
             progress={progressState}
             className={transferEvent ? 'tm:bottom-28' : undefined}

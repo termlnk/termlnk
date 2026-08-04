@@ -38,6 +38,7 @@ import { ILastCwdService, LastCwdService } from './services/local-terminal/last-
 import { ITabListDropdownService, TabListDropdownService } from './services/tab-list-dropdown/tab-list-dropdown.service';
 import { ITerminalInputService, TerminalInputService } from './services/terminal-input/terminal-input.service';
 import { ITerminalPersistenceService, TerminalPersistenceService } from './services/terminal/terminal-persistence.service';
+import { ITerminalProgressService, TerminalProgressService } from './services/terminal/terminal-progress.service';
 import { ITerminalUIService, TerminalUIService } from './services/terminal/terminal-ui.service';
 import { ITerminalViewRegistry, TerminalViewRegistry } from './services/terminal/terminal-view-registry.service';
 import { IWorkspaceService, WorkspaceService } from './services/workspace/workspace.service';
@@ -87,6 +88,7 @@ export class TerminalUIPlugin extends Plugin {
       [IKeychainDialogService, { useClass: KeychainDialogService }],
       [IKnownHostDetailDialogService, { useClass: KnownHostDetailDialogService }],
       [ITerminalUIService, { useClass: TerminalUIService }],
+      [ITerminalProgressService, { useClass: TerminalProgressService }],
       [ITerminalViewRegistry, { useClass: TerminalViewRegistry }],
       [ITabListDropdownService, { useClass: TabListDropdownService }],
       [IWorkspaceService, { useClass: WorkspaceService }],

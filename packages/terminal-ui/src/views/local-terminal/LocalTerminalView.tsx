@@ -19,11 +19,12 @@ import { isWindows } from '@termlnk/core';
 import { useDependency, useObservable } from '@termlnk/design';
 import { formatXtVersionResponse, IPTYService, IShellIntegrationService, PTYSessionStatus } from '@termlnk/terminal';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { hasMeasurableProgress } from '../../models/terminal-progress.model';
 import { ILastCwdService } from '../../services/local-terminal/last-cwd.service';
 import { ITerminalInputService } from '../../services/terminal-input/terminal-input.service';
 import { ITerminalPersistenceService } from '../../services/terminal/terminal-persistence.service';
 import { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
-import { useGlobalTerminalAppearance, useXterm, XTERM_PROGRESS_STATE } from '../hooks';
+import { useGlobalTerminalAppearance, useXterm } from '../hooks';
 import { TerminalDropOverlay } from '../terminal/TerminalDropOverlay';
 import { TerminalProgressOverlay } from '../terminal/TerminalProgressOverlay';
 import { TerminalSearch } from '../terminal/TerminalSearch';
@@ -31,6 +32,7 @@ import { useTerminalDrop } from '../terminal/use-terminal-drop';
 import { useTerminalSearch } from '../terminal/use-terminal-search';
 import { useErrorFixNotice } from '../use-error-fix-notice';
 import { useOscNotification } from '../use-osc-notification';
+import { useReportTerminalProgress } from '../use-report-terminal-progress';
 import { useShellIntegration } from '../use-shell-integration';
 import { useSuggestionSpinner } from '../use-suggestion-spinner';
 
@@ -84,6 +86,8 @@ export function LocalTerminalView(props: ITerminalViewProps) {
     windowsPty: isWindows ? { backend: 'conpty' } : undefined,
     terminalInputService,
   });
+
+  useReportTerminalProgress(sessionId, progressState);
 
   const { isSearchOpen, isSessionActive, handleSearch, closeSearch } = useTerminalSearch({
     sessionId,
@@ -302,7 +306,7 @@ export function LocalTerminalView(props: ITerminalViewProps) {
         onSearch={handleSearch}
         onClearSearch={clearSearchDecorations}
       />
-      {progressState.state !== XTERM_PROGRESS_STATE.NONE && (
+      {hasMeasurableProgress(progressState.state) && (
         <TerminalProgressOverlay progress={progressState} />
       )}
       <TerminalDropOverlay visible={isDragOver} />
