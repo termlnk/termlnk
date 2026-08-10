@@ -29,6 +29,7 @@ import { OAuthController } from './controllers/oauth.controller';
 import { RPCController } from './controllers/rpc.controller';
 import { SingleInstanceController } from './controllers/single-instance.controller';
 import { TerminalOutputController } from './controllers/terminal-output.controller';
+import { WebContentsGuardController } from './controllers/web-contents-guard.controller';
 import { WindowFocusSyncController } from './controllers/window-focus-sync.controller';
 import { WindowStateController } from './controllers/window-state.controller';
 import { DiskFileService } from './services/file/disk-file.service';
@@ -65,6 +66,7 @@ export class ElectronMainPlugin extends Plugin {
     touchDependencies(this._injector, [
       [SingleInstanceController],
       [MainController],
+      [WebContentsGuardController],
       [MenuController],
       [RPCController],
       [TerminalOutputController],
@@ -104,6 +106,7 @@ export class ElectronMainPlugin extends Plugin {
       [WindowStateController],
       [SingleInstanceController],
       [MainController],
+      [WebContentsGuardController],
       [MenuController],
       [RPCController],
       [TerminalOutputController],

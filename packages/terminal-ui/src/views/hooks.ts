@@ -188,32 +188,7 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
     }
 
     const rendererEngine = rendererEngineRef.current ?? DEFAULT_TERMINAL_RENDERER_ENGINE;
-    const term = new Terminal({
-      fontFamily: options.fontFamily || DEFAULT_FONT_FAMILY,
-      fontSize: options.fontSize || DEFAULT_FONT_SIZE,
-      letterSpacing: options.letterSpacing ?? DEFAULT_LETTER_SPACING,
-      lineHeight: 1.0,
-      minimumContrastRatio: 4.5,
-      cursorBlink: options.cursorBlink ?? DEFAULT_CURSOR_BLINK,
-      cursorStyle: options.cursorStyle ?? DEFAULT_CURSOR_STYLE,
-      cursorWidth: 2,
-      scrollback: SCROLLBACK_SIZE,
-      wordSeparator: DEFAULT_TERMINAL_WORD_SEPARATOR,
-      scrollbar: {
-        showScrollbar: true,
-        showArrows: false,
-        width: 8,
-        overviewRuler: {
-          showTopBorder: false,
-          showBottomBorder: false,
-        },
-      },
-      allowProposedApi: true,
-      allowTransparency: options.allowTransparency ?? false,
-      theme: options.theme,
-      windowsPty: options.windowsPty,
-      macOptionIsMeta: false,
-    });
+    const term = new Terminal(createTerminalOptions(options, ctrlOrMetaOpenTerminalLinkRef));
 
     const fitAddon = new FitAddon();
     const searchAddon = new SearchAddon();
@@ -455,6 +430,45 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
     searchResult,
     progressState,
     resetProgress,
+  };
+}
+
+function createTerminalOptions(
+  options: IUseXtermOptions,
+  ctrlOrMetaOpenTerminalLinkRef: RefObject<boolean | undefined>
+): Partial<ITerminalOptions> {
+  return {
+    fontFamily: options.fontFamily || DEFAULT_FONT_FAMILY,
+    fontSize: options.fontSize || DEFAULT_FONT_SIZE,
+    letterSpacing: options.letterSpacing ?? DEFAULT_LETTER_SPACING,
+    lineHeight: 1.0,
+    minimumContrastRatio: 4.5,
+    cursorBlink: options.cursorBlink ?? DEFAULT_CURSOR_BLINK,
+    cursorStyle: options.cursorStyle ?? DEFAULT_CURSOR_STYLE,
+    cursorWidth: 2,
+    scrollback: SCROLLBACK_SIZE,
+    wordSeparator: DEFAULT_TERMINAL_WORD_SEPARATOR,
+    scrollbar: {
+      showScrollbar: true,
+      showArrows: false,
+      width: 8,
+      overviewRuler: {
+        showTopBorder: false,
+        showBottomBorder: false,
+      },
+    },
+    allowProposedApi: true,
+    allowTransparency: options.allowTransparency ?? false,
+    theme: options.theme,
+    windowsPty: options.windowsPty,
+    macOptionIsMeta: false,
+    // Route OSC 8 hyperlinks through the same activation path as WebLinksAddon.
+    // xterm's built-in default would confirm() and then window.open() an
+    // unmanaged child window; without allowNonHttpProtocols the provider
+    // already drops non-http(s) targets.
+    linkHandler: {
+      activate: (event, text) => handleLinkClick(event, text, ctrlOrMetaOpenTerminalLinkRef.current),
+    },
   };
 }
 
