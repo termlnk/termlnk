@@ -44,4 +44,34 @@ export type ACPProviderAvailability =
 export interface IACPProviderStatus {
   descriptor: IACPProviderDescriptor;
   availability: ACPProviderAvailability;
+  /**
+   * Disabled providers stay configured but drop out of the launch menu. Being on
+   * PATH is not consent to appear in it.
+   */
+  enabled: boolean;
+  /** Last successful capability probe, if one has run. */
+  capabilities?: IACPProviderCapabilities;
+}
+
+/**
+ * What an agent reported during a throwaway probe session. Cached because
+ * probing spawns the agent, and settings should not respawn it on every render.
+ */
+export interface IACPProviderCapabilities {
+  models: IACPProviderModel[];
+  modes: IACPProviderMode[];
+  /** Epoch millis of the probe that produced this. */
+  probedAt: number;
+}
+
+export interface IACPProviderModel {
+  id: string;
+  name: string;
+  /** User-added ids that the agent did not advertise. */
+  custom?: boolean;
+}
+
+export interface IACPProviderMode {
+  id: string;
+  name: string;
 }

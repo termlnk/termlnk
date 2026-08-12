@@ -18,11 +18,14 @@ import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { z } from 'zod';
 import {
   createACPSessionSchema,
+  customModelSchema,
+  probeCapabilitiesSchema,
   promptSchema,
   respondPermissionSchema,
   sessionIdSchema,
   setModelSchema,
   setModeSchema,
+  setProviderEnabledSchema,
   userProviderSchema,
 } from '../schema/acp.schema';
 import { publicProcedure, router } from '../trpc';
@@ -46,6 +49,26 @@ export const acpRouter = router({
 
   removeUserProvider: publicProcedure.input(z.string()).mutation(async ({ ctx, input }) => {
     await ctx.injector.get(IACPDiscoveryService).removeUserProvider(input);
+  }),
+
+  setProviderEnabled: publicProcedure
+    .input(setProviderEnabledSchema)
+    .mutation(async ({ ctx, input }) => {
+      await ctx.injector.get(IACPDiscoveryService).setProviderEnabled(input.id, input.enabled);
+    }),
+
+  probeCapabilities: publicProcedure
+    .input(probeCapabilitiesSchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.injector.get(IACPDiscoveryService).probeCapabilities(input.id, input.force);
+    }),
+
+  addCustomModel: publicProcedure.input(customModelSchema).mutation(async ({ ctx, input }) => {
+    await ctx.injector.get(IACPDiscoveryService).addCustomModel(input.providerId, input.modelId);
+  }),
+
+  removeCustomModel: publicProcedure.input(customModelSchema).mutation(async ({ ctx, input }) => {
+    await ctx.injector.get(IACPDiscoveryService).removeCustomModel(input.providerId, input.modelId);
   }),
 
   createSession: publicProcedure.input(createACPSessionSchema).mutation(async ({ ctx, input }) => {

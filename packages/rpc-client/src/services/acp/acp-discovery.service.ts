@@ -15,6 +15,7 @@
 
 import type {
   IACPDiscoveryService,
+  IACPProviderCapabilities,
   IACPProviderDescriptor,
   IACPProviderStatus,
 } from '@termlnk/acp';
@@ -24,6 +25,18 @@ import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { BehaviorSubject } from 'rxjs';
 import { map, shareReplay } from 'rxjs/operators';
 import { IRPCClientService } from '../rpc-client.service';
+
+/** Installed first, on-demand last; stable by title within each group. */
+function compareForMenu(a: IACPProviderStatus, b: IACPProviderStatus): number {
+  const rank = (s: IACPProviderStatus) => (s.availability.state === 'installed' ? 0 : 1);
+  const delta = rank(a) - rank(b);
+  return delta !== 0 ? delta : a.descriptor.title.localeCompare(b.descriptor.title);
+}
+
+function isLaunchable(status: IACPProviderStatus): boolean {
+  return status.enabled
+    && (status.availability.state === 'installed' || status.availability.state === 'on-demand');
+}
 
 export class ACPDiscoveryService extends Disposable implements IACPDiscoveryService {
   private readonly _providers$ = new BehaviorSubject<IACPProviderStatus[]>([]);
@@ -42,15 +55,7 @@ export class ACPDiscoveryService extends Disposable implements IACPDiscoveryServ
     this.disposeWithMe(live$.subscribe((list) => this._providers$.next(list)));
 
     this.launchableProviders$ = this.providers$.pipe(
-      map((list) =>
-        list
-          .filter((p) => p.availability.state === 'installed' || p.availability.state === 'on-demand')
-          .sort((a, b) => {
-            const rank = (s: IACPProviderStatus) => (s.availability.state === 'installed' ? 0 : 1);
-            const d = rank(a) - rank(b);
-            return d !== 0 ? d : a.descriptor.title.localeCompare(b.descriptor.title);
-          })
-      )
+      map((list) => list.filter(isLaunchable).sort(compareForMenu))
     );
 
     // Seed from a one-shot query so the first paint is not empty.
@@ -68,13 +73,7 @@ export class ACPDiscoveryService extends Disposable implements IACPDiscoveryServ
   }
 
   get launchableProviders(): IACPProviderStatus[] {
-    return this.providers
-      .filter((p) => p.availability.state === 'installed' || p.availability.state === 'on-demand')
-      .sort((a, b) => {
-        const rank = (s: IACPProviderStatus) => (s.availability.state === 'installed' ? 0 : 1);
-        const d = rank(a) - rank(b);
-        return d !== 0 ? d : a.descriptor.title.localeCompare(b.descriptor.title);
-      });
+    return this.providers.filter(isLaunchable).sort(compareForMenu);
   }
 
   getProvider(id: string): IACPProviderStatus | undefined {
@@ -96,6 +95,31 @@ export class ACPDiscoveryService extends Disposable implements IACPDiscoveryServ
 
   async removeUserProvider(id: string): Promise<void> {
     await this._client.removeUserProvider.mutate(id);
+    await this.refresh();
+  }
+
+  async setProviderEnabled(id: string, enabled: boolean): Promise<void> {
+    await this._client.setProviderEnabled.mutate({ id, enabled });
+    this._providers$.next(
+      this.providers.map((p) => (p.descriptor.id === id ? { ...p, enabled } : p))
+    );
+  }
+
+  async probeCapabilities(id: string, force = false): Promise<IACPProviderCapabilities> {
+    const capabilities = await this._client.probeCapabilities.mutate({ id, force });
+    this._providers$.next(
+      this.providers.map((p) => (p.descriptor.id === id ? { ...p, capabilities } : p))
+    );
+    return capabilities;
+  }
+
+  async addCustomModel(providerId: string, modelId: string): Promise<void> {
+    await this._client.addCustomModel.mutate({ providerId, modelId });
+    await this.refresh();
+  }
+
+  async removeCustomModel(providerId: string, modelId: string): Promise<void> {
+    await this._client.removeCustomModel.mutate({ providerId, modelId });
     await this.refresh();
   }
 

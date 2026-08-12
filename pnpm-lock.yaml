@@ -1654,6 +1654,9 @@ importers:
       '@termlnk/rpc-client':
         specifier: workspace:*
         version: link:../rpc-client
+      '@termlnk/settings-ui':
+        specifier: workspace:*
+        version: link:../settings-ui
       '@termlnk/terminal-ui':
         specifier: workspace:*
         version: link:../terminal-ui

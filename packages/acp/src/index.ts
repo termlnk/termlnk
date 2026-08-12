@@ -26,6 +26,7 @@ export {
 export { ACP_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 export type { ACPDefaultCwdStrategy, IACPPluginConfig } from './controllers/config.schema';
 export { ACP_PROVIDER_CATALOG } from './data/provider-catalog';
+export { ACP_PROVIDER_REGISTRY } from './data/provider-registry';
 export type {
   IACPCommandsUpdateEvent,
   IACPErrorEvent,
@@ -48,7 +49,10 @@ export type {
 } from './models/acp-event';
 export type {
   ACPProviderAvailability,
+  IACPProviderCapabilities,
   IACPProviderDescriptor,
+  IACPProviderMode,
+  IACPProviderModel,
   IACPProviderStatus,
 } from './models/acp-provider';
 export type {

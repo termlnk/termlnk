@@ -60,6 +60,7 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
+    "@termlnk/settings-ui": "workspace:*",
     "@termlnk/terminal-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
     "lucide-react": "^1.25.0",
@@ -72,6 +73,7 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/design": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
+    "@termlnk/settings-ui": "workspace:*",
     "@termlnk/terminal-ui": "workspace:*",
     "@termlnk/ui": "workspace:*",
     "lucide-react": "^1.25.0"

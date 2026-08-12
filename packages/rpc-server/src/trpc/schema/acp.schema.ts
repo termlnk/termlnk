@@ -73,3 +73,18 @@ export const userProviderSchema = z.object({
   version: z.string().optional(),
   iconId: z.string().optional(),
 });
+
+export const setProviderEnabledSchema = z.object({
+  id: z.string().min(1),
+  enabled: z.boolean(),
+});
+
+export const probeCapabilitiesSchema = z.object({
+  id: z.string().min(1),
+  force: z.boolean().optional(),
+});
+
+export const customModelSchema = z.object({
+  providerId: z.string().min(1),
+  modelId: z.string().min(1),
+});

@@ -14,7 +14,7 @@
  */
 
 import type { DependencyOverride } from '@termlnk/core';
-import type { IACPProviderDescriptor } from '../models/acp-provider';
+import type { IACPProviderCapabilities, IACPProviderDescriptor } from '../models/acp-provider';
 import { DEFAULT_HANDSHAKE_TIMEOUT_MS, DEFAULT_PROBE_TIMEOUT_MS } from '../common/constants';
 
 export const ACP_PLUGIN_CONFIG_KEY = 'acp.config';
@@ -25,6 +25,12 @@ export interface IACPPluginConfig {
   override?: DependencyOverride;
   /** User-defined providers (persisted). Catalog entries are never stored here. */
   userProviders?: IACPProviderDescriptor[];
+  /** Provider ids the user switched off (persisted). */
+  disabledProviders?: string[];
+  /** Last capability probe per provider id (persisted). */
+  providerCapabilities?: Record<string, IACPProviderCapabilities>;
+  /** Model ids the user added by hand, per provider id (persisted). */
+  customModels?: Record<string, string[]>;
   /** How to pick the default working directory when launching a session. */
   defaultCwdStrategy?: ACPDefaultCwdStrategy;
   /** When true, auto-select the first allow option on permission requests. */
@@ -37,6 +43,9 @@ export interface IACPPluginConfig {
 
 export const defaultPluginConfig: IACPPluginConfig = {
   userProviders: [],
+  disabledProviders: [],
+  providerCapabilities: {},
+  customModels: {},
   defaultCwdStrategy: 'active-context',
   autoAcceptByDefault: false,
   probeTimeoutMs: DEFAULT_PROBE_TIMEOUT_MS,

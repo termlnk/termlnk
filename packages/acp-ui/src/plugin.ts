@@ -15,14 +15,17 @@
 
 import type { Dependency, Injector } from '@termlnk/core';
 import type { IACPUIPluginConfig } from './controllers/config.schema';
-import { DependentOn, IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { DependentOn, IConfigService, InjectSelf, merge, mergeOverrideWithDependencies, Plugin, Quantity, registerDependencies, touchDependencies } from '@termlnk/core';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
+import { ISettingsTabRegistryService } from '@termlnk/settings-ui';
 import { TerminalUIPlugin } from '@termlnk/terminal-ui';
 import { UIPlugin } from '@termlnk/ui';
+import { Bot } from 'lucide-react';
 import { ACP_UI_PLUGIN_NAME } from './common/constants';
 import { ACPUIController } from './controllers/acp-ui.controller';
 import { ACP_UI_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
 import { ACPSessionLauncher, IACPSessionLauncher } from './services/acp-session-launcher.service';
+import { ACPTab } from './views/settings/ACPTab';
 
 export { ACP_UI_PLUGIN_NAME };
 
@@ -58,5 +61,27 @@ export class ACPUIPlugin extends Plugin {
     touchDependencies(this._injector, [
       [ACPUIController],
     ]);
+    this._registerSettingsTab();
+  }
+
+  /**
+   * The Agents tab belongs to acp-ui; settings-ui only owns the registry.
+   * OPTIONAL injection so deployments without SettingsUIPlugin still boot.
+   */
+  private _registerSettingsTab(): void {
+    const registry = this._injector.get(ISettingsTabRegistryService, Quantity.OPTIONAL);
+    if (!registry) {
+      return;
+    }
+    this.disposeWithMe(
+      registry.register({
+        id: 'acp-agents',
+        labelKey: 'acp-ui.settings.tab',
+        descriptionKey: 'acp-ui.settings.tab-description',
+        icon: Bot,
+        component: ACPTab,
+        order: 75,
+      })
+    );
   }
 }
