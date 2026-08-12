@@ -18,6 +18,7 @@ import type {
   IGitBranch,
   IGitBranchInfo,
   IGitCommit,
+  IGitFileDiffStat,
   IGitFileStatus,
   IGitStatus,
 } from '../models/git';
@@ -131,20 +132,75 @@ export function parseLog(stdout: string): IGitCommit[] {
   return commits;
 }
 
+const LOCAL_REF_PREFIX = 'refs/heads/';
+const REMOTE_REF_PREFIX = 'refs/remotes/';
+
 export function parseBranches(stdout: string): IGitBranch[] {
   const branches: IGitBranch[] = [];
   for (const line of stdout.split('\n').filter(Boolean)) {
-    const [name, head] = line.split('\0');
-    if (!name) {
+    const [refname, head, upstream] = line.split('\0');
+    if (!refname) {
+      continue;
+    }
+    const remote = refname.startsWith(REMOTE_REF_PREFIX);
+    const name = remote
+      ? refname.slice(REMOTE_REF_PREFIX.length)
+      : refname.replace(LOCAL_REF_PREFIX, '');
+    // `origin/HEAD` is a symbolic pointer, not something to switch to.
+    if (remote && name.endsWith('/HEAD')) {
       continue;
     }
     branches.push({
       name,
       current: head === '*',
-      remote: name.includes('/'),
+      remote,
+      upstream: upstream || undefined,
     });
   }
   return branches;
+}
+
+/**
+ * `git diff --numstat -z` emits `adds\tdels\tpath\0` per file, except renames,
+ * which drop the path from the record and follow with `\0old\0new\0`.
+ */
+export function parseNumstat(stdout: string): IGitFileDiffStat[] {
+  const tokens = stdout.split('\0');
+  const stats: IGitFileDiffStat[] = [];
+
+  for (let i = 0; i < tokens.length; i += 1) {
+    const record = tokens[i];
+    if (!record) {
+      continue;
+    }
+    const [adds, dels, inlinePath] = record.split('\t');
+    if (adds === undefined || dels === undefined) {
+      continue;
+    }
+
+    let path = inlinePath ?? '';
+    let origPath: string | undefined;
+    if (!path) {
+      // Rename: the two following tokens are the old and new paths.
+      origPath = tokens[i + 1];
+      path = tokens[i + 2] ?? '';
+      i += 2;
+    }
+    if (!path) {
+      continue;
+    }
+
+    const binary = adds === '-' || dels === '-';
+    stats.push({
+      path,
+      origPath,
+      additions: binary ? 0 : Number(adds) || 0,
+      deletions: binary ? 0 : Number(dels) || 0,
+      binary,
+    });
+  }
+
+  return stats;
 }
 
 function mapXy(ch: string): GitFileStatusCode {

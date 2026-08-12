@@ -17,6 +17,7 @@ import type {
   IGitBranch,
   IGitCommit,
   IGitDiffOptions,
+  IGitFileDiffStat,
   IGitLogOptions,
   IGitStatus,
 } from '../models/git';
@@ -27,7 +28,11 @@ export interface IProjectGitService {
   status(context: IProjectContext): Promise<IGitStatus>;
   log(context: IProjectContext, options?: IGitLogOptions): Promise<IGitCommit[]>;
   diff(context: IProjectContext, options?: IGitDiffOptions): Promise<string>;
+  /** Line counts per changed tracked file; untracked files are not included. */
+  numstat(context: IProjectContext, options?: { commit?: string }): Promise<IGitFileDiffStat[]>;
   branches(context: IProjectContext): Promise<IGitBranch[]>;
+  /** Switches the work tree; pass a `origin/x` name to track a remote branch. */
+  checkout(context: IProjectContext, branch: string, options?: { remote?: boolean }): Promise<void>;
   stage(context: IProjectContext, paths: string[]): Promise<void>;
   unstage(context: IProjectContext, paths: string[]): Promise<void>;
   commit(context: IProjectContext, message: string): Promise<void>;

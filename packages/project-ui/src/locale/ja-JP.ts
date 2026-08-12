@@ -18,10 +18,24 @@ import type enUS from './en-US';
 const locale: typeof enUS = {
   'project-ui': {
     explorer: {
-      title: 'エクスプローラー',
+      title: 'ファイル',
       empty: 'ローカルターミナルまたは ACP セッションを開いてファイルを表示します。',
       filter: 'ファイルを絞り込み…',
       refresh: '更新',
+      'show-hidden': '隠しファイルを表示',
+      'hide-hidden': '隠しファイルを非表示',
+    },
+    changes: {
+      title: '変更',
+      uncommitted: '未コミット {0} 件',
+      clean: '変更はありません。',
+      'no-diff': 'テキスト差分はありません。',
+      'staged-count': 'ステージ済み {0} 件',
+      'switch-branch': 'ブランチを切り替え',
+      'collapse-all': 'すべて折りたたむ',
+      'expand-all': 'すべて展開',
+      'view-flat': 'フラット表示',
+      'view-tree': 'ツリー表示',
     },
     git: {
       title: 'Git',

@@ -17,14 +17,16 @@ export { defaultPluginConfig, PROJECT_PLUGIN_CONFIG_KEY } from './controllers/co
 export type { IProjectPluginConfig } from './controllers/config.schema';
 export {
   branchesCommand,
+  checkoutCommand,
   commitCommand,
   diffCommand,
   logCommand,
+  numstatCommand,
   stageCommand,
   statusCommand,
   unstageCommand,
 } from './git/commands';
-export { parseBranches, parseLog, parseStatus } from './git/parsers';
+export { parseBranches, parseLog, parseNumstat, parseStatus } from './git/parsers';
 export { buildRemoteGitCommand, shellQuote } from './git/shell-escape';
 export type { IProjectFileEntry, ProjectFileType } from './models/fs';
 export type {
@@ -33,6 +35,7 @@ export type {
   IGitBranchInfo,
   IGitCommit,
   IGitDiffOptions,
+  IGitFileDiffStat,
   IGitFileStatus,
   IGitLogOptions,
   IGitStatus,

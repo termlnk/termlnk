@@ -17,9 +17,11 @@ import { IProjectFsService, IProjectGitService } from '@termlnk/project';
 import { observableToAsyncGenerator } from '@termlnk/rpc';
 import { ICommandBlockService } from '../../services/shell-integration/command-block.service';
 import {
+  gitCheckoutSchema,
   gitCommitSchema,
   gitDiffSchema,
   gitLogSchema,
+  gitNumstatSchema,
   gitPathsSchema,
   projectContextSchema,
   projectPathSchema,
@@ -67,6 +69,14 @@ export const projectRouter = router({
   gitBranches: publicProcedure.input(projectContextSchema).query(({ ctx, input }) =>
     ctx.injector.get(IProjectGitService).branches(input)
   ),
+  gitNumstat: publicProcedure.input(gitNumstatSchema).query(({ ctx, input }) =>
+    ctx.injector.get(IProjectGitService).numstat(input.context, { commit: input.commit })
+  ),
+  gitCheckout: publicProcedure.input(gitCheckoutSchema).mutation(async ({ ctx, input }) => {
+    await ctx.injector.get(IProjectGitService).checkout(input.context, input.branch, {
+      remote: input.remote,
+    });
+  }),
   gitStage: publicProcedure.input(gitPathsSchema).mutation(async ({ ctx, input }) => {
     await ctx.injector.get(IProjectGitService).stage(input.context, input.paths);
   }),

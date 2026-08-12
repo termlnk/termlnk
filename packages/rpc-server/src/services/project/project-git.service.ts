@@ -17,6 +17,7 @@ import type {
   IGitBranch,
   IGitCommit,
   IGitDiffOptions,
+  IGitFileDiffStat,
   IGitLogOptions,
   IGitStatus,
   IProjectContext,
@@ -29,11 +30,14 @@ import { Disposable, ILogService } from '@termlnk/core';
 import {
   branchesCommand,
   buildRemoteGitCommand,
+  checkoutCommand,
   commitCommand,
   diffCommand,
   logCommand,
+  numstatCommand,
   parseBranches,
   parseLog,
+  parseNumstat,
   parseStatus,
   stageCommand,
   statusCommand,
@@ -76,6 +80,27 @@ export class ProjectGitService extends Disposable implements IProjectGitService 
   async branches(context: IProjectContext): Promise<IGitBranch[]> {
     const { stdout } = await this._exec(context, branchesCommand());
     return parseBranches(stdout);
+  }
+
+  async numstat(
+    context: IProjectContext,
+    options: { commit?: string } = {}
+  ): Promise<IGitFileDiffStat[]> {
+    const { stdout } = await this._exec(context, numstatCommand(options));
+    return parseNumstat(stdout);
+  }
+
+  async checkout(
+    context: IProjectContext,
+    branch: string,
+    options: { remote?: boolean } = {}
+  ): Promise<void> {
+    const result = await this._exec(context, checkoutCommand(branch, options));
+    // `git switch` refuses on dirty overlap and reports it on stderr; the
+    // panel needs the reason, not a silent no-op.
+    if (result.code !== 0) {
+      throw new Error(result.stderr.trim() || `Failed to switch to ${branch}`);
+    }
   }
 
   async stage(context: IProjectContext, paths: string[]): Promise<void> {

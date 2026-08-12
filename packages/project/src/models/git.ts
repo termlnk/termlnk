@@ -72,4 +72,16 @@ export interface IGitBranch {
   name: string;
   current: boolean;
   remote: boolean;
+  upstream?: string;
+}
+
+/** Per-file line counts for the Changes view. */
+export interface IGitFileDiffStat {
+  path: string;
+  /** Path before a rename, when git reported one. */
+  origPath?: string;
+  additions: number;
+  deletions: number;
+  /** git reports '-' instead of counts for binary files. */
+  binary: boolean;
 }

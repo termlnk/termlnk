@@ -46,7 +46,27 @@ export function diffCommand(options: {
 }
 
 export function branchesCommand(): string[] {
-  return ['branch', '-a', '--format=%(refname:short)%00%(HEAD)%00%(upstream:short)'];
+  // Full refname, not `refname:short`: a local branch called `feature/acp` and a
+  // remote `origin/main` are indistinguishable once shortened.
+  return ['branch', '-a', '--format=%(refname)%00%(HEAD)%00%(upstream:short)'];
+}
+
+/**
+ * Line counts for every changed tracked file. Compared against HEAD so staged
+ * and unstaged edits land in one number per file, matching what the Changes
+ * view shows. Untracked files are absent — `git diff` cannot see them, and
+ * intent-to-add would mutate the user's index to find out.
+ */
+export function numstatCommand(options: { commit?: string } = {}): string[] {
+  return ['diff', '--no-ext-diff', '--no-color', '--numstat', '-z', options.commit ?? 'HEAD'];
+}
+
+/**
+ * `switch` rather than `checkout`: it refuses to silently detach HEAD. Remote
+ * branches need --track to create the matching local branch instead.
+ */
+export function checkoutCommand(branch: string, options: { remote?: boolean } = {}): string[] {
+  return options.remote ? ['switch', '--track', branch] : ['switch', branch];
 }
 
 export function stageCommand(paths: string[]): string[] {

@@ -17,6 +17,7 @@ import type {
   IGitBranch,
   IGitCommit,
   IGitDiffOptions,
+  IGitFileDiffStat,
   IGitLogOptions,
   IGitStatus,
   IProjectContext,
@@ -59,6 +60,18 @@ export class ProjectGitService extends Disposable implements IProjectGitService 
 
   branches(context: IProjectContext): Promise<IGitBranch[]> {
     return this._client.gitBranches.query(context);
+  }
+
+  numstat(context: IProjectContext, options: { commit?: string } = {}): Promise<IGitFileDiffStat[]> {
+    return this._client.gitNumstat.query({ context, commit: options.commit });
+  }
+
+  async checkout(
+    context: IProjectContext,
+    branch: string,
+    options: { remote?: boolean } = {}
+  ): Promise<void> {
+    await this._client.gitCheckout.mutate({ context, branch, remote: options.remote });
   }
 
   async stage(context: IProjectContext, paths: string[]): Promise<void> {

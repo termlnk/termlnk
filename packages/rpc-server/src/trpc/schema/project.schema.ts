@@ -57,3 +57,14 @@ export const gitCommitSchema = z.object({
   context: projectContextSchema,
   message: z.string().min(1),
 });
+
+export const gitNumstatSchema = z.object({
+  context: projectContextSchema,
+  commit: z.string().optional(),
+});
+
+export const gitCheckoutSchema = z.object({
+  context: projectContextSchema,
+  branch: z.string().min(1),
+  remote: z.boolean().optional(),
+});

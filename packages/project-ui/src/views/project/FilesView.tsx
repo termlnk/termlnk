@@ -16,11 +16,12 @@
 import type { IProjectContext, IProjectFileEntry } from '@termlnk/project';
 import { IContextService, LocaleService } from '@termlnk/core';
 import { cn, useDependency, useObservable, VirtualList } from '@termlnk/design';
-import { IProjectContextService, IProjectFsService } from '@termlnk/project';
-import { ChevronDown, ChevronRight, File, Folder, FolderOpen, RefreshCw } from 'lucide-react';
+import { IProjectFsService } from '@termlnk/project';
+import { ChevronDown, ChevronRight, File, Folder, FolderOpen } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EXPLORER_FOCUSED_CONTEXT } from '../../common/constants';
 import { IProjectExplorerService } from '../../services/project-explorer.service';
+import { IProjectPanelService } from '../../services/project-panel.service';
 
 interface ITreeNode {
   entry: IProjectFileEntry;
@@ -31,14 +32,15 @@ interface ITreeNode {
 
 const ROW_HEIGHT = 24;
 
-export function ProjectExplorerPanel() {
+export function FilesView() {
   const localeService = useDependency(LocaleService);
   const contextService = useDependency(IContextService);
-  const projectContext = useDependency(IProjectContextService);
   const fs = useDependency(IProjectFsService);
   const explorerService = useDependency(IProjectExplorerService);
+  const panel = useDependency(IProjectPanelService);
 
-  const ctx = useObservable(projectContext.activeContext$, null);
+  const ctx = useObservable(panel.context$, null);
+  const showHidden = useObservable(panel.showHiddenFiles$, false);
   const [nodes, setNodes] = useState<ITreeNode[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
@@ -71,26 +73,37 @@ export function ProjectExplorerPanel() {
     void loadRoot(ctx);
   }, [ctx, loadRoot]);
 
+  // Explicit refresh (tab-bar button) and branch switches both land here.
+  useEffect(() => {
+    const sub = panel.fileTreeRefresh$.subscribe(() => {
+      const context = panel.context;
+      if (context) {
+        void loadRoot(context);
+      }
+    });
+    return () => sub.unsubscribe();
+  }, [panel, loadRoot]);
+
   const toggleDir = useCallback(async (path: string) => {
     if (!ctx) {
       return;
     }
-    setNodes((prev) => {
-      const index = prev.findIndex((n) => n.entry.path === path);
-      if (index < 0) {
-        return prev;
-      }
-      const target = prev[index];
-      if (target.entry.type !== 'directory') {
-        return prev;
-      }
+    const current = nodes.find((n) => n.entry.path === path);
+    if (!current || current.entry.type !== 'directory') {
+      return;
+    }
 
-      if (target.expanded) {
-        const depth = target.depth;
+    if (current.expanded) {
+      setNodes((prev) => {
+        const index = prev.findIndex((n) => n.entry.path === path);
+        if (index < 0) {
+          return prev;
+        }
+        const depth = prev[index].depth;
         const next: ITreeNode[] = [];
         for (let i = 0; i < prev.length; i += 1) {
           if (i === index) {
-            next.push({ ...target, expanded: false });
+            next.push({ ...prev[i], expanded: false });
             continue;
           }
           if (i > index && prev[i].depth > depth) {
@@ -99,28 +112,16 @@ export function ProjectExplorerPanel() {
           next.push(prev[i]);
         }
         return next;
-      }
-
-      // Mark loading; children load async below.
-      return prev.map((n) =>
-        n.entry.path === path ? { ...n, loading: true } : n
-      );
-    });
-
-    // If collapsing, the state update above already finished.
-    const current = nodes.find((n) => n.entry.path === path);
-    if (current?.expanded) {
+      });
       return;
     }
 
+    setNodes((prev) =>
+      prev.map((n) => (n.entry.path === path ? { ...n, loading: true } : n))
+    );
+
     try {
       const children = await fs.list(ctx, path);
-      const childNodes: ITreeNode[] = children.map((entry) => ({
-        entry,
-        depth: (current?.depth ?? 0) + 1,
-        expanded: false,
-        loading: false,
-      }));
       setNodes((prev) => {
         const index = prev.findIndex((n) => n.entry.path === path);
         if (index < 0) {
@@ -131,19 +132,13 @@ export function ProjectExplorerPanel() {
           return prev;
         }
         const next = prev.slice();
-        next[index] = {
-          ...target,
-          expanded: true,
-          loading: false,
-          depth: target.depth,
-        };
-        const kids = children.map((entry) => ({
+        next[index] = { ...target, expanded: true, loading: false };
+        next.splice(index + 1, 0, ...children.map((entry) => ({
           entry,
           depth: target.depth + 1,
           expanded: false,
           loading: false,
-        }));
-        next.splice(index + 1, 0, ...kids);
+        })));
         return next;
       });
     } catch (err) {
@@ -155,12 +150,14 @@ export function ProjectExplorerPanel() {
   }, [ctx, fs, nodes]);
 
   const visible = useMemo(() => {
-    if (!filter.trim()) {
-      return nodes;
-    }
-    const q = filter.trim().toLowerCase();
-    return nodes.filter((n) => n.entry.name.toLowerCase().includes(q));
-  }, [nodes, filter]);
+    const query = filter.trim().toLowerCase();
+    return nodes.filter((n) => {
+      if (!showHidden && n.entry.name.startsWith('.')) {
+        return false;
+      }
+      return !query || n.entry.name.toLowerCase().includes(query);
+    });
+  }, [nodes, filter, showHidden]);
 
   const handleFocus = useCallback(() => {
     contextService.setContextValue(EXPLORER_FOCUSED_CONTEXT, true);
@@ -192,29 +189,6 @@ export function ProjectExplorerPanel() {
       onBlur={handleBlur}
       tabIndex={-1}
     >
-      <header
-        className={cn(`
-          tm:flex tm:h-9 tm:shrink-0 tm:items-center tm:gap-1.5 tm:border-b tm:border-line tm:bg-one-bg tm:px-2
-        `)}
-      >
-        <span className="tm:min-w-0 tm:flex-1 tm:truncate tm:text-xs tm:font-medium tm:text-light-grey">
-          {localeService.t('project-ui.explorer.title')}
-        </span>
-        {ctx && (
-          <button
-            type="button"
-            title={localeService.t('project-ui.explorer.refresh')}
-            onClick={() => void loadRoot(ctx)}
-            className="
-              tm:rounded-sm tm:p-1 tm:text-grey
-              tm:hover:bg-one-bg2 tm:hover:text-light-grey
-            "
-          >
-            <RefreshCw size={12} />
-          </button>
-        )}
-      </header>
-
       <div className="tm:border-b tm:border-line tm:px-2 tm:py-1.5">
         <input
           ref={filterRef}
@@ -230,65 +204,56 @@ export function ProjectExplorerPanel() {
         />
       </div>
 
-      {!ctx && (
-        <div
-          className="tm:flex tm:flex-1 tm:items-center tm:justify-center tm:px-3 tm:text-center tm:text-xs tm:text-grey"
-        >
-          {localeService.t('project-ui.explorer.empty')}
-        </div>
-      )}
-
       {error && (
-        <div className="tm:px-2 tm:py-1 tm:text-[11px] tm:text-red">{error}</div>
+        <div className="tm:px-2 tm:py-1 tm:text-[11px] tm:wrap-break-word tm:text-red">{error}</div>
       )}
 
       {ctx && (
-        <>
-          <div className="tm:truncate tm:px-2 tm:py-1 tm:text-[10px] tm:text-grey" title={ctx.rootPath}>
-            {ctx.scope === 'remote' ? `${ctx.hostId}:` : ''}
-            {ctx.rootPath}
-          </div>
-          <div className="tm:min-h-0 tm:flex-1">
-            <VirtualList
-              items={visible}
-              itemHeight={ROW_HEIGHT}
-              height="100%"
-              className="tm:h-full"
-              getItemKey={(n) => n.entry.path}
-              renderItem={(node) => {
-                const isDir = node.entry.type === 'directory';
-                return (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isDir) {
-                        void toggleDir(node.entry.path);
-                      }
-                    }}
-                    className={cn(`
-                      tm:flex tm:size-full tm:items-center tm:gap-1 tm:px-1 tm:text-left tm:text-xs tm:text-light-grey
-                      tm:hover:bg-one-bg2
-                    `)}
-                    style={{ paddingLeft: 6 + node.depth * 12 }}
-                  >
-                    {isDir
-                      ? (node.expanded
-                        ? <ChevronDown size={12} className="tm:shrink-0 tm:text-grey" />
-                        : <ChevronRight size={12} className="tm:shrink-0 tm:text-grey" />)
-                      : <span className="tm:w-3" />}
-                    {isDir
-                      ? (node.expanded
-                        ? <FolderOpen size={13} className="tm:shrink-0 tm:text-nord-blue" />
-                        : <Folder size={13} className="tm:shrink-0 tm:text-nord-blue" />)
-                      : <File size={13} className="tm:shrink-0 tm:text-grey-fg" />}
-                    <span className="tm:min-w-0 tm:truncate">{node.entry.name}</span>
-                  </button>
-                );
-              }}
-            />
-          </div>
-        </>
+        <div className="tm:truncate tm:px-2 tm:py-1 tm:text-[10px] tm:text-grey" title={ctx.rootPath}>
+          {ctx.scope === 'remote' ? `${ctx.hostId}:` : ''}
+          {ctx.rootPath}
+        </div>
       )}
+
+      <div className="tm:min-h-0 tm:flex-1">
+        <VirtualList
+          items={visible}
+          itemHeight={ROW_HEIGHT}
+          height="100%"
+          className="tm:h-full"
+          getItemKey={(n) => n.entry.path}
+          renderItem={(node) => {
+            const isDir = node.entry.type === 'directory';
+            return (
+              <button
+                type="button"
+                onClick={() => {
+                  if (isDir) {
+                    void toggleDir(node.entry.path);
+                  }
+                }}
+                className={cn(`
+                  tm:flex tm:size-full tm:items-center tm:gap-1 tm:px-1 tm:text-left tm:text-xs tm:text-light-grey
+                  tm:hover:bg-one-bg2
+                `)}
+                style={{ paddingLeft: 6 + node.depth * 12 }}
+              >
+                {isDir
+                  ? (node.expanded
+                    ? <ChevronDown size={12} className="tm:shrink-0 tm:text-grey" />
+                    : <ChevronRight size={12} className="tm:shrink-0 tm:text-grey" />)
+                  : <span className="tm:w-3" />}
+                {isDir
+                  ? (node.expanded
+                    ? <FolderOpen size={13} className="tm:shrink-0 tm:text-nord-blue" />
+                    : <Folder size={13} className="tm:shrink-0 tm:text-nord-blue" />)
+                  : <File size={13} className="tm:shrink-0 tm:text-grey-fg" />}
+                <span className="tm:min-w-0 tm:truncate">{node.entry.name}</span>
+              </button>
+            );
+          }}
+        />
+      </div>
     </div>
   );
 }

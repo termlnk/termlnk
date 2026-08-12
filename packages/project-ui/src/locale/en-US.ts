@@ -16,10 +16,24 @@
 const locale = {
   'project-ui': {
     explorer: {
-      title: 'Explorer',
+      title: 'Files',
       empty: 'Open a local terminal or ACP session to browse files.',
       filter: 'Filter files…',
       refresh: 'Refresh',
+      'show-hidden': 'Show hidden files',
+      'hide-hidden': 'Hide hidden files',
+    },
+    changes: {
+      title: 'Changes',
+      uncommitted: '{0} uncommitted',
+      clean: 'No changes.',
+      'no-diff': 'No textual diff.',
+      'staged-count': '{0} staged',
+      'switch-branch': 'Switch branch',
+      'collapse-all': 'Collapse all',
+      'expand-all': 'Expand all',
+      'view-flat': 'Flat list',
+      'view-tree': 'Tree',
     },
     git: {
       title: 'Git',

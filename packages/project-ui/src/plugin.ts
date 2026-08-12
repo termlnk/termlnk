@@ -25,6 +25,7 @@ import { defaultPluginConfig, PROJECT_UI_PLUGIN_CONFIG_KEY } from './controllers
 import { ProjectUIController } from './controllers/project-ui.controller';
 import { ProjectContextService } from './services/project-context.service';
 import { IProjectExplorerService, ProjectExplorerService } from './services/project-explorer.service';
+import { IProjectPanelService, ProjectPanelService } from './services/project-panel.service';
 
 export { PROJECT_UI_PLUGIN_NAME };
 
@@ -46,6 +47,7 @@ export class ProjectUIPlugin extends Plugin {
     const dependencies: Dependency[] = [
       [IProjectContextService, { useClass: ProjectContextService }],
       [IProjectExplorerService, { useClass: ProjectExplorerService }],
+      [IProjectPanelService, { useClass: ProjectPanelService }],
       [ProjectUIController],
     ];
     registerDependencies(
@@ -58,6 +60,7 @@ export class ProjectUIPlugin extends Plugin {
     touchDependencies(this._injector, [
       [IProjectContextService],
       [IProjectExplorerService],
+      [IProjectPanelService],
       [ProjectUIController],
     ]);
   }

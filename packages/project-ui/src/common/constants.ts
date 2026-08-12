@@ -18,3 +18,4 @@ export const PROJECT_EXPLORER_PANEL_ID = 'project-ui.panel.explorer';
 export const PROJECT_GIT_PANEL_ID = 'project-ui.panel.git';
 export const EXPLORER_FOCUSED_CONTEXT = 'project-ui.context.explorer-focused';
 export const GIT_FOCUSED_CONTEXT = 'project-ui.context.git-focused';
+export const BRANCH_MENU = 'project-ui.context-menu.branches';

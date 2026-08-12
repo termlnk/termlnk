@@ -18,10 +18,24 @@ import type enUS from './en-US';
 const locale: typeof enUS = {
   'project-ui': {
     explorer: {
-      title: '资源管理器',
+      title: '文件',
       empty: '打开本地终端或 ACP 会话以浏览文件。',
       filter: '筛选文件…',
       refresh: '刷新',
+      'show-hidden': '显示隐藏文件',
+      'hide-hidden': '隐藏隐藏文件',
+    },
+    changes: {
+      title: '变更',
+      uncommitted: '未提交 {0} 个',
+      clean: '没有变更。',
+      'no-diff': '没有文本差异。',
+      'staged-count': '已暂存 {0} 个',
+      'switch-branch': '切换分支',
+      'collapse-all': '全部折叠',
+      'expand-all': '全部展开',
+      'view-flat': '平铺列表',
+      'view-tree': '树形',
     },
     git: {
       title: 'Git',
