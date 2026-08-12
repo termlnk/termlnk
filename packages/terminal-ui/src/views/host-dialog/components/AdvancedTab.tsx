@@ -103,7 +103,9 @@ export function AdvancedTab(props: IAdvancedTabProps) {
           .map((font) => font.family)
           .filter((family): family is string => typeof family === 'string' && family.length > 0);
 
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
         if (families.length === 0) {
           setFontFamilies(DEFAULT_FONT_FAMILIES);

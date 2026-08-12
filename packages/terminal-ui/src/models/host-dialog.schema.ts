@@ -20,7 +20,9 @@ const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|
 const ipv6Regex = /^(?:(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}|:(?::[0-9a-fA-F]{1,4}){1,7}|::(?:[fF]{4}:)?(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))$/;
 
 function isValidHostname(value: string): boolean {
-  if (!value || value.length > 253) return false;
+  if (!value || value.length > 253) {
+    return false;
+  }
 
   const labels = value.split('.');
   for (const label of labels) {
@@ -86,7 +88,9 @@ export const proxySchema = z.object({
   username: z.string().optional(),
   password: z.string().optional(),
 }).superRefine((value, ctx) => {
-  if (!value.enabled) return;
+  if (!value.enabled) {
+    return;
+  }
 
   const host = value.host?.trim() ?? '';
   const port = value.port;
@@ -191,12 +195,16 @@ export type CredentialFormData = z.infer<typeof credentialSchema>;
 export type ProxyFormData = z.infer<typeof proxySchema>;
 
 export function getFieldError(error: z.ZodError | null, path: string): string | undefined {
-  if (!error) return undefined;
+  if (!error) {
+    return undefined;
+  }
   const issue = error.issues.find((i) => i.path.join('.') === path);
   return issue?.message;
 }
 
 export function hasFieldErrors(error: z.ZodError | null, pathPrefix: string): boolean {
-  if (!error) return false;
+  if (!error) {
+    return false;
+  }
   return error.issues.some((i) => i.path.join('.').startsWith(pathPrefix));
 }

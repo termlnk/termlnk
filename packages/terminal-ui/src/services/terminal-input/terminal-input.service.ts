@@ -92,7 +92,9 @@ export class TerminalInputService extends DOMEventObserver implements ITerminalI
 
   createTerminalBinding(terminal: Terminal, onData: (data: string) => void): IDisposable {
     terminal.attachCustomKeyEventHandler((event: KeyboardEvent): boolean => {
-      if (event.type !== 'keydown') return true;
+      if (event.type !== 'keydown') {
+        return true;
+      }
 
       const intent = this.resolveKeyIntent(event);
 

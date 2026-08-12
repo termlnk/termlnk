@@ -14,7 +14,7 @@
  */
 
 import type { IDisposable, Nullable } from '@termlnk/core';
-import type { SSHSessionEvent } from '@termlnk/rpc';
+import type { ISSHExecResult, SSHSessionEvent } from '@termlnk/rpc';
 import type { IHost } from '@termlnk/terminal';
 import type { Observable } from 'rxjs';
 import type { ChangePasswordCallback, KeyboardInteractiveCallback } from 'ssh2';
@@ -23,13 +23,17 @@ import type { ISSHChannel } from '../ssh/ssh-channel';
 import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
 import type { ISSHSocket } from '../ssh/ssh-socket';
 import type { HostKeyVerifyAction, IHostKeyPromptInfo } from '../ssh/ssh-socket.service';
+import { Buffer } from 'node:buffer';
 import * as process from 'node:process';
 import { Disposable, DisposableCollection, ILogService, takeAfter, toDisposable } from '@termlnk/core';
 import { SSHSessionStatus, SSHSocketStatus } from '@termlnk/rpc';
-import { BehaviorSubject, merge, of, ReplaySubject, skip, Subject } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, merge, of, ReplaySubject, skip, Subject, timeout } from 'rxjs';
 import { createTerminalMiddlewareStack } from '../middleware/terminal-middleware-stack';
 import { ISSHSocketService } from '../ssh/ssh-socket.service';
 import { bridgeX11Channel, connectToXServer, parseDisplay } from './x11-forward';
+
+/** Upper bound for a one-shot exec; project panels must not hang on a stuck host. */
+const EXEC_COMMAND_TIMEOUT_MS = 20_000;
 
 export class SSHSession extends Disposable implements IDisposable {
   private readonly _status$ = new BehaviorSubject<SSHSessionStatus>(SSHSessionStatus.IDLE);
@@ -175,6 +179,50 @@ export class SSHSession extends Disposable implements IDisposable {
 
   get rows(): number {
     return this._rows;
+  }
+
+  /**
+   * One-shot remote exec on the shared multiplexed socket (no PTY).
+   * Used by project Git / fs helpers; does not touch the interactive shell channel.
+   */
+  async execCommand(command: string): Promise<ISSHExecResult> {
+    if (this._status$.getValue() !== SSHSessionStatus.READY) {
+      throw new Error(`SSH session ${this._sessionId} is not ready`);
+    }
+
+    const channel = await this._socket.exec(command);
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    // A channel that closes without an exit status did not report success —
+    // defaulting to 0 would make callers treat a dropped command as a clean run.
+    let code: number | null = null;
+
+    const dataSub = channel.data$.subscribe((d) => {
+      out.push(Buffer.from(d));
+    });
+    const errSub = channel.error$.subscribe((d) => {
+      err.push(Buffer.from(d));
+    });
+    const exitSub = channel.exit$.subscribe((ev) => {
+      code = ev.code ?? null;
+    });
+
+    try {
+      // Bound the wait: a hung remote command would otherwise pin this promise
+      // (and the panel that awaits it) for the lifetime of the session.
+      await firstValueFrom(channel.close$.pipe(timeout(EXEC_COMMAND_TIMEOUT_MS)));
+    } finally {
+      dataSub.unsubscribe();
+      errSub.unsubscribe();
+      exitSub.unsubscribe();
+      channel.dispose();
+    }
+
+    return {
+      stdout: Buffer.concat(out).toString('utf8'),
+      stderr: Buffer.concat(err).toString('utf8'),
+      code: code ?? 1,
+    };
   }
 
   get closeReason(): 'auth_failed' | 'error' | undefined {

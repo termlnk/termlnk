@@ -14,7 +14,7 @@
  */
 
 import type { Injector } from '@termlnk/core';
-import type { ISSHSessionService } from '@termlnk/rpc';
+import type { ISSHExecResult, ISSHSessionService } from '@termlnk/rpc';
 import type { IHost, IShellIntegrationConfig, ITerminalIdentityConfig } from '@termlnk/terminal';
 import type { IHostChainHandle } from '../ssh/ssh-host-chain.service';
 import type { ISSHSocket } from '../ssh/ssh-socket';
@@ -259,6 +259,24 @@ export class SSHSessionService extends Disposable implements ISSHSessionService 
 
   getAllSessions(): SSHSession[] {
     return [...this._sessions.values()];
+  }
+
+  findSessionIdByHostId(hostId: string): string | undefined {
+    for (const [sessionId, session] of this._sessions) {
+      if (session.hostId === hostId) {
+        return sessionId;
+      }
+    }
+    return undefined;
+  }
+
+  async execCommand(sessionId: string, command: string): Promise<ISSHExecResult> {
+    const session = this._sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+
+    return session.execCommand(command);
   }
 
   async write(sessionId: string, data: string | Uint8Array): Promise<void> {

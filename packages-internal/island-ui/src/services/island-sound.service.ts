@@ -14,11 +14,11 @@
  */
 
 import type { ICespEvent, IIslandSettings, IIslandSoundConfig, IIslandSoundEventConfig } from '@termlnk/island';
+import { AGENT_CORE_PLUGIN_CONFIG_KEY } from '@termlnk/agent';
 import { createIdentifier, Disposable, ILogService, toDisposable } from '@termlnk/core';
 import { CespEventCategory, DEFAULT_ISLAND_SOUND_CONFIG, normalizeIslandSoundConfig } from '@termlnk/island';
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { BehaviorSubject, filter } from 'rxjs';
-import { AGENT_CORE_PLUGIN_CONFIG_KEY } from '@termlnk/agent';
 import { CESP_SOUND_ASSET_URLS } from '../assets/sound-urls';
 import { SOUND_DEBOUNCE_MS } from '../common/constants';
 import { IIslandUIStateService } from './island-state.service';

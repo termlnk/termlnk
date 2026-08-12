@@ -20,6 +20,7 @@ import { ElectronPlugin, IKeepAwakeService, IWindowManagerService } from '@terml
 import { RPCServerPlugin } from '@termlnk/rpc-server';
 import { AgentKeepAwakeController } from './controllers/agent-keep-awake.controller';
 import { AppSettingsController } from './controllers/app-settings.controller';
+import { BrowserWebviewController } from './controllers/browser-webview.controller';
 import { defaultPluginConfig, ELECTRON_MAIN_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { DeepLinkController } from './controllers/deep-link.controller';
 import { DynamicIslandController } from './controllers/dynamic-island.controller';
@@ -66,6 +67,7 @@ export class ElectronMainPlugin extends Plugin {
     touchDependencies(this._injector, [
       [SingleInstanceController],
       [MainController],
+      [BrowserWebviewController],
       [WebContentsGuardController],
       [MenuController],
       [RPCController],
@@ -106,6 +108,7 @@ export class ElectronMainPlugin extends Plugin {
       [WindowStateController],
       [SingleInstanceController],
       [MainController],
+      [BrowserWebviewController],
       [WebContentsGuardController],
       [MenuController],
       [RPCController],

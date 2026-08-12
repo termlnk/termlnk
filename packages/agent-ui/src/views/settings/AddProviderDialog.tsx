@@ -34,7 +34,9 @@ export function AddProviderDialog() {
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
-    if (!name.trim() || !baseUrl.trim()) return;
+    if (!name.trim() || !baseUrl.trim()) {
+      return;
+    }
 
     setSaving(true);
     try {

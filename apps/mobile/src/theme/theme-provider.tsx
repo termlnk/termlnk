@@ -18,8 +18,8 @@ import type { ReactNode } from 'react';
 import { VariableContextProvider } from 'nativewind';
 import { createContext, useContext } from 'react';
 import { useColorScheme } from 'react-native';
-import { resolveEffectiveMode } from './theme-resolver';
 import { useObservable, usePreferencesService } from '../core/core-context';
+import { resolveEffectiveMode } from './theme-resolver';
 
 // Semantic chrome color tokens fed to NativeWind's VariableContextProvider.
 //

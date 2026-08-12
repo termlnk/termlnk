@@ -21,6 +21,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { EmptyState } from './EmptyState';
 import { NotificationItem } from './NotificationItem';
 
+const DATE_LOCALE_MAP: Record<LocaleType, string> = {
+  [LocaleType.EN_US]: 'en-US',
+  [LocaleType.ZH_CN]: 'zh-CN',
+  [LocaleType.ZH_TW]: 'zh-TW',
+  [LocaleType.JA_JP]: 'ja-JP',
+  [LocaleType.KO_KR]: 'ko-KR',
+};
+
 export function NotificationPanel() {
   const notificationService = useDependency(INotificationService);
   const localeService = useDependency(LocaleService);
@@ -29,7 +37,7 @@ export function NotificationPanel() {
   const currentLocale = useObservable(localeService.currentLocale$, localeService.getCurrentLocale());
 
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const dateLocale = currentLocale === LocaleType.ZH_CN ? 'zh-CN' : 'en-US';
+  const dateLocale = DATE_LOCALE_MAP[currentLocale] ?? 'en-US';
 
   const filteredNotifications = useMemo(() => {
     if (filter === 'unread') {

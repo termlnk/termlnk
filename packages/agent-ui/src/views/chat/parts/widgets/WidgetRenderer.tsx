@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { IThemeService } from '@termlnk/core';
+import { ILogService, IThemeService } from '@termlnk/core';
 import { useDependency, useObservable } from '@termlnk/design';
 import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -38,6 +38,7 @@ export const WidgetRenderer = memo(function WidgetRenderer({
   isStreaming = false,
 }: IWidgetRendererProps) {
   const themeService = useDependency(IThemeService);
+  const logService = useDependency(ILogService);
   const aiAgentClient = useDependency(IAIAgentMessagingService);
   const currentTheme = useObservable(themeService.currentTheme$, themeService.currentTheme);
 
@@ -180,11 +181,11 @@ export const WidgetRenderer = memo(function WidgetRenderer({
         try {
           window.open(d.url, '_blank', 'noopener,noreferrer');
         } catch (err) {
-          console.error('[WidgetRenderer] open-link failed:', err);
+          logService.error('[WidgetRenderer] open-link failed:', err);
         }
       } else if (d.type === 'send-prompt' && typeof d.text === 'string' && d.text.trim()) {
         aiAgentClient.sendMessage(d.text.trim()).catch((err) => {
-          console.error('[WidgetRenderer] send-prompt failed:', err);
+          logService.error('[WidgetRenderer] send-prompt failed:', err);
         });
       }
     }

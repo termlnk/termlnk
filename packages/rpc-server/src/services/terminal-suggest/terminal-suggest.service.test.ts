@@ -42,6 +42,7 @@ class FakeCommandBlockService implements ICommandBlockService {
   query$ = new Subject<INaturalLanguageQueryEvent>();
   promptReached$ = new Subject<{ sessionId: string }>();
   envChanged$ = new Subject<{ sessionId: string; env: { remoteOS: string; remoteShell: string; remoteDistro: string } }>();
+  cwdChanged$ = new Subject<{ sessionId: string; cwd: string }>();
   private _cwd = new Map<string, string>();
   private _env = new Map<string, { remoteOS: string; remoteShell: string; remoteDistro: string }>();
   private _blocks = new Map<string, ITerminalCommand[]>();

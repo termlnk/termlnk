@@ -14,7 +14,7 @@
  */
 
 import type { Observable } from 'rxjs';
-import type { ICreateNotificationParams, INotification, INotificationEvent, INotificationFilter, INotificationStats } from '../../models/notification.model';
+import type { ICreateNotificationParams, INotification, INotificationEvent, INotificationFilter, INotificationStats, NotificationSource } from '../../models/notification.model';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { createIdentifier } from '../../common/di';
 import { Disposable, toDisposable } from '../../common/lifecycle';
@@ -25,6 +25,13 @@ import { ILogService } from '../log/log.service';
  * Maximum number of notifications to keep in memory
  */
 const MAX_NOTIFICATIONS = 100;
+
+/**
+ * Sources whose notifications never persist in the bell panel: they own a
+ * dedicated surface (Dynamic Island / desktop toast) and would otherwise
+ * flood the notification center with per-turn agent chatter.
+ */
+const TRANSIENT_ONLY_SOURCES: ReadonlySet<NotificationSource> = new Set<NotificationSource>(['agent']);
 
 export interface INotificationService {
   readonly notifications$: Observable<INotification[]>;
@@ -51,7 +58,7 @@ export const INotificationService = createIdentifier<INotificationService>('core
 
 export class NotificationService extends Disposable implements INotificationService {
   private readonly _notifications$ = new BehaviorSubject<INotification[]>([]);
-  readonly notifications$ = this._notifications$.asObservable();
+  readonly notifications$: Observable<INotification[]> = this._notifications$.asObservable();
 
   private readonly _unreadCount$ = new BehaviorSubject<number>(0);
   readonly unreadCount$ = this._unreadCount$.asObservable();
@@ -76,18 +83,23 @@ export class NotificationService extends Disposable implements INotificationServ
   }
 
   notify(params: ICreateNotificationParams): INotification {
+    const source = params.source ?? 'application';
+    // Single point of truth for bell-panel eligibility: a transient-only source
+    // can never be persisted, whatever the caller passes.
+    const transient = TRANSIENT_ONLY_SOURCES.has(source) || (params.transient ?? false);
+
     const notification: INotification = {
       id: generateRandomId(),
       title: params.title,
       body: params.body ?? '',
       type: params.type ?? 'info',
-      source: params.source ?? 'application',
+      source,
       groupId: params.groupId,
       timestamp: Date.now(),
       read: false,
       priority: params.priority ?? 'normal',
       showDesktop: params.showDesktop ?? true,
-      transient: params.transient ?? false,
+      transient,
       action: params.action,
       metadata: params.metadata,
     };
@@ -147,8 +159,10 @@ export class NotificationService extends Disposable implements INotificationServ
   }
 
   getNotifications(filter?: INotificationFilter): INotification[] {
+    const base = this._notifications$.value;
+
     if (!filter) {
-      return [...this._notifications$.value];
+      return [...base];
     }
 
     const sources = filter.source
@@ -158,7 +172,7 @@ export class NotificationService extends Disposable implements INotificationServ
       ? (Array.isArray(filter.type) ? filter.type : [filter.type])
       : null;
 
-    return this._notifications$.value.filter((n) => {
+    return base.filter((n) => {
       if (sources && !sources.includes(n.source)) {
         return false;
       }

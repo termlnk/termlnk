@@ -296,7 +296,9 @@ export function HostExplorer() {
   addGroupRef.current = addGroup;
 
   const handleConfirmNewGroup = async (name: string) => {
-    if (!newGroupInput) return;
+    if (!newGroupInput) {
+      return;
+    }
     const { parentId } = newGroupInput;
     setNewGroupInput(null);
     const newId = await hostsManagerService.create({

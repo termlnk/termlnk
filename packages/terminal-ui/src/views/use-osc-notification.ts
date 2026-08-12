@@ -39,6 +39,7 @@ export function useOscNotification(options: IUseOscNotificationOptions) {
     (params: ICreateNotificationParams, oscNumber: number) => {
       notificationService.notify({
         ...params,
+        source: params.source ?? 'terminal',
         groupId: sessionId,
         metadata: {
           ...params.metadata,
@@ -51,10 +52,14 @@ export function useOscNotification(options: IUseOscNotificationOptions) {
   );
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     const term = xtermRef.current;
-    if (!term) return;
+    if (!term) {
+      return;
+    }
 
     const disposables = registerOscNotificationHandlers(term, handleNotification);
 

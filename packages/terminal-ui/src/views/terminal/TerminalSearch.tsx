@@ -45,7 +45,9 @@ export function buildSearchDecorations(theme?: ITerminalOptions['theme']): ISear
 }
 
 function normalizeHex(color?: string): string | null {
-  if (!color) return null;
+  if (!color) {
+    return null;
+  }
   const value = color.trim();
   return /^#[\da-fA-F]{6}$/.test(value) ? value : null;
 }
@@ -74,7 +76,9 @@ export function TerminalSearch({ isOpen, isActive = true, resultCount, theme, on
 
   // Focus input when opened
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      return;
+    }
 
     const timer = window.setTimeout(() => {
       const input = panelRef.current?.querySelector<HTMLInputElement>('input[data-slot="input-group-control"]');
@@ -106,7 +110,9 @@ export function TerminalSearch({ isOpen, isActive = true, resultCount, theme, on
 
   // Live search while typing, aligned with VSCode behavior.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      return;
+    }
 
     const query = searchText.trim();
     if (!query.length) {
@@ -135,10 +141,14 @@ export function TerminalSearch({ isOpen, isActive = true, resultCount, theme, on
 
   // Close on Escape even if focus leaves the input while search is open.
   useEffect(() => {
-    if (!isOpen || !isActive) return;
+    if (!isOpen || !isActive) {
+      return;
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      if (e.key !== 'Escape') {
+        return;
+      }
       e.preventDefault();
       handleClose();
     };
@@ -155,13 +165,17 @@ export function TerminalSearch({ isOpen, isActive = true, resultCount, theme, on
       return;
     }
 
-    if (e.key !== 'Enter') return;
+    if (e.key !== 'Enter') {
+      return;
+    }
 
     e.preventDefault();
     handleSearch(e.shiftKey ? 'previous' : 'next');
   }, [handleSearch, handleClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div

@@ -40,6 +40,14 @@ class NoopLogService implements ILogService {
 
 class FakeWebContents extends EventEmitter {
   setWindowOpenHandler = vi.fn();
+
+  constructor(private readonly _type: 'window' | 'webview' = 'window') {
+    super();
+  }
+
+  getType(): string {
+    return this._type;
+  }
 }
 
 function createBed() {
@@ -109,6 +117,21 @@ describe('WebContentsGuardController', () => {
     bed.contents.emit('will-navigate', { url: 'file:///etc/passwd', preventDefault });
 
     expect(preventDefault).toHaveBeenCalledOnce();
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it('leaves webview guests to BrowserWebviewController', () => {
+    const bed = createBed();
+    controller = bed.controller;
+
+    const guest = new FakeWebContents('webview');
+    app.emit('web-contents-created', {}, guest);
+
+    expect(guest.setWindowOpenHandler).not.toHaveBeenCalled();
+    // The shell's navigation guard must not fire for guests either.
+    const preventDefault = vi.fn();
+    guest.emit('will-navigate', { url: 'https://example.com', preventDefault });
+    expect(preventDefault).not.toHaveBeenCalled();
     expect(openExternal).not.toHaveBeenCalled();
   });
 

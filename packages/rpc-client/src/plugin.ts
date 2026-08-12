@@ -15,15 +15,19 @@
 
 import type { Dependency } from '@termlnk/core';
 import type { IRPCClientConfig } from './controllers/config.schema';
+import { IACPDiscoveryService, IACPSessionService } from '@termlnk/acp';
 import { IMcpRegistryService, IMcpService, ISkillService } from '@termlnk/agent';
 import { IAuthService } from '@termlnk/auth';
 import { DependentOn, IConfigService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
+import { IProjectCwdService, IProjectFsService, IProjectGitService } from '@termlnk/project';
 import { IFileTransferService, INotifyService, IPortForwardingService, RPCPlugin } from '@termlnk/rpc';
 import { IDevicePairingService, IInviteService, IRemoteSessionService, ISharedSessionService } from '@termlnk/shared-terminal';
 import { ISnippetService } from '@termlnk/snippet';
 import { IBackupFileService, ISyncService } from '@termlnk/sync';
 import { IPTYService } from '@termlnk/terminal';
 import { defaultPluginConfig, RPC_CLIENT_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
+import { ACPDiscoveryService } from './services/acp/acp-discovery.service';
+import { ACPSessionService } from './services/acp/acp-session.service';
 import { AIAgentMessagingService, IAIAgentMessagingService } from './services/ai/ai-agent-messaging.service';
 import { ChatSessionClientService, IChatSessionService } from './services/ai/chat-session-client.service';
 import { IProviderConfigService, ProviderConfigClientService } from './services/ai/provider-config-client.service';
@@ -40,6 +44,9 @@ import { McpService } from './services/mcp/mcp.service';
 import { NotifyService } from './services/notify/notify.service';
 import { AgentToolPermissionService, IAgentToolPermissionService } from './services/permission/permission-client.service';
 import { PortForwardingClientService } from './services/port-forwarding/port-forwarding.service';
+import { ProjectCwdService } from './services/project/project-cwd.service';
+import { ProjectFsService } from './services/project/project-fs.service';
+import { ProjectGitService } from './services/project/project-git.service';
 import { IProxyService, ProxyClientService } from './services/proxy/proxy.service';
 import { PTYService } from './services/pty/pty.service';
 import { RemoteSessionService } from './services/remote-session/remote-session.service';
@@ -85,6 +92,8 @@ export class RPCClientPlugin extends Plugin {
 
   private _registerDependencies() {
     const dependencies: Dependency[] = [
+      [IACPDiscoveryService, { useClass: ACPDiscoveryService }],
+      [IACPSessionService, { useClass: ACPSessionService }],
       [IAIAgentMessagingService, { useClass: AIAgentMessagingService }],
       [IAuthService, { useClass: AuthService }],
       [IChatSessionService, { useClass: ChatSessionClientService }],
@@ -101,6 +110,9 @@ export class RPCClientPlugin extends Plugin {
       [INotifyService, { useClass: NotifyService }],
       [IAgentToolPermissionService, { useClass: AgentToolPermissionService }],
       [IPortForwardingService, { useClass: PortForwardingClientService }],
+      [IProjectCwdService, { useClass: ProjectCwdService }],
+      [IProjectFsService, { useClass: ProjectFsService }],
+      [IProjectGitService, { useClass: ProjectGitService }],
       [IProxyService, { useClass: ProxyClientService }],
       [IPTYService, { useClass: PTYService }],
       [IRemoteSessionService, { useClass: RemoteSessionService }],

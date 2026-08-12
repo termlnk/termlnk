@@ -247,7 +247,9 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
     setDragState(null);
   }, [onDrop, portal, sessionId, workspaceId, workspaceService, setDragState, setDragTarget]);
 
-  if (!session) return null;
+  if (!session) {
+    return null;
+  }
 
   const label = session.title || session.hostName;
   const isDragged = dragState?.draggedSessionId === sessionId;
@@ -412,14 +414,18 @@ export function WorkspacePane({ workspaceId, sessionId, isActive, isMagnified }:
 
 function resolveDropTarget(clientX: number, clientY: number, draggedSessionId: string) {
   const hit = document.elementFromPoint(clientX, clientY);
-  if (!(hit instanceof HTMLElement)) return null;
+  if (!(hit instanceof HTMLElement)) {
+    return null;
+  }
   const paneEl = hit.closest<HTMLElement>(`[${PANE_SESSION_ATTR}]`);
   if (!paneEl) {
     return null;
   }
 
   const targetSessionId = paneEl.getAttribute(PANE_SESSION_ATTR);
-  if (!targetSessionId || targetSessionId === draggedSessionId) return null;
+  if (!targetSessionId || targetSessionId === draggedSessionId) {
+    return null;
+  }
   const side = getDropZone(clientX, clientY, paneEl.getBoundingClientRect());
   if (!side) {
     return null;
@@ -430,10 +436,14 @@ function resolveDropTarget(clientX: number, clientY: number, draggedSessionId: s
 
 function resolveTabBarDropTarget(clientX: number, clientY: number): ITabBarDropTarget | null {
   const hit = document.elementFromPoint(clientX, clientY);
-  if (!(hit instanceof HTMLElement)) return null;
+  if (!(hit instanceof HTMLElement)) {
+    return null;
+  }
 
   const scrollContainer = hit.closest<HTMLElement>('[data-terminal-tabs-scroll]');
-  if (!scrollContainer) return null;
+  if (!scrollContainer) {
+    return null;
+  }
 
   const tabItems = scrollContainer.querySelectorAll<HTMLElement>('[data-tab-item-id]');
   if (tabItems.length === 0) {
@@ -532,7 +542,9 @@ function PaneStatusIcon({ status }: { status: TerminalSessionStatus }) {
 }
 
 function ConnectionDot({ type, status }: { type: string; status: TerminalSessionStatus }) {
-  if (type !== 'ssh' || status === 'idle') return null;
+  if (type !== 'ssh' || status === 'idle') {
+    return null;
+  }
 
   return (
     <div

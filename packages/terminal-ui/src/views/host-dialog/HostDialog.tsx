@@ -32,7 +32,9 @@ type TabKey = 'basic' | 'proxy' | 'hostChain' | 'advanced';
 
 function useHostValidation(data: HostFormItem | null) {
   const errors = useMemo<z.ZodError | null>(() => {
-    if (!data) return null;
+    if (!data) {
+      return null;
+    }
     const result = hostSchema.safeParse(data);
     return result.success ? null : result.error;
   }, [data]);
@@ -65,7 +67,9 @@ export function HostDialog() {
   const translateError = useCallback(
     (path: string) => {
       const error = getError(path);
-      if (!error) return undefined;
+      if (!error) {
+        return undefined;
+      }
       if (error.startsWith('validation.')) {
         return localeService.t(`terminal-ui.host-dialog.${error}`);
       }
@@ -83,7 +87,9 @@ export function HostDialog() {
 
   const handleChange = useCallback(
     (updates: Partial<HostFormItem>) => {
-      if (!formData) return;
+      if (!formData) {
+        return;
+      }
       hostDialogService.changeState({
         item: { ...formData, ...updates },
       });
@@ -92,7 +98,9 @@ export function HostDialog() {
   );
 
   const handleSubmit = useCallback(async () => {
-    if (!isValid) return;
+    if (!isValid) {
+      return;
+    }
     setLoading(true);
     try {
       await hostDialogService.confirm();
@@ -111,7 +119,9 @@ export function HostDialog() {
   }, []);
 
   const handleTestConnection = useCallback(async () => {
-    if (!formData) return;
+    if (!formData) {
+      return;
+    }
 
     const { addr, port, credential } = formData;
     const failMsg = localeService.t('terminal-ui.host-dialog.test.validationFailed');
@@ -123,10 +133,16 @@ export function HostDialog() {
 
     let testCredential: { type: 'password'; username: string; password: string } | { type: 'rsa'; username: string; privateKey: string };
     if (credential.type === 'password') {
-      if (!credential.password) { showTestResult({ ok: false, message: failMsg }); return; }
+      if (!credential.password) {
+        showTestResult({ ok: false, message: failMsg });
+        return;
+      }
       testCredential = { type: 'password', username: credential.username, password: credential.password };
     } else if (credential.type === 'rsa') {
-      if (!credential.privateKey) { showTestResult({ ok: false, message: failMsg }); return; }
+      if (!credential.privateKey) {
+        showTestResult({ ok: false, message: failMsg });
+        return;
+      }
       testCredential = { type: 'rsa', username: credential.username, privateKey: credential.privateKey };
     } else {
       showTestResult({ ok: false, message: failMsg });
@@ -178,7 +194,9 @@ export function HostDialog() {
       advanced: false,
     };
 
-    if (!errors) return tabErrorMap;
+    if (!errors) {
+      return tabErrorMap;
+    }
 
     errors.issues.forEach((issue) => {
       const path = issue.path[0];
@@ -196,7 +214,9 @@ export function HostDialog() {
     return tabErrorMap;
   }, [errors]);
 
-  if (!formData) return null;
+  if (!formData) {
+    return null;
+  }
 
   return (
     <div className="tm:flex tm:min-h-[300px] tm:w-full tm:flex-col tm:overflow-hidden">

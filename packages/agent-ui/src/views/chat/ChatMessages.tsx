@@ -14,39 +14,42 @@
  */
 
 import type { IChatMessage, IMessagePart } from '@termlnk/agent';
-import { LocaleService } from '@termlnk/core';
+import { ILogService, LocaleService } from '@termlnk/core';
 import { useDependency, useObservable } from '@termlnk/design';
-import { IAIAgentMessagingService } from '@termlnk/rpc-client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { map } from 'rxjs';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { DotmatrixLoader } from './components/DotmatrixLoader';
 import { ThinkingIndicator } from './components/ThinkingIndicator';
+import { useConversationSource } from './conversation-context';
 
 function hasVisibleStreamingContent(parts: IMessagePart[]): boolean {
   return parts.some((p) => {
     if (p.type === 'text') {
       return p.text.trim().length > 0;
     }
-    return p.type === 'tool' || p.type === 'image';
+    return p.type === 'tool' || p.type === 'image' || p.type === 'plan';
   });
 }
 
 export function ChatMessages() {
-  const aiAgentService = useDependency(IAIAgentMessagingService);
+  const conversation = useConversationSource();
   const localeService = useDependency(LocaleService);
-  const messages = useObservable(aiAgentService.messages$, []);
-  const currentMessage = useObservable(aiAgentService.currentMessage$, null);
-  const pendingMessageIds = useObservable(aiAgentService.pendingMessageIds$, []);
+  const logService = useDependency(ILogService);
+  const messages = useObservable(conversation.messages$, []);
+  const currentMessage = useObservable(conversation.currentMessage$, null);
+  const pendingMessageIds = useObservable(conversation.pendingMessageIds$, []);
   const pendingIdSet = useMemo(() => new Set(pendingMessageIds), [pendingMessageIds]);
   const isStreaming = useObservable(
     useMemo(
-      () => aiAgentService.status$.pipe(map((s) => s === 'streaming' || s === 'thinking' || s === 'tool_calling')),
-      [aiAgentService]
+      () => conversation.status$.pipe(
+        map((s) => s === 'streaming' || s === 'thinking' || s === 'tool_calling')
+      ),
+      [conversation]
     ),
     false
   );
-  const isCompacting = useObservable(aiAgentService.isCompacting$, false);
+  const isCompacting = useObservable(conversation.isCompacting$, false);
 
   const [streamStartedAt, setStreamStartedAt] = useState<number | null>(null);
 
@@ -59,14 +62,14 @@ export function ChatMessages() {
   }, [isStreaming]);
 
   const handleCancelPending = useCallback((messageId: string) => {
-    aiAgentService.cancelPending(messageId).catch((err) => {
-      console.error('[ChatMessages] cancelPending failed:', err);
+    conversation.cancelPending(messageId).catch((err) => {
+      logService.error('[ChatMessages] cancelPending failed:', err);
     });
-  }, [aiAgentService]);
+  }, [conversation]);
 
   const handleStop = useCallback(() => {
-    aiAgentService.stopStreaming();
-  }, [aiAgentService]);
+    void conversation.stopStreaming();
+  }, [conversation]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);

@@ -25,7 +25,7 @@ import { isMacintosh } from '@termlnk/core';
 import { useDependency } from '@termlnk/design';
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { DEFAULT_CTRL_OR_META_OPEN_TERMINAL_LINK, DEFAULT_CURSOR_BLINK, DEFAULT_CURSOR_STYLE, DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LETTER_SPACING, DEFAULT_TERMINAL_RENDERER_ENGINE, DEFAULT_TERMINAL_WORD_SEPARATOR, DEFAULT_WINDOW_TRANSPARENCY_OPACITY, TERMINAL_PLUGIN_CONFIG_KEY } from '@termlnk/terminal';
-import { fromFontFaceSetEvent } from '@termlnk/ui';
+import { fromFontFaceSetEvent, IExternalLinkService } from '@termlnk/ui';
 import { FitAddon } from '@xterm/addon-fit';
 import { ImageAddon } from '@xterm/addon-image';
 import { ProgressAddon } from '@xterm/addon-progress';
@@ -159,6 +159,7 @@ function useXtermProgress(): IXtermProgressTracking {
   return { progressState, setProgressState, progressAddonRef, resetProgress };
 }
 export function useXterm(options: IUseXtermOptions): IUseXtermResult {
+  const externalLinkService = useDependency(IExternalLinkService);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -188,7 +189,7 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
     }
 
     const rendererEngine = rendererEngineRef.current ?? DEFAULT_TERMINAL_RENDERER_ENGINE;
-    const term = new Terminal(createTerminalOptions(options, ctrlOrMetaOpenTerminalLinkRef));
+    const term = new Terminal(createTerminalOptions(options, ctrlOrMetaOpenTerminalLinkRef, externalLinkService));
 
     const fitAddon = new FitAddon();
     const searchAddon = new SearchAddon();
@@ -206,7 +207,7 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
     term.loadAddon(new ImageAddon(IMAGE_OPTIONS));
     term.loadAddon(progressAddon);
     term.loadAddon(new WebLinksAddon((event, uri) => {
-      handleLinkClick(event, uri, ctrlOrMetaOpenTerminalLinkRef.current);
+      handleLinkClick(event, uri, externalLinkService, ctrlOrMetaOpenTerminalLinkRef.current);
     }));
     term.loadAddon(serializeAddon);
 
@@ -435,7 +436,8 @@ export function useXterm(options: IUseXtermOptions): IUseXtermResult {
 
 function createTerminalOptions(
   options: IUseXtermOptions,
-  ctrlOrMetaOpenTerminalLinkRef: RefObject<boolean | undefined>
+  ctrlOrMetaOpenTerminalLinkRef: RefObject<boolean | undefined>,
+  externalLinkService: IExternalLinkService
 ): Partial<ITerminalOptions> {
   return {
     fontFamily: options.fontFamily || DEFAULT_FONT_FAMILY,
@@ -467,12 +469,17 @@ function createTerminalOptions(
     // unmanaged child window; without allowNonHttpProtocols the provider
     // already drops non-http(s) targets.
     linkHandler: {
-      activate: (event, text) => handleLinkClick(event, text, ctrlOrMetaOpenTerminalLinkRef.current),
+      activate: (event, text) => handleLinkClick(event, text, externalLinkService, ctrlOrMetaOpenTerminalLinkRef.current),
     },
   };
 }
 
-function handleLinkClick(event: MouseEvent, uri: string, ctrlOrMetaRequired?: boolean): void {
+function handleLinkClick(
+  event: MouseEvent,
+  uri: string,
+  externalLinkService: IExternalLinkService,
+  ctrlOrMetaRequired?: boolean
+): void {
   if (ctrlOrMetaRequired) {
     const modifierHeld = isMacintosh ? event.metaKey : event.ctrlKey;
     if (!modifierHeld) {
@@ -480,12 +487,7 @@ function handleLinkClick(event: MouseEvent, uri: string, ctrlOrMetaRequired?: bo
     }
   }
 
-  const nativeShell = (window as any).nativeShell;
-  if (nativeShell?.openExternal) {
-    nativeShell.openExternal(uri);
-  } else {
-    window.open(uri, '_blank');
-  }
+  externalLinkService.openExternal(uri);
 }
 
 function setupEventListeners(

@@ -354,11 +354,9 @@ function ThemeModeToggleItem({ icon: Icon, label, active, onPress }: IThemeModeT
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       onPress={onPress}
-      className={
-        active
-          ? 'flex-1 flex-row items-center justify-center gap-1.5 rounded-md bg-surface-raised px-2 py-2'
-          : 'flex-1 flex-row items-center justify-center gap-1.5 rounded-md px-2 py-2'
-      }
+      className={active
+        ? 'flex-1 flex-row items-center justify-center gap-1.5 rounded-md bg-surface-raised px-2 py-2'
+        : 'flex-1 flex-row items-center justify-center gap-1.5 rounded-md px-2 py-2'}
     >
       <Icon size={14} className={active ? 'text-accent' : 'text-content-secondary'} />
       <Text className={active ? 'text-[13px] font-semibold text-content' : 'text-[13px] font-medium text-content-secondary'}>

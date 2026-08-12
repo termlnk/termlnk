@@ -16,7 +16,7 @@
 import type { ITerminalCommand } from '@termlnk/terminal';
 import type { Buffer } from 'node:buffer';
 import type { Observable, Subscription } from 'rxjs';
-import type { FlowState, IBlockStartedEvent, INaturalLanguageQueryEvent, IPendingBlockSnapshot, IRawRemoteEnv, IRawRemoteEnvChange } from './command-block-tracker';
+import type { FlowState, IBlockStartedEvent, ICwdChangedEvent, INaturalLanguageQueryEvent, IPendingBlockSnapshot, IRawRemoteEnv, IRawRemoteEnvChange } from './command-block-tracker';
 import { createIdentifier, Disposable, ILogService } from '@termlnk/core';
 import { Subject } from 'rxjs';
 import { CommandBlockTracker } from './command-block-tracker';
@@ -40,6 +40,11 @@ export interface ICommandBlockService {
   readonly query$: Observable<INaturalLanguageQueryEvent>;
   /** Emits when the shell reaches a prompt (OSC 633;A or B). */
   readonly promptReached$: Observable<{ sessionId: string }>;
+  /**
+   * Emits when a session's working directory actually changes. Lets renderers
+   * react to `cd` instead of polling getCurrentCwd on a timer.
+   */
+  readonly cwdChanged$: Observable<ICwdChangedEvent>;
   /**
    * Attach a command block tracker to a terminal session's raw data stream.
    * Safe to call multiple times for the same sessionId — subsequent calls are
@@ -91,6 +96,7 @@ interface ISessionEntry {
   promptSub: Subscription;
   querySub: Subscription;
   envSub: Subscription;
+  cwdSub: Subscription;
 }
 
 export class CommandBlockService extends Disposable implements ICommandBlockService {
@@ -110,6 +116,9 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
 
   private readonly _envChanged$ = new Subject<IRawRemoteEnvChange>();
   readonly envChanged$: Observable<IRawRemoteEnvChange> = this._envChanged$.asObservable();
+
+  private readonly _cwdChanged$ = new Subject<ICwdChangedEvent>();
+  readonly cwdChanged$: Observable<ICwdChangedEvent> = this._cwdChanged$.asObservable();
 
   constructor(
     @ILogService private readonly _logService: ILogService
@@ -170,7 +179,11 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
       this._envChanged$.next(event);
     });
 
-    this._sessions.set(sessionId, { tracker, dataSub, blockSub, startedSub, promptSub, querySub, envSub });
+    const cwdSub = tracker.cwdChanged$.subscribe((event) => {
+      this._cwdChanged$.next(event);
+    });
+
+    this._sessions.set(sessionId, { tracker, dataSub, blockSub, startedSub, promptSub, querySub, envSub, cwdSub });
   }
 
   detachSession(sessionId: string): void {
@@ -184,6 +197,7 @@ export class CommandBlockService extends Disposable implements ICommandBlockServ
     entry.promptSub.unsubscribe();
     entry.querySub.unsubscribe();
     entry.envSub.unsubscribe();
+    entry.cwdSub.unsubscribe();
     entry.tracker.dispose();
     this._sessions.delete(sessionId);
   }

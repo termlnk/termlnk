@@ -56,6 +56,13 @@ const locale: typeof enUS = {
         unread: '읽지 않은 알림 {0}건',
         'total-with-unread': '알림 {0}건, 읽지 않은 알림 {1}건',
       },
+      updater: {
+        'available-body': '버전 {0}을(를) 다운로드할 수 있습니다.',
+        'available-body-generic': '새 버전을 다운로드할 수 있습니다.',
+        'ready-body': '앱을 다시 시작해 업데이트를 완료하세요.',
+        'error-title': '업데이트 실패',
+        'error-body': '업데이트 확인 중 문제가 발생했습니다.',
+      },
     },
     'notification-icon': {
       title: '알림',

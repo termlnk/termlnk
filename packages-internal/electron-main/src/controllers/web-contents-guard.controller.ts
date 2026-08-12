@@ -28,6 +28,10 @@ import { app, shell } from 'electron';
  * producing windows with no close control and no lifecycle management.
  * External content belongs to the system browser, so both paths are denied
  * here and safe URLs are handed to the OS instead.
+ *
+ * Webview guests are exempt: in-app navigation is their entire purpose and
+ * BrowserWebviewController installs their policy instead. Attachment is gated
+ * there, so any webview reaching this point is already a managed guest.
  */
 export class WebContentsGuardController extends Disposable {
   constructor(
@@ -45,6 +49,13 @@ export class WebContentsGuardController extends Disposable {
   }
 
   private readonly _onWebContentsCreated = (_event: Event, contents: WebContents): void => {
+    // Browser guests navigate by design; their policy lives in
+    // BrowserWebviewController, which is also the gate that decides whether a
+    // webview may exist at all.
+    if (contents.getType() === 'webview') {
+      return;
+    }
+
     contents.setWindowOpenHandler((details) => this._denyWindowOpen(details));
     contents.on('will-navigate', (details) => this._onWillNavigate(details));
   };

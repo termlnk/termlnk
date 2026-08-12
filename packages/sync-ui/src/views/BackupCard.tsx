@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IBackupFileService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
+import type { IBackupExportFileResult, IBackupFileService, IBackupImportFileResult } from '@termlnk/sync';
 import { AuthState, IAuthService } from '@termlnk/auth';
 import { IConfirmService, ILogService, LocaleService, Quantity } from '@termlnk/core';
 import { Button, cn, useDependency, useObservable } from '@termlnk/design';

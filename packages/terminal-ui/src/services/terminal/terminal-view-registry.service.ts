@@ -42,14 +42,17 @@ export interface ITabAdornmentProps {
   sessionId: string;
 }
 
+/** Receives the originating event so handlers can anchor a menu at the cursor. */
+export type AddSessionHandler = (event?: MouseEvent) => void;
+
 export interface ITerminalViewRegistry {
   registerView(type: string, component: ComponentType<ITerminalViewProps>): IDisposable;
   getView(type: string): ComponentType<ITerminalViewProps> | undefined;
   registerTabAdornment(type: string, component: ComponentType<ITabAdornmentProps>): IDisposable;
   getTabAdornment(type: string): ComponentType<ITabAdornmentProps> | undefined;
-  registerAddSessionHandler(handler: () => void): IDisposable;
-  getAddSessionHandler(): (() => void) | undefined;
-  addSessionHandler$: Observable<(() => void) | undefined>;
+  registerAddSessionHandler(handler: AddSessionHandler): IDisposable;
+  getAddSessionHandler(): AddSessionHandler | undefined;
+  addSessionHandler$: Observable<AddSessionHandler | undefined>;
   viewsChanged$: Observable<void>;
   adornmentsChanged$: Observable<void>;
 }
@@ -59,7 +62,7 @@ export class TerminalViewRegistry extends Disposable implements ITerminalViewReg
   private readonly _views = new Map<string, ComponentType<ITerminalViewProps>>();
   private readonly _adornments = new Map<string, ComponentType<ITabAdornmentProps>>();
 
-  private readonly _addSessionHandler$ = new BehaviorSubject<(() => void) | undefined>(undefined);
+  private readonly _addSessionHandler$ = new BehaviorSubject<AddSessionHandler | undefined>(undefined);
   readonly addSessionHandler$ = this._addSessionHandler$.asObservable();
 
   private readonly _viewsChanged$ = new Subject<void>();
@@ -109,14 +112,18 @@ export class TerminalViewRegistry extends Disposable implements ITerminalViewReg
     return this._adornments.get(type);
   }
 
-  registerAddSessionHandler(handler: () => void): IDisposable {
+  registerAddSessionHandler(handler: AddSessionHandler): IDisposable {
     this._addSessionHandler$.next(handler);
     return toDisposable(() => {
+      // Identity guard: a later registration silently replaces ours.
+      if (this._addSessionHandler$.getValue() !== handler) {
+        return;
+      }
       this._addSessionHandler$.next(undefined);
     });
   }
 
-  getAddSessionHandler(): (() => void) | undefined {
+  getAddSessionHandler(): AddSessionHandler | undefined {
     return this._addSessionHandler$.getValue();
   }
 }

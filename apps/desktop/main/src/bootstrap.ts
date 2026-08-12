@@ -21,6 +21,8 @@ import { extname, isAbsolute, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
+import { ACPPlugin } from '@termlnk/acp';
+import { ACPCorePlugin } from '@termlnk/acp-core';
 import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
 import { AuthPlugin, IDeviceNameProvider, IIdleProbe } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
@@ -386,6 +388,8 @@ app.whenReady().then(async () => {
     configPath: configDir,
     hookCliSrcDir,
   });
+  core.registerPlugin(ACPPlugin);
+  core.registerPlugin(ACPCorePlugin);
   core.registerPlugin(ExtensionCorePlugin);
   core.registerPlugin(IslandCorePlugin);
   core.registerPlugin(RPCServerPlugin, {

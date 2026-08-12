@@ -14,14 +14,13 @@
  */
 
 import type { IAccessor, ICommand } from '@termlnk/core';
-import { ICommandService } from '@termlnk/core';
-import { ToggleRightSidebarCommand } from '@termlnk/ui';
+import { ISidePanelService } from '@termlnk/ui';
+import { AGENT_UI_CHAT_PANEL_ID } from '../controllers/chat-panel.controller';
 
 export const ToggleAIPanelCommand: ICommand = {
   id: 'agent-ui.command.toggle-ai-panel',
   handler: (accessor: IAccessor): boolean => {
-    const commandService = accessor.get(ICommandService);
-    commandService.executeCommand(ToggleRightSidebarCommand.id);
+    accessor.get(ISidePanelService).togglePanel(AGENT_UI_CHAT_PANEL_ID);
     return true;
   },
 };

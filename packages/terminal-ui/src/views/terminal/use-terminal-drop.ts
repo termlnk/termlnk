@@ -63,8 +63,12 @@ export function useTerminalDrop(options: IUseTerminalDropOptions): IUseTerminalD
   const dragCounterRef = useRef(0);
 
   const onDragEnter = useCallback((e: React.DragEvent) => {
-    if (!enabled) return;
-    if (!e.dataTransfer.types.includes('Files')) return;
+    if (!enabled) {
+      return;
+    }
+    if (!e.dataTransfer.types.includes('Files')) {
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -73,8 +77,12 @@ export function useTerminalDrop(options: IUseTerminalDropOptions): IUseTerminalD
   }, [enabled]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
-    if (!enabled) return;
-    if (!e.dataTransfer.types.includes('Files')) return;
+    if (!enabled) {
+      return;
+    }
+    if (!e.dataTransfer.types.includes('Files')) {
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -82,7 +90,9 @@ export function useTerminalDrop(options: IUseTerminalDropOptions): IUseTerminalD
   }, [enabled]);
 
   const onDragLeave = useCallback((e: React.DragEvent) => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -94,17 +104,23 @@ export function useTerminalDrop(options: IUseTerminalDropOptions): IUseTerminalD
   }, [enabled]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
     dragCounterRef.current = 0;
     setIsDragOver(false);
 
-    if (!hasNativeFiles(e.dataTransfer)) return;
+    if (!hasNativeFiles(e.dataTransfer)) {
+      return;
+    }
 
     const paths = extractNativeFilePaths(e.dataTransfer);
-    if (paths.length === 0) return;
+    if (paths.length === 0) {
+      return;
+    }
 
     const shellType = detectShellType(shellPath);
     const escaped = escapePathsForShell(paths, shellType);

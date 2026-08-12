@@ -15,7 +15,7 @@
 
 import { ICommandService, Inject, Injector, RxDisposable } from '@termlnk/core';
 import { BotIcon, BotIconKey, connectInjector } from '@termlnk/design';
-import { BuiltInUIPart, ComponentManagerService, IMenuManagerService, IUIPartsService } from '@termlnk/ui';
+import { ComponentManagerService, IMenuManagerService, IShortcutService, ISidePanelService, KeyCode, MetaKeys } from '@termlnk/ui';
 import { AllowAlwaysCommand } from '../commands/approval/allow-always.command';
 import { CopyMessageCommand } from '../commands/copy-message.command';
 import { EditUserMessageCommand } from '../commands/edit-user-message.command';
@@ -28,6 +28,8 @@ import { PieChartWidget } from '../views/chat/parts/widgets/PieChartWidget';
 import { WidgetRenderer } from '../views/chat/parts/widgets/WidgetRenderer';
 import { menuSchema } from './menu.schema';
 
+export const AGENT_UI_CHAT_PANEL_ID = 'agent-ui.panel.chat';
+
 const TERMLNK_WIDGET_README_TOOL = 'termlnk_widget_readme';
 const TERMLNK_WIDGET_RENDERER_TOOL = 'termlnk_widget_renderer';
 const TERMLNK_PIE_CHART_TOOL = 'termlnk_pie_chart';
@@ -36,16 +38,18 @@ const TERMLNK_BAR_CHART_TOOL = 'termlnk_bar_chart';
 export class ChatPanelController extends RxDisposable {
   constructor(
     @Inject(Injector) private readonly _injector: Injector,
-    @IUIPartsService private readonly _uiPartsService: IUIPartsService,
+    @ISidePanelService private readonly _sidePanelService: ISidePanelService,
     @Inject(ComponentManagerService) private readonly _componentManagerService: ComponentManagerService,
     @ICommandService private readonly _commandService: ICommandService,
     @IMenuManagerService private readonly _menuManagerService: IMenuManagerService,
+    @IShortcutService private readonly _shortcutService: IShortcutService,
     @IGenerativeUIRegistryService private readonly generativeUIRegistryService: IGenerativeUIRegistryService
   ) {
     super();
 
     this._initComponents();
     this._initCommands();
+    this._initShortcuts();
     this._initMenus();
   }
 
@@ -55,7 +59,13 @@ export class ChatPanelController extends RxDisposable {
     );
 
     this.disposeWithMe(
-      this._uiPartsService.registerComponent(BuiltInUIPart.RIGHT_SIDEBAR, () => connectInjector(ChatPanel, this._injector))
+      this._sidePanelService.registerPanel({
+        id: AGENT_UI_CHAT_PANEL_ID,
+        icon: 'bot',
+        titleKey: 'agent-ui.menu.ai-panel',
+        component: connectInjector(ChatPanel, this._injector),
+        order: 0,
+      })
     );
   }
 
@@ -65,6 +75,15 @@ export class ChatPanelController extends RxDisposable {
     this.disposeWithMe(this._commandService.registerCommand(RetryMessageCommand));
     this.disposeWithMe(this._commandService.registerCommand(EditUserMessageCommand));
     this.disposeWithMe(this._commandService.registerCommand(AllowAlwaysCommand));
+  }
+
+  private _initShortcuts(): void {
+    // ⌘⌥C — toggle AI chat panel (doc §9.2)
+    this.disposeWithMe(this._shortcutService.registerShortcut({
+      id: ToggleAIPanelCommand.id,
+      description: 'agent-ui.shortcuts.toggle-ai-panel',
+      binding: KeyCode.C | MetaKeys.CTRL_COMMAND | MetaKeys.ALT,
+    }));
   }
 
   private _initMenus(): void {

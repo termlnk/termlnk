@@ -14,7 +14,7 @@
  */
 
 import { ISkillService } from '@termlnk/agent';
-import { LocaleService } from '@termlnk/core';
+import { ILogService, LocaleService } from '@termlnk/core';
 import { Button, Checkbox, cn, HoverPanel, HoverPanelBody, HoverPanelContent, HoverPanelFooter, HoverPanelHeader, HoverPanelTrigger, useDependency } from '@termlnk/design';
 import { IChatSessionService } from '@termlnk/rpc-client';
 import { Loader2, UserRound, Wand2 } from 'lucide-react';
@@ -57,6 +57,7 @@ function readSelectedSkillIds(session: any): string[] | null {
 
 export function ChatSkillSelector() {
   const chatSessionService = useDependency(IChatSessionService);
+  const logService = useDependency(ILogService);
   const skillService = useDependency(ISkillService);
   const localeService = useDependency(LocaleService);
   const currentSessionIdRef = useRef<string | null>(null);
@@ -78,7 +79,9 @@ export function ChatSkillSelector() {
           const fm = content.match(/^---\s*\n([\s\S]*?)\n---/);
           if (fm) {
             const desc = fm[1].match(/^description:\s*(.+)$/m);
-            if (desc) description = desc[1].trim();
+            if (desc) {
+              description = desc[1].trim();
+            }
           }
         } catch {
           // ignore
@@ -221,7 +224,7 @@ export function ChatSkillSelector() {
 
       await chatSessionService.setSelectedSkills(sessionId, nextSkillIds);
     } catch (error) {
-      console.error('[ChatSkillSelector] Failed to persist selected skills:', error);
+      logService.error('[ChatSkillSelector] Failed to persist selected skills:', error);
       pendingSelectedSkillIdsRef.current = null;
       startTransition(() => {
         setSessionSelectedSkillIds(previous);

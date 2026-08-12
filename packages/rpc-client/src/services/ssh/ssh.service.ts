@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ITerminalSessionClosedEvent, ITerminalSessionCreatedEvent, SSHSessionEvent, SSHSessionStatus } from '@termlnk/rpc';
+import type { HostKeyVerifyAction, ITerminalSessionClosedEvent, ITerminalSessionCreatedEvent, SSHSessionEvent, SSHSessionStatus } from '@termlnk/rpc';
 import type { ITerminalOutputChunk } from '@termlnk/terminal';
 import type { Observable } from 'rxjs';
 import { createIdentifier, Disposable } from '@termlnk/core';
@@ -51,9 +51,10 @@ export interface ISSHService {
   error$(sessionId: string): Observable<string>;
   respondKeyboardInteractive(sessionId: string, responses: string[], viaHopId?: string): Promise<void>;
   respondChangePassword(sessionId: string, newPassword: string, viaHopId?: string): Promise<void>;
-  respondHostKeyVerify(sessionId: string, action: 'accept_save' | 'accept_once' | 'reject'): Promise<void>;
+  respondHostKeyVerify(sessionId: string, action: HostKeyVerifyAction): Promise<void>;
   testConnection(input: ISSHTestConnectionInput): Promise<ISSHTestConnectionResult>;
   setFocusedSession(sessionId: string | null): Promise<void>;
+  getCurrentCwd(sessionId: string): Promise<string>;
 }
 export const ISSHService = createIdentifier<ISSHService>('rpc-client.ssh-service');
 
@@ -119,7 +120,7 @@ export class SSHService extends Disposable implements ISSHService {
     await this._client.respondChangePassword.mutate({ sessionId, newPassword, viaHopId });
   }
 
-  async respondHostKeyVerify(sessionId: string, action: 'accept_save' | 'accept_once' | 'reject'): Promise<void> {
+  async respondHostKeyVerify(sessionId: string, action: HostKeyVerifyAction): Promise<void> {
     await this._client.respondHostKeyVerify.mutate({ sessionId, action });
   }
 
@@ -129,6 +130,11 @@ export class SSHService extends Disposable implements ISSHService {
 
   async setFocusedSession(sessionId: string | null): Promise<void> {
     await this._client.setFocusedSession.mutate(sessionId);
+  }
+
+  /** Shell-integration cwd (OSC 633/7) for an open SSH session. */
+  async getCurrentCwd(sessionId: string): Promise<string> {
+    return this._client.getCurrentCwd.query(sessionId);
   }
 
   readonly sessionCreated$: Observable<ITerminalSessionCreatedEvent> = trpcSubscriptionToObservable(

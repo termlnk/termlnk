@@ -21,10 +21,14 @@ export const MaximizeSessionCommand: ICommand = {
   handler: (accessor: IAccessor) => {
     const workspaceService = accessor.get(IWorkspaceService);
     const activeId = workspaceService.getActiveTabItemId();
-    if (!activeId) return false;
+    if (!activeId) {
+      return false;
+    }
 
     const workspace = workspaceService.getWorkspace(activeId);
-    if (!workspace?.activeSessionId) return false;
+    if (!workspace?.activeSessionId) {
+      return false;
+    }
 
     workspaceService.toggleMagnify(workspace.id, workspace.activeSessionId);
     return true;

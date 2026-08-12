@@ -15,9 +15,11 @@
 
 import type { ICoreConfig } from '@termlnk/core';
 import type { ITerminalUIConfig } from '@termlnk/terminal-ui';
+import { ACPUIPlugin } from '@termlnk/acp-ui';
 import { AgentUIPlugin } from '@termlnk/agent-ui';
 import { AuthPlugin } from '@termlnk/auth';
 import { AuthUIPlugin } from '@termlnk/auth-ui';
+import { BrowserUIPlugin } from '@termlnk/browser-ui';
 import { Core, LocaleType, LogLevel, merge } from '@termlnk/core';
 import { ElectronPlugin } from '@termlnk/electron';
 import { ElectronRendererPlugin } from '@termlnk/electron-renderer';
@@ -25,6 +27,8 @@ import { ExtensionPlugin } from '@termlnk/extension';
 import { ExtensionUIPlugin } from '@termlnk/extension-ui';
 import { IslandSettingsPlugin } from '@termlnk/island-ui';
 import { PortForwardingUIPlugin } from '@termlnk/port-forwarding-ui';
+import { ProjectPlugin } from '@termlnk/project';
+import { ProjectUIPlugin } from '@termlnk/project-ui';
 import { RPCPlugin } from '@termlnk/rpc';
 import { RPCClientPlugin } from '@termlnk/rpc-client';
 import { SettingsUIPlugin } from '@termlnk/settings-ui';
@@ -155,6 +159,11 @@ export async function createCore(ref: string | HTMLElement, options?: Partial<IC
   core.registerPlugin(ExtensionPlugin);
   core.registerPlugin(ExtensionUIPlugin);
   core.registerPlugin(AgentUIPlugin);
+  // After TerminalUIPlugin so ACP owns the "+" add-session handler slot.
+  core.registerPlugin(ACPUIPlugin);
+  core.registerPlugin(ProjectPlugin);
+  core.registerPlugin(ProjectUIPlugin);
+  core.registerPlugin(BrowserUIPlugin);
   core.start();
   return core;
 }

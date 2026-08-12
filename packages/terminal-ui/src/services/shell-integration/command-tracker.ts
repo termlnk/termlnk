@@ -128,7 +128,9 @@ export class CommandTracker {
   }
 
   private _readOutputBetweenMarkers(startMarker: IMarker | null, endMarker: IMarker | null): string {
-    if (!startMarker || !endMarker) return '';
+    if (!startMarker || !endMarker) {
+      return '';
+    }
 
     const buffer = this._terminal.buffer.active;
     const startLine = startMarker.line + 1; // Skip the command line itself

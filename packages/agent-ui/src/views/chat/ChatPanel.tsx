@@ -14,12 +14,14 @@
  */
 
 import { useDependency } from '@termlnk/design';
-import { IChatSessionService } from '@termlnk/rpc-client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { IAIAgentMessagingService, IChatSessionService } from '@termlnk/rpc-client';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createBuiltinConversationSource } from './builtin-conversation-source';
 import { ChatHeader } from './ChatHeader';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSessionList } from './ChatSessionList';
+import { ConversationContext } from './conversation-context';
 import { PendingApprovalBar } from './PendingApprovalBar';
 
 function useSessionTitle(): string | undefined {
@@ -62,6 +64,8 @@ function useSessionTitle(): string | undefined {
 }
 
 export function ChatPanel() {
+  const messaging = useDependency(IAIAgentMessagingService);
+  const conversation = useMemo(() => createBuiltinConversationSource(messaging), [messaging]);
   const [showHistory, setShowHistory] = useState(false);
   const sessionTitle = useSessionTitle();
 
@@ -74,17 +78,19 @@ export function ChatPanel() {
   }, []);
 
   return (
-    <div className="tm:flex tm:h-full tm:min-w-0 tm:flex-col tm:overflow-hidden tm:bg-black">
-      <ChatHeader showHistory={showHistory} onToggleHistory={handleToggleHistory} sessionTitle={sessionTitle} />
-      {showHistory
-        ? <ChatSessionList onSelectSession={handleSelectSession} />
-        : (
-          <>
-            <ChatMessages />
-            <PendingApprovalBar />
-            <ChatInput />
-          </>
-        )}
-    </div>
+    <ConversationContext.Provider value={conversation}>
+      <div className="tm:flex tm:h-full tm:min-w-0 tm:flex-col tm:overflow-hidden tm:bg-black">
+        <ChatHeader showHistory={showHistory} onToggleHistory={handleToggleHistory} sessionTitle={sessionTitle} />
+        {showHistory
+          ? <ChatSessionList onSelectSession={handleSelectSession} />
+          : (
+            <>
+              <ChatMessages />
+              <PendingApprovalBar />
+              <ChatInput />
+            </>
+          )}
+      </div>
+    </ConversationContext.Provider>
   );
 }

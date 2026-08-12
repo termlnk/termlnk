@@ -13,6 +13,11 @@
  * governing permissions and limitations under the License.
  */
 
+import acpuienUS from '@termlnk/acp-ui/locale/en-US';
+import acpuijaJP from '@termlnk/acp-ui/locale/ja-JP';
+import acpuikoKR from '@termlnk/acp-ui/locale/ko-KR';
+import acpuizhCN from '@termlnk/acp-ui/locale/zh-CN';
+import acpuizhTW from '@termlnk/acp-ui/locale/zh-TW';
 import agentuienUS from '@termlnk/agent-ui/locale/en-US';
 
 import agentuijaJP from '@termlnk/agent-ui/locale/ja-JP';
@@ -24,6 +29,11 @@ import authuijaJP from '@termlnk/auth-ui/locale/ja-JP';
 import authuikoKR from '@termlnk/auth-ui/locale/ko-KR';
 import authuizhCN from '@termlnk/auth-ui/locale/zh-CN';
 import authuizhTW from '@termlnk/auth-ui/locale/zh-TW';
+import browseruienUS from '@termlnk/browser-ui/locale/en-US';
+import browseruijaJP from '@termlnk/browser-ui/locale/ja-JP';
+import browseruikoKR from '@termlnk/browser-ui/locale/ko-KR';
+import browseruizhCN from '@termlnk/browser-ui/locale/zh-CN';
+import browseruizhTW from '@termlnk/browser-ui/locale/zh-TW';
 import { merge } from '@termlnk/core';
 import designenUS from '@termlnk/design/locale/en-US';
 import designjaJP from '@termlnk/design/locale/ja-JP';
@@ -50,6 +60,11 @@ import portforwardinguijaJP from '@termlnk/port-forwarding-ui/locale/ja-JP';
 import portforwardinguikoKR from '@termlnk/port-forwarding-ui/locale/ko-KR';
 import portforwardinguizhCN from '@termlnk/port-forwarding-ui/locale/zh-CN';
 import portforwardinguizhTW from '@termlnk/port-forwarding-ui/locale/zh-TW';
+import projectuienUS from '@termlnk/project-ui/locale/en-US';
+import projectuijaJP from '@termlnk/project-ui/locale/ja-JP';
+import projectuikoKR from '@termlnk/project-ui/locale/ko-KR';
+import projectuizhCN from '@termlnk/project-ui/locale/zh-CN';
+import projectuizhTW from '@termlnk/project-ui/locale/zh-TW';
 import settingsuienUS from '@termlnk/settings-ui/locale/en-US';
 import settingsuijaJP from '@termlnk/settings-ui/locale/ja-JP';
 import settingsuikoKR from '@termlnk/settings-ui/locale/ko-KR';
@@ -88,13 +103,16 @@ import uizhTW from '@termlnk/ui/locale/zh-TW';
 
 export const enUS = merge(
   {},
+  acpuienUS,
   agentuienUS,
   authuienUS,
+  browseruienUS,
   designenUS,
   electronrendererenUS,
   extensionuienUS,
   islanduienUS,
   portforwardinguienUS,
+  projectuienUS,
   settingsuienUS,
   sftpuienUS,
   snippetuienUS,
@@ -105,13 +123,16 @@ export const enUS = merge(
 );
 export const zhCN = merge(
   {},
+  acpuizhCN,
   agentuizhCN,
   authuizhCN,
+  browseruizhCN,
   designzhCN,
   electronrendererzhCN,
   extensionuizhCN,
   islanduizhCN,
   portforwardinguizhCN,
+  projectuizhCN,
   settingsuizhCN,
   sftpuizhCN,
   snippetuizhCN,
@@ -122,13 +143,16 @@ export const zhCN = merge(
 );
 export const jaJP = merge(
   {},
+  acpuijaJP,
   agentuijaJP,
   authuijaJP,
+  browseruijaJP,
   designjaJP,
   electronrendererjaJP,
   extensionuijaJP,
   islanduijaJP,
   portforwardinguijaJP,
+  projectuijaJP,
   settingsuijaJP,
   sftpuijaJP,
   snippetuijaJP,
@@ -139,13 +163,16 @@ export const jaJP = merge(
 );
 export const koKR = merge(
   {},
+  acpuikoKR,
   agentuikoKR,
   authuikoKR,
+  browseruikoKR,
   designkoKR,
   electronrendererkoKR,
   extensionuikoKR,
   islanduikoKR,
   portforwardinguikoKR,
+  projectuikoKR,
   settingsuikoKR,
   sftpuikoKR,
   snippetuikoKR,
@@ -156,13 +183,16 @@ export const koKR = merge(
 );
 export const zhTW = merge(
   {},
+  acpuizhTW,
   agentuizhTW,
   authuizhTW,
+  browseruizhTW,
   designzhTW,
   electronrendererzhTW,
   extensionuizhTW,
   islanduizhTW,
   portforwardinguizhTW,
+  projectuizhTW,
   settingsuizhTW,
   sftpuizhTW,
   snippetuizhTW,

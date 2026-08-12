@@ -16,7 +16,7 @@
 import type { IImageAttachment } from '@termlnk/agent';
 import type { IAttachedFile } from './ChatFilePreview';
 import type { IChatSlashCommandPanelHandle } from './ChatSlashCommandPanel';
-import { generateRandomId, LocaleService } from '@termlnk/core';
+import { generateRandomId, ILogService, LocaleService } from '@termlnk/core';
 import { Button, cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, useDependency, useObservable } from '@termlnk/design';
 import { IAIAgentMessagingService, IProviderConfigService } from '@termlnk/rpc-client';
 import { Gauge, Paperclip, Send } from 'lucide-react';
@@ -62,6 +62,7 @@ const COMPACT_COMMAND_PATTERN = /^\/compact(?:\s+([\s\S]*))?$/;
 
 export function ChatInput() {
   const aiAgentService = useDependency(IAIAgentMessagingService);
+  const logService = useDependency(ILogService);
   const providerConfigService = useDependency(IProviderConfigService);
   const localeService = useDependency(LocaleService);
   const activeModel = useObservable(providerConfigService.activeModel$, null);
@@ -100,11 +101,11 @@ export function ChatInput() {
     const newAttachments: IAttachedFile[] = [];
     for (const file of files) {
       if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-        console.warn(`[ChatInput] Rejected file type: ${file.type}`);
+        logService.warn(`[ChatInput] Rejected file type: ${file.type}`);
         continue;
       }
       if (file.size > MAX_FILE_SIZE) {
-        console.warn(`[ChatInput] File too large: ${file.name} (${file.size} bytes)`);
+        logService.warn(`[ChatInput] File too large: ${file.name} (${file.size} bytes)`);
         continue;
       }
       newAttachments.push({
@@ -184,7 +185,7 @@ export function ChatInput() {
         textareaRef.current.style.height = manualHeight === null ? 'auto' : `${clampHeight(manualHeight)}px`;
       }
       aiAgentService.compactConversation({ trigger: 'manual', instructions }).catch((err) => {
-        console.error('[ChatInput] compactConversation failed:', err);
+        logService.error('[ChatInput] compactConversation failed:', err);
       });
       return;
     }
@@ -199,7 +200,7 @@ export function ChatInput() {
           }))
         );
       } catch (err) {
-        console.error('[ChatInput] Failed to read files:', err);
+        logService.error('[ChatInput] Failed to read files:', err);
         return;
       }
     }
@@ -215,7 +216,7 @@ export function ChatInput() {
     }
 
     aiAgentService.sendMessage(trimmed || ' ', { images }).catch((err) => {
-      console.error('[ChatInput] sendMessage failed:', err);
+      logService.error('[ChatInput] sendMessage failed:', err);
     });
   }, [value, attachedFiles, isCompacting, aiAgentService, manualHeight]);
 

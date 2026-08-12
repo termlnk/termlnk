@@ -56,11 +56,21 @@ export function FileTransferOverlay({ event, onCancel }: IFileTransferOverlayPro
     : '';
 
   const statusText = useMemo(() => {
-    if (event.type === FileTransferEventType.STARTED) return `${protocolLabel} ${direction === 'upload' ? 'Upload' : 'Download'} starting...`;
-    if (event.type === FileTransferEventType.PROGRESS) return `${fileCountLabel}${fileName} — ${progressPercent}%`;
-    if (event.type === FileTransferEventType.COMPLETE) return `${fileName || 'Transfer'} complete`;
-    if (event.type === FileTransferEventType.ERROR) return `Error: ${event.message}`;
-    if (event.type === FileTransferEventType.CANCELLED) return 'Transfer cancelled';
+    if (event.type === FileTransferEventType.STARTED) {
+      return `${protocolLabel} ${direction === 'upload' ? 'Upload' : 'Download'} starting...`;
+    }
+    if (event.type === FileTransferEventType.PROGRESS) {
+      return `${fileCountLabel}${fileName} — ${progressPercent}%`;
+    }
+    if (event.type === FileTransferEventType.COMPLETE) {
+      return `${fileName || 'Transfer'} complete`;
+    }
+    if (event.type === FileTransferEventType.ERROR) {
+      return `Error: ${event.message}`;
+    }
+    if (event.type === FileTransferEventType.CANCELLED) {
+      return 'Transfer cancelled';
+    }
     return '';
   }, [event, protocolLabel, direction, fileName, progressPercent, fileCountLabel]);
 

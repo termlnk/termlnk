@@ -16,30 +16,13 @@
 import type { ISearchOptions } from '@xterm/addon-search';
 import type { RefObject } from 'react';
 import type { ITerminalUIService } from '../../services/terminal/terminal-ui.service';
+import { IContextService } from '@termlnk/core';
+import { useDependency } from '@termlnk/design';
 import { useCallback, useEffect, useState } from 'react';
+import { TERMINAL_FOCUSED_CONTEXT } from '../../common/context-keys';
+import { ITerminalSearchService } from '../../services/terminal/terminal-search.service';
 
 type SearchDirection = 'next' | 'previous';
-
-function isSearchShortcut(event: KeyboardEvent): boolean {
-  return (event.ctrlKey || event.metaKey)
-    && !event.altKey
-    && !event.shiftKey
-    && event.key.toLowerCase() === 'f';
-}
-
-function isScopedEvent(event: KeyboardEvent, scopeRef: RefObject<HTMLElement | null>): boolean {
-  const scope = scopeRef.current;
-  const target = event.target;
-  if (!scope || !(target instanceof HTMLElement)) {
-    return false;
-  }
-
-  if (target === document.body || target === document.documentElement) {
-    return true;
-  }
-
-  return scope.contains(target);
-}
 
 export interface IUseTerminalSearchOptions {
   sessionId: string;
@@ -58,8 +41,16 @@ export interface IUseTerminalSearchResult {
   closeSearch: () => void;
 }
 
+/**
+ * Per-session terminal search state. ⌘F is owned by IShortcutService
+ * (ToggleTerminalSearchCommand); this hook only reacts to toggle$ when the
+ * session is active, and maintains the terminal-focused context key.
+ */
 export function useTerminalSearch(options: IUseTerminalSearchOptions): IUseTerminalSearchResult {
   const { sessionId, scopeRef, terminalUIService, focus, findNext, findPrevious, clearSearchDecorations } = options;
+  const searchService = useDependency(ITerminalSearchService);
+  const contextService = useDependency(IContextService);
+
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSessionActive, setIsSessionActive] = useState(false);
 
@@ -74,7 +65,9 @@ export function useTerminalSearch(options: IUseTerminalSearchOptions): IUseTermi
   }, [clearSearch, focus]);
 
   const toggleSearch = useCallback((): void => {
-    if (!isSessionActive) return;
+    if (!isSessionActive) {
+      return;
+    }
 
     if (isSearchOpen) {
       closeSearch();
@@ -84,11 +77,11 @@ export function useTerminalSearch(options: IUseTerminalSearchOptions): IUseTermi
     setIsSearchOpen(true);
   }, [isSearchOpen, isSessionActive, closeSearch]);
 
-  const handleSearch = useCallback((text: string, direction: SearchDirection, options?: ISearchOptions): boolean => {
+  const handleSearch = useCallback((text: string, direction: SearchDirection, searchOptions?: ISearchOptions): boolean => {
     if (direction === 'next') {
-      return findNext(text, options);
+      return findNext(text, searchOptions);
     }
-    return findPrevious(text, options);
+    return findPrevious(text, searchOptions);
   }, [findNext, findPrevious]);
 
   useEffect(() => {
@@ -107,20 +100,48 @@ export function useTerminalSearch(options: IUseTerminalSearchOptions): IUseTermi
     return () => sub.unsubscribe();
   }, [sessionId, terminalUIService, focus, clearSearch]);
 
+  // Shortcut service → this session (only the active one reacts).
   useEffect(() => {
-    if (!isSessionActive) return;
+    const sub = searchService.toggle$.subscribe(() => {
+      if (terminalUIService.getActiveSessionId() === sessionId) {
+        toggleSearch();
+      }
+    });
+    return () => sub.unsubscribe();
+  }, [searchService, sessionId, terminalUIService, toggleSearch]);
 
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (!isSearchShortcut(event)) return;
-      if (!isScopedEvent(event, scopeRef)) return;
+  // Focus context for ⌘F preconditions / multi-candidate dispatch.
+  useEffect(() => {
+    const scope = scopeRef.current;
+    if (!scope) {
+      return;
+    }
 
-      event.preventDefault();
-      toggleSearch();
+    const onFocusIn = (): void => {
+      if (isSessionActive) {
+        contextService.setContextValue(TERMINAL_FOCUSED_CONTEXT, true);
+      }
+    };
+    const onFocusOut = (e: FocusEvent): void => {
+      if (scope.contains(e.relatedTarget as Node)) {
+        return;
+      }
+      // Only clear if this session still owns the context (another terminal may have taken it).
+      if (terminalUIService.getActiveSessionId() === sessionId) {
+        contextService.setContextValue(TERMINAL_FOCUSED_CONTEXT, false);
+      }
     };
 
-    window.addEventListener('keydown', handleKeyDown, { capture: true });
-    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
-  }, [isSessionActive, scopeRef, toggleSearch]);
+    scope.addEventListener('focusin', onFocusIn);
+    scope.addEventListener('focusout', onFocusOut);
+    return () => {
+      scope.removeEventListener('focusin', onFocusIn);
+      scope.removeEventListener('focusout', onFocusOut);
+      if (terminalUIService.getActiveSessionId() === sessionId) {
+        contextService.setContextValue(TERMINAL_FOCUSED_CONTEXT, false);
+      }
+    };
+  }, [scopeRef, isSessionActive, contextService, sessionId, terminalUIService]);
 
   return {
     isSearchOpen,

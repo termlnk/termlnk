@@ -13,19 +13,19 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ISSHSessionHandle } from '@termlnk/rpc';
 import type { IPtySource } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import type { PTYSession } from '../pty/pty-session';
-import type { SSHSession } from '../ssh-session/ssh-session';
 import { Disposable } from '@termlnk/core';
 import { map, Subject, takeUntil } from 'rxjs';
 
 /**
- * IPtySource adapter for a live SSH session. Bridges SSHSession.data$ / write / resize
+ * IPtySource adapter for a live SSH session. Bridges the session's data$ / write / resize
  * into the multiplexer contract so PtyMultiplexerService can fan it out to remote
  * participants without taking a direct dependency on the SSH session graph.
  *
- * `write` is fire-and-forget — SSHSession.write returns a Promise but logs errors
+ * `write` is fire-and-forget — the session's write returns a Promise but logs errors
  * internally; we do not surface them to the multiplexer call site.
  */
 export class SSHPtySource extends Disposable implements IPtySource {
@@ -36,10 +36,10 @@ export class SSHPtySource extends Disposable implements IPtySource {
 
   private readonly _stop$ = new Subject<void>();
 
-  constructor(private readonly _session: SSHSession) {
+  constructor(private readonly _session: ISSHSessionHandle) {
     super();
     this.id = _session.sessionId;
-    this.title = _session.host.label || `ssh:${_session.sessionId.slice(0, 8)}`;
+    this.title = _session.label || `ssh:${_session.sessionId.slice(0, 8)}`;
     this.output$ = _session.data$.pipe(takeUntil(this._stop$));
     this.resize$ = _session.resize$.pipe(takeUntil(this._stop$));
   }

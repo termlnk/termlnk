@@ -27,14 +27,22 @@ interface IModelListItemProps {
 }
 
 function formatTokenCount(count: number): string {
-  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
-  if (count >= 1000) return `${(count / 1000).toFixed(0)}K`;
+  if (count >= 1000000) {
+    return `${(count / 1000000).toFixed(1)}M`;
+  }
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(0)}K`;
+  }
   return String(count);
 }
 
 function formatCost(cost: number): string {
-  if (cost === 0) return 'Free';
-  if (cost < 0.01) return `$${cost.toFixed(4)}`;
+  if (cost === 0) {
+    return 'Free';
+  }
+  if (cost < 0.01) {
+    return `$${cost.toFixed(4)}`;
+  }
   return `$${cost.toFixed(2)}`;
 }
 

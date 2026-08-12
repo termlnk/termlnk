@@ -49,6 +49,12 @@ export interface IBlockStartedEvent {
   blockId: string;
 }
 
+/** Shell integration reported a new working directory (OSC 633;P;Cwd or OSC 7). */
+export interface ICwdChangedEvent {
+  sessionId: string;
+  cwd: string;
+}
+
 export interface INaturalLanguageQueryEvent {
   sessionId: string;
   query: string;
@@ -114,6 +120,9 @@ export class CommandBlockTracker extends Disposable {
 
   private readonly _envChanged$ = new Subject<IRawRemoteEnvChange>();
   readonly envChanged$: Observable<IRawRemoteEnvChange> = this._envChanged$.asObservable();
+
+  private readonly _cwdChanged$ = new Subject<ICwdChangedEvent>();
+  readonly cwdChanged$: Observable<ICwdChangedEvent> = this._cwdChanged$.asObservable();
 
   private _parseState: ParseState = 'ground';
   private _flowState: FlowState = 'idle';
@@ -344,7 +353,7 @@ export class CommandBlockTracker extends Disposable {
 
       case 'P':
         if (event.key === 'Cwd') {
-          this._currentCwd = event.value;
+          this._setCwd(event.value);
         } else if (event.key === 'RemoteOS') {
           this._updateEnvField('remoteOS', event.value);
         } else if (event.key === 'RemoteShell') {
@@ -385,8 +394,17 @@ export class CommandBlockTracker extends Disposable {
   private _handleOsc7(payload: string): void {
     const match = payload.match(/^file:\/\/[^/]*(\/.*)$/);
     if (match) {
-      this._currentCwd = decodeURIComponent(match[1]);
+      this._setCwd(decodeURIComponent(match[1]));
     }
+  }
+
+  /** Shells re-announce the cwd on every prompt; only emit real changes. */
+  private _setCwd(cwd: string): void {
+    if (!cwd || cwd === this._currentCwd) {
+      return;
+    }
+    this._currentCwd = cwd;
+    this._cwdChanged$.next({ sessionId: this._sessionId, cwd });
   }
 
   private _createPending(): IPendingBlock {

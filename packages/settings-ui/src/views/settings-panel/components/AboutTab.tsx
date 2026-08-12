@@ -16,7 +16,7 @@
 import type { ReactNode } from 'react';
 import { IUpdaterService, LocaleService, Quantity } from '@termlnk/core';
 import { Badge, Button, cn, LogoIcon, useDependency } from '@termlnk/design';
-import { IDialogService, IHostEnvironmentService, UPDATE_DIALOG_COMPONENT_NAME, UPDATE_DIALOG_ID } from '@termlnk/ui';
+import { IDialogService, IExternalLinkService, IHostEnvironmentService, UPDATE_DIALOG_COMPONENT_NAME, UPDATE_DIALOG_ID } from '@termlnk/ui';
 import { ArrowUpRight, Download, RefreshCw, ScrollText, Star } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -50,6 +50,7 @@ export function AboutTab() {
   const localeService = useDependency(LocaleService);
   const updaterService = useDependency(IUpdaterService);
   const dialogService = useDependency(IDialogService);
+  const externalLinkService = useDependency(IExternalLinkService);
   const hostEnvironment = useDependency(IHostEnvironmentService, Quantity.OPTIONAL);
   const supportsInAppInstall = (hostEnvironment?.host ?? 'electron') === 'electron';
 
@@ -82,19 +83,8 @@ export function AboutTab() {
   }, [updaterService]);
 
   const openExternal = useCallback((url: string) => {
-    const win = window as Window & {
-      nativeShell?: {
-        openExternal?: (target: string) => Promise<void> | void;
-      };
-    };
-
-    if (win.nativeShell?.openExternal) {
-      void win.nativeShell.openExternal(url);
-      return;
-    }
-
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }, []);
+    externalLinkService.openExternal(url);
+  }, [externalLinkService]);
 
   const handleCheckForUpdates = useCallback(async () => {
     if (updateState === 'checking') {

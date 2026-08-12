@@ -20,6 +20,7 @@ import { HOST_CHAIN_MAX_DEPTH, HostType } from '@termlnk/terminal';
 import { Client } from 'ssh2';
 import { z } from 'zod';
 import { DEFAULT_SSH_CONNECTION_TIMEOUT } from '../../config/config';
+import { ICommandBlockService } from '../../services/shell-integration/command-block.service';
 import { ISSHHostChainService } from '../../services/ssh/ssh-host-chain.service';
 import { ISSHSocketService } from '../../services/ssh/ssh-socket.service';
 import { sessionIdSchema } from '../schema/ssh.schema';
@@ -257,5 +258,12 @@ export const sshRouter = router({
       } finally {
         chainHandle?.dispose();
       }
+    }),
+
+  /** Shell-integration cwd for an open SSH session (OSC 633 / OSC 7). */
+  getCurrentCwd: publicProcedure
+    .input(z.string())
+    .query(({ ctx, input }) => {
+      return ctx.injector.get(ICommandBlockService).getCurrentCwd(input);
     }),
 });

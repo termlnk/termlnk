@@ -86,9 +86,9 @@ export function TerminalTabBar() {
     workspaceService.mergeTwoSessions(sourceId, targetId);
   }, [workspaceService]);
 
-  const handleAddSession = useCallback(() => {
+  const handleAddSession = useCallback((event?: MouseEvent) => {
     ensureTerminalPage();
-    addSessionHandler?.();
+    addSessionHandler?.(event);
   }, [addSessionHandler, ensureTerminalPage]);
 
   return (

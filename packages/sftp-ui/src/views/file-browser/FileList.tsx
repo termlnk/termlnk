@@ -14,7 +14,7 @@
  */
 
 import type { DragEvent, MouseEvent } from 'react';
-import { cn } from '@termlnk/design';
+import { cn, VirtualList } from '@termlnk/design';
 import { ArrowDown, ArrowUp, File, Folder, Link2 } from 'lucide-react';
 
 export interface IFileListColumn {
@@ -53,6 +53,9 @@ const columns: IFileListColumn[] = [
   { key: 'mtime', label: 'Modified', sortable: true, width: 'tm:w-36' },
   { key: 'mode', label: 'Perms', width: 'tm:w-24' },
 ];
+
+/** Row height must stay in sync with the VirtualList itemHeight below. */
+const ROW_HEIGHT = 28;
 
 export function FileList(props: IFileListProps) {
   const {
@@ -124,48 +127,54 @@ export function FileList(props: IFileListProps) {
         ))}
       </div>
 
-      {/* File list */}
-      <div className="tm:flex-1 tm:overflow-y-auto">
-        {entries.map((entry) => {
-          const isSelected = selectedFiles.has(entry.filename);
-          return (
-            <div
-              key={entry.filename}
-              className={cn(
-                'tm:flex tm:items-center tm:px-2 tm:py-1 tm:text-[12px]',
-                {
-                  'tm:bg-blue/20 tm:text-light-grey': isSelected,
-                  'tm:text-grey-fg2 tm:hover:bg-one-bg': !isSelected,
-                }
-              )}
-              draggable={draggable}
-              onDragStart={(e) => handleRowDragStart(e, entry, isSelected)}
-              onClick={(e) => onSelect(entry.filename, e.ctrlKey || e.metaKey)}
-              onDoubleClick={() => onDoubleClick(entry)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                if (!isSelected) {
-                  onSelect(entry.filename, false);
-                }
-                onContextMenu?.(e, entry);
-              }}
-            >
-              <div className="tm:flex tm:flex-1 tm:items-center tm:gap-2 tm:truncate tm:px-1">
-                {getFileIcon(entry)}
-                <span className="tm:truncate tm:text-white">{entry.filename}</span>
+      {/* Virtualized file rows */}
+      <div className="tm:min-h-0 tm:flex-1">
+        <VirtualList
+          items={entries}
+          itemHeight={ROW_HEIGHT}
+          height="100%"
+          className="tm:h-full"
+          getItemKey={(entry) => entry.filename}
+          renderItem={(entry) => {
+            const isSelected = selectedFiles.has(entry.filename);
+            return (
+              <div
+                className={cn(
+                  'tm:flex tm:h-full tm:items-center tm:px-2 tm:text-[12px]',
+                  {
+                    'tm:bg-blue/20 tm:text-light-grey': isSelected,
+                    'tm:text-grey-fg2 tm:hover:bg-one-bg': !isSelected,
+                  }
+                )}
+                draggable={draggable}
+                onDragStart={(e) => handleRowDragStart(e, entry, isSelected)}
+                onClick={(e) => onSelect(entry.filename, e.ctrlKey || e.metaKey)}
+                onDoubleClick={() => onDoubleClick(entry)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (!isSelected) {
+                    onSelect(entry.filename, false);
+                  }
+                  onContextMenu?.(e, entry);
+                }}
+              >
+                <div className="tm:flex tm:flex-1 tm:items-center tm:gap-2 tm:truncate tm:px-1">
+                  {getFileIcon(entry)}
+                  <span className="tm:truncate tm:text-white">{entry.filename}</span>
+                </div>
+                <div className="tm:w-24 tm:px-1 tm:text-right tm:tabular-nums">
+                  {entry.isDirectory ? '--' : formatSize(entry.size)}
+                </div>
+                <div className="tm:w-36 tm:px-1 tm:tabular-nums">
+                  {formatDate(entry.mtime)}
+                </div>
+                <div className="tm:w-24 tm:px-1 tm:font-mono tm:text-[11px]">
+                  {formatPermissions(entry.mode)}
+                </div>
               </div>
-              <div className="tm:w-24 tm:px-1 tm:text-right tm:tabular-nums">
-                {entry.isDirectory ? '--' : formatSize(entry.size)}
-              </div>
-              <div className="tm:w-36 tm:px-1 tm:tabular-nums">
-                {formatDate(entry.mtime)}
-              </div>
-              <div className="tm:w-24 tm:px-1 tm:font-mono tm:text-[11px]">
-                {formatPermissions(entry.mode)}
-              </div>
-            </div>
-          );
-        })}
+            );
+          }}
+        />
       </div>
     </div>
   );

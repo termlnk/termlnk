@@ -56,6 +56,13 @@ const locale: typeof enUS = {
         unread: '{0} 則未讀',
         'total-with-unread': '共 {0} 則通知，{1} 則未讀',
       },
+      updater: {
+        'available-body': '版本 {0} 可下載。',
+        'available-body-generic': '有新版本可下載。',
+        'ready-body': '重新啟動應用程式以完成更新安裝。',
+        'error-title': '更新失敗',
+        'error-body': '檢查更新時發生問題。',
+      },
     },
     'notification-icon': {
       title: '通知',

@@ -28,7 +28,9 @@ export function useFileTransfer(options: IUseFileTransferOptions) {
   const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!backendSessionId) return;
+    if (!backendSessionId) {
+      return;
+    }
 
     const sub = fileTransferService.transferEvent$(backendSessionId).subscribe((event) => {
       if (clearTimerRef.current) {
@@ -55,7 +57,9 @@ export function useFileTransfer(options: IUseFileTransferOptions) {
   }, [backendSessionId, fileTransferService]);
 
   const cancelTransfer = useCallback(async () => {
-    if (!backendSessionId) return;
+    if (!backendSessionId) {
+      return;
+    }
     await fileTransferService.cancelTransfer(backendSessionId);
   }, [backendSessionId, fileTransferService]);
 

@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IRemoteSession, IRemoteSessionClosedEventNotify, IRemoteSessionCreateOptions, IRemoteSessionCreatedEvent, IRemoteSessionCreateResult, IRemoteSessionService, ISharedSessionInputPolicy, RemoteSessionEvent, RemoteSessionStatus } from '@termlnk/shared-terminal';
+import type { IRemoteSessionClosedEventNotify, IRemoteSessionCreatedEvent, IRemoteSessionCreateOptions, IRemoteSessionCreateResult, IRemoteSessionService, ISharedSessionInputPolicy, RemoteSessionEvent, RemoteSessionStatus } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
-import { decodeBase64Utf8Stream, trpcSubscriptionToObservable } from '@termlnk/rpc';
+import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { map, share, shareReplay } from 'rxjs';
 import { IRPCClientService } from '../rpc-client.service';
 

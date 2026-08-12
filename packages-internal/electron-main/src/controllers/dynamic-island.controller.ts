@@ -17,7 +17,7 @@ import type { IPendingInteractionPayload } from '@termlnk/agent';
 import type { IElectronMainConfig } from './config.schema';
 import process from 'node:process';
 import { is } from '@electron-toolkit/utils';
-import { IAgentHookServerService, AGENT_CORE_PLUGIN_CONFIG_KEY } from '@termlnk/agent';
+import { AGENT_CORE_PLUGIN_CONFIG_KEY, IAgentHookServerService } from '@termlnk/agent';
 import { Disposable, IConfigService, ILifecycleService, ILogService, Inject, LifecycleStages, toDisposable } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { IWindowManagerService, WindowEvent } from '@termlnk/electron';

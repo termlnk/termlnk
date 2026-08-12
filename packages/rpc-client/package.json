@@ -49,9 +49,11 @@
     "build": "termlnk-cli build"
   },
   "peerDependencies": {
+    "@termlnk/acp": "workspace:*",
     "@termlnk/agent": "workspace:*",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/project": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/shared-terminal": "workspace:*",
     "@termlnk/snippet": "workspace:*",
@@ -60,9 +62,11 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
+    "@termlnk/acp": "workspace:*",
     "@termlnk/agent": "workspace:*",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
+    "@termlnk/project": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/shared-terminal": "workspace:*",
     "@termlnk/snippet": "workspace:*",
