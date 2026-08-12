@@ -66,6 +66,9 @@ const locale = {
       title: 'Notifications',
       'unread-title': '{0} unread notifications',
     },
+    'side-panel': {
+      tabs: 'Side panels',
+    },
     'right-sidebar-toggle': {
       'open-title': 'Open right sidebar',
       'close-title': 'Close right sidebar',

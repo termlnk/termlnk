@@ -68,6 +68,9 @@ const locale: typeof enUS = {
       title: '通知',
       'unread-title': '{0} 則未讀通知',
     },
+    'side-panel': {
+      tabs: '側邊面板',
+    },
     'right-sidebar-toggle': {
       'open-title': '開啟右側邊欄',
       'close-title': '關閉右側邊欄',

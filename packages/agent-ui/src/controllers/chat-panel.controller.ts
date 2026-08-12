@@ -23,6 +23,7 @@ import { RetryMessageCommand } from '../commands/retry-message.command';
 import { ToggleAIPanelCommand } from '../commands/toggle-ai-panel.command';
 import { IGenerativeUIRegistryService } from '../services/generative-ui/generative-ui-registry.service';
 import { ChatPanel } from '../views/chat/ChatPanel';
+import { ChatPanelActions } from '../views/chat/ChatPanelActions';
 import { BarChartWidget } from '../views/chat/parts/widgets/BarChartWidget';
 import { PieChartWidget } from '../views/chat/parts/widgets/PieChartWidget';
 import { WidgetRenderer } from '../views/chat/parts/widgets/WidgetRenderer';
@@ -64,6 +65,7 @@ export class ChatPanelController extends RxDisposable {
         icon: 'bot',
         titleKey: 'agent-ui.menu.ai-panel',
         component: connectInjector(ChatPanel, this._injector),
+        actions: connectInjector(ChatPanelActions, this._injector),
         order: 0,
       })
     );

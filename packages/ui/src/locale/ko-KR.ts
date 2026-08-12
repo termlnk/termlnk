@@ -68,6 +68,9 @@ const locale: typeof enUS = {
       title: '알림',
       'unread-title': '읽지 않은 알림 {0}건',
     },
+    'side-panel': {
+      tabs: '사이드 패널',
+    },
     'right-sidebar-toggle': {
       'open-title': '오른쪽 사이드바 열기',
       'close-title': '오른쪽 사이드바 닫기',

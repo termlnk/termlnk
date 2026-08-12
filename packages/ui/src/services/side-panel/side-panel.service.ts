@@ -27,6 +27,12 @@ export interface ISidePanelDescriptor {
   /** Locale key for tooltip and header title. */
   titleKey: string;
   component: ComponentType;
+  /**
+   * Panel-specific buttons shown in the shared tab bar while this panel is
+   * active. Panels have no title bar of their own, so anything they used to
+   * draw next to their title belongs here.
+   */
+  actions?: ComponentType;
   order?: number;
   /**
    * Hides the panel from the switcher rail while false. Must carry a current

@@ -13,74 +13,30 @@
  * governing permissions and limitations under the License.
  */
 
-import { useDependency } from '@termlnk/design';
-import { IAIAgentMessagingService, IChatSessionService } from '@termlnk/rpc-client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDependency, useObservable } from '@termlnk/design';
+import { IAIAgentMessagingService } from '@termlnk/rpc-client';
+import { useCallback, useMemo } from 'react';
+import { IChatPanelViewService } from '../../services/chat-panel-view.service';
 import { createBuiltinConversationSource } from './builtin-conversation-source';
-import { ChatHeader } from './ChatHeader';
 import { ChatInput } from './ChatInput';
 import { ChatMessages } from './ChatMessages';
 import { ChatSessionList } from './ChatSessionList';
 import { ConversationContext } from './conversation-context';
 import { PendingApprovalBar } from './PendingApprovalBar';
 
-function useSessionTitle(): string | undefined {
-  const chatSessionService = useDependency(IChatSessionService);
-  const [title, setTitle] = useState<string | undefined>();
-  const currentSessionIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const fetchTitle = async (sessionId: string | null) => {
-      if (!sessionId) {
-        setTitle(undefined);
-        return;
-      }
-      try {
-        const session = await chatSessionService.getSession(sessionId);
-        setTitle(session?.title ?? undefined);
-      } catch {
-        setTitle(undefined);
-      }
-    };
-
-    const sub = chatSessionService.currentSessionId$.subscribe((sessionId) => {
-      currentSessionIdRef.current = sessionId;
-      fetchTitle(sessionId);
-    });
-
-    const sessionSub = chatSessionService.sessions$.subscribe((event) => {
-      if (event.type === 'update' && event.sessionId === currentSessionIdRef.current) {
-        fetchTitle(currentSessionIdRef.current);
-      }
-    });
-
-    return () => {
-      sub.unsubscribe();
-      sessionSub.unsubscribe();
-    };
-  }, [chatSessionService]);
-
-  return title;
-}
-
 export function ChatPanel() {
   const messaging = useDependency(IAIAgentMessagingService);
+  const view = useDependency(IChatPanelViewService);
   const conversation = useMemo(() => createBuiltinConversationSource(messaging), [messaging]);
-  const [showHistory, setShowHistory] = useState(false);
-  const sessionTitle = useSessionTitle();
-
-  const handleToggleHistory = useCallback(() => {
-    setShowHistory((prev) => !prev);
-  }, []);
+  const showHistory = useObservable(view.showHistory$, false);
 
   const handleSelectSession = useCallback(() => {
-    setShowHistory(false);
-  }, []);
+    view.setShowHistory(false);
+  }, [view]);
 
   return (
     <ConversationContext.Provider value={conversation}>
       <div className="tm:flex tm:h-full tm:min-w-0 tm:flex-col tm:overflow-hidden tm:bg-black">
-        <ChatHeader showHistory={showHistory} onToggleHistory={handleToggleHistory} sessionTitle={sessionTitle} />
         {showHistory
           ? <ChatSessionList onSelectSession={handleSelectSession} />
           : (

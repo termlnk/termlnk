@@ -15,27 +15,30 @@
 
 import type { LucideIcon } from 'lucide-react';
 import type { ISidePanelDescriptor } from '../../../services/side-panel/side-panel.service';
-import { LocaleService } from '@termlnk/core';
-import { cn, useDependency, useObservable } from '@termlnk/design';
-import { Bot, FolderTree, GitBranch, Globe } from 'lucide-react';
+import { ICommandService, LocaleService } from '@termlnk/core';
+import { Button, cn, useDependency, useObservable } from '@termlnk/design';
+import { Bot, FileDiff, FolderTree, GitBranch, Globe, X } from 'lucide-react';
 import { useRef } from 'react';
+import { ToggleRightSidebarCommand } from '../../../commands/toggle-right-sidebar.command';
 import { ISidePanelService } from '../../../services/side-panel/side-panel.service';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   bot: Bot,
+  diff: FileDiff,
   folder: FolderTree,
   git: GitBranch,
   globe: Globe,
 };
 
 /**
- * Sole occupant of BuiltInUIPart.RIGHT_SIDEBAR. Renders a vertical icon rail
- * plus the active panel body. Visited panels stay mounted (hidden) so scroll
- * position / webview state survive switches.
+ * Sole occupant of BuiltInUIPart.RIGHT_SIDEBAR. Renders one tab row for all
+ * registered panels plus the active panel's body. Visited panels stay mounted
+ * (hidden) so scroll position / webview state survive switches.
  */
 export function SidePanelContainer() {
   const sidePanelService = useDependency(ISidePanelService);
   const localeService = useDependency(LocaleService);
+  const commandService = useDependency(ICommandService);
   const panels = useObservable(sidePanelService.panels$, []);
   const selectedId = useObservable(sidePanelService.activePanelId$, null);
 
@@ -58,39 +61,57 @@ export function SidePanelContainer() {
     return null;
   }
 
+  const active = panels.find((p) => p.id === activeId);
+  const Actions = active?.actions;
+
   return (
-    <div className="tm:flex tm:h-full tm:min-w-0">
-      <nav
+    <div className="tm:flex tm:h-full tm:min-w-0 tm:flex-col tm:bg-black">
+      <div
         className={cn(`
-          tm:flex tm:w-9 tm:shrink-0 tm:flex-col tm:items-center tm:gap-0.5 tm:border-r tm:border-line tm:bg-black
-          tm:py-1.5
+          tm:flex tm:h-9 tm:shrink-0 tm:items-center tm:gap-1 tm:border-b tm:border-line tm:bg-black tm:px-1.5
         `)}
-        aria-label="Side panels"
       >
-        {panels.map((panel) => (
-          <RailButton
-            key={panel.id}
-            panel={panel}
-            active={panel.id === activeId}
-            title={localeService.t(panel.titleKey)}
-            onClick={() => sidePanelService.setActivePanel(panel.id)}
-          />
-        ))}
-      </nav>
-      <div className="tm:relative tm:min-w-0 tm:flex-1">
+        {/* Tabs scroll rather than shrink: a squeezed sidebar would otherwise compress every label into an unreadable stub. */}
+        <nav
+          className="tm:flex tm:min-w-0 tm:flex-1 tm:items-center tm:gap-0.5 tm:overflow-x-auto"
+          aria-label={localeService.t('ui.side-panel.tabs')}
+        >
+          {panels.map((panel) => (
+            <PanelTab
+              key={panel.id}
+              panel={panel}
+              active={panel.id === activeId}
+              title={localeService.t(panel.titleKey)}
+              onClick={() => sidePanelService.setActivePanel(panel.id)}
+            />
+          ))}
+        </nav>
+        <div className="tm:flex tm:shrink-0 tm:items-center tm:gap-0.5 tm:select-none">
+          {Actions && <Actions />}
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            title={localeService.t('ui.right-sidebar-toggle.close-title')}
+            onClick={() => commandService.executeCommand(ToggleRightSidebarCommand.id)}
+          >
+            <X size={14} />
+          </Button>
+        </div>
+      </div>
+      <div className="tm:relative tm:min-h-0 tm:min-w-0 tm:flex-1">
         {mounted.map((panel) => {
           const Component = panel.component;
-          const active = panel.id === activeId;
+          const isActive = panel.id === activeId;
           return (
             <div
               key={panel.id}
               className={cn(
                 'tm:absolute tm:inset-0 tm:overflow-hidden',
                 {
-                  'tm:pointer-events-none tm:invisible': !active,
+                  'tm:pointer-events-none tm:invisible': !isActive,
                 }
               )}
-              aria-hidden={!active}
+              aria-hidden={!isActive}
             >
               <Component />
             </div>
@@ -101,7 +122,7 @@ export function SidePanelContainer() {
   );
 }
 
-function RailButton({
+function PanelTab({
   panel,
   active,
   title,
@@ -121,14 +142,15 @@ function RailButton({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'tm:flex tm:size-7 tm:items-center tm:justify-center tm:rounded-md tm:transition-colors',
+        'tm:flex tm:h-7 tm:shrink-0 tm:items-center tm:gap-1.5 tm:rounded-md tm:px-2 tm:text-xs tm:transition-colors',
         {
           'tm:bg-one-bg3 tm:text-light-grey': active,
           'tm:text-grey tm:hover:bg-one-bg2 tm:hover:text-light-grey': !active,
         }
       )}
     >
-      <Icon size={14} strokeWidth={1.5} />
+      <Icon size={14} strokeWidth={1.5} className="tm:shrink-0" />
+      <span className="tm:truncate">{title}</span>
     </button>
   );
 }
