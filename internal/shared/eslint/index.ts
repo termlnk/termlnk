@@ -41,6 +41,8 @@ export const baseRules: Partial<Rules> = {
   // Code style and formatting rules
   curly: ['error', 'all'],
   'antfu/if-newline': 'off',
+  // eslint-config 10 enables this; it splits compact tuples like DI registrations onto many lines
+  'antfu/reasonable-newline': 'off',
   'no-param-reassign': ['off'],
   'eol-last': ['error', 'always'],
   'no-empty-function': 'off',
