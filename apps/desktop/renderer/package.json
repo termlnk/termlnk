@@ -11,9 +11,8 @@
   },
   "main": "./dist/main/index.js",
   "dependencies": {
-    "@tanstack/react-query": "^5.101.1",
-    "@tanstack/react-router": "^1.170.16",
-    "@tanstack/react-router-devtools": "^1.167.0",
+    "@tanstack/react-router": "^1.170.46",
+    "@tanstack/react-router-devtools": "^1.167.2",
     "@termlnk/acp-ui": "workspace:*",
     "@termlnk/agent-ui": "workspace:*",
     "@termlnk/auth": "workspace:*",
@@ -43,17 +42,16 @@
     "@termlnk/terminal-ui": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "ahooks": "^3.9.7",
-    "axios": "^1.18.1",
-    "dayjs": "^1.11.21",
-    "filesize": "^11.0.18",
-    "jotai": "^2.20.1",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "ahooks": "^3.11.0",
+    "axios": "^1.21.0",
+    "dayjs": "^1.11.23",
+    "filesize": "^11.0.29",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.168.18",
+    "@tanstack/router-plugin": "^1.168.48",
     "@termlnk/shared": "workspace:*",
     "react-scan": "^0.5.7"
   }

@@ -47,7 +47,7 @@ export default {
   '@wendellhu/redi': {
     global: '@wendellhu/redi',
     name: '@wendellhu/redi',
-    version: '1.1.2',
+    version: '1.1.3',
   },
   '@wendellhu/redi/react-bindings': {
     global: '@wendellhu/redi/react-bindings',
@@ -70,7 +70,7 @@ export default {
   socks: {
     global: 'socks',
     name: 'socks',
-    version: '^2.8.9',
+    version: '^2.8.10',
   },
   trzsz: {
     global: 'trzsz',
@@ -97,12 +97,12 @@ export default {
   'lucide-react': {
     global: 'lucide-react',
     name: 'lucide-react',
-    version: '^1.25.0',
+    version: '^1.66.0',
   },
   dayjs: {
     global: 'dayjs',
     name: 'dayjs',
-    version: '^1.11.21',
+    version: '^1.11.23',
   },
   nanoid: {
     global: 'nanoid',
@@ -112,6 +112,6 @@ export default {
   'react-resizable-panels': {
     global: 'react-resizable-panels',
     name: 'react-resizable-panels',
-    version: '^4.12.2',
+    version: '^4.16.1',
   },
 };

@@ -47,10 +47,10 @@ allowBuilds:
   ssh2: false
 
 overrides:
-  '@types/react': ^19.2.18
-  '@types/react-dom': ^19.2.4
-  react: ^19.2.8
-  react-dom: ^19.2.8
+  '@types/react': ^19.3.0
+  '@types/react-dom': ^19.3.0
+  react: ^19.3.1
+  react-dom: ^19.3.1
   # apps/mobile must pin react to the exact version react-native 0.85.3's bundled
   # renderer asserts: ReactNativeRenderer hardcodes `if ("19.2.3" !== React.version) throw`.
   # Scoped so desktop/web stay on 19.2.6; only the mobile subtree drops to 19.2.3.

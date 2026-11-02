@@ -59,7 +59,7 @@
     "@termlnk/design": "workspace:*",
     "@termlnk/electron": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "lucide-react": "^1.25.0",
+    "lucide-react": "^1.66.0",
     "react": "^16.9.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc",
     "rxjs": ">=7.0.0"
   },
@@ -68,13 +68,13 @@
     "@termlnk/design": "workspace:*",
     "@termlnk/electron": "workspace:*",
     "@termlnk/ui": "workspace:*",
-    "lucide-react": "^1.25.0"
+    "lucide-react": "^1.66.0"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.2.0",
+    "vite": "^8.3.5",
     "vitest": "^4.1.10"
   }
 }

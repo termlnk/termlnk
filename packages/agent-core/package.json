@@ -55,12 +55,12 @@
     "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "rxjs": ">=7.0.0",
-    "socks": "^2.8.9"
+    "socks": "^2.8.10"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "^0.83.0",
     "@earendil-works/pi-ai": "^0.83.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@sinclair/typebox": "^0.34.52",
     "@termlnk/agent": "workspace:*",
     "@termlnk/core": "workspace:*",
@@ -68,9 +68,9 @@
     "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "partial-json": "^0.1.7",
-    "socks": "^2.8.9",
-    "undici": "^8.9.0",
-    "zod": "^4.4.3"
+    "socks": "^2.8.10",
+    "undici": "^8.12.3",
+    "zod": "^4.6.7"
   },
   "optionalDependencies": {
     "@termlnk/macos-utils": "workspace:*"
@@ -80,7 +80,7 @@
     "@termlnk/terminal": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.2.0",
+    "vite": "^8.3.5",
     "vitest": "^4.1.10"
   }
 }

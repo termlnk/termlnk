@@ -58,7 +58,7 @@
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.2.0",
+    "vite": "^8.3.5",
     "vitest": "^4.1.10"
   }
 }
