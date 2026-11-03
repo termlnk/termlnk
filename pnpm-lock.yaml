@@ -202,6 +202,7 @@ patchedDependencies:
   '@ubjs/core@0.31.0-6': c9129441436a1712a0dbffa7fbd4d8fb83a56fb3635d9441a1ba3686d05b4054
   babel-preset-expo@58.0.23: 6bc948f4a723bf6e8cdbc166833d09348d89b4e02ef711e5fc026563b092b311
   react-native-css@3.1.0-rc.1: 854d602f328006cef75f089309a1e5cb0ca024ec279e99d3f65611b6a975035a
+  react-native-libsodium@1.7.0: 4057a7663bd0b03b8600449fbc99535557a940be267fde1bcc54a2efd9229927
 
 importers:
 
@@ -770,7 +771,7 @@ importers:
         version: 2.1.0(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))
       react-native-libsodium:
         specifier: ^1.7.0
-        version: 1.7.0(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1)
+        version: 1.7.0(patch_hash=4057a7663bd0b03b8600449fbc99535557a940be267fde1bcc54a2efd9229927)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1)
       react-native-reanimated:
         specifier: 4.7.1
         version: 4.7.1(react-native-worklets@0.13.0(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1)(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1)
@@ -1152,7 +1153,7 @@ importers:
         version: 0.88.1(@babel/core@8.0.10)(@react-native/metro-config@0.88.1(@babel/core@8.0.10)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1)
       react-native-libsodium:
         specifier: ^1.7.0
-        version: 1.7.0(react-native@0.88.1(@babel/core@8.0.10)(@react-native/metro-config@0.88.1(@babel/core@8.0.10)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1)
+        version: 1.7.0(patch_hash=4057a7663bd0b03b8600449fbc99535557a940be267fde1bcc54a2efd9229927)(react-native@0.88.1(@babel/core@8.0.10)(@react-native/metro-config@0.88.1(@babel/core@8.0.10)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1)
       rxjs:
         specifier: '>=7.0.0'
         version: 7.8.2
@@ -29550,7 +29551,7 @@ snapshots:
       react: 19.3.1
       react-native: 0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1)
 
-  react-native-libsodium@1.7.0(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1):
+  react-native-libsodium@1.7.0(patch_hash=4057a7663bd0b03b8600449fbc99535557a940be267fde1bcc54a2efd9229927)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1):
     dependencies:
       '@noble/hashes': 1.8.0
       libsodium-wrappers: 0.8.4
@@ -29558,7 +29559,7 @@ snapshots:
       react: 19.3.1
       react-native: 0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1)
 
-  react-native-libsodium@1.7.0(react-native@0.88.1(@babel/core@8.0.10)(@react-native/metro-config@0.88.1(@babel/core@8.0.10)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1):
+  react-native-libsodium@1.7.0(patch_hash=4057a7663bd0b03b8600449fbc99535557a940be267fde1bcc54a2efd9229927)(react-native@0.88.1(@babel/core@8.0.10)(@react-native/metro-config@0.88.1(@babel/core@8.0.10)(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.1)(supports-color@8.1.1))(react@19.3.1):
     dependencies:
       '@noble/hashes': 1.8.0
       libsodium-wrappers: 0.8.4
