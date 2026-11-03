@@ -72,7 +72,7 @@
     "@termlnk/snippet": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
-    "@trpc/client": "^11.22.1"
+    "@trpc/client": "^11.23.0"
   },
   "devDependencies": {
     "@termlnk/agent": "workspace:*",
@@ -84,6 +84,6 @@
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }

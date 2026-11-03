@@ -97,7 +97,7 @@ export default {
   'lucide-react': {
     global: 'lucide-react',
     name: 'lucide-react',
-    version: '^1.66.0',
+    version: '^1.67.0',
   },
   dayjs: {
     global: 'dayjs',
@@ -112,6 +112,6 @@ export default {
   'react-resizable-panels': {
     global: 'react-resizable-panels',
     name: 'react-resizable-panels',
-    version: '^4.16.1',
+    version: '^4.17.0',
   },
 };

@@ -50,7 +50,7 @@
     "@noble/hashes": "^2.4.0",
     "@react-native-menu/menu": "^2.0.0",
     "@rn-primitives/dropdown-menu": "^1.5.2",
-    "@rn-primitives/portal": "^1.5.2",
+    "@rn-primitives/portal": "^1.5.3",
     "@rn-primitives/slot": "^1.5.2",
     "@shopify/flash-list": "^2.3.2",
     "@termlnk/agent-mobile": "workspace:*",
@@ -114,14 +114,14 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
-    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/postcss": "^4.3.4",
     "@termlnk/shared": "workspace:*",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "babel-plugin-typescript-decorators": "^1.0.5",
     "babel-preset-expo": "~58.0.23",
-    "prettier-plugin-tailwindcss": "^0.8.0",
-    "tailwindcss": "^4.3.3",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.4",
     "typescript": "^6.0.3"
   }
 }

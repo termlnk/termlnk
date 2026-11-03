@@ -80,7 +80,7 @@
     "@termlnk/snippet": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
-    "@trpc/server": "^11.22.1",
+    "@trpc/server": "^11.23.0",
     "node-pty": "^1.1.0",
     "socks": "^2.8.10",
     "ssh2": "^1.17.0",
@@ -95,6 +95,6 @@
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }

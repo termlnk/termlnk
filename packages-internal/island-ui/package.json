@@ -44,13 +44,13 @@
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-client": "workspace:*",
     "@termlnk/settings-ui": "workspace:*",
-    "lucide-react": "^1.66.0"
+    "lucide-react": "^1.67.0"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }
