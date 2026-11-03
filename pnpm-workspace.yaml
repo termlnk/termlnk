@@ -32,9 +32,10 @@ allowBuilds:
   sharp: true
   uniffi-bindgen-react-native: true
   javascript-obfuscator: false
-  # Native modules are built by apps/desktop/scripts/postinstall.mjs against the
-  # Electron ABI, not Node's. Letting pnpm run these build scripts would produce
-  # wrong-ABI binaries; ssh2/cpu-features/msgpackr-extract fall back to pure JS.
+  # ssh2/cpu-features/msgpackr-extract fall back to pure JS when their optional
+  # native builds are skipped.
+  # better-sqlite3 (N-API) ships its prebuilds inside the npm tarball; pnpm still
+  # flags it for its binding.gyp (source-build fallback), which must stay off.
   # node-pty is N-API: its npm tarball ships darwin/win32 prebuilds that work
   # under Electron as-is, and on Linux (no shipped prebuild) postinstall.mjs
   # compiles it from source into build/Release/pty.node.

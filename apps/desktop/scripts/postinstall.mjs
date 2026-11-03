@@ -1,5 +1,5 @@
 import { execSync, spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, readFileSync } from 'node:fs';
+import { chmodSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
@@ -9,7 +9,7 @@ const shouldSkip = ['1', 'true'].includes(
 );
 
 if (shouldSkip) {
-  console.log('[postinstall] Skipping Electron binary download and native prebuild install');
+  console.log('[postinstall] Skipping Electron binary download and native module setup');
   process.exit(0);
 }
 
@@ -24,40 +24,10 @@ if (result.status !== 0) {
   process.exit(result.status ?? 1);
 }
 
-// 2. Install Electron prebuilds for native modules (better-sqlite3)
-//    node-pty uses N-API and its shipped prebuilds work directly with Electron.
-//    better-sqlite3 uses V8 addon API and needs ABI-specific prebuilds.
 const workspaceRoot = resolve(import.meta.dirname, '../../..');
 const require_ = createRequire(resolve(workspaceRoot, 'package.json'));
 
-const electronPkgPath = resolve(workspaceRoot, 'node_modules/electron/package.json');
-let electronVersion;
-try {
-  electronVersion = JSON.parse(readFileSync(electronPkgPath, 'utf-8')).version;
-} catch {
-  console.warn('[postinstall] electron not found, skipping native prebuild install');
-  process.exit(0);
-}
-
-const nativeModules = ['better-sqlite3'];
-
-console.log(`[postinstall] Installing Electron ${electronVersion} prebuilds for: ${nativeModules.join(', ')}`);
-
-for (const moduleName of nativeModules) {
-  try {
-    const moduleDir = dirname(require_.resolve(`${moduleName}/package.json`));
-    execSync(
-      `npx prebuild-install --runtime electron --target ${electronVersion} --arch ${process.arch} --tag-prefix v`,
-      { cwd: moduleDir, stdio: 'inherit' }
-    );
-    console.log(`[postinstall] ${moduleName}: done`);
-  } catch (err) {
-    console.error(`[postinstall] ${moduleName}: failed`, err.message || err);
-    process.exit(1);
-  }
-}
-
-// 3. Build node-pty from source on Linux
+// 2. Build node-pty from source on Linux
 //    The node-pty npm tarball ships prebuilds only for darwin/win32 — there is
 //    no linux-<arch> pty.node. node-pty's own install script
 //    (scripts/prebuild.js || node-gyp rebuild) is disabled by
@@ -84,7 +54,7 @@ if (process.platform === 'linux') {
   }
 }
 
-// 4. Fix node-pty spawn-helper executable permission
+// 3. Fix node-pty spawn-helper executable permission
 //    The prebuilt spawn-helper binary may lack +x after pnpm install,
 //    causing posix_spawnp to fail in dev mode.
 if (process.platform !== 'win32') {

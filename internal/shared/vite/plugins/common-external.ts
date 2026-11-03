@@ -85,7 +85,7 @@ export default {
   'better-sqlite3': {
     global: 'better-sqlite3',
     name: 'better-sqlite3',
-    version: '^12.11.1',
+    version: '^13.0.3',
   },
 
   // Design package dependencies

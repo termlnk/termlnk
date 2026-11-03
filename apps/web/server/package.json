@@ -12,10 +12,8 @@
   },
   "main": "./src/main.ts",
   "scripts": {
-    "predev": "node ./scripts/ensure-node-abi.mjs",
     "dev": "node ./bin/dev.js",
     "build": "vite build",
-    "prestart": "node ./scripts/ensure-node-abi.mjs",
     "start": "node ./dist/main.mjs",
     "typecheck": "tsgo --noEmit"
   },
