@@ -14,7 +14,6 @@
  */
 
 import { acpRouter } from './routers/acp';
-import { agentMonitorRouter } from './routers/agent-monitor';
 import { aiRouter } from './routers/ai';
 import { authRouter } from './routers/auth';
 import { backupRouter } from './routers/backup';
@@ -47,7 +46,6 @@ import { router } from './trpc';
 
 export const appRouter = router({
   acp: acpRouter,
-  agentMonitor: agentMonitorRouter,
   ai: aiRouter,
   auth: authRouter,
   backup: backupRouter,

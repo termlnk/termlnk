@@ -23,6 +23,7 @@
     "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
+    "@termlnk/acp": "workspace:*",
     "@termlnk/agent": "workspace:*",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
@@ -37,6 +38,7 @@
   },
   "dependencies": {
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
+    "@termlnk/acp": "workspace:*",
     "@termlnk/agent": "workspace:*",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",

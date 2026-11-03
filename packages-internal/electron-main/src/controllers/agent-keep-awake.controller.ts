@@ -13,10 +13,12 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentSessionStatus, AgentStatus } from '@termlnk/agent';
+import type { ACPSessionStatus } from '@termlnk/acp';
+import type { AgentStatus } from '@termlnk/agent';
 import type { IDisposable } from '@termlnk/core';
 import type { IAppSettings } from '@termlnk/electron';
-import { IAgentMonitorService, IAIAgentService } from '@termlnk/agent';
+import { IACPSessionService } from '@termlnk/acp';
+import { IAIAgentService } from '@termlnk/agent';
 import { ILifecycleService, ILogService, Inject, LifecycleStages, RxDisposable } from '@termlnk/core';
 import { ConfigRepository } from '@termlnk/database';
 import { ELECTRON_PLUGIN_CONFIG_KEY, IKeepAwakeService, normalizeAppSettings } from '@termlnk/electron';
@@ -29,9 +31,13 @@ const INTERNAL_ACTIVE_STATUSES: ReadonlySet<AgentStatus> = new Set([
   'compacting',
 ]);
 
-const EXTERNAL_ACTIVE_STATUSES: ReadonlySet<AgentSessionStatus> = new Set([
-  'running',
-  'compacting',
+// Only `streaming` means work is in flight: ACPConnection sets it while a prompt
+// request is pending (including turns blocked on a permission request) and
+// returns to `ready` when the turn ends. `connecting` is a short handshake and
+// `idle` / `ready` / `error` / `closed` do no work, so none of them hold the
+// system awake.
+const ACP_ACTIVE_STATUSES: ReadonlySet<ACPSessionStatus> = new Set([
+  'streaming',
 ]);
 
 const ACQUIRE_REASON = 'agent-active';
@@ -43,7 +49,7 @@ export class AgentKeepAwakeController extends RxDisposable {
   constructor(
     @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository,
     @IAIAgentService private readonly _aiAgentService: IAIAgentService,
-    @IAgentMonitorService private readonly _agentMonitorService: IAgentMonitorService,
+    @IACPSessionService private readonly _acpSessionService: IACPSessionService,
     @ILifecycleService private readonly _lifecycleService: ILifecycleService,
     @ILogService private readonly _logService: ILogService,
     @IKeepAwakeService private readonly _keepAwakeService: IKeepAwakeService
@@ -103,13 +109,13 @@ export class AgentKeepAwakeController extends RxDisposable {
       distinctUntilChanged()
     );
 
-    const externalActive$ = this._agentMonitorService.sessions$.pipe(
-      map((sessions) => sessions.some((session) => EXTERNAL_ACTIVE_STATUSES.has(session.status))),
+    const acpActive$ = this._acpSessionService.sessions$.pipe(
+      map((sessions) => sessions.some((session) => ACP_ACTIVE_STATUSES.has(session.status))),
       distinctUntilChanged()
     );
 
-    const agentActive$ = combineLatest([internalActive$, externalActive$]).pipe(
-      map(([internal, external]) => internal || external),
+    const agentActive$ = combineLatest([internalActive$, acpActive$]).pipe(
+      map(([internal, acp]) => internal || acp),
       distinctUntilChanged()
     );
 

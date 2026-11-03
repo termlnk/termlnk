@@ -23,7 +23,6 @@ import { baseConfig, DESKTOP_ROOT } from './base.config';
 
 const MAIN_DIR = resolve(DESKTOP_ROOT, './main/src');
 const MIGRATIONS_SRC = resolve(DESKTOP_ROOT, '../../packages/database/src/migrations');
-const AGENT_HOOK_CLI_SRC = resolve(DESKTOP_ROOT, '../../packages/agent-hook-cli/src');
 
 const copyMigrationAssets = (): Plugin => ({
   name: 'copy-migration-assets',
@@ -33,25 +32,9 @@ const copyMigrationAssets = (): Plugin => ({
   },
 });
 
-/**
- * Bundle the `@termlnk/agent-hook-cli` sources (POSIX launcher, Windows .cmd
- * launcher, Node helper) into the main process dist directory. At runtime,
- * `IHookLauncherService.install()` copies these files into
- * `~/.config/termlnk/bin/` so external AI agents can invoke the hook helper
- * regardless of which terminal they run in.
- */
-const copyAgentHookCliAssets = (): Plugin => ({
-  name: 'copy-agent-hook-cli-assets',
-  async closeBundle() {
-    const dest = resolve(DESKTOP_ROOT, './dist/main/agent-hook-cli');
-    await cp(AGENT_HOOK_CLI_SRC, dest, { recursive: true });
-  },
-});
-
 export default mergeConfig(baseConfig, {
   plugins: [
     copyMigrationAssets(),
-    copyAgentHookCliAssets(),
   ],
   build: {
     outDir: 'dist/main',

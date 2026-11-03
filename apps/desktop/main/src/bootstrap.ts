@@ -374,18 +374,11 @@ app.whenReady().then(async () => {
     : join(process.resourcesPath, 'bundled-skills');
   const userSkillsDir = join(configDir, 'skills');
 
-  // Dev reads the agent-hook-cli source straight from the monorepo; prod reads from the
-  // vite-bundled copy inside the main process dist directory.
-  const hookCliSrcDir = is.dev
-    ? join(appRoot, '../../../../packages/agent-hook-cli/src')
-    : join(appRoot, 'agent-hook-cli');
-
   core.registerPlugin(ElectronPlugin);
   core.registerPlugin(AgentCorePlugin, {
     bundledSkillsDir,
     userSkillsDir,
     configPath: configDir,
-    hookCliSrcDir,
   });
   core.registerPlugin(ACPPlugin);
   core.registerPlugin(ACPCorePlugin);

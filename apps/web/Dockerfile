@@ -44,7 +44,6 @@ COPY --from=builder --chown=termlnk:termlnk /workspace/apps/web/server/dist /app
 COPY --from=builder --chown=termlnk:termlnk /workspace/apps/web/renderer/dist /app/renderer-dist
 COPY --from=builder --chown=termlnk:termlnk /workspace/packages/database/src/migrations /app/resources/migrations
 COPY --from=builder --chown=termlnk:termlnk /workspace/packages/agent-core/src/bundled-skills /app/resources/bundled-skills
-COPY --from=builder --chown=termlnk:termlnk /workspace/packages/agent-hook-cli/src /app/resources/agent-hook-cli
 
 ENV NODE_ENV=production \
     TERMLNK_WEB_PORT=3000 \
@@ -52,7 +51,6 @@ ENV NODE_ENV=production \
     TERMLNK_WEB_STATIC_ROOT=/app/renderer-dist \
     TERMLNK_WEB_MIGRATIONS_DIR=/app/resources/migrations \
     TERMLNK_WEB_BUNDLED_SKILLS_DIR=/app/resources/bundled-skills \
-    TERMLNK_WEB_HOOK_CLI_DIR=/app/resources/agent-hook-cli \
     TERMLNK_WEB_CONFIG_DIR=/data \
     TERMLNK_WEB_DB_PATH=/data/termlnk-web.db \
     TERMLNK_WEB_USER_SKILLS_DIR=/data/skills

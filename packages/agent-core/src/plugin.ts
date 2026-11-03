@@ -16,23 +16,19 @@
 import type { IAgentPluginConfig } from '@termlnk/agent';
 import type { Dependency } from '@termlnk/core';
 import type { IAgentCorePluginConfig } from './controllers/config.schema';
-import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_MCP_CONFIG, IAgentHookRegistryService, IAgentHookServerService, IAgentMonitorService, IAgentToolPermissionService, IAgentToolRegistryService, IAIAgentService, IHookLauncherService, ILLMProviderService, IMcpRegistryService, IMcpService, IMyMcpService, IPermissionRuleService, IPlatformContextService, IRiskAssessmentService, ISkillDiscoveryService, ISkillInstallerService, ISkillPromptService, ISkillStateService, ISystemPromptService, SKILL_CONFIG_KEY } from '@termlnk/agent';
+import { AGENT_PLUGIN_CONFIG_KEY, DEFAULT_MCP_CONFIG, IAgentToolPermissionService, IAgentToolRegistryService, IAIAgentService, ILLMProviderService, IMcpRegistryService, IMcpService, IMyMcpService, IPermissionRuleService, IPlatformContextService, IRiskAssessmentService, ISkillDiscoveryService, ISkillInstallerService, ISkillPromptService, ISkillStateService, ISystemPromptService, SKILL_CONFIG_KEY } from '@termlnk/agent';
 import { DependentOn, IConfigService, ILogService, Inject, Injector, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { DatabasePlugin } from '@termlnk/database';
-import { AgentHookController } from './controllers/agent-hook.controller';
 import { AIKeySyncController } from './controllers/ai-key-sync.controller';
 import { CompactController } from './controllers/compact.controller';
 import { AGENT_CORE_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './controllers/config.schema';
+import { LegacyAgentHookCleanupController } from './controllers/legacy-agent-hook-cleanup.controller';
 import { McpController } from './controllers/mcp.controller';
 import { MyMcpController } from './controllers/my-mcp.controller';
 import { PlatformPromptController } from './controllers/platform-prompt.controller';
 import { SkillAgentController } from './controllers/skill-agent.controller';
 import { SkillController } from './controllers/skill.controller';
-import { AgentMonitorService } from './services/agent/agent-monitor.service';
 import { AIAgentService } from './services/agent/ai-agent.service';
-import { AgentHookRegistryService } from './services/hook/agent-hook-registry.service';
-import { AgentHookServerService } from './services/hook/agent-hook-server.service';
-import { HookLauncherService } from './services/hook/hook-launcher.service';
 import { LLMProviderService } from './services/llm-provider/llm-provider.service';
 import { AgentToolRegistryService } from './services/mcp/agent-tool-registry.service';
 import { McpRegistryService } from './services/mcp/mcp-registry.service';
@@ -96,12 +92,6 @@ export class AgentCorePlugin extends Plugin {
       [IRiskAssessmentService, { useClass: RiskAssessmentService }],
       [IAgentToolPermissionService, { useClass: AgentToolPermissionService }],
 
-      // Agent hook services
-      [IAgentMonitorService, { useClass: AgentMonitorService }],
-      [IAgentHookServerService, { useClass: AgentHookServerService }],
-      [IAgentHookRegistryService, { useClass: AgentHookRegistryService }],
-      [IHookLauncherService, { useClass: HookLauncherService }],
-
       // MCP services
       [IAgentToolRegistryService, { useClass: AgentToolRegistryService }],
       [IMyMcpService, { useClass: MyMcpService }],
@@ -115,7 +105,7 @@ export class AgentCorePlugin extends Plugin {
       [ISkillInstallerService, { useClass: SkillInstallerService }],
 
       // Controllers
-      [AgentHookController],
+      [LegacyAgentHookCleanupController],
       [AIKeySyncController],
       [MyMcpController],
       [McpController],
@@ -129,9 +119,7 @@ export class AgentCorePlugin extends Plugin {
 
   override onReady(): void {
     touchDependencies(this._injector, [
-      [IHookLauncherService],
-
-      [AgentHookController],
+      [LegacyAgentHookCleanupController],
       [AIKeySyncController],
       [MyMcpController],
       [McpController],
