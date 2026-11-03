@@ -14,11 +14,12 @@
  */
 
 import type { AgentEvent, AgentTool } from '@earendil-works/pi-agent-core';
-import type { AssistantMessage, AssistantMessageEventStream, Model, UserMessage } from '@earendil-works/pi-ai';
+import type { AssistantMessage, AssistantMessageEventStream, Model, SystemMessage, UserMessage } from '@earendil-works/pi-ai';
 import type { AgentStatus, IAgentToolPermissionRequest, IAIAgentService, IAIAgentState, IChatMessage, IChatUsage, ICompactConfig, ICompactMetadata, ICompactOptions, IImageAttachment, IImagePart, IMessagePart, ISendMessageOptions, IToolOutput, IToolPart, ThinkingLevel } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
 import type { IPendingDeliveryMode } from '../../common/pending-message-queue';
 import { Agent } from '@earendil-works/pi-agent-core';
+import { getInitialSystemMessage } from '@earendil-works/pi-ai';
 import { DEFAULT_COMPACT_CONFIG, DEFAULT_THINKING_LEVEL, IAgentToolPermissionService, ILLMProviderService, normalizeCompactConfig } from '@termlnk/agent';
 import { Disposable, generateRandomId, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
@@ -409,7 +410,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     // recreate the agent so the next prompt() starts on a clean slate. Clearing
     // _lastAssistantEvent suppresses stale retry triggers from any queued events
     // still dispatched by the destroyed instance.
-    this._savedAgentMessages = [...this._agent.state.messages];
+    this._savedAgentMessages = this._agent.state.messages.filter((m) => m.role !== 'system');
     this._lastAssistantEvent = null;
     this._deferredFinalization = null;
     this._destroyAgent();
@@ -443,9 +444,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._pendingQueue.clear();
     this._messageCounter = 0;
 
-    if (this._agent) {
-      this._agent.reset();
-    }
+    this._discardAgent();
 
     this.createNewSession().catch(() => {});
   }
@@ -471,9 +470,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._status$.next('idle');
     this._currentMessage$.next(null);
 
-    if (this._agent) {
-      this._agent.reset();
-    }
+    this._discardAgent();
 
     // Load messages from DB
     const dbMessages = await this._chatRepository.getMessages(sessionId);
@@ -528,9 +525,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._messageCounter = 0;
     this._currentSessionId$.next(sessionId);
 
-    if (this._agent) {
-      this._agent.reset();
-    }
+    this._discardAgent();
 
     return sessionId;
   }
@@ -576,7 +571,13 @@ export class AIAgentService extends Disposable implements IAIAgentService {
   setSystemPrompt(prompt: string): void {
     this._systemPrompt = prompt;
     if (this._agent) {
-      this._agent.state.systemPrompt = prompt;
+      // pi-agent-core 1.x exposes systemPrompt read-only; the prompt lives in the leading system message.
+      const { messages } = this._agent.state;
+      const lead = getInitialSystemMessage(messages);
+      const rewritten: SystemMessage = lead
+        ? { ...lead, content: prompt }
+        : { role: 'system', content: prompt, timestamp: Date.now() };
+      this._agent.state.messages = [rewritten, ...(lead ? messages.slice(1) : messages)];
     }
   }
 
@@ -748,7 +749,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     this._isStreaming$.next(false);
     this._status$.next('idle');
     this._cancelRetry();
-    this._agent?.reset();
+    this._discardAgent();
   }
 
   private _isForeignKeyError(error: unknown): boolean {
@@ -1008,6 +1009,7 @@ export class AIAgentService extends Disposable implements IAIAgentService {
         tools: this._tools,
         messages: this._savedAgentMessages,
       },
+      identity: { attribution: null },
       streamFn: (model, context, options) => this._llmProviderService.streamSimple(model, context, options),
       getApiKey: async (provider: string) => {
         return this._apiKeys.get(provider);
@@ -1020,6 +1022,13 @@ export class AIAgentService extends Disposable implements IAIAgentService {
     });
 
     return this._agent;
+  }
+
+  // Agent.reset() throws while a run is active and keeps the leading system message, so drop the instance instead.
+  private _discardAgent(): void {
+    this._agent?.abort();
+    this._destroyAgent();
+    this._savedAgentMessages = [];
   }
 
   private _destroyAgent(): void {

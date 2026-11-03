@@ -36,7 +36,7 @@ export const DEFAULT_PROVIDER_SORT: Record<string, number> = {
   huggingface: 25,
   minimax: 26,
   'minimax-cn': 27,
-  'azure-openai-responses': 30,
+  azure: 30,
   'amazon-bedrock': 31,
   'google-vertex': 32,
   'github-copilot': 33,
@@ -66,7 +66,7 @@ export const PROVIDER_DISPLAY_NAME: Record<string, string> = {
   huggingface: 'Hugging Face',
   minimax: 'MiniMax',
   'minimax-cn': 'MiniMax 中国版',
-  'azure-openai-responses': 'Azure OpenAI',
+  azure: 'Azure OpenAI',
   'amazon-bedrock': 'Amazon Bedrock',
   'google-vertex': 'Google Vertex AI',
   'github-copilot': 'GitHub Copilot',
@@ -95,7 +95,7 @@ export const DEFAULT_PROVIDER_BASE_URL: Record<string, string> = {
 
 export const UNSUPPORTED_MODEL_SYNC_PROVIDERS = new Set<string>([
   'amazon-bedrock',
-  'azure-openai-responses',
+  'azure',
   'cloudflare-ai-gateway',
   'cloudflare-workers-ai',
   'github-copilot',

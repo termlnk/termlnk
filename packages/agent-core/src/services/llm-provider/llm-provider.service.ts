@@ -17,6 +17,7 @@ import type { Api, AssistantMessage, AssistantMessageEventStream, Context, Model
 import type { ICustomModelDefinition, ILLMProvider, ILLMProviderService, IModelOption, IModelOverrides, IModelUserConfig, IProviderGroup, IProviderUserConfig } from '@termlnk/agent';
 import type { IAICustomModelEntity, IAIProviderEntity, IAIProviderModelEntity } from '@termlnk/database';
 import type { Observable } from 'rxjs';
+import { normalizeContext } from '@earendil-works/pi-ai';
 import { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messages.lazy';
 import { azureOpenAIResponsesApi } from '@earendil-works/pi-ai/api/azure-openai-responses.lazy';
 import { bedrockConverseStreamApi } from '@earendil-works/pi-ai/api/bedrock-converse-stream.lazy';
@@ -457,7 +458,7 @@ export class LLMProviderService extends Disposable implements ILLMProviderServic
     if (!factory) {
       throw new Error(`Unsupported API type: "${model.api}"`);
     }
-    return factory().streamSimple(model, context, options);
+    return factory().streamSimple(model, normalizeContext(context), options);
   }
 
   async completeSimple(model: Model<Api>, context: Context, options?: SimpleStreamOptions): Promise<AssistantMessage> {
