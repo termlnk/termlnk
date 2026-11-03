@@ -6,7 +6,8 @@ members = [
     "uniffi-bindgen-swift",
 ]
 
-# Shared uniffi version — also matches the `uniffi-bindgen-react-native` SHA
-# pinned in ../package.json. Bumping this needs to land alongside that bump.
+# Shared uniffi version — must satisfy the `uniffi` requirement of the
+# `uniffi-bindgen-react-native` version pinned in ../package.json (0.31.0-6 needs `=0.31`).
+# Bumping this needs to land alongside that bump.
 [workspace.dependencies]
 uniffi = "=0.31.0"

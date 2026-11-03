@@ -144,8 +144,10 @@ pub struct ShellSession {
     pub(crate) rt_handle: tokio::runtime::Handle,
 }
 
+// Named `BufferCursor`, not `Cursor`: ubrn >= 0.31.0-4 imports `Cursor` from `@ubjs/core`
+// into the generated TS, so a Rust type named `Cursor` collides with it.
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
-pub enum Cursor {
+pub enum BufferCursor {
     Head,                     // start from the beginning
     TailBytes { bytes: u64 }, // start from the end of the last N bytes
     Seq { seq: u64 },         // start from the given sequence number
@@ -155,7 +157,7 @@ pub enum Cursor {
 
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct ListenerOptions {
-    pub cursor: Cursor,
+    pub cursor: BufferCursor,
     pub coalesce_ms: Option<u32>, // coalesce chunks into this many milliseconds
 }
 
@@ -264,7 +266,7 @@ impl ShellSession {
     }
 
     /// Read the ring buffer from a cursor.
-    pub fn read_buffer(&self, cursor: Cursor, max_bytes: Option<u64>) -> BufferReadResult {
+    pub fn read_buffer(&self, cursor: BufferCursor, max_bytes: Option<u64>) -> BufferReadResult {
         let max_total = max_bytes.unwrap_or(DEFAULT_READ_BUFFER_MAX_BYTES) as usize;
         let mut out_chunks: Vec<TerminalChunk> = Vec::new();
         let mut dropped: Option<DroppedRange> = None;
@@ -278,8 +280,8 @@ impl ShellSession {
                 Err(p) => p.into_inner(),
             };
             let (start_seq, idx) = match cursor {
-                Cursor::Head => (head_seq_now, 0usize),
-                Cursor::Seq { seq: mut s } => {
+                BufferCursor::Head => (head_seq_now, 0usize),
+                BufferCursor::Seq { seq: mut s } => {
                     if s < head_seq_now {
                         dropped = Some(DroppedRange {
                             from_seq: s,
@@ -290,7 +292,7 @@ impl ShellSession {
                     let idx = s.saturating_sub(head_seq_now) as usize;
                     (s, idx.min(ring.len()))
                 }
-                Cursor::TimeMs { t_ms: t } => {
+                BufferCursor::TimeMs { t_ms: t } => {
                     // linear scan to find first chunk with t_ms >= t
                     let mut idx = 0usize;
                     let mut s = head_seq_now;
@@ -303,7 +305,7 @@ impl ShellSession {
                     }
                     (s, idx)
                 }
-                Cursor::TailBytes { bytes: n } => {
+                BufferCursor::TailBytes { bytes: n } => {
                     // Walk from tail backwards until approx n bytes, then forward.
                     let mut bytes = 0usize;
                     let mut idx = ring.len();
@@ -323,7 +325,7 @@ impl ShellSession {
                     };
                     (s, idx)
                 }
-                Cursor::Live => (tail_seq_now.saturating_add(1), ring.len()),
+                BufferCursor::Live => (tail_seq_now.saturating_add(1), ring.len()),
             };
             let arcs: Vec<Arc<Chunk>> = ring.iter().skip(idx).cloned().collect();
             (idx, start_seq, arcs)

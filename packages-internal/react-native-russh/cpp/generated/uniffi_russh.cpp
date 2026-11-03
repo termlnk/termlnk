@@ -497,10 +497,16 @@ extern "C" {
     );
     RustBuffer uniffi_uniffi_russh_fn_func_generate_key_pair(
         RustBuffer key_type, 
+        RustBuffer passphrase, 
+        RustBuffer cipher, 
+        RustBuffer rounds, 
+        RustBuffer ecdsa_curve, 
+        RustBuffer rsa_bits, 
         RustCallStatus *uniffi_out_err
     );
     RustBuffer uniffi_uniffi_russh_fn_func_validate_private_key(
         RustBuffer private_key_content, 
+        RustBuffer passphrase, 
         RustCallStatus *uniffi_out_err
     );
     /*handle*/ uint64_t uniffi_uniffi_russh_fn_func_connect(
@@ -847,18 +853,58 @@ template <> struct Bridging<RustBuffer> {
   static RustBuffer fromJs(jsi::Runtime &rt, std::shared_ptr<CallInvoker>,
                            const jsi::Value &value) {
     try {
+      auto obj = value.asObject(rt);
+
+      // Adoption vs copy. Two kinds of view arrive here:
+      //
+      //   * Library-owned views from `rustbuffer_alloc`. Codegen allocates one,
+      //     fills it in place, and ships it as an argument — and never frees a
+      //     lowered argument, while the view's backing `CMutableBuffer` is
+      //     non-owning (its destructor leaves `data` alone). Such a view carries
+      //     a capacity hint (stamped by `rustbuffer_alloc` in the wrapper). We
+      //     *adopt* it: hand the existing allocation to the callee, which frees
+      //     it. Copying instead would orphan the allocation and leak one whole
+      //     payload per call.
+      //   * Ordinary JS-owned arrays, which carry no hint. These are *copied*
+      //     into a fresh library allocation — they are not ours to give away.
+      //
+      // On adoption we reset the hint to 0 so a later `rustbuffer_free(view)` is
+      // a no-op rather than a double free.
+      if (obj.hasProperty(rt, uniffi_jsi::kUbrnRustCapacity)) {
+        auto capacity = static_cast<uint64_t>(
+            obj.getProperty(rt, uniffi_jsi::kUbrnRustCapacity).asNumber());
+        if (capacity == 0) {
+          // Hint present but zeroed: the view was already adopted by a previous
+          // call and its memory has been freed. Reading it would be a
+          // use-after-free, so refuse rather than hand over a dangling pointer.
+          throw jsi::JSError(
+              rt,
+              "RustBuffer argument was already consumed by a previous FFI call");
+        }
+        auto arrayBuffer =
+            obj.getPropertyAsObject(rt, "buffer").getArrayBuffer(rt);
+        auto byteOffset =
+            static_cast<size_t>(obj.getProperty(rt, "byteOffset").asNumber());
+        auto byteLength =
+            static_cast<size_t>(obj.getProperty(rt, "byteLength").asNumber());
+        obj.setProperty(rt, uniffi_jsi::kUbrnRustCapacity, jsi::Value(0));
+        return RustBuffer{
+            .capacity = capacity,
+            .len = static_cast<uint64_t>(byteLength),
+            .data = arrayBuffer.data(rt) + byteOffset,
+        };
+      }
+
       auto buffer = uniffi_jsi::Bridging<jsi::ArrayBuffer>::value_to_arraybuffer(rt, value);
       auto bytes = ForeignBytes{
           .len = static_cast<int32_t>(buffer.length(rt)),
           .data = buffer.data(rt),
       };
 
-      // This buffer is constructed from foreign bytes. Rust scaffolding copies
-      // the bytes, to make the RustBuffer.
+      // No hint: an ordinary JS-owned array. Rust scaffolding copies the bytes
+      // to make the RustBuffer; the copy is destroyed when the callee
+      // deserializes its arguments.
       auto buf = rustbuffer_from_bytes(bytes);
-      // Once it leaves this function, the buffer is immediately passed back
-      // into Rust, where it's used to deserialize into the Rust versions of the
-      // arguments. At that point, the copy is destroyed.
       return buf;
     } catch (const std::logic_error &e) {
       throw jsi::JSError(rt, e.what());
@@ -5796,7 +5842,7 @@ NativeUniffiRussh::NativeUniffiRussh(
     props["ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair"),
-        1,
+        6,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_uniffi_russh_fn_func_generate_key_pair(rt, thisVal, args, count);
         }
@@ -5804,7 +5850,7 @@ NativeUniffiRussh::NativeUniffiRussh(
     props["ubrn_uniffi_uniffi_russh_fn_func_validate_private_key"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_uniffi_russh_fn_func_validate_private_key"),
-        1,
+        2,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_uniffi_russh_fn_func_validate_private_key(rt, thisVal, args, count);
         }
@@ -6650,14 +6696,24 @@ NativeUniffiRussh::NativeUniffiRussh(
                 throw jsi::JSError(rt, "rustbuffer_alloc failed: alloc returned null");
             }
             // Non-owning view over Rust-allocated memory; CMutableBuffer's destructor
-            // is the default and does not free `rb.data`. JS must call rustbuffer_free
-            // explicitly before dropping the reference.
+            // is the default and does not free `rb.data`. The allocation is released
+            // either by an explicit `rustbuffer_free(view)` or by being adopted when
+            // the view is lowered as an FFI argument.
             auto payload = std::make_shared<uniffi_jsi::CMutableBuffer>(
                 rb.data, static_cast<size_t>(rb.capacity));
             // Wrap as Uint8Array so JS can index/assign bytes directly.
-            return jsi::Value(
-                rt, uniffi_jsi::arraybufferToUint8Array(
-                        rt, jsi::ArrayBuffer(rt, payload)));
+            auto view = uniffi_jsi::arraybufferToUint8Array(
+                rt, jsi::ArrayBuffer(rt, payload));
+            // Stamp the capacity so the argument-lowering path
+            // (`Bridging<RustBuffer>::fromJs`) recognises this view as
+            // library-owned and adopts the allocation instead of copying it.
+            // Without the stamp, a lowered argument is copied and this
+            // allocation is orphaned — one leaked payload per call.
+            if (rb.capacity > 0) {
+              view.setProperty(rt, uniffi_jsi::kUbrnRustCapacity,
+                               jsi::Value(static_cast<double>(rb.capacity)));
+            }
+            return jsi::Value(rt, view);
         }
     );
 
@@ -6690,6 +6746,12 @@ NativeUniffiRussh::NativeUniffiRussh(
             if (view.hasProperty(rt, uniffi_jsi::kUbrnRustCapacity)) {
                 capacity = static_cast<size_t>(
                     view.getProperty(rt, uniffi_jsi::kUbrnRustCapacity).asNumber());
+            }
+            // A zero capacity marks a view already adopted as an FFI argument
+            // (its hint was reset to 0) and freed by the callee. Freeing again
+            // would be a double free, so this is a no-op.
+            if (capacity == 0) {
+                return jsi::Value::undefined();
             }
             auto buffer = view.getPropertyAsObject(rt, "buffer").getArrayBuffer(rt);
             auto byteOffset =
@@ -7537,7 +7599,7 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_method_shellsession_sen
 }
 jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_func_generate_key_pair(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
-        auto value = uniffi_uniffi_russh_fn_func_generate_key_pair(uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
+        auto value = uniffi_uniffi_russh_fn_func_generate_key_pair(uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[2]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[3]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[4]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[5]), 
             &status
         );
         uniffi::uniffi_russh::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
@@ -7547,7 +7609,7 @@ jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_func_generate_key_pair(
 }
 jsi::Value NativeUniffiRussh::cpp_uniffi_uniffi_russh_fn_func_validate_private_key(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::uniffi_russh::Bridging<RustCallStatus>::rustSuccess(rt);
-        auto value = uniffi_uniffi_russh_fn_func_validate_private_key(uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), 
+        auto value = uniffi_uniffi_russh_fn_func_validate_private_key(uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi::uniffi_russh::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[1]), 
             &status
         );
         uniffi::uniffi_russh::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
