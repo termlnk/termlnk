@@ -170,7 +170,7 @@ overrides:
   '@termlnk/mobile-app>react': 19.2.3
   '@termlnk/mobile-app>react-dom': 19.2.3
   hermes-compiler: 0.15.0
-  electron: 42.8.0
+  electron: 45.2.1
   tar: ^7.5.21
   undici: ^8.9.0
   file-type: ^22.0.1
@@ -343,8 +343,8 @@ importers:
         specifier: ^6.2.1
         version: 6.2.1(babel-plugin-react-compiler@1.0.0)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.0))
       electron:
-        specifier: 42.8.0
-        version: 42.8.0(supports-color@8.1.1)
+        specifier: 45.2.1
+        version: 45.2.1(supports-color@8.1.1)
       electron-builder:
         specifier: ^26.18.0
         version: 26.18.0(electron-builder-squirrel-windows@26.18.0)(supports-color@8.1.1)
@@ -387,13 +387,13 @@ importers:
     dependencies:
       '@electron-toolkit/preload':
         specifier: ^3.0.2
-        version: 3.0.2(electron@42.8.0(supports-color@8.1.1))
+        version: 3.0.2(electron@45.2.1(supports-color@8.1.1))
       '@electron-toolkit/utils':
         specifier: ^4.0.0
-        version: 4.0.0(electron@42.8.0(supports-color@8.1.1))
+        version: 4.0.0(electron@45.2.1(supports-color@8.1.1))
       '@janwirth/electron-trpc-link':
         specifier: 11.1.2-bugfix-2
-        version: 11.1.2-bugfix-2(@trpc/client@11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.22.1(typescript@6.0.3))(electron@42.8.0(supports-color@8.1.1))
+        version: 11.1.2-bugfix-2(@trpc/client@11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.22.1(typescript@6.0.3))(electron@45.2.1(supports-color@8.1.1))
       '@roamhq/wrtc':
         specifier: ^0.10.0
         version: 0.10.0
@@ -471,8 +471,8 @@ importers:
         specifier: workspace:*
         version: link:../../../internal/shared
       electron:
-        specifier: 42.8.0
-        version: 42.8.0(supports-color@8.1.1)
+        specifier: 45.2.1
+        version: 45.2.1(supports-color@8.1.1)
 
   apps/desktop/renderer:
     dependencies:
@@ -1220,7 +1220,7 @@ importers:
     dependencies:
       '@janwirth/electron-trpc-link':
         specifier: 11.1.2-bugfix-2
-        version: 11.1.2-bugfix-2(@trpc/client@11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.22.1(typescript@6.0.3))(electron@42.8.0(supports-color@8.1.1))
+        version: 11.1.2-bugfix-2(@trpc/client@11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.22.1(typescript@6.0.3))(electron@45.2.1(supports-color@8.1.1))
       '@sinclair/typebox':
         specifier: ^0.34.52
         version: 0.34.52
@@ -1277,8 +1277,8 @@ importers:
         specifier: ^7.8.0
         version: 7.8.0
       electron:
-        specifier: 42.8.0
-        version: 42.8.0(supports-color@8.1.1)
+        specifier: 45.2.1
+        version: 45.2.1(supports-color@8.1.1)
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
@@ -1300,7 +1300,7 @@ importers:
     dependencies:
       '@janwirth/electron-trpc-link':
         specifier: 11.1.2-bugfix-2
-        version: 11.1.2-bugfix-2(@trpc/client@11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.22.1(typescript@6.0.3))(electron@42.8.0(supports-color@8.1.1))
+        version: 11.1.2-bugfix-2(@trpc/client@11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.22.1(typescript@6.0.3))(electron@45.2.1(supports-color@8.1.1))
       '@termlnk/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -1348,8 +1348,8 @@ importers:
         specifier: workspace:*
         version: link:../../internal/shared
       electron:
-        specifier: 42.8.0
-        version: 42.8.0(supports-color@8.1.1)
+        specifier: 45.2.1
+        version: 45.2.1(supports-color@8.1.1)
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
@@ -2333,8 +2333,8 @@ importers:
         specifier: workspace:*
         version: link:../../internal/shared
       electron:
-        specifier: 42.8.0
-        version: 42.8.0(supports-color@8.1.1)
+        specifier: 45.2.1
+        version: 45.2.1(supports-color@8.1.1)
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
@@ -4396,12 +4396,12 @@ packages:
   '@electron-toolkit/preload@3.0.2':
     resolution: {integrity: sha512-TWWPToXd8qPRfSXwzf5KVhpXMfONaUuRAZJHsKthKgZR/+LqX1dZVSSClQ8OTAEduvLGdecljCsoT2jSshfoUg==}
     peerDependencies:
-      electron: 42.8.0
+      electron: 45.2.1
 
   '@electron-toolkit/utils@4.0.0':
     resolution: {integrity: sha512-qXSntwEzluSzKl4z5yFNBknmPGjPa3zFhE4mp9+h0cgokY5ornAeP+CJQDBhKsL1S58aOQfcwkD3NwLZCl+64g==}
     peerDependencies:
-      electron: 42.8.0
+      electron: 45.2.1
 
   '@electron/asar@3.4.1':
     resolution: {integrity: sha512-i4/rNPRS84t0vSRa2HorerGRXWyF4vThfHesw0dmcWHp+cspK743UanA0suA5Q5y8kzY2y6YKrvbIUn69BCAiA==}
@@ -5625,7 +5625,7 @@ packages:
     peerDependencies:
       '@trpc/client': ^11.1.2
       '@trpc/server': ^11.1.2
-      electron: 42.8.0
+      electron: 45.2.1
 
   '@javascript-obfuscator/escodegen@2.4.2':
     resolution: {integrity: sha512-3N7EUdYxuldwvtOtZIlAxNwPW1qTUFwWt3PxNkik6hB1uSSXLXj9JMlSyUbTCXK3Osjn0Nu0s/aa4mbvkGouXQ==}
@@ -11009,9 +11009,6 @@ packages:
   date-manip@2.0.6:
     resolution: {integrity: sha512-QGLawF3lq5NOqJ5+pIgvrmE1jL8W9iwwHPAdKyV6gydtmDPngty+87YpSpzMPk9lAMnBIXcf57OKSDEjfuyRyw==}
 
-  dayjs@1.11.21:
-    resolution: {integrity: sha512-98IT+HOahAisibz/yjKbzuOBwYcjJ7BCLPzARyHiyEBmRz4fatF+KPJszEHXsGYjUG234aH/cOjW1wwTbKUZlA==}
-
   dayjs@1.11.23:
     resolution: {integrity: sha512-QDTCU0M0MxR3hQfnlDJfwekQiaanm1ubOD231u73WBckQ/fsamwRLiE2GBz6D3a/xF1NgfiDLJjXBa1hYOYTtQ==}
 
@@ -11556,8 +11553,8 @@ packages:
     resolution: {integrity: sha512-bO3y10YikuUwUuDUQRM4KfwNkKhnpVO7IPdbsrejwN9/AABJzzTQ4GeHwyzNSrVO+tEH3/Np255a3sVZpZDjvg==}
     engines: {node: '>=8.0.0'}
 
-  electron@42.8.0:
-    resolution: {integrity: sha512-lgeUDjUuUzUSBchBudmjCZ8ApeYdVneMi17nLRMdfxGw7FyLFligsLtIF+dL3UoNnOsupAwdqVNJCK5MFE82kQ==}
+  electron@45.2.1:
+    resolution: {integrity: sha512-t433yuo8Kh8WG/mTStnPRT/NtpWw8A+caNLJgeU0tS/FlfOkeNEntFsac4ViLgDxZOmDe7BeSkOANVqrqNHhDA==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -19113,13 +19110,13 @@ snapshots:
 
   '@electron-internal/extract-zip@1.0.4': {}
 
-  '@electron-toolkit/preload@3.0.2(electron@42.8.0(supports-color@8.1.1))':
+  '@electron-toolkit/preload@3.0.2(electron@45.2.1(supports-color@8.1.1))':
     dependencies:
-      electron: 42.8.0(supports-color@8.1.1)
+      electron: 45.2.1(supports-color@8.1.1)
 
-  '@electron-toolkit/utils@4.0.0(electron@42.8.0(supports-color@8.1.1))':
+  '@electron-toolkit/utils@4.0.0(electron@45.2.1(supports-color@8.1.1))':
     dependencies:
-      electron: 42.8.0(supports-color@8.1.1)
+      electron: 45.2.1(supports-color@8.1.1)
 
   '@electron/asar@3.4.1':
     dependencies:
@@ -20704,11 +20701,11 @@ snapshots:
 
   '@istanbuljs/schema@0.1.6': {}
 
-  '@janwirth/electron-trpc-link@11.1.2-bugfix-2(@trpc/client@11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.22.1(typescript@6.0.3))(electron@42.8.0(supports-color@8.1.1))':
+  '@janwirth/electron-trpc-link@11.1.2-bugfix-2(@trpc/client@11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3))(@trpc/server@11.22.1(typescript@6.0.3))(electron@45.2.1(supports-color@8.1.1))':
     dependencies:
       '@trpc/client': 11.22.1(@trpc/server@11.22.1(typescript@6.0.3))(typescript@6.0.3)
       '@trpc/server': 11.22.1(typescript@6.0.3)
-      electron: 42.8.0(supports-color@8.1.1)
+      electron: 45.2.1(supports-color@8.1.1)
 
   '@javascript-obfuscator/escodegen@2.4.2':
     dependencies:
@@ -24363,7 +24360,7 @@ snapshots:
     dependencies:
       '@types/http-cache-semantics': 4.2.0
       '@types/keyv': 3.1.4
-      '@types/node': 26.1.2
+      '@types/node': 26.6.6
       '@types/responselike': 1.0.3
 
   '@types/chai@5.2.3':
@@ -24509,7 +24506,7 @@ snapshots:
 
   '@types/fs-extra@9.0.13':
     dependencies:
-      '@types/node': 26.1.2
+      '@types/node': 26.6.6
 
   '@types/gensync@1.0.5': {}
 
@@ -24551,7 +24548,7 @@ snapshots:
 
   '@types/keyv@3.1.4':
     dependencies:
-      '@types/node': 26.1.2
+      '@types/node': 26.6.6
 
   '@types/lodash-es@4.17.12':
     dependencies:
@@ -24607,7 +24604,7 @@ snapshots:
 
   '@types/responselike@1.0.3':
     dependencies:
-      '@types/node': 26.1.2
+      '@types/node': 26.6.6
 
   '@types/retry@0.12.0': {}
 
@@ -25106,7 +25103,7 @@ snapshots:
   ahooks@3.11.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@babel/runtime': 7.29.7
-      dayjs: 1.11.21
+      dayjs: 1.11.23
       js-cookie: 3.0.8
       lodash: 4.18.1
       react: 19.3.1
@@ -26590,8 +26587,6 @@ snapshots:
 
   date-manip@2.0.6: {}
 
-  dayjs@1.11.21: {}
-
   dayjs@1.11.23: {}
 
   debounce-fn@6.0.0:
@@ -26924,7 +26919,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@42.8.0(supports-color@8.1.1):
+  electron@45.2.1(supports-color@8.1.1):
     dependencies:
       '@electron-internal/extract-zip': 1.0.4
       '@electron/get': 5.0.0(supports-color@8.1.1)
@@ -30166,7 +30161,7 @@ snapshots:
       d3: 7.9.0
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.14
-      dayjs: 1.11.21
+      dayjs: 1.11.23
       dompurify: 3.4.12
       es-toolkit: 1.49.0
       katex: 0.16.47

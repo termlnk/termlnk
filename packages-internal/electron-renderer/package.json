@@ -55,7 +55,7 @@
     "@termlnk/electron-main": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@termlnk/shared": "workspace:*",
-    "electron": "42.8.0",
+    "electron": "45.2.1",
     "rxjs": "^7.8.2",
     "tailwindcss": "^4.3.3",
     "tailwindcss-animate": "^1.0.7",

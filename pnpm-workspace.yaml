@@ -58,9 +58,7 @@ overrides:
   '@termlnk/mobile-app>react': 19.2.3
   '@termlnk/mobile-app>react-dom': 19.2.3
   hermes-compiler: 0.15.0
-  # electron pinned to 41.x: better-sqlite3 ships no Electron 42 prebuild and
-  # fails to build against V8 14.x (v8::External::New signature changed)
-  electron: 42.8.0
+  electron: 45.2.1
   tar: ^7.5.21
   undici: ^8.9.0
   file-type: ^22.0.1
