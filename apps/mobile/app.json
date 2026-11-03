@@ -7,11 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "termlnk",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0a0a0a"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -32,6 +27,14 @@
     },
     "plugins": [
       ["expo-router", { "root": "./src/router" }],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0a0a0a"
+        }
+      ],
       "expo-secure-store",
       "expo-local-authentication",
       "expo-document-picker",
@@ -44,19 +47,11 @@
         {
           "ios": {
             "deploymentTarget": "16.4",
-            "buildReactNativeFromSource": true,
-            "useHermesV1": false
+            "buildReactNativeFromSource": true
           }
         }
-      ],
-      "./config-plugins/with-ios-hermes-v1-env.cjs"
-    ],
-    "autolinking": {
-      "searchPaths": [
-        "../../node_modules",
-        "./node_modules"
       ]
-    },
+    ],
     "experiments": {
       "typedRoutes": true
     },

@@ -1,8 +1,8 @@
 diff --git a/build/configs/typescript.js b/build/configs/typescript.js
-index 99e53a8cf1f91e0591e959ec017deee249315ce2..ae12ca93c752e5abea26d2c91bd0d5e8593ceb0b 100644
+index 4e64c4462d77817d50771a7ca9d772794f7c863e..1cf006816a5c966d947e45c7dbed0eb47ebfc8e4 100644
 --- a/build/configs/typescript.js
 +++ b/build/configs/typescript.js
-@@ -7,32 +7,45 @@ function isTypeScriptSource(fileName) {
+@@ -14,32 +14,45 @@ function isTypeScriptSource(fileName) {
  function isTSXSource(fileName) {
      return !!fileName && fileName.endsWith('.tsx');
  }
@@ -31,11 +31,11 @@ index 99e53a8cf1f91e0591e959ec017deee249315ce2..ae12ca93c752e5abea26d2c91bd0d5e8
 +            // App sources: disable usage-based elision so decorator value imports survive.
 +            {
 +                test: (f) => isTypeScriptSource(f) && isAppSource(f),
-+                plugins: [[transformTypeScript, { isTSX: false, allowNamespaces: true, onlyRemoveTypeImports: true }]],
++                plugins: [[transformTypeScript, { isTSX: false, allowNamespaces: true, onlyRemoveTypeImports: true }]]
 +            },
 +            {
 +                test: (f) => isTSXSource(f) && isAppSource(f),
-+                plugins: [[transformTypeScript, { isTSX: true, allowNamespaces: true, onlyRemoveTypeImports: true }]],
++                plugins: [[transformTypeScript, { isTSX: true, allowNamespaces: true, onlyRemoveTypeImports: true }]]
 +            },
 +            // node_modules: keep upstream default behavior (usage-based elision on).
              {
@@ -45,12 +45,12 @@ index 99e53a8cf1f91e0591e959ec017deee249315ce2..ae12ca93c752e5abea26d2c91bd0d5e8
 -                        require('@babel/plugin-transform-typescript'),
 -                        {
 -                            isTSX: false,
--                            allowNamespaces: true,
--                        },
--                    ],
--                ],
+-                            allowNamespaces: true
+-                        }
+-                    ]
+-                ]
 +                test: (f) => isTypeScriptSource(f) && !isAppSource(f),
-+                plugins: [[transformTypeScript, { isTSX: false, allowNamespaces: true }]],
++                plugins: [[transformTypeScript, { isTSX: false, allowNamespaces: true }]]
              },
              {
 -                test: isTSXSource,
@@ -59,12 +59,12 @@ index 99e53a8cf1f91e0591e959ec017deee249315ce2..ae12ca93c752e5abea26d2c91bd0d5e8
 -                        require('@babel/plugin-transform-typescript'),
 -                        {
 -                            isTSX: true,
--                            allowNamespaces: true,
--                        },
--                    ],
--                ],
+-                            allowNamespaces: true
+-                        }
+-                    ]
+-                ]
 +                test: (f) => isTSXSource(f) && !isAppSource(f),
-+                plugins: [[transformTypeScript, { isTSX: true, allowNamespaces: true }]],
-             },
-         ],
++                plugins: [[transformTypeScript, { isTSX: true, allowNamespaces: true }]]
+             }
+         ]
      };

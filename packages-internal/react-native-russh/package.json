@@ -39,12 +39,12 @@
     "clean": "rm -rf lib android ios cpp src/generated rust/target"
   },
   "peerDependencies": {
-    "react": "^19.2.8",
-    "react-native": "^0.85.3"
+    "react": "^19.3.0",
+    "react-native": "^0.88.1"
   },
   "dependencies": {
-    "@ubjs/core": "0.31.0-3",
-    "uniffi-bindgen-react-native": "0.31.0-3"
+    "@ubjs/core": "0.31.0-6",
+    "uniffi-bindgen-react-native": "0.31.0-6"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",

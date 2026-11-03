@@ -2,11 +2,11 @@
 //
 // Expo SDK 52+ ships pnpm workspace auto-detection: it walks up from the project root,
 // adds every sibling package's `node_modules` to watchFolders, and rewrites symlinked
-// imports. We still extend `getDefaultConfig` with two opt-ins:
-//   1. `unstable_enableSymlinks` — pnpm's hoisted node_modules layout uses symlinks.
-//   2. `unstable_enablePackageExports` — every @termlnk/* package ships its source
-//      via the `exports` map (`./src/index.ts`); without this Metro defaults to
-//      `main` resolution and misses subpath exports.
+// imports. We still extend `getDefaultConfig` with one opt-in:
+//   `unstable_enablePackageExports` — every @termlnk/* package ships its source
+//   via the `exports` map (`./src/index.ts`); without this Metro defaults to
+//   `main` resolution and misses subpath exports.
+// Symlink resolution is already on by default (expo-doctor rejects overriding it).
 //
 // Refs: https://docs.expo.dev/guides/monorepos/ + byCedric/expo-monorepo-example.
 
@@ -26,7 +26,6 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-config.resolver.unstable_enableSymlinks = true;
 config.resolver.unstable_enablePackageExports = true;
 
 // `@termlnk/auth-core` peers @termlnk/database for the TokenStorageService path. The

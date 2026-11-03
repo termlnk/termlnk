@@ -1,5 +1,5 @@
 diff --git a/dist/cjs/objects.js b/dist/cjs/objects.js
-index ff892a8fa69e42e1a1458cba7a978c49d24b3a86..d63605843c6910715f2fcc0a2953d8116eec8dbc 100644
+index d332b220e0034223bb4e0a0c61c814122b18a018..d7bec29374935d1bfd711e0c57352c6c780b5c23 100644
 --- a/dist/cjs/objects.js
 +++ b/dist/cjs/objects.js
 @@ -79,6 +79,12 @@ class FfiConverterObjectWithCallbacks extends FfiConverterObject {
@@ -12,11 +12,11 @@ index ff892a8fa69e42e1a1458cba7a978c49d24b3a86..d63605843c6910715f2fcc0a2953d811
 +        }
 +        return this.handleMap.insert(value);
 +    }
-     lift(value) {
-         if (this.handleMap.has(value)) {
-             return this.handleMap.get(value);
+     // A miss falls through to the Arc-pointer interpretation, which is right for
+     // a Rust-backed object and wrong for a foreign handle minted by a runtime
+     // that no longer exists: handle maps renumber from 1 per runtime, so after a
 diff --git a/dist/esm/objects.js b/dist/esm/objects.js
-index bf316c60771901281603d49a4789d06588a3f7c0..a9df142fc996b94cf36ee2ecbc95d18df522b310 100644
+index 05d054f0380c8865306b1feeaae1e70fbace46c8..46e237185c9cc43a7f9a14b6f25dc4592ba710b8 100644
 --- a/dist/esm/objects.js
 +++ b/dist/esm/objects.js
 @@ -74,6 +74,12 @@ export class FfiConverterObjectWithCallbacks extends FfiConverterObject {
@@ -29,11 +29,11 @@ index bf316c60771901281603d49a4789d06588a3f7c0..a9df142fc996b94cf36ee2ecbc95d18d
 +        }
 +        return this.handleMap.insert(value);
 +    }
-     lift(value) {
-         if (this.handleMap.has(value)) {
-             return this.handleMap.get(value);
+     // A miss falls through to the Arc-pointer interpretation, which is right for
+     // a Rust-backed object and wrong for a foreign handle minted by a runtime
+     // that no longer exists: handle maps renumber from 1 per runtime, so after a
 diff --git a/src/objects.ts b/src/objects.ts
-index a949d1a06b7bf23b17885f8069f3893f6caf8c2d..a33e50dcefa862e441d3fe341981b6502ab3c931 100644
+index a4498704f49bdd88f6e675e3941889d8eff35680..b4abfbc44b6a0a31ee809d7a2d87ad9338caefb5 100644
 --- a/src/objects.ts
 +++ b/src/objects.ts
 @@ -110,6 +110,13 @@ export class FfiConverterObjectWithCallbacks<T> extends FfiConverterObject<T> {
@@ -47,6 +47,6 @@ index a949d1a06b7bf23b17885f8069f3893f6caf8c2d..a33e50dcefa862e441d3fe341981b650
 +    return this.handleMap.insert(value);
 +  }
 +
-   lift(value: UniffiHandle): T {
-     if (this.handleMap.has(value)) {
-       return this.handleMap.get(value);
+   // A miss falls through to the Arc-pointer interpretation, which is right for
+   // a Rust-backed object and wrong for a foreign handle minted by a runtime
+   // that no longer exists: handle maps renumber from 1 per runtime, so after a

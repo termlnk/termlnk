@@ -46,7 +46,10 @@ function installRequestIdleCallback() {
   }
 
   if (typeof glob.cancelIdleCallback !== 'function') {
-    glob.cancelIdleCallback = function shimCancelRIC(id: number) {
+    glob.cancelIdleCallback = function shimCancelRIC(id: number | null | undefined) {
+      if (id == null) {
+        return;
+      }
       const timeoutId = idleCallbacks.get(id);
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);
