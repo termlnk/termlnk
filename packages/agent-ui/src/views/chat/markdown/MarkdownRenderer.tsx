@@ -17,6 +17,9 @@ import type { IBlockAnimationMeta } from './stream-animation-meta';
 import type { IStreamingBlocksContextValue } from './streaming-blocks-context';
 import type { IStreamSmoothingPreset } from './use-smooth-stream-content';
 import type { IBlockInfo, IBlockState } from './use-stream-queue';
+import { cjk } from '@streamdown/cjk';
+import { createCodePlugin } from '@streamdown/code';
+import { mermaid } from '@streamdown/mermaid';
 import { cn } from '@termlnk/design';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import remend from 'remend';
@@ -37,6 +40,14 @@ export interface IMarkdownRendererProps {
 }
 
 const STREAM_FADE_DURATION = 280;
+
+// Streamdown memoises on `plugins` by identity, so this must stay a module-level constant.
+// Math (KaTeX) is intentionally not registered — terminal-side chat does not need it.
+const STREAMDOWN_PLUGINS = {
+  cjk,
+  code: createCodePlugin({ themes: ['github-light', 'github-dark-dimmed'] }),
+  mermaid,
+};
 
 // Override only paragraph-style elements; <code>/<pre>/<table> are left to
 // streamdown defaults so Shiki / Mermaid / table-copy controls stay live.
@@ -259,9 +270,10 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         components={CHAT_MARKDOWN_COMPONENTS}
         controls={{ table: true, code: true, mermaid: true }}
         isAnimating={isStreaming}
+        lineNumbers={false}
         mode={isStreaming ? 'streaming' : 'static'}
         parseMarkdownIntoBlocksFn={parseMarkdownIntoBlocks}
-        shikiTheme={['github-light', 'github-dark-dimmed']}
+        plugins={STREAMDOWN_PLUGINS}
       >
         {processed}
       </Streamdown>

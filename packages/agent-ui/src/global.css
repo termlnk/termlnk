@@ -102,6 +102,7 @@
 
 /* --- code block wrapper --- */
 [data-streamdown='code-block'] {
+  position: relative;
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
   width: 100%;
@@ -120,6 +121,22 @@
   color: var(--tm-grey-fg);
   font-size: 0.75rem;
   line-height: 1rem;
+}
+
+/* --- action row (copy / download), overlaid on the header's right edge --- */
+[data-streamdown='code-block'] > div:has(> [data-streamdown='code-block-actions']),
+[data-streamdown='mermaid-block'] > div:has(> [data-streamdown='mermaid-block-actions']) {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  z-index: 10;
+}
+
+[data-streamdown='code-block-actions'],
+[data-streamdown='mermaid-block-actions'] {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 /* --- copy / download buttons --- */
@@ -141,17 +158,26 @@
   padding: 0.75rem 1rem;
   font-size: 0.8125rem;
   line-height: 1.6;
-  overflow-x: auto;
+  /* streamdown caps the height inline (max-height) and relies on an overflow utility we do not generate */
+  overflow: auto;
+  background-color: var(--tm-darker-black);
+  color: var(--tm-light-grey);
 }
 
-:where(.dark, .tm\:dark) [data-streamdown='code-block-body'] {
-  background-color: var(--tm-darker-black) !important;
-  color: var(--tm-light-grey) !important;
+/* One span per source line; the display utility streamdown relies on is not generated. */
+[data-streamdown='code-block-body'] code > span {
+  display: block;
+}
+
+/* @streamdown/code emits token colours as CSS variables only: --sdm-c (light) and --shiki-dark (dark). */
+[data-streamdown='code-block-body'] code span[style] {
+  color: var(--sdm-c, inherit);
+  background-color: var(--sdm-tbg, transparent);
 }
 
 :where(.dark, .tm\:dark) [data-streamdown='code-block-body'] code span[style] {
-  color: var(--shiki-dark, inherit) !important;
-  background-color: var(--shiki-dark-bg, transparent) !important;
+  color: var(--shiki-dark, var(--sdm-c, inherit)) !important;
+  background-color: var(--shiki-dark-bg, var(--sdm-tbg, transparent)) !important;
 }
 
 /* --- inline code --- */
@@ -168,6 +194,20 @@
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
   overflow-x: auto;
+}
+
+/* Control row (copy / download / fullscreen) above the scroll container. */
+[data-streamdown='table-wrapper'] > div:has(> button),
+[data-streamdown='table-wrapper'] > div:has(> .relative) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+/* streamdown caps the height inline (max-height) and relies on an overflow utility we do not generate. */
+[data-streamdown='table-wrapper'] > div:has(> [data-streamdown='table']) {
+  overflow: auto;
 }
 
 [data-streamdown='table'] {
