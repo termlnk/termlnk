@@ -13,30 +13,40 @@
  * governing permissions and limitations under the License.
  */
 
+import type { ReactNode } from 'react';
 import type { Components } from 'react-markdown';
-import { cn } from '@termlnk/design';
+import { cn, useDependency } from '@termlnk/design';
 import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { IExternalLinkService } from '../../services/external-link/external-link.service';
 
 export interface IReleaseNotesMarkdownProps {
   content: string;
   className?: string;
 }
 
-interface INativeShellWindow {
-  nativeShell?: {
-    openExternal?: (target: string) => Promise<void> | void;
-  };
-}
+/** Anchor that hands the URL to the shell instead of navigating the window. */
+function ExternalLink({ href, children }: { href?: string; children?: ReactNode }) {
+  const externalLinkService = useDependency(IExternalLinkService);
 
-function openExternal(url: string): void {
-  const win = window as Window & INativeShellWindow;
-  if (win.nativeShell?.openExternal) {
-    void win.nativeShell.openExternal(url);
-    return;
-  }
-  window.open(url, '_blank', 'noopener,noreferrer');
+  return (
+    <a
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        if (href) {
+          externalLinkService.openExternal(href);
+        }
+      }}
+      className="
+        tm:text-blue tm:underline tm:underline-offset-2
+        tm:hover:text-nord-blue
+      "
+    >
+      {children}
+    </a>
+  );
 }
 
 const COMPONENTS: Components = {
@@ -88,26 +98,7 @@ const COMPONENTS: Components = {
     <ol className="tm:my-1 tm:list-decimal tm:pl-5">{children}</ol>
   ),
   li: ({ children }) => <li className="tm:my-0.5">{children}</li>,
-  a: ({ href, children }) => {
-    const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-      event.preventDefault();
-      if (href) {
-        openExternal(href);
-      }
-    };
-    return (
-      <a
-        href={href}
-        onClick={handleClick}
-        className="
-          tm:text-blue tm:underline tm:underline-offset-2
-          tm:hover:text-nord-blue
-        "
-      >
-        {children}
-      </a>
-    );
-  },
+  a: ({ href, children }) => <ExternalLink href={href}>{children}</ExternalLink>,
   code: ({ children }) => (
     <code
       className="tm:rounded-sm tm:bg-one-bg2 tm:px-1 tm:py-0.5 tm:font-mono tm:text-[0.85em] tm:text-white"

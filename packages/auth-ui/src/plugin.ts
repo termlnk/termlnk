@@ -62,7 +62,7 @@ export class AuthUIPlugin extends Plugin {
   }
 
   private _registerSettingsTab(): void {
-    // OPTIONAL: settings-ui may not be loaded (e.g., island secondary window).
+    // OPTIONAL: settings-ui may not be loaded in secondary windows.
     const registry = this._injector.get(ISettingsTabRegistryService, Quantity.OPTIONAL);
     if (!registry) {
       return;

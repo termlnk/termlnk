@@ -15,7 +15,7 @@
 
 import type { ICompactConfig } from '@termlnk/agent';
 import { AGENT_COMPACT_CONFIG_SUB_KEY, AGENT_CORE_PLUGIN_CONFIG_KEY, COMPACT_CONFIG_MAX_KEEP_RECENT, COMPACT_CONFIG_MAX_THRESHOLD_PERCENT, COMPACT_CONFIG_MIN_KEEP_RECENT, COMPACT_CONFIG_MIN_THRESHOLD_PERCENT, DEFAULT_COMPACT_CONFIG, normalizeCompactConfig } from '@termlnk/agent';
-import { LocaleService } from '@termlnk/core';
+import { ILogService, LocaleService } from '@termlnk/core';
 import { Card, CardContent, CardHeader, Checkbox, cn, Input, Slider, useDependency } from '@termlnk/design';
 import { IConfigManagerService } from '@termlnk/rpc-client';
 import { Sparkles } from 'lucide-react';
@@ -24,6 +24,7 @@ import { PermissionSection } from './permission/PermissionSection';
 
 export function AgentTab() {
   const localeService = useDependency(LocaleService);
+  const logService = useDependency(ILogService);
   const configManagerService = useDependency(IConfigManagerService);
 
   const [config, setConfig] = useState<ICompactConfig>(DEFAULT_COMPACT_CONFIG);
@@ -42,7 +43,7 @@ export function AgentTab() {
         setKeepRecentInput(String(normalized.keepRecentMessages));
       })
       .catch((err) => {
-        console.error('[AgentTab] Failed to load compact config:', err);
+        logService.error('[AgentTab] Failed to load compact config:', err);
       });
     return () => {
       active = false;

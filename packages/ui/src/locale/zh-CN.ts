@@ -56,10 +56,20 @@ const locale: typeof enUS = {
         unread: '{0} 条未读',
         'total-with-unread': '共 {0} 条通知，{1} 条未读',
       },
+      updater: {
+        'available-body': '版本 {0} 可下载。',
+        'available-body-generic': '有新版本可下载。',
+        'ready-body': '重启应用以完成更新安装。',
+        'error-title': '更新失败',
+        'error-body': '检查更新时出现问题。',
+      },
     },
     'notification-icon': {
       title: '通知',
       'unread-title': '{0} 条未读通知',
+    },
+    'side-panel': {
+      tabs: '侧边面板',
     },
     'right-sidebar-toggle': {
       'open-title': '打开右侧边栏',

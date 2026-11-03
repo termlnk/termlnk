@@ -2,19 +2,8 @@
 @import 'tw-animate-css';
 @import '@termlnk/shared/tailwind/theme.css';
 
-@source "../../../../packages/design/src";
-@source "../../../../packages/ui/src";
-@source "../../../../packages/themes-ui/src";
-@source "../../../../packages/terminal-ui/src";
-@source "../../../../packages/sftp-ui/src";
-@source "../../../../packages/port-forwarding-ui/src";
-@source "../../../../packages/snippet-ui/src";
-@source "../../../../packages/shared-terminal-ui/src";
-@source "../../../../packages/settings-ui/src";
-@source "../../../../packages/extension-ui/src";
-@source "../../../../packages/agent-ui/src";
-@source "../../../../packages/auth-ui/src";
-@source "../../../../packages/sync-ui/src";
+/* Glob, not an explicit package list — see apps/desktop/renderer/src/index.css. */
+@source "../../../../packages/*/src/**/*.{ts,tsx}";
 @source "../../../../packages-internal/web-renderer/src";
 
 body,

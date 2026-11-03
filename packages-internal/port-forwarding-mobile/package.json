@@ -24,8 +24,8 @@
     "@termlnk/database-mobile": "workspace:*",
     "@termlnk/react-native-russh": "workspace:*",
     "@termlnk/terminal-mobile": "workspace:*",
-    "react": "^19.2.8",
-    "react-native": "^0.85.3",
+    "react": "^19.3.0",
+    "react-native": "^0.88.1",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
-    "@types/react": "^19.2.18",
+    "@types/react": "^19.3.0",
     "typescript": "^6.0.3"
   }
 }

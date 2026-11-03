@@ -38,7 +38,7 @@ import { ToggleSettingsShortcut } from './shortcut';
 export const SETTINGS_DIALOG_ID = 'settings-ui.settings.dialog';
 
 // Built-in tabs owned by settings-ui itself. Tabs that conceptually belong to
-// other packages (CHAT/AI_PROVIDER -> agent-ui, ISLAND -> island-ui, ACCOUNT
+// other packages (CHAT/AI_PROVIDER -> agent-ui, ACCOUNT
 // -> auth-ui, PLATFORM -> packages-internal/electron-renderer) are
 // registered by their owning packages via ISettingsTabRegistryService.
 const BUILTIN_TABS: ISettingsTabDescriptor[] = [

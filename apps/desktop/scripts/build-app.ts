@@ -36,8 +36,6 @@ const { values: args } = parseArgs({
     linux: { type: 'boolean', default: false },
     x64: { type: 'boolean', default: false },
     arm64: { type: 'boolean', default: false },
-    ia32: { type: 'boolean', default: false },
-    armv7l: { type: 'boolean', default: false },
     universal: { type: 'boolean', default: false },
   },
 });
@@ -176,12 +174,6 @@ function selectedArchitectures(): Arch[] {
   }
   if (args.arm64) {
     archs.push(Arch.arm64);
-  }
-  if (args.ia32) {
-    archs.push(Arch.ia32);
-  }
-  if (args.armv7l) {
-    archs.push(Arch.armv7l);
   }
   if (args.universal) {
     archs.push(Arch.universal);

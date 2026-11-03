@@ -57,7 +57,6 @@ Termlnk combines a fast smart terminal, an SSH &amp; SFTP client, and a built-in
 - 🎨 **71 themes, or bring your own** — pick from 71 built-in themes with a live-preview editor, or set separate light and dark themes and let Termlnk follow the system automatically. Blur, transparency, fonts and keyboard shortcuts are all customizable.
 - 💻 **Cross-platform &amp; offline-first** — proper installers for macOS (Intel &amp; Apple Silicon), Windows and Linux. No internet connection required.
 - 🌐 **Also runs in a browser** — deploy the same app to your own server with one Docker command, HTTPS included, then use it from any modern browser with the same experience as the desktop.
-- 🏝 **Dynamic Island on macOS** — on notch-equipped Macs, the top pill area shows live AI status, complete with sounds for start, completion, approval needed and errors.
 
 ## 🚀 Quick Start
 

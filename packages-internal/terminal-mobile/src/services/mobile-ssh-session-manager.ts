@@ -101,7 +101,7 @@ class ManagedSshSession extends Disposable implements IManagedSshSession {
 export class MobileSshSessionManager extends Disposable {
   private readonly _sessions = new Map<string, ManagedSshSession>();
   private _appStateSub: NativeEventSubscription | null = null;
-  private _previousState: string = AppState.currentState;
+  private _previousState: string | null | undefined = AppState.currentState;
 
   constructor(private readonly _client: MobileSshClientService) {
     super();

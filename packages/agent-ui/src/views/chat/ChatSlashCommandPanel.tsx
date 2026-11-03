@@ -50,7 +50,9 @@ const DESCRIPTION_RE = /^description:\s*(.+)$/m;
 
 function extractDescription(content: string): string {
   const fm = content.match(FRONTMATTER_RE);
-  if (!fm) return '';
+  if (!fm) {
+    return '';
+  }
   const desc = fm[1].match(DESCRIPTION_RE);
   return desc ? desc[1].trim() : '';
 }
@@ -111,9 +113,13 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
     );
 
     const filteredItems = useMemo(() => {
-      if (!slashState.active) return [];
+      if (!slashState.active) {
+        return [];
+      }
       const q = slashState.query.toLowerCase();
-      if (!q) return allItems;
+      if (!q) {
+        return allItems;
+      }
       return allItems.filter((item) => item.name.toLowerCase().includes(q));
     }, [allItems, slashState.active, slashState.query]);
 
@@ -132,12 +138,18 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
     }, [highlightIndex]);
 
     useEffect(() => {
-      if (!slashState.active) return;
+      if (!slashState.active) {
+        return;
+      }
 
       function handleMouseDown(e: MouseEvent) {
         const target = e.target as Node;
-        if (panelRef.current?.contains(target)) return;
-        if (textareaRef.current?.contains(target)) return;
+        if (panelRef.current?.contains(target)) {
+          return;
+        }
+        if (textareaRef.current?.contains(target)) {
+          return;
+        }
         onClose();
       }
 
@@ -147,7 +159,9 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
 
     useImperativeHandle(ref, () => ({
       handleKeyDown(e: React.KeyboardEvent): boolean {
-        if (!slashState.active || filteredItems.length === 0) return false;
+        if (!slashState.active || filteredItems.length === 0) {
+          return false;
+        }
 
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -176,7 +190,9 @@ export const ChatSlashCommandPanel = forwardRef<IChatSlashCommandPanelHandle, IC
       },
     }), [slashState.active, filteredItems, highlightIndex, onSelect, onClose]);
 
-    if (!slashState.active) return null;
+    if (!slashState.active) {
+      return null;
+    }
 
     return (
       <div

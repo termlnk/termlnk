@@ -23,7 +23,9 @@ import { BehaviorSubject, combineLatest, distinctUntilChanged, map, Subject } fr
 import { ITerminalUIService } from '../terminal/terminal-ui.service';
 
 function collectSessionIds(node: IWorkspaceLayoutNode): string[] {
-  if (node.type === 'leaf') return [node.sessionId];
+  if (node.type === 'leaf') {
+    return [node.sessionId];
+  }
   return node.children.flatMap(collectSessionIds);
 }
 
@@ -46,8 +48,12 @@ function removeSessionFromNode(node: IWorkspaceLayoutNode, sessionId: string): I
     }
   }
 
-  if (newChildren.length === 0) return null;
-  if (newChildren.length === 1) return newChildren[0];
+  if (newChildren.length === 0) {
+    return null;
+  }
+  if (newChildren.length === 1) {
+    return newChildren[0];
+  }
 
   // Redistribute removed size proportionally
   const total = newSizes.reduce((a, b) => a + b, 0);
@@ -86,7 +92,9 @@ function insertAtLeafLevel(
   insertBefore: boolean
 ): IWorkspaceLayoutNode {
   if (node.type === 'leaf') {
-    if (node.sessionId !== targetSessionId) return node;
+    if (node.sessionId !== targetSessionId) {
+      return node;
+    }
 
     const newLeaf: IWorkspaceLayoutNode = { type: 'leaf', sessionId: newSessionId };
     const children = insertBefore ? [newLeaf, node] : [node, newLeaf];
@@ -109,7 +117,9 @@ function insertAtParentLevel(
   insertBefore: boolean
 ): IWorkspaceLayoutNode {
   if (node.type === 'leaf') {
-    if (node.sessionId !== targetSessionId) return node;
+    if (node.sessionId !== targetSessionId) {
+      return node;
+    }
     const newLeaf: IWorkspaceLayoutNode = { type: 'leaf', sessionId: newSessionId };
     const children = insertBefore ? [newLeaf, node] : [node, newLeaf];
     return { type: 'branch', direction, children, sizes: [50, 50] };
@@ -146,7 +156,9 @@ function insertAtParentLevel(
 }
 
 function containsSession(node: IWorkspaceLayoutNode, sessionId: string): boolean {
-  if (node.type === 'leaf') return node.sessionId === sessionId;
+  if (node.type === 'leaf') {
+    return node.sessionId === sessionId;
+  }
   return node.children.some((child) => containsSession(child, sessionId));
 }
 
@@ -163,7 +175,9 @@ function swapSession(node: IWorkspaceLayoutNode, targetSessionId: string, newSes
 }
 
 function swapTwoSessions(node: IWorkspaceLayoutNode, sessionIdA: string, sessionIdB: string): IWorkspaceLayoutNode {
-  if (sessionIdA === sessionIdB) return node;
+  if (sessionIdA === sessionIdB) {
+    return node;
+  }
 
   if (node.type === 'leaf') {
     if (node.sessionId === sessionIdA) {
@@ -189,7 +203,9 @@ function updateSizesAtPath(node: IWorkspaceLayoutNode, path: number[], sizes: nu
     return node;
   }
 
-  if (node.type !== 'branch') return node;
+  if (node.type !== 'branch') {
+    return node;
+  }
 
   const [head, ...rest] = path;
   return {
@@ -331,7 +347,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
         const seenIds = new Set<string>();
 
         for (const id of order) {
-          if (seenIds.has(id)) continue;
+          if (seenIds.has(id)) {
+            continue;
+          }
           seenIds.add(id);
 
           if (workspaceMap.has(id)) {
@@ -363,7 +381,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
     // Sync activeTabItemId from terminalUIService when no workspace is active
     this.disposeWithMe(
       this._terminalUIService.activeSessionId$.subscribe((sessionId) => {
-        if (!sessionId) return;
+        if (!sessionId) {
+          return;
+        }
         // If the active session is standalone, sync
         if (!this.isSessionInWorkspace(sessionId)) {
           if (this._activeTabItemId$.value !== sessionId) {
@@ -395,7 +415,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
     // Remove stale standalone sessions from tab order
     const workspaceIds = new Set(workspaces.map((w) => w.id));
     const filteredOrder = order.filter((id) => {
-      if (workspaceIds.has(id)) return true;
+      if (workspaceIds.has(id)) {
+        return true;
+      }
       return sessionIds.has(id);
     });
     if (filteredOrder.length !== order.length) {
@@ -458,7 +480,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
           }
           // Remove workspace IDs that were dissolved
           const wsIds = new Set(finalWorkspaces.map((w) => w.id));
-          if (!wsIds.has(id) && !sessionIds.has(id)) return [];
+          if (!wsIds.has(id) && !sessionIds.has(id)) {
+            return [];
+          }
           return [id];
         });
         this._tabItemOrder$.next(newOrder);
@@ -542,7 +566,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
   }
 
   setActiveTabItem(id: string): void {
-    if (this._activeTabItemId$.value === id) return;
+    if (this._activeTabItemId$.value === id) {
+      return;
+    }
     this._activeTabItemId$.next(id);
 
     // If it's a workspace, set the workspace's active session
@@ -659,7 +685,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   dissolveWorkspace(workspaceId: string): void {
     const ws = this.getWorkspace(workspaceId);
-    if (!ws) return;
+    if (!ws) {
+      return;
+    }
 
     const sessionIds = collectSessionIds(ws.layout);
     this._workspaces$.next(this._workspaces$.value.filter((w) => w.id !== workspaceId));
@@ -780,7 +808,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   mergeSessionIntoWorkspace(sessionId: string, workspaceId: string, targetSessionId: string, side: DropSide): void {
     const ws = this.getWorkspace(workspaceId);
-    if (!ws) return;
+    if (!ws) {
+      return;
+    }
 
     const newLayout = insertSessionIntoNode(ws.layout, targetSessionId, sessionId, side);
     const updated: IWorkspace = { ...ws, layout: newLayout };
@@ -903,7 +933,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   private _removeSessionFromLayout(workspaceId: string, sessionId: string): void {
     const ws = this.getWorkspace(workspaceId);
-    if (!ws) return;
+    if (!ws) {
+      return;
+    }
 
     const newLayout = removeSessionFromNode(ws.layout, sessionId);
     if (!newLayout) {
@@ -938,7 +970,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   updatePanelSizes(workspaceId: string, branchPath: number[], sizes: number[]): void {
     const ws = this.getWorkspace(workspaceId);
-    if (!ws) return;
+    if (!ws) {
+      return;
+    }
 
     const newLayout = updateSizesAtPath(ws.layout, branchPath, sizes);
     this._workspaces$.next(
@@ -948,7 +982,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   setActiveSessionInWorkspace(workspaceId: string, sessionId: string): void {
     const ws = this.getWorkspace(workspaceId);
-    if (!ws) return;
+    if (!ws) {
+      return;
+    }
 
     if (this._activeTabItemId$.value !== workspaceId) {
       this._activeTabItemId$.next(workspaceId);
@@ -985,9 +1021,13 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
   }
 
   moveSessionInWorkspace(workspaceId: string, sessionId: string, targetSessionId: string, side: DropSide): void {
-    if (sessionId === targetSessionId) return;
+    if (sessionId === targetSessionId) {
+      return;
+    }
     const ws = this.getWorkspace(workspaceId);
-    if (!ws) return;
+    if (!ws) {
+      return;
+    }
 
     if (side === 'center') {
       const newLayout = swapTwoSessions(ws.layout, sessionId, targetSessionId);
@@ -999,7 +1039,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
     // Remove the session from its current position
     const layoutAfterRemove = removeSessionFromNode(ws.layout, sessionId);
-    if (!layoutAfterRemove) return;
+    if (!layoutAfterRemove) {
+      return;
+    }
 
     // Insert at the new position
     const newLayout = insertSessionIntoNode(layoutAfterRemove, targetSessionId, sessionId, side);
@@ -1028,10 +1070,14 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   extractSessionToTab(workspaceId: string, sessionId: string, targetTabId?: string, position?: 'before' | 'after'): void {
     const ws = this.getWorkspace(workspaceId);
-    if (!ws) return;
+    if (!ws) {
+      return;
+    }
 
     const allIds = collectSessionIds(ws.layout);
-    if (!allIds.includes(sessionId)) return;
+    if (!allIds.includes(sessionId)) {
+      return;
+    }
 
     const remainingIds = allIds.filter((id) => id !== sessionId);
 
@@ -1068,7 +1114,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
     } else {
       // Workspace survives — remove session from layout
       const newLayout = removeSessionFromNode(ws.layout, sessionId);
-      if (!newLayout) return;
+      if (!newLayout) {
+        return;
+      }
 
       const activeSessionId = ws.activeSessionId === sessionId
         ? remainingIds[0] ?? null
@@ -1128,7 +1176,9 @@ export class WorkspaceService extends Disposable implements IWorkspaceService {
 
   getSessionCountInWorkspace(workspaceId: string): number {
     const ws = this.getWorkspace(workspaceId);
-    if (!ws) return 0;
+    if (!ws) {
+      return 0;
+    }
     return collectSessionIds(ws.layout).length;
   }
 

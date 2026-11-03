@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { BackupImportMode, IBackupFileService, IBackupExportFileResult, IBackupImportFileResult } from '@termlnk/sync';
+import type { BackupImportMode, IBackupExportFileResult, IBackupFileService, IBackupImportFileResult } from '@termlnk/sync';
 import { IRPCClientService } from '../rpc-client.service';
 
 // Renderer-side facade: pure tRPC forwarding. The backup payload bytes never cross IPC —

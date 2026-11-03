@@ -53,7 +53,9 @@ export default function TerminalScreen() {
   const [liveThemeBg, setLiveThemeBg] = useState<string | null>(null);
   // Live value shown in the theme panel stepper.
   const [displayFontSize, setDisplayFontSize] = useState(13);
-  const webviewRef = useRef<WebView>(null);
+  // react-native-webview 14/15 types default the props generic to `undefined`, which collapses
+  // WebViewProps to `never`; pass `object` explicitly (fixed upstream in 16).
+  const webviewRef = useRef<WebView<object>>(null);
   // Tracks whether the soft keyboard (xterm textarea focus) is currently raised.
   const keyboardVisibleRef = useRef(true);
   const terminalReadyRef = useRef(false);
@@ -343,7 +345,7 @@ export default function TerminalScreen() {
 
       {state === 'connected' && xtermHtml != null && (
         <>
-          <WebView
+          <WebView<object>
             ref={webviewRef}
             originWhitelist={['*']}
             source={{ html: xtermHtml }}

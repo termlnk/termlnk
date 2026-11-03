@@ -54,13 +54,13 @@
   },
   "dependencies": {
     "@termlnk/core": "workspace:*",
-    "zod": "^4.4.3"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.2.0",
-    "vitest": "^4.1.10"
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   }
 }

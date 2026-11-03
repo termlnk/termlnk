@@ -1,0 +1,52 @@
+diff --git a/dist/cjs/objects.js b/dist/cjs/objects.js
+index d332b220e0034223bb4e0a0c61c814122b18a018..d7bec29374935d1bfd711e0c57352c6c780b5c23 100644
+--- a/dist/cjs/objects.js
++++ b/dist/cjs/objects.js
+@@ -79,6 +79,12 @@ class FfiConverterObjectWithCallbacks extends FfiConverterObject {
+         }
+         return this.handleMap.insert(value);
+     }
++    lowerHandle(value) {
++        if (this.factory.isConcreteType(value)) {
++            return this.factory.clonePointer(value);
++        }
++        return this.handleMap.insert(value);
++    }
+     // A miss falls through to the Arc-pointer interpretation, which is right for
+     // a Rust-backed object and wrong for a foreign handle minted by a runtime
+     // that no longer exists: handle maps renumber from 1 per runtime, so after a
+diff --git a/dist/esm/objects.js b/dist/esm/objects.js
+index 05d054f0380c8865306b1feeaae1e70fbace46c8..46e237185c9cc43a7f9a14b6f25dc4592ba710b8 100644
+--- a/dist/esm/objects.js
++++ b/dist/esm/objects.js
+@@ -74,6 +74,12 @@ export class FfiConverterObjectWithCallbacks extends FfiConverterObject {
+         }
+         return this.handleMap.insert(value);
+     }
++    lowerHandle(value) {
++        if (this.factory.isConcreteType(value)) {
++            return this.factory.clonePointer(value);
++        }
++        return this.handleMap.insert(value);
++    }
+     // A miss falls through to the Arc-pointer interpretation, which is right for
+     // a Rust-backed object and wrong for a foreign handle minted by a runtime
+     // that no longer exists: handle maps renumber from 1 per runtime, so after a
+diff --git a/src/objects.ts b/src/objects.ts
+index a4498704f49bdd88f6e675e3941889d8eff35680..b4abfbc44b6a0a31ee809d7a2d87ad9338caefb5 100644
+--- a/src/objects.ts
++++ b/src/objects.ts
+@@ -110,6 +110,13 @@ export class FfiConverterObjectWithCallbacks<T> extends FfiConverterObject<T> {
+     return this.handleMap.insert(value);
+   }
+ 
++  protected lowerHandle(value: T): UniffiHandle {
++    if (this.factory.isConcreteType(value)) {
++      return this.factory.clonePointer(value);
++    }
++    return this.handleMap.insert(value);
++  }
++
+   // A miss falls through to the Arc-pointer interpretation, which is right for
+   // a Rust-backed object and wrong for a foreign handle minted by a runtime
+   // that no longer exists: handle maps renumber from 1 per runtime, so after a

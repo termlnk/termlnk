@@ -21,11 +21,11 @@ import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, Vie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthField } from '../components/auth/auth-field';
 import { PrimaryButton } from '../components/ui/form';
+
 import { MessageCard } from '../components/ui/message-card';
 import { useAuthService, useBiometricService, useSyncService } from '../core/core-context';
 import { cn } from '../lib/cn';
 import { useThemeColors } from '../theme/theme-provider';
-
 const appIcon = require('../../assets/icon.png');
 
 export default function Login() {

@@ -47,12 +47,16 @@ export function ModelConfigPanel({
 
     if (maxTokens.trim()) {
       const parsed = Number.parseInt(maxTokens.trim(), 10);
-      if (!Number.isNaN(parsed) && parsed > 0) overrides.maxTokens = parsed;
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        overrides.maxTokens = parsed;
+      }
     }
 
     if (contextWindow.trim()) {
       const parsed = Number.parseInt(contextWindow.trim(), 10);
-      if (!Number.isNaN(parsed) && parsed > 0) overrides.contextWindow = parsed;
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        overrides.contextWindow = parsed;
+      }
     }
 
     if (Object.keys(overrides).length > 0) {

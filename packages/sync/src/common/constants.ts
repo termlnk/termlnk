@@ -79,5 +79,5 @@ export const NON_SYNCABLE_CONFIG_KEYS: ReadonlySet<string> = new Set([
 // Bump on algorithm change so the decrypt path can dispatch by version.
 export const SYNC_PAYLOAD_VERSION = 1;
 
-// Payload magic; distinct from the local SafeStorage prefix `tmenc1:`.
+// Payload magic; distinct from the local secret-cipher prefix `tmenc1:`.
 export const SYNC_PAYLOAD_PREFIX = 'tmsync1:';

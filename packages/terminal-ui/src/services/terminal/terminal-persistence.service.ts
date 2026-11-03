@@ -118,11 +118,15 @@ export class TerminalPersistenceService extends Disposable implements ITerminalP
 
       for (const session of allSessions) {
         const serializer = this._serializers.get(session.id);
-        if (!serializer) continue;
+        if (!serializer) {
+          continue;
+        }
 
         try {
           const result = serializer();
-          if (!result) continue;
+          if (!result) {
+            continue;
+          }
 
           sessions.push({
             id: session.id,

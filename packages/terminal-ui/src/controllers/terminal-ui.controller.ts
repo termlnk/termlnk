@@ -19,6 +19,8 @@ import { BuiltInUIPart, ComponentManagerService, IMenuManagerService, IShortcutS
 import { ApplyErrorFixCommand } from '../commands/apply-error-fix.command';
 import { OpenLocalTerminalCommand } from '../commands/open-local-terminal.command';
 import { ToggleTabListCommand } from '../commands/toggle-tab-list.command';
+import { ToggleTerminalSearchCommand } from '../commands/toggle-terminal-search.command';
+import { TERMINAL_FOCUSED_CONTEXT } from '../common/context-keys';
 import { ITerminalViewRegistry } from '../services/terminal/terminal-view-registry.service';
 import { LocalTerminalView } from '../views/local-terminal/LocalTerminalView';
 import { TerminalContainer } from '../views/terminal-container/TerminalContainer';
@@ -63,6 +65,7 @@ export class TerminalUIController extends RxDisposable {
     this.disposeWithMe(this._commandService.registerCommand(ToggleTabListCommand));
     this.disposeWithMe(this._commandService.registerCommand(OpenLocalTerminalCommand));
     this.disposeWithMe(this._commandService.registerCommand(ApplyErrorFixCommand));
+    this.disposeWithMe(this._commandService.registerCommand(ToggleTerminalSearchCommand));
   }
 
   private _initShortcuts(): void {
@@ -76,6 +79,15 @@ export class TerminalUIController extends RxDisposable {
       description: 'terminal-ui.shortcuts.apply-error-fix',
       binding: KeyCode.E | MetaKeys.CTRL_COMMAND | MetaKeys.SHIFT,
     }));
+    // ⌘F — multi-candidate with explorer/browser (higher priority elsewhere).
+    // priority 10 is the terminal fallback when a terminal pane is focused.
+    this.disposeWithMe(this._shortcutService.registerShortcut({
+      id: ToggleTerminalSearchCommand.id,
+      description: 'terminal-ui.shortcuts.toggle-search',
+      binding: KeyCode.F | MetaKeys.CTRL_COMMAND,
+      priority: 10,
+      preconditions: (ctx) => ctx.getContextValue(TERMINAL_FOCUSED_CONTEXT),
+    }));
   }
 
   private _initMenus(): void {
@@ -86,8 +98,11 @@ export class TerminalUIController extends RxDisposable {
     this.disposeWithMe(this._viewRegistry.registerView('ssh', TerminalView));
     this.disposeWithMe(this._viewRegistry.registerView('local', LocalTerminalView));
 
+    // Default "+" handler opens a local terminal. ACPUIPlugin replaces this
+    // slot with a dropdown menu when registered; identity-guarded dispose keeps
+    // that override intact if TerminalUIController is disposed first.
     this.disposeWithMe(this._viewRegistry.registerAddSessionHandler(() => {
-      this._commandService.executeCommand(OpenLocalTerminalCommand.id);
+      void this._commandService.executeCommand(OpenLocalTerminalCommand.id);
     }));
   }
 }

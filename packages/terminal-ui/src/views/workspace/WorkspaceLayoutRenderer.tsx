@@ -34,14 +34,18 @@ export function WorkspaceLayoutRenderer(props: IWorkspaceLayoutRendererProps) {
   const workspaceService = useDependency(IWorkspaceService);
 
   const handleLayoutChange = useCallback((layout: Layout) => {
-    if (node.type !== 'branch') return;
+    if (node.type !== 'branch') {
+      return;
+    }
     const sizes = node.children.map((_, i) => layout[`panel-${i}`] ?? (100 / node.children.length));
     workspaceService.updatePanelSizes(workspaceId, path, sizes);
   }, [workspaceService, workspaceId, path, node]);
 
   // Build defaultLayout map for the Group: { "panel-0": 50, "panel-1": 50 }
   const defaultLayout = useMemo<Layout | undefined>(() => {
-    if (node.type !== 'branch') return undefined;
+    if (node.type !== 'branch') {
+      return undefined;
+    }
     const layout: Layout = {};
     node.children.forEach((_, i) => {
       layout[`panel-${i}`] = node.sizes[i];

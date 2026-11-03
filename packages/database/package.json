@@ -56,8 +56,8 @@
     "@termlnk/snippet": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
-    "better-sqlite3": "^12.11.1",
-    "nanoid": "^5.1.16",
+    "better-sqlite3": "^13.0.3",
+    "nanoid": "^6.0.2",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
@@ -66,20 +66,20 @@
     "@termlnk/snippet": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/terminal": "workspace:*",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "drizzle-orm": "1.0.0-rc.4",
-    "nanoid": "^5.1.16"
+    "nanoid": "^6.0.2"
   },
   "devDependencies": {
     "@termlnk/agent": "workspace:*",
     "@termlnk/shared": "workspace:*",
     "@termlnk/snippet": "workspace:*",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^26.1.2",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.6",
     "drizzle-kit": "1.0.0-rc.4",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.2.0",
-    "vitest": "^4.1.10"
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   }
 }

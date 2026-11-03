@@ -13,10 +13,10 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IPortForwardingRule, IPortForwardingRuleCreateInput, IPortForwardingRuleUpdateInput, IPortForwardingRuntimeState, PortForwardingAuthEvent, PortForwardingHostKeyAction } from '@termlnk/rpc';
+import type { IPortForwardingRule, IPortForwardingRuleCreateInput, IPortForwardingRuleUpdateInput, IPortForwardingRuntimeState, IPortForwardingService, PortForwardingAuthEvent, PortForwardingHostKeyAction } from '@termlnk/rpc';
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
-import { IPortForwardingService, trpcSubscriptionToObservable } from '@termlnk/rpc';
+import { trpcSubscriptionToObservable } from '@termlnk/rpc';
 import { IRPCClientService } from '../rpc-client.service';
 
 export class PortForwardingClientService extends Disposable implements IPortForwardingService {

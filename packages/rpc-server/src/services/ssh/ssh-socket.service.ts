@@ -13,6 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
+import type { HostKeyVerifyAction } from '@termlnk/rpc';
 import type { IHost } from '@termlnk/terminal';
 import type { Buffer } from 'node:buffer';
 import type { Duplex } from 'node:stream';
@@ -27,7 +28,7 @@ import { hostKeyAlgorithm, sha256Fingerprint } from './host-key-fingerprint';
 import { resolveHostCredential } from './resolve-host-credential';
 import { createSSHSocket } from './ssh-socket';
 
-export type HostKeyVerifyAction = 'accept_save' | 'accept_once' | 'reject';
+export type { HostKeyVerifyAction };
 
 export interface IHostKeyPromptInfo {
   algorithm: string;

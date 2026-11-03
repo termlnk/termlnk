@@ -37,7 +37,9 @@ export function useShellIntegration(options: IUseShellIntegrationOptions) {
   // Create tracker when terminal is available
   useEffect(() => {
     const term = xtermRef.current;
-    if (!term) return;
+    if (!term) {
+      return;
+    }
 
     trackerRef.current = new CommandTracker(term, sessionId);
 
@@ -49,10 +51,14 @@ export function useShellIntegration(options: IUseShellIntegrationOptions) {
   // Handle OSC 633 events
   const onOsc633 = useCallback((data: string) => {
     const tracker = trackerRef.current;
-    if (!tracker) return;
+    if (!tracker) {
+      return;
+    }
 
     const event = parseOsc633(data);
-    if (!event) return;
+    if (!event) {
+      return;
+    }
 
     switch (event.type) {
       case 'A': {

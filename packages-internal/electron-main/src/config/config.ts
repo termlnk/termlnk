@@ -31,5 +31,8 @@ export const DEFAULT_WINDOW_OPTIONS: BrowserWindowConstructorOptions = {
     // squiggles read as a web page, not a native app. Content fields opt in
     // per-element via the `spellcheck` attribute instead.
     spellcheck: false,
+    // Built-in browser panel (browser-ui). Guests are gated by
+    // BrowserWebviewController — only partition+marker attach is allowed.
+    webviewTag: true,
   },
 };

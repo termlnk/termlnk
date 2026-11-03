@@ -18,6 +18,7 @@ import type { IRPCServerConfig } from './controllers/config.schema';
 import { ITerminalSessionEnvService, ITerminalSuggestService } from '@termlnk/agent';
 import { DependentOn, IConfigService, Inject, Injector, LocaleService, merge, mergeOverrideWithDependencies, Plugin, registerDependencies, touchDependencies } from '@termlnk/core';
 import { ConfigRepository, DatabasePlugin } from '@termlnk/database';
+import { IProjectFsService, IProjectGitService } from '@termlnk/project';
 import { IFileTransferService, INotifyService, IPortForwardingService, ISSHSessionService, ISSHToolService, ITerminalSessionNotifyService } from '@termlnk/rpc';
 import { IInviteService, ISharedSessionService } from '@termlnk/shared-terminal';
 import { ISnippetService } from '@termlnk/snippet';
@@ -31,6 +32,8 @@ import { FileTransferService } from './services/file-transfer/file-transfer.serv
 import { ISshKeygenService, SshKeygenService } from './services/keychain/ssh-keygen.service';
 import { NotifyService } from './services/notify/notify.service';
 import { PortForwardingService } from './services/port-forwarding/port-forwarding.service';
+import { ProjectFsService } from './services/project/project-fs.service';
+import { ProjectGitService } from './services/project/project-git.service';
 import { IProxySocketService, ProxySocketService } from './services/proxy/proxy-socket.service';
 import { PTYSessionService } from './services/pty/pty-session.service';
 import { ISFTPSessionService, SFTPSessionService } from './services/sftp/sftp-session.service';
@@ -95,6 +98,8 @@ export class RPCServerPlugin extends Plugin {
       [IDeepLinkRouterService, { useClass: DeepLinkRouterService }],
       [IInviteService, { useClass: InviteService }],
       [ISnippetService, { useClass: SnippetService }],
+      [IProjectFsService, { useClass: ProjectFsService }],
+      [IProjectGitService, { useClass: ProjectGitService }],
       [McpToolsController],
       [TerminalSessionPromptController],
     ];

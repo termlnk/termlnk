@@ -32,9 +32,10 @@ allowBuilds:
   sharp: true
   uniffi-bindgen-react-native: true
   javascript-obfuscator: false
-  # Native modules are built by apps/desktop/scripts/postinstall.mjs against the
-  # Electron ABI, not Node's. Letting pnpm run these build scripts would produce
-  # wrong-ABI binaries; ssh2/cpu-features/msgpackr-extract fall back to pure JS.
+  # ssh2/cpu-features/msgpackr-extract fall back to pure JS when their optional
+  # native builds are skipped.
+  # better-sqlite3 (N-API) ships its prebuilds inside the npm tarball; pnpm still
+  # flags it for its binding.gyp (source-build fallback), which must stay off.
   # node-pty is N-API: its npm tarball ships darwin/win32 prebuilds that work
   # under Electron as-is, and on Linux (no shipped prebuild) postinstall.mjs
   # compiles it from source into build/Release/pty.node.
@@ -47,21 +48,13 @@ allowBuilds:
   ssh2: false
 
 overrides:
-  '@types/react': ^19.2.18
-  '@types/react-dom': ^19.2.4
-  react: ^19.2.8
-  react-dom: ^19.2.8
-  # apps/mobile must pin react to the exact version react-native 0.85.3's bundled
-  # renderer asserts: ReactNativeRenderer hardcodes `if ("19.2.3" !== React.version) throw`.
-  # Scoped so desktop/web stay on 19.2.6; only the mobile subtree drops to 19.2.3.
-  '@termlnk/mobile-app>react': 19.2.3
-  '@termlnk/mobile-app>react-dom': 19.2.3
-  hermes-compiler: 0.15.0
-  # electron pinned to 41.x: better-sqlite3 ships no Electron 42 prebuild and
-  # fails to build against V8 14.x (v8::External::New signature changed)
-  electron: 42.8.0
+  '@types/react': ^19.3.0
+  '@types/react-dom': ^19.3.0
+  react: ^19.3.1
+  react-dom: ^19.3.1
+  electron: 45.2.1
   tar: ^7.5.21
-  undici: ^8.9.0
+  undici: ^8.12.3
   file-type: ^22.0.1
   '@tootallnate/once': ^3.0.1
   tmp: ^0.2.7
@@ -82,7 +75,7 @@ overrides:
   fast-uri: ^3.1.5
   mermaid: ^11.16.0
   ip-address: ^10.4.0
-  postcss: ^8.5.25
+  postcss: ^8.5.32
   js-cookie: ^3.0.8
   qs: ^6.15.3
   shell-quote: ^1.9.0
@@ -98,7 +91,8 @@ overrides:
 
 allowUnusedPatches: true
 patchedDependencies:
-  babel-preset-expo@56.0.15: patches/babel-preset-expo@56.0.15.patch
-  react-native-css@3.0.7: patches/react-native-css@3.0.7.patch
   '@react-native-menu/menu@2.0.0': patches/@react-native-menu__menu@2.0.0.patch
-  '@ubjs/core@0.31.0-3': patches/@ubjs__core@0.31.0-3.patch
+  '@ubjs/core@0.31.0-6': patches/@ubjs__core@0.31.0-6.patch
+  babel-preset-expo@58.0.23: patches/babel-preset-expo@58.0.23.patch
+  react-native-css@3.1.0-rc.1: patches/react-native-css@3.1.0-rc.1.patch
+  react-native-libsodium@1.7.0: patches/react-native-libsodium@1.7.0.patch

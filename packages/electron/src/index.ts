@@ -14,6 +14,7 @@
  */
 
 export { WindowCloseCommand } from './commands/window-close.command';
+export { BROWSER_GUEST_ATTR, BROWSER_PARTITION, isManagedBrowserAttach } from './common/webview';
 export { DEFAULT_AUTO_LAUNCH_ENABLED, DEFAULT_CLOSE_TO_TRAY, DEFAULT_KEEP_AWAKE_WHILE_AGENT_ACTIVE, DEFAULT_TRAY_ENABLED } from './config/config';
 export { ELECTRON_PLUGIN_CONFIG_KEY } from './controller/config.schema';
 export type { IElectronConfig } from './controller/config.schema';

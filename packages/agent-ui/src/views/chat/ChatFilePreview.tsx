@@ -24,8 +24,12 @@ export interface IAttachedFile {
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
@@ -37,7 +41,9 @@ interface IChatFilePreviewProps {
 export function ChatFilePreview({ files, onRemove }: IChatFilePreviewProps) {
   const localeService = useDependency(LocaleService);
 
-  if (files.length === 0) return null;
+  if (files.length === 0) {
+    return null;
+  }
 
   return (
     <div className="tm:flex tm:gap-2 tm:overflow-x-auto tm:px-1 tm:py-1.5">

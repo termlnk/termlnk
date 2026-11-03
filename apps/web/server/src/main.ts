@@ -59,8 +59,6 @@ const migrationsFolder = process.env.TERMLNK_WEB_MIGRATIONS_DIR
 const bundledSkillsDir = process.env.TERMLNK_WEB_BUNDLED_SKILLS_DIR
   ?? join(repoRoot, 'packages/agent-core/src/bundled-skills');
 const userSkillsDir = process.env.TERMLNK_WEB_USER_SKILLS_DIR ?? join(configDir, 'skills');
-const hookCliSrcDir = process.env.TERMLNK_WEB_HOOK_CLI_DIR
-  ?? join(repoRoot, 'packages/agent-hook-cli/src');
 
 const port = Number.parseInt(process.env.TERMLNK_WEB_PORT ?? '3000', 10);
 const host = process.env.TERMLNK_WEB_HOST ?? '127.0.0.1';
@@ -151,7 +149,6 @@ async function bootstrap(): Promise<void> {
     bundledSkillsDir,
     userSkillsDir,
     configPath: configDir,
-    hookCliSrcDir,
   });
   core.registerPlugin(ExtensionCorePlugin);
   core.registerPlugin(RPCServerPlugin);

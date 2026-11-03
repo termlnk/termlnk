@@ -276,10 +276,16 @@ interface NativeModuleInterface {
   ubrn_uniffi_uniffi_russh_fn_func_connect(options: Uint8Array): bigint;
   ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair(
     keyType: Uint8Array,
+    passphrase: Uint8Array,
+    cipher: Uint8Array,
+    rounds: Uint8Array,
+    ecdsaCurve: Uint8Array,
+    rsaBits: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
   ubrn_uniffi_uniffi_russh_fn_func_validate_private_key(
     privateKeyContent: Uint8Array,
+    passphrase: Uint8Array,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
   ubrn_uniffi_uniffi_russh_fn_method_connectprogresscallback_on_change(

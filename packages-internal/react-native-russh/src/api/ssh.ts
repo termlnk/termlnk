@@ -43,18 +43,18 @@ const streamEnumToLiteral: Record<GeneratedRussh.StreamKind, StreamKind> = {
   [GeneratedRussh.StreamKind.Stderr]: 'stderr',
 };
 
-function cursorToGenerated(cursor: ShellCursor): GeneratedRussh.Cursor {
+function cursorToGenerated(cursor: ShellCursor): GeneratedRussh.BufferCursor {
   switch (cursor.mode) {
     case 'head':
-      return GeneratedRussh.Cursor.Head.new();
+      return GeneratedRussh.BufferCursor.Head.new();
     case 'tailBytes':
-      return GeneratedRussh.Cursor.TailBytes.new({ bytes: cursor.bytes });
+      return GeneratedRussh.BufferCursor.TailBytes.new({ bytes: cursor.bytes });
     case 'seq':
-      return GeneratedRussh.Cursor.Seq.new({ seq: cursor.seq });
+      return GeneratedRussh.BufferCursor.Seq.new({ seq: cursor.seq });
     case 'time':
-      return GeneratedRussh.Cursor.TimeMs.new({ tMs: cursor.tMs });
+      return GeneratedRussh.BufferCursor.TimeMs.new({ tMs: cursor.tMs });
     case 'live':
-      return GeneratedRussh.Cursor.Live.new();
+      return GeneratedRussh.BufferCursor.Live.new();
   }
 }
 

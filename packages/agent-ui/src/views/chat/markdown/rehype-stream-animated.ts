@@ -28,14 +28,7 @@ const BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']);
 const SKIP_TAGS = new Set(['pre', 'code', 'table', 'svg']);
 
 function hasClass(node: Element, cls: string): boolean {
-  const cn = node.properties?.className;
-  if (Array.isArray(cn)) {
-    return cn.some((c) => String(c).includes(cls));
-  }
-  if (typeof cn === 'string') {
-    return cn.includes(cls);
-  }
-  return false;
+  return node.properties?.className?.some((c) => c.includes(cls)) ?? false;
 }
 
 // Wraps each char in a paragraph-style block in <span class="stream-char">.
@@ -58,19 +51,19 @@ export function rehypeStreamAnimated(options: IStreamAnimatedOptions = {}) {
       for (const child of node.children) {
         if (child.type === 'text') {
           for (const char of child.value) {
-            let className = 'stream-char';
+            let className = ['stream-char'];
             let delay: number | undefined;
 
             if (revealed) {
-              className = 'stream-char stream-char-revealed';
+              className = ['stream-char', 'stream-char-revealed'];
             } else if (hasBirths) {
               const birthTs = births![globalCharIndex];
               if (birthTs === undefined) {
-                className = 'stream-char stream-char-revealed';
+                className = ['stream-char', 'stream-char-revealed'];
               } else {
                 const elapsed = (nowMs as number) - birthTs;
                 if (elapsed >= fadeDuration) {
-                  className = 'stream-char stream-char-revealed';
+                  className = ['stream-char', 'stream-char-revealed'];
                 } else {
                   // Negative = mid-fade seek; positive = staggered into future.
                   delay = -elapsed;

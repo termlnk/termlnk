@@ -52,9 +52,19 @@ export interface IToolPart {
   permissionRequest?: IAgentToolPermissionRequest;
 }
 
+export interface IToolDiff {
+  path: string;
+  oldText?: string | null;
+  newText: string;
+}
+
 export interface IToolOutput {
   text?: string;
   isError?: boolean;
+  /** Structured file diffs from ACP tool calls (or future built-in edit tools). */
+  diff?: IToolDiff[];
+  /** Embedded ACP terminal id when the tool produced terminal content. */
+  terminalId?: string;
 }
 
 export interface IImagePart {
@@ -68,12 +78,25 @@ export interface IErrorPart {
   message: string;
 }
 
+/** An agent-authored execution plan. Produced by ACP `plan` updates. */
+export interface IPlanPart {
+  type: 'plan';
+  entries: IPlanEntry[];
+}
+
+export interface IPlanEntry {
+  content: string;
+  priority: 'high' | 'medium' | 'low';
+  status: 'pending' | 'in_progress' | 'completed';
+}
+
 export type IMessagePart =
   | ITextPart
   | IThinkingPart
   | IToolPart
   | IImagePart
-  | IErrorPart;
+  | IErrorPart
+  | IPlanPart;
 
 export interface IChatUsage {
   promptTokens: number;

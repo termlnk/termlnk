@@ -21,16 +21,17 @@ import { extname, isAbsolute, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { is } from '@electron-toolkit/utils';
+import { ACPPlugin } from '@termlnk/acp';
+import { ACPCorePlugin } from '@termlnk/acp-core';
 import { AgentCorePlugin, NodeProxyFetchProvider } from '@termlnk/agent-core';
 import { AuthPlugin, IDeviceNameProvider, IIdleProbe } from '@termlnk/auth';
 import { AuthCorePlugin } from '@termlnk/auth-core';
 import { Core, ILogService, IUpdaterService, LocaleType, LogLevel } from '@termlnk/core';
-import { ConfigRepository, DatabasePlugin, IDBAdaptorService, ISecretCipherService, SQLiteAdaptor } from '@termlnk/database';
+import { ConfigRepository, DatabasePlugin, IDBAdaptorService, ISecretCipherService, migrateLegacySafeStorageSecrets, SQLiteAdaptor } from '@termlnk/database';
 import { ElectronPlugin } from '@termlnk/electron';
-import { ElectronIdleProbe, ElectronMainPlugin, FileDialogService, MockUpdaterService, SafeStorageCipher } from '@termlnk/electron-main';
+import { createSafeStorageCipher, ElectronIdleProbe, ElectronMainPlugin, FileDialogService, MockUpdaterService } from '@termlnk/electron-main';
 import { IExtensionStateService, IExtensionStorageService } from '@termlnk/extension';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
-import { IslandCorePlugin } from '@termlnk/island-core';
 import { IFetchProvider, NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { IFileDialogService, RPCServerPlugin } from '@termlnk/rpc-server';
@@ -315,12 +316,33 @@ app.whenReady().then(async () => {
     locale: LocaleType.EN_US,
     locales: { enUS, zhCN, jaJP, koKR, zhTW },
   });
+  // The cipher must exist (and legacy values be re-wrapped) before DatabasePlugin starts,
+  // because its encrypt-secrets migration would otherwise treat legacy payloads as unreadable.
+  const bootstrapLogService = core.getInjector().get(ILogService);
+  const secretCipher = await createSafeStorageCipher({
+    keyFilePath: join(configDir, 'secret-key'),
+    logService: bootstrapLogService,
+  });
+  // TEMPORARY: remove once users have migrated off per-field `safe-storage` payloads.
+  if (secretCipher.canRewrapLegacy) {
+    try {
+      const migrated = await migrateLegacySafeStorageSecrets(dbAdaptor.db, (token) => secretCipher.rewrapLegacyToken(token), bootstrapLogService);
+      if (migrated.tokensRewrapped > 0 || migrated.tokensFailed > 0) {
+        bootstrapLogService.log(
+          `[Bootstrap] Legacy safe-storage migration: ${migrated.tokensRewrapped} re-wrapped, ${migrated.tokensFailed} failed, ${migrated.rowsUpdated} row(s) updated`
+        );
+      }
+    } catch (error) {
+      bootstrapLogService.error('[Bootstrap] Legacy safe-storage migration failed:', error);
+    }
+  }
+
   core.registerPlugin(DatabasePlugin, {
     migrationsFolder,
     override: [
       [IDBAdaptorService, { useValue: dbAdaptor }],
-      // OS keystore for sensitive creds; auto-falls back to LocalDerivedSecretCipher when unavailable.
-      [ISecretCipherService, { useClass: SafeStorageCipher }],
+      // Envelope cipher keyed by an OS-keystore-wrapped DEK; local-derived when the keystore is unavailable.
+      [ISecretCipherService, { useValue: secretCipher }],
     ],
   });
   core.registerPlugin(RPCPlugin, { configPath: configDir });
@@ -373,21 +395,15 @@ app.whenReady().then(async () => {
     : join(process.resourcesPath, 'bundled-skills');
   const userSkillsDir = join(configDir, 'skills');
 
-  // Dev reads the agent-hook-cli source straight from the monorepo; prod reads from the
-  // vite-bundled copy inside the main process dist directory.
-  const hookCliSrcDir = is.dev
-    ? join(appRoot, '../../../../packages/agent-hook-cli/src')
-    : join(appRoot, 'agent-hook-cli');
-
   core.registerPlugin(ElectronPlugin);
   core.registerPlugin(AgentCorePlugin, {
     bundledSkillsDir,
     userSkillsDir,
     configPath: configDir,
-    hookCliSrcDir,
   });
+  core.registerPlugin(ACPPlugin);
+  core.registerPlugin(ACPCorePlugin);
   core.registerPlugin(ExtensionCorePlugin);
-  core.registerPlugin(IslandCorePlugin);
   core.registerPlugin(RPCServerPlugin, {
     override: [
       [IFileDialogService, { useClass: FileDialogService }],

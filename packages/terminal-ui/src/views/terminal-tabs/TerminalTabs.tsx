@@ -42,7 +42,7 @@ export interface ITerminalTabsProps {
   externalDragDropIndex: Nullable<number>;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string) => void;
-  onAddSession?: () => void;
+  onAddSession?: (event?: MouseEvent) => void;
   onReorderTab?: (sourceId: string, targetId: string, position: 'before' | 'after') => void;
   onMergeTab?: (sourceId: string, targetId: string) => void;
 }
@@ -109,7 +109,9 @@ export function TerminalTabs(props: ITerminalTabsProps) {
 
   const updateDragX = useCallback((nextX: number) => {
     dragXRef.current = nextX;
-    if (rafRef.current !== null) return;
+    if (rafRef.current !== null) {
+      return;
+    }
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
       setDragX(dragXRef.current);
@@ -118,12 +120,16 @@ export function TerminalTabs(props: ITerminalTabsProps) {
 
   const getDropIndex = useCallback((contentX: number, draggedId: string) => {
     const ids = itemsRef.current.map((item) => item.id).filter((id) => id !== draggedId);
-    if (ids.length === 0) return null;
+    if (ids.length === 0) {
+      return null;
+    }
 
     const positions = ids
       .map((id) => {
         const node = itemRefs.current.get(id);
-        if (!node) return null;
+        if (!node) {
+          return null;
+        }
         return {
           left: node.offsetLeft,
           width: node.offsetWidth,
@@ -144,10 +150,14 @@ export function TerminalTabs(props: ITerminalTabsProps) {
 
   const getMergeTarget = useCallback(
     (clientX: number, clientY: number, draggedId: string): string | null => {
-      if (!onMergeTab) return null;
+      if (!onMergeTab) {
+        return null;
+      }
 
       for (const [id, node] of itemRefs.current) {
-        if (id === draggedId) continue;
+        if (id === draggedId) {
+          continue;
+        }
         const rect = node.getBoundingClientRect();
         // Check if pointer is within the center 50% of the tab
         const centerLeft = rect.left + rect.width * 0.25;
@@ -200,7 +210,9 @@ export function TerminalTabs(props: ITerminalTabsProps) {
   useLayoutEffect(() => {
     const scrollEl = scrollRef.current;
     const tabsEl = tabsRef.current;
-    if (!scrollEl || !tabsEl) return;
+    if (!scrollEl || !tabsEl) {
+      return;
+    }
 
     const check = () => {
       setIsOverflowing(tabsEl.scrollWidth > scrollEl.clientWidth + 1);
@@ -236,18 +248,26 @@ export function TerminalTabs(props: ITerminalTabsProps) {
 
     const handlePointerMove = (event: PointerEvent) => {
       const down = pointerDownRef.current;
-      if (!down || down.pointerId !== event.pointerId) return;
+      if (!down || down.pointerId !== event.pointerId) {
+        return;
+      }
 
       const scrollEl = scrollRef.current;
-      if (!scrollEl) return;
+      if (!scrollEl) {
+        return;
+      }
 
       const movedX = Math.abs(event.clientX - down.startX);
       const movedY = Math.abs(event.clientY - down.startY);
 
       if (!dragStateRef.current) {
-        if (movedX < 4 && movedY < 4) return;
+        if (movedX < 4 && movedY < 4) {
+          return;
+        }
         const node = itemRefs.current.get(down.id);
-        if (!node) return;
+        if (!node) {
+          return;
+        }
         const nodeRect = node.getBoundingClientRect();
         const dragWidth = node.offsetWidth;
         const dragHeight = node.offsetHeight;
@@ -264,7 +284,9 @@ export function TerminalTabs(props: ITerminalTabsProps) {
         setDragOverIndex(currentIndex >= 0 ? currentIndex : 0);
       }
 
-      if (!dragStateRef.current) return;
+      if (!dragStateRef.current) {
+        return;
+      }
 
       const rect = scrollEl.getBoundingClientRect();
       const scrollLeft = scrollEl.scrollLeft;
@@ -308,7 +330,9 @@ export function TerminalTabs(props: ITerminalTabsProps) {
 
     const handlePointerUp = (event: PointerEvent) => {
       const down = pointerDownRef.current;
-      if (!down || down.pointerId !== event.pointerId) return;
+      if (!down || down.pointerId !== event.pointerId) {
+        return;
+      }
       down.target.releasePointerCapture(down.pointerId);
       pointerDownRef.current = null;
 
@@ -428,7 +452,9 @@ export function TerminalTabs(props: ITerminalTabsProps) {
 
   const handleSelectTabSafe = useCallback(
     (id: string) => {
-      if (suppressClickRef.current) return;
+      if (suppressClickRef.current) {
+        return;
+      }
       onSelectTab(id);
     },
     [onSelectTab]
@@ -451,8 +477,11 @@ export function TerminalTabs(props: ITerminalTabsProps) {
           isDragging={dragState?.id === item.id}
           isMergeTarget={isMergeTarget}
           tabRef={(node) => {
-            if (node) itemRefs.current.set(item.id, node);
-            else itemRefs.current.delete(item.id);
+            if (node) {
+              itemRefs.current.set(item.id, node);
+            } else {
+              itemRefs.current.delete(item.id);
+            }
           }}
           onPointerDown={handlePointerDown(item.id)}
           onClick={() => handleSelectTabSafe(item.id)}
@@ -473,8 +502,11 @@ export function TerminalTabs(props: ITerminalTabsProps) {
         isDragging={dragState?.id === item.id}
         isMergeTarget={isMergeTarget}
         tabRef={(node) => {
-          if (node) itemRefs.current.set(item.id, node);
-          else itemRefs.current.delete(item.id);
+          if (node) {
+            itemRefs.current.set(item.id, node);
+          } else {
+            itemRefs.current.delete(item.id);
+          }
         }}
         onPointerDown={handlePointerDown(item.id)}
         onClick={() => handleSelectTabSafe(item.id)}
@@ -580,7 +612,7 @@ export function TerminalTabs(props: ITerminalTabsProps) {
               variant="ghost"
               size="icon-sm"
               className={cn('electron-no-drag tm:mx-1 tm:my-auto')}
-              onClick={onAddSession}
+              onClick={(e) => onAddSession(e.nativeEvent)}
             >
               <Plus size={14} strokeWidth={1.5} />
             </Button>
@@ -616,7 +648,7 @@ export function TerminalTabs(props: ITerminalTabsProps) {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                onClick={onAddSession}
+                onClick={(e) => onAddSession(e.nativeEvent)}
               >
                 <Plus size={14} strokeWidth={1.5} />
               </Button>

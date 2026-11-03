@@ -22,7 +22,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-PACKAGE_DIR="$REPO_ROOT/apps/mobile/packages/react-native-russh"
+PACKAGE_DIR="$REPO_ROOT/packages-internal/react-native-russh"
 
 # EAS sets EAS_BUILD_PLATFORM to "ios" or "android".
 PLATFORM="${EAS_BUILD_PLATFORM:-}"

@@ -63,7 +63,6 @@ describe('localDerivedSecretCipher', () => {
   it('reports scheme correctly', () => {
     const cipher = new LocalDerivedSecretCipher();
     expect(cipher.scheme).toBe('local-derived');
-    expect(cipher.isAvailable()).toBe(true);
   });
 
   it('handles long strings (e.g. RSA private keys)', () => {

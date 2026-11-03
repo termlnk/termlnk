@@ -54,10 +54,20 @@ const locale = {
         unread: '{0} unread',
         'total-with-unread': '{0} notifications, {1} unread',
       },
+      updater: {
+        'available-body': 'Version {0} is ready to download.',
+        'available-body-generic': 'A new version is ready to download.',
+        'ready-body': 'Restart the app to finish installing the update.',
+        'error-title': 'Update failed',
+        'error-body': 'Something went wrong while checking for updates.',
+      },
     },
     'notification-icon': {
       title: 'Notifications',
       'unread-title': '{0} unread notifications',
+    },
+    'side-panel': {
+      tabs: 'Side panels',
     },
     'right-sidebar-toggle': {
       'open-title': 'Open right sidebar',

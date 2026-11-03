@@ -1,4 +1,4 @@
-// Expo SDK 56 + NativeWind v5 Babel preset.
+// Expo SDK 58 + NativeWind v5 Babel preset.
 //
 // `babel-plugin-typescript-decorators` is a full legacy-decorator transform (forked from
 // @babel/plugin-proposal-decorators). Unlike `babel-plugin-parameter-decorator`, it processes
@@ -20,9 +20,6 @@ module.exports = function (api) {
         'babel-preset-expo',
         {
           unstable_transformImportMeta: true,
-          native: {
-            unstable_transformProfile: 'hermes-v0',
-          },
         },
       ],
       'nativewind/babel',

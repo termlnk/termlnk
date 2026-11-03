@@ -71,7 +71,7 @@ function TabIcon({ routeName, focused, color, size }: {
   return <Icon size={size} color={color} />;
 }
 
-export function FloatingTabBar({ state, navigation }: ITabBarProps) {
+export function FloatingTabBar({ state, emitter, navigateToTab }: ITabBarProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const user = useCurrentUser();
@@ -97,10 +97,10 @@ export function FloatingTabBar({ state, navigation }: ITabBarProps) {
           const showUserAvatar = route.name === 'profile' && user != null;
           const iconColor = focused ? colors.content : colors.contentTertiary;
           const onPress = () => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!focused && !event.defaultPrevented) {
               hapticLight();
-              navigation.navigate(route.name);
+              navigateToTab(route.key);
             }
           };
           return (

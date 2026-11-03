@@ -23,6 +23,7 @@ import { IGenerativeUIRegistryService } from '../../../services/generative-ui/ge
 import { ErrorPart } from '../parts/ErrorPart';
 import { GenerativeUiBlock } from '../parts/GenerativeUiBlock';
 import { ImagePart } from '../parts/ImagePart';
+import { PlanPart } from '../parts/PlanPart';
 import { TextPart } from '../parts/TextPart';
 import { ThinkingPart } from '../parts/ThinkingPart';
 import { ToolPartGroup } from '../parts/ToolPartGroup';
@@ -187,6 +188,9 @@ export const AssistantMessageBubble = memo(function AssistantMessageBubble({ mes
                   }
                   case 'error': {
                     return <ErrorPart key={`err-${index}`} part={part} />;
+                  }
+                  case 'plan': {
+                    return <PlanPart key={`plan-${index}`} part={part} />;
                   }
                   default: {
                     return null;

@@ -21,15 +21,13 @@ COPY . .
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --ignore-scripts
 
-RUN cd /workspace/node_modules/better-sqlite3 && (npx --no-install prebuild-install -r node || npx node-gyp rebuild) \
- && cd /workspace/node_modules/node-pty && npx node-gyp rebuild \
+RUN cd /workspace/node_modules/node-pty && npx node-gyp rebuild \
  && cd /workspace && node -e "new (require('better-sqlite3'))(':memory:').close(); require('node-pty'); console.log('[docker] native modules ok')"
 
 RUN pnpm --filter @termlnk/web-app-server exec vite build \
  && pnpm --filter @termlnk/web-app-renderer run build
 
 RUN pnpm --filter @termlnk/web-app-server deploy --prod --legacy /prod \
- && cp -r node_modules/better-sqlite3/build /prod/node_modules/better-sqlite3/build \
  && cp -r node_modules/node-pty/build /prod/node_modules/node-pty/build \
  && cd /prod && node -e "new (require('better-sqlite3'))(':memory:').close(); require('node-pty'); console.log('[docker] prod closure native ok')"
 
@@ -46,7 +44,6 @@ COPY --from=builder --chown=termlnk:termlnk /workspace/apps/web/server/dist /app
 COPY --from=builder --chown=termlnk:termlnk /workspace/apps/web/renderer/dist /app/renderer-dist
 COPY --from=builder --chown=termlnk:termlnk /workspace/packages/database/src/migrations /app/resources/migrations
 COPY --from=builder --chown=termlnk:termlnk /workspace/packages/agent-core/src/bundled-skills /app/resources/bundled-skills
-COPY --from=builder --chown=termlnk:termlnk /workspace/packages/agent-hook-cli/src /app/resources/agent-hook-cli
 
 ENV NODE_ENV=production \
     TERMLNK_WEB_PORT=3000 \
@@ -54,7 +51,6 @@ ENV NODE_ENV=production \
     TERMLNK_WEB_STATIC_ROOT=/app/renderer-dist \
     TERMLNK_WEB_MIGRATIONS_DIR=/app/resources/migrations \
     TERMLNK_WEB_BUNDLED_SKILLS_DIR=/app/resources/bundled-skills \
-    TERMLNK_WEB_HOOK_CLI_DIR=/app/resources/agent-hook-cli \
     TERMLNK_WEB_CONFIG_DIR=/data \
     TERMLNK_WEB_DB_PATH=/data/termlnk-web.db \
     TERMLNK_WEB_USER_SKILLS_DIR=/data/skills

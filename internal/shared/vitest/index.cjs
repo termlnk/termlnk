@@ -1,9 +1,14 @@
+const path = require('node:path');
+const process = require('node:process');
 const { defineConfig, mergeConfig } = require('vitest/config');
 
 function createConfig(options) {
   return defineConfig(mergeConfig({
     test: {
       testTimeout: 0,
+      // vitest 5 shares one cache at the workspace root by default; concurrent turbo
+      // runs then race on clearing it (ENOTEMPTY), so keep one cache per package.
+      fsModuleCachePath: path.join(process.cwd(), 'node_modules', '.vitest-cache'),
       css: {
         modules: {
           classNameStrategy: 'non-scoped',
@@ -22,7 +27,6 @@ function createConfig(options) {
           '**/*.d.ts',
           '**/virtual:*',
           '**/__x00__*',
-          '**/\x00*',
           'cypress/**',
           'test?(s)/**',
           'test?(-*).?(c|m)[jt]s?(x)',

@@ -27,21 +27,21 @@
     "@termlnk/sync": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "drizzle-orm": ">=1.0.0-rc.3",
-    "expo-secure-store": ">=56.0.0",
-    "expo-sqlite": ">=56.0.0",
+    "expo-secure-store": ">=58.0.0",
+    "expo-sqlite": ">=58.0.0",
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@noble/ciphers": "^2.2.0",
-    "@noble/hashes": "^2.2.0",
+    "@noble/ciphers": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/sync": "workspace:*",
     "@termlnk/themes": "workspace:*",
     "drizzle-orm": "1.0.0-rc.3",
-    "expo-secure-store": "^56.0.4",
-    "expo-sqlite": "^56.0.4",
-    "nanoid": "^5.1.16"
+    "expo-secure-store": "~58.0.2",
+    "expo-sqlite": "~58.0.15",
+    "nanoid": "^6.0.2"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",

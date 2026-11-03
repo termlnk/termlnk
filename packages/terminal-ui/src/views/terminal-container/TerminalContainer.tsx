@@ -34,7 +34,9 @@ import { SessionPortalContext } from '../workspace/session-portal-context';
 import { WorkspaceContainer } from '../workspace/WorkspaceContainer';
 
 function collectSessionIds(node: IWorkspaceLayoutNode): string[] {
-  if (node.type === 'leaf') return [node.sessionId];
+  if (node.type === 'leaf') {
+    return [node.sessionId];
+  }
   return node.children.flatMap(collectSessionIds);
 }
 
@@ -68,7 +70,9 @@ export function TerminalContainer(): React.JSX.Element {
 
   // Inject/remove CSS transparency overrides when theme or opacity changes
   useEffect(() => {
-    if (!currentTheme) return;
+    if (!currentTheme) {
+      return;
+    }
     if (usesDomTransparency && transparency.enabled && transparency.opacity < 1) {
       injectTransparencyToDOM(currentTheme, transparency.opacity);
     } else {
@@ -228,7 +232,9 @@ export function TerminalContainer(): React.JSX.Element {
                 {/* ALL sessions rendered here — workspace sessions are hidden and reparented by WorkspacePane */}
                 {sessions.map((session) => {
                   const ViewComponent = viewRegistry.getView(session.type);
-                  if (!ViewComponent) return null;
+                  if (!ViewComponent) {
+                    return null;
+                  }
 
                   const isInWorkspace = workspaceSessionIds.has(session.id);
                   const isStandaloneActive = !isInWorkspace && session.id === activeTabItemId && !activeWorkspace;

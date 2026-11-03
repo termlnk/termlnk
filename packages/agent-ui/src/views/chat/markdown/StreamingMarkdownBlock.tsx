@@ -15,7 +15,7 @@
 
 import type { Pluggable, PluggableList } from 'unified';
 import { memo, useMemo } from 'react';
-import { Block, defaultRehypePlugins, defaultRemarkPlugins } from 'streamdown';
+import { Block } from 'streamdown';
 import { rehypeStreamAnimated } from './rehype-stream-animated';
 import { useStreamingBlocks } from './streaming-blocks-context';
 
@@ -23,17 +23,6 @@ type IBlockComponentProps = React.ComponentProps<typeof Block>;
 
 // Module-level constant so streamdown's <Block> memo short-circuits on settled blocks.
 const REVEALED_STREAM_PLUGIN: Pluggable = [rehypeStreamAnimated, { revealed: true }];
-
-// LaTeX (katex / math) is intentionally dropped — terminal-side chat does not need it.
-const SHARED_REHYPE_BASE: PluggableList = Object.entries(defaultRehypePlugins)
-  .filter(([key]) => key !== 'katex')
-  .map(([, plugin]) => plugin);
-
-const SHARED_REMARK_BASE: PluggableList = Object.entries(defaultRemarkPlugins)
-  .filter(([key]) => key !== 'math')
-  .map(([, plugin]) => plugin);
-
-const SHARED_REVEALED_REHYPE: PluggableList = [...SHARED_REHYPE_BASE, REVEALED_STREAM_PLUGIN];
 
 const MERMAID_FENCE_RE = /^\s*```mermaid\b/;
 
@@ -71,18 +60,22 @@ export const StreamingMarkdownBlock = memo(function StreamingMarkdownBlock(
   const meta = ctx.animationMetaByOffset.get(startOffset);
   const births = ctx.birthsByOffset.get(startOffset);
 
+  // props.rehypePlugins / props.remarkPlugins are composed by <Streamdown> from its defaults plus the
+  // `plugins` prop (cjk, code, ...); extending them keeps those plugins active.
+  const baseRehypePlugins = props.rehypePlugins;
   const rehypePlugins = useMemo<PluggableList>(() => {
+    const base = baseRehypePlugins ?? [];
     if (meta?.settled) {
-      return SHARED_REVEALED_REHYPE;
+      return [...base, REVEALED_STREAM_PLUGIN];
     }
     return [
-      ...SHARED_REHYPE_BASE,
+      ...base,
       [
         rehypeStreamAnimated,
         { births, fadeDuration: ctx.fadeDuration, nowMs: ctx.renderNow },
       ],
     ];
-  }, [meta?.settled, births, ctx.fadeDuration, ctx.renderNow]);
+  }, [baseRehypePlugins, meta?.settled, births, ctx.fadeDuration, ctx.renderNow]);
 
   const isStreamingMermaid = state === 'streaming' && !!content && MERMAID_FENCE_RE.test(content);
   const components = useMemo(() => {
@@ -97,7 +90,6 @@ export const StreamingMarkdownBlock = memo(function StreamingMarkdownBlock(
       {...props}
       components={components}
       rehypePlugins={rehypePlugins}
-      remarkPlugins={SHARED_REMARK_BASE}
     />
   );
 });

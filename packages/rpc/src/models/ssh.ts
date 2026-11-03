@@ -49,3 +49,6 @@ export type SSHSessionEvent =
   | ({ type: 'banner'; message: string } & ISSHHopContext)
   | { type: 'log'; message: string }
   | { type: 'hop_progress'; hopId: string; hopLabel: string; hopIndex: number; hopCount: number; status: SSHHopProgressStatus; message?: string };
+
+/** User's answer to an unknown/changed host key prompt. */
+export type HostKeyVerifyAction = 'accept_save' | 'accept_once' | 'reject';

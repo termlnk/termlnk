@@ -48,14 +48,14 @@ describe('rehypeStreamAnimated', () => {
     expect(spans).toHaveLength(2);
     expect((spans[0].children[0] as { value: string }).value).toBe('a');
     expect((spans[1].children[0] as { value: string }).value).toBe('b');
-    expect(spans[0].properties?.className).toBe('stream-char stream-char-revealed');
+    expect(spans[0].properties?.className).toEqual(['stream-char', 'stream-char-revealed']);
   });
 
   it('emits stream-char-revealed (no animation-delay) when revealed=true', () => {
     const tree = makeTree(makeBlock('p', 'x'));
     rehypeStreamAnimated({ revealed: true })(tree);
     const span = collectSpans(tree.children[0] as Element)[0];
-    expect(span.properties?.className).toBe('stream-char stream-char-revealed');
+    expect(span.properties?.className).toEqual(['stream-char', 'stream-char-revealed']);
     expect(span.properties?.style).toBeUndefined();
   });
 
@@ -70,7 +70,7 @@ describe('rehypeStreamAnimated', () => {
     const spans = collectSpans(tree.children[0] as Element);
     expect(spans[0].properties?.style).toBe('animation-delay:-100ms');
     expect(spans[1].properties?.style).toBe('animation-delay:-50ms');
-    expect(spans[0].properties?.className).toBe('stream-char');
+    expect(spans[0].properties?.className).toEqual(['stream-char']);
   });
 
   it('marks chars whose fade window already expired as stream-char-revealed', () => {
@@ -82,9 +82,9 @@ describe('rehypeStreamAnimated', () => {
       nowMs: now,
     })(tree);
     const spans = collectSpans(tree.children[0] as Element);
-    expect(spans[0].properties?.className).toBe('stream-char stream-char-revealed');
+    expect(spans[0].properties?.className).toEqual(['stream-char', 'stream-char-revealed']);
     expect(spans[0].properties?.style).toBeUndefined();
-    expect(spans[1].properties?.className).toBe('stream-char');
+    expect(spans[1].properties?.className).toEqual(['stream-char']);
   });
 
   it('counts chars by code point so emoji and CJK do not split mid-character', () => {
@@ -125,7 +125,7 @@ describe('rehypeStreamAnimated', () => {
     })(tree);
     const spans = collectSpans(tree.children[0] as Element);
     // index 0 born long ago → revealed; index 1/2 have no birth → fall back to revealed too
-    expect(spans[1].properties?.className).toBe('stream-char stream-char-revealed');
-    expect(spans[2].properties?.className).toBe('stream-char stream-char-revealed');
+    expect(spans[1].properties?.className).toEqual(['stream-char', 'stream-char-revealed']);
+    expect(spans[2].properties?.className).toEqual(['stream-char', 'stream-char-revealed']);
   });
 });

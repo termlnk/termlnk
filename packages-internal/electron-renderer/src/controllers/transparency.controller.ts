@@ -57,12 +57,6 @@ export class TransparencyController extends Disposable {
       return;
     }
 
-    // Skip island window — it manages its own transparency via
-    // the BrowserWindow `transparent: true` option in DynamicIslandController.
-    if (window.location.pathname.endsWith('island.html')) {
-      return;
-    }
-
     this._applyNativeTransparency();
 
     this.disposeWithMe(

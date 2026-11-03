@@ -72,7 +72,9 @@ export function AiProviderTab() {
         })
       );
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       const apiKeys: Record<string, string> = {};
       const baseUrls: Record<string, string> = {};
@@ -103,7 +105,9 @@ export function AiProviderTab() {
     const orderedProviders = providers.toSorted(compareProviders);
 
     setSelectedProviderId((prev) => {
-      if (prev && orderedProviders.some((p) => p.id === prev)) return prev;
+      if (prev && orderedProviders.some((p) => p.id === prev)) {
+        return prev;
+      }
       return orderedProviders[0]?.id ?? null;
     });
   }, [providers]);
@@ -122,12 +126,16 @@ export function AiProviderTab() {
         isBuiltin: provider.builtin,
       }))
       .filter((provider) => {
-        if (!query) return true;
+        if (!query) {
+          return true;
+        }
         return provider.name.toLowerCase().includes(query) || provider.id.toLowerCase().includes(query);
       })
       .sort((a, b) => {
         // Enabled providers come first
-        if (a.isEnabled !== b.isEnabled) return a.isEnabled ? -1 : 1;
+        if (a.isEnabled !== b.isEnabled) {
+          return a.isEnabled ? -1 : 1;
+        }
         return compareProviders(a, b);
       });
   }, [providers, providerQuery, apiKeyInputs]);
@@ -137,14 +145,18 @@ export function AiProviderTab() {
   }, [providers, selectedProviderId]);
 
   const filteredModels = useMemo<IModelOption[]>(() => {
-    if (!selectedProvider) return [];
+    if (!selectedProvider) {
+      return [];
+    }
     const query = modelQuery.trim().toLowerCase();
     const models = query
       ? selectedProvider.models.filter((m) =>
         m.name.toLowerCase().includes(query) || m.id.toLowerCase().includes(query))
       : [...selectedProvider.models];
     return models.sort((a, b) => {
-      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+      if (a.enabled !== b.enabled) {
+        return a.enabled ? -1 : 1;
+      }
       return 0;
     });
   }, [selectedProvider, modelQuery]);
@@ -198,7 +210,9 @@ export function AiProviderTab() {
 
   const handleApplyDefaultBaseUrl = useCallback(async (providerId: string) => {
     const defaultUrl = getDefaultProviderBaseUrl(providerId);
-    if (!defaultUrl) return;
+    if (!defaultUrl) {
+      return;
+    }
 
     setBaseUrlInputs((prev) => ({ ...prev, [providerId]: defaultUrl }));
     try {

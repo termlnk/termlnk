@@ -54,7 +54,7 @@ const PROVIDER_LOGOS: Record<string, ProviderLogoComponent> = {
   huggingface: HuggingFace,
   minimax: Minimax,
   'minimax-cn': Minimax,
-  'azure-openai-responses': AzureAI,
+  azure: AzureAI,
   'amazon-bedrock': Bedrock,
   'github-copilot': GithubCopilot,
   opencode: OpenCode,
@@ -105,8 +105,8 @@ function resolveProviderLogoKey(providerId: string): string {
     return 'google';
   }
 
-  if (normalizedId.startsWith('azure-openai')) {
-    return 'azure-openai-responses';
+  if (normalizedId.startsWith('azure')) {
+    return 'azure';
   }
 
   if (normalizedId.startsWith('xiaomi')) {

@@ -14,6 +14,8 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@janwirth/electron-trpc-link": "11.1.2-bugfix-2",
     "@roamhq/wrtc": "^0.10.0",
+    "@termlnk/acp": "workspace:*",
+    "@termlnk/acp-core": "workspace:*",
     "@termlnk/agent": "workspace:*",
     "@termlnk/agent-core": "workspace:*",
     "@termlnk/auth": "workspace:*",
@@ -24,7 +26,6 @@
     "@termlnk/electron-main": "workspace:*",
     "@termlnk/extension": "workspace:*",
     "@termlnk/extension-core": "workspace:*",
-    "@termlnk/island-core": "workspace:*",
     "@termlnk/network": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
@@ -38,6 +39,6 @@
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
-    "electron": "42.8.0"
+    "electron": "45.2.1"
   }
 }

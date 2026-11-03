@@ -27,7 +27,9 @@ export class DefaultKeyEncodingPolicy implements IKeyEncodingPolicy {
   encode(intent: TerminalKeyIntent, event: KeyboardEvent): string | null {
     switch (intent) {
       case TerminalKeyIntent.SendText:
-        if (isShiftEnterKey(event)) return '\n';
+        if (isShiftEnterKey(event)) {
+          return '\n';
+        }
         return null; // let xterm handle
       case TerminalKeyIntent.BypassToIME:
         return null; // browser handles

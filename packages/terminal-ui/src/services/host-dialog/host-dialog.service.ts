@@ -94,8 +94,12 @@ export class HostDialogService extends Disposable {
   }
 
   private _normalizeProxy(proxy?: Partial<IProxy> | null): IProxy | null {
-    if (!proxy) return null;
-    if (!proxy.enabled) return null;
+    if (!proxy) {
+      return null;
+    }
+    if (!proxy.enabled) {
+      return null;
+    }
 
     return {
       enabled: true,

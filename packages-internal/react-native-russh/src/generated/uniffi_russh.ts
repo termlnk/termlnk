@@ -27,11 +27,11 @@ import {
   type UniffiReferenceHolder,
   type UniffiRustCallStatus,
   AbstractFfiConverterByteArray,
+  Cursor,
   FfiConverterArray,
   FfiConverterArrayBuffer,
   FfiConverterBool,
   FfiConverterFloat64,
-  FfiConverterInt32,
   FfiConverterObject,
   FfiConverterObjectWithCallbacks,
   FfiConverterOptional,
@@ -111,78 +111,77 @@ export async function connect(
   }
 }
 
-export function generateKeyPair(keyType: KeyType, passphrase: string | undefined, cipher: string | undefined, rounds: number | undefined, ecdsaCurve: string | undefined, rsaBits: number | undefined): string /*throws*/ {
-  return ((__rb: Uint8Array) => {
-    try {
-      return FfiConverterString.lift(__rb);
-    } finally {
-      nativeModule().rustbuffer_free(__rb);
-    }
-  })(
-    uniffiCaller.rustCallWithError(
-      /*liftError:*/ FfiConverterTypeSshError.lift.bind(
-        FfiConverterTypeSshError,
-      ),
-      /*caller:*/ (callStatus) => {
-        return nativeModule().ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair(
-          FfiConverterTypeKeyType.lower(
-            keyType,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterOptionalString.lower(
-            passphrase,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterOptionalString.lower(
-            cipher,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterOptionalUInt32.lower(
-            rounds,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterOptionalString.lower(
-            ecdsaCurve,
-            nativeModule().rustbuffer_alloc,
-          ),
-          FfiConverterOptionalUInt32.lower(
-            rsaBits,
-            nativeModule().rustbuffer_alloc,
-          ),
-          callStatus,
-        );
-      },
-      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-    ),
+export function generateKeyPair(
+  keyType: KeyType,
+  passphrase: string | undefined,
+  cipher: string | undefined,
+  rounds: number | undefined,
+  ecdsaCurve: string | undefined,
+  rsaBits: number | undefined,
+): GeneratedKeyMaterial /*throws*/ {
+  const __rb: Uint8Array = uniffiCaller.rustCallWithError(
+    /*liftError:*/ FfiConverterTypeSshError.lift.bind(FfiConverterTypeSshError),
+    /*caller:*/ (callStatus) => {
+      return nativeModule().ubrn_uniffi_uniffi_russh_fn_func_generate_key_pair(
+        FfiConverterTypeKeyType.lower(keyType, nativeModule().rustbuffer_alloc),
+        FfiConverterOptionalString.lower(
+          passphrase,
+          nativeModule().rustbuffer_alloc,
+        ),
+        FfiConverterOptionalString.lower(
+          cipher,
+          nativeModule().rustbuffer_alloc,
+        ),
+        FfiConverterOptionalUInt32.lower(
+          rounds,
+          nativeModule().rustbuffer_alloc,
+        ),
+        FfiConverterOptionalString.lower(
+          ecdsaCurve,
+          nativeModule().rustbuffer_alloc,
+        ),
+        FfiConverterOptionalUInt32.lower(
+          rsaBits,
+          nativeModule().rustbuffer_alloc,
+        ),
+        callStatus,
+      );
+    },
+    /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
   );
+  try {
+    return FfiConverterTypeGeneratedKeyMaterial.lift(__rb);
+  } finally {
+    nativeModule().rustbuffer_free(__rb);
+  }
 }
 
 export function validatePrivateKey(
   privateKeyContent: string,
-): string /*throws*/ {
-  return ((__rb: Uint8Array) => {
-    try {
-      return FfiConverterString.lift(__rb);
-    } finally {
-      nativeModule().rustbuffer_free(__rb);
-    }
-  })(
-    uniffiCaller.rustCallWithError(
-      /*liftError:*/ FfiConverterTypeSshError.lift.bind(
-        FfiConverterTypeSshError,
-      ),
-      /*caller:*/ (callStatus) => {
-        return nativeModule().ubrn_uniffi_uniffi_russh_fn_func_validate_private_key(
-          FfiConverterString.lower(
-            privateKeyContent,
-            nativeModule().rustbuffer_alloc,
-          ),
-          callStatus,
-        );
-      },
-      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-    ),
+  passphrase: string | undefined,
+): GeneratedKeyMaterial /*throws*/ {
+  const __rb: Uint8Array = uniffiCaller.rustCallWithError(
+    /*liftError:*/ FfiConverterTypeSshError.lift.bind(FfiConverterTypeSshError),
+    /*caller:*/ (callStatus) => {
+      return nativeModule().ubrn_uniffi_uniffi_russh_fn_func_validate_private_key(
+        FfiConverterString.lower(
+          privateKeyContent,
+          nativeModule().rustbuffer_alloc,
+        ),
+        FfiConverterOptionalString.lower(
+          passphrase,
+          nativeModule().rustbuffer_alloc,
+        ),
+        callStatus,
+      );
+    },
+    /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
   );
+  try {
+    return FfiConverterTypeGeneratedKeyMaterial.lift(__rb);
+  } finally {
+    nativeModule().rustbuffer_free(__rb);
+  }
 }
 
 export enum StreamKind {
@@ -191,11 +190,10 @@ export enum StreamKind {
 }
 
 const FfiConverterTypeStreamKind = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = StreamKind;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
           return StreamKind.Stdout;
         case 2:
@@ -204,16 +202,16 @@ const FfiConverterTypeStreamKind = (() => {
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value) {
         case StreamKind.Stdout:
-          return ordinalConverter.write(1, into);
+          return c.writeI32(1);
         case StreamKind.Stderr:
-          return ordinalConverter.write(2, into);
+          return c.writeI32(2);
       }
     }
     allocationSize(value: TypeName): number {
-      return ordinalConverter.allocationSize(0);
+      return 4;
     }
   }
   return new FFIConverter();
@@ -246,19 +244,19 @@ export const TerminalChunk = (() => {
 const FfiConverterTypeTerminalChunk = (() => {
   type TypeName = TerminalChunk;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        seq: FfiConverterUInt64.read(from),
-        tMs: FfiConverterFloat64.read(from),
-        stream: FfiConverterTypeStreamKind.read(from),
-        bytes: FfiConverterArrayBuffer.read(from),
+        seq: FfiConverterUInt64.readFromCursor(c),
+        tMs: FfiConverterFloat64.readFromCursor(c),
+        stream: FfiConverterTypeStreamKind.readFromCursor(c),
+        bytes: FfiConverterArrayBuffer.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterUInt64.write(value.seq, into);
-      FfiConverterFloat64.write(value.tMs, into);
-      FfiConverterTypeStreamKind.write(value.stream, into);
-      FfiConverterArrayBuffer.write(value.bytes, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterUInt64.writeIntoCursor(value.seq, c);
+      FfiConverterFloat64.writeIntoCursor(value.tMs, c);
+      FfiConverterTypeStreamKind.writeIntoCursor(value.stream, c);
+      FfiConverterArrayBuffer.writeIntoCursor(value.bytes, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -297,15 +295,15 @@ export const DroppedRange = (() => {
 const FfiConverterTypeDroppedRange = (() => {
   type TypeName = DroppedRange;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        fromSeq: FfiConverterUInt64.read(from),
-        toSeq: FfiConverterUInt64.read(from),
+        fromSeq: FfiConverterUInt64.readFromCursor(c),
+        toSeq: FfiConverterUInt64.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterUInt64.write(value.fromSeq, into);
-      FfiConverterUInt64.write(value.toSeq, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterUInt64.writeIntoCursor(value.fromSeq, c);
+      FfiConverterUInt64.writeIntoCursor(value.toSeq, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -343,17 +341,17 @@ export const BufferReadResult = (() => {
 const FfiConverterTypeBufferReadResult = (() => {
   type TypeName = BufferReadResult;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        chunks: FfiConverterSequenceTypeTerminalChunk.read(from),
-        nextSeq: FfiConverterUInt64.read(from),
-        dropped: FfiConverterOptionalTypeDroppedRange.read(from),
+        chunks: FfiConverterSequenceTypeTerminalChunk.readFromCursor(c),
+        nextSeq: FfiConverterUInt64.readFromCursor(c),
+        dropped: FfiConverterOptionalTypeDroppedRange.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterSequenceTypeTerminalChunk.write(value.chunks, into);
-      FfiConverterUInt64.write(value.nextSeq, into);
-      FfiConverterOptionalTypeDroppedRange.write(value.dropped, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterSequenceTypeTerminalChunk.writeIntoCursor(value.chunks, c);
+      FfiConverterUInt64.writeIntoCursor(value.nextSeq, c);
+      FfiConverterOptionalTypeDroppedRange.writeIntoCursor(value.dropped, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -395,23 +393,23 @@ export const BufferStats = (() => {
 const FfiConverterTypeBufferStats = (() => {
   type TypeName = BufferStats;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        ringBytesCount: FfiConverterUInt64.read(from),
-        usedBytes: FfiConverterUInt64.read(from),
-        headSeq: FfiConverterUInt64.read(from),
-        tailSeq: FfiConverterUInt64.read(from),
-        droppedBytesTotal: FfiConverterUInt64.read(from),
-        chunksCount: FfiConverterUInt64.read(from),
+        ringBytesCount: FfiConverterUInt64.readFromCursor(c),
+        usedBytes: FfiConverterUInt64.readFromCursor(c),
+        headSeq: FfiConverterUInt64.readFromCursor(c),
+        tailSeq: FfiConverterUInt64.readFromCursor(c),
+        droppedBytesTotal: FfiConverterUInt64.readFromCursor(c),
+        chunksCount: FfiConverterUInt64.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterUInt64.write(value.ringBytesCount, into);
-      FfiConverterUInt64.write(value.usedBytes, into);
-      FfiConverterUInt64.write(value.headSeq, into);
-      FfiConverterUInt64.write(value.tailSeq, into);
-      FfiConverterUInt64.write(value.droppedBytesTotal, into);
-      FfiConverterUInt64.write(value.chunksCount, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterUInt64.writeIntoCursor(value.ringBytesCount, c);
+      FfiConverterUInt64.writeIntoCursor(value.usedBytes, c);
+      FfiConverterUInt64.writeIntoCursor(value.headSeq, c);
+      FfiConverterUInt64.writeIntoCursor(value.tailSeq, c);
+      FfiConverterUInt64.writeIntoCursor(value.droppedBytesTotal, c);
+      FfiConverterUInt64.writeIntoCursor(value.chunksCount, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -561,35 +559,34 @@ export type Security = InstanceType<(typeof Security)["Password" | "Key"]>;
 
 // FfiConverter for enum Security
 const FfiConverterTypeSecurity = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = Security;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
           return new Security.Password({
-            password: FfiConverterString.read(from),
+            password: FfiConverterString.readFromCursor(c),
           });
         case 2:
           return new Security.Key({
-            privateKeyContent: FfiConverterString.read(from),
+            privateKeyContent: FfiConverterString.readFromCursor(c),
           });
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value.tag) {
         case Security_Tags.Password: {
-          ordinalConverter.write(1, into);
+          c.writeI32(1);
           const inner = value.inner;
-          FfiConverterString.write(inner.password, into);
+          FfiConverterString.writeIntoCursor(inner.password, c);
           return;
         }
         case Security_Tags.Key: {
-          ordinalConverter.write(2, into);
+          c.writeI32(2);
           const inner = value.inner;
-          FfiConverterString.write(inner.privateKeyContent, into);
+          FfiConverterString.writeIntoCursor(inner.privateKeyContent, c);
           return;
         }
         default:
@@ -601,13 +598,13 @@ const FfiConverterTypeSecurity = (() => {
       switch (value.tag) {
         case Security_Tags.Password: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(1);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner.password);
           return size;
         }
         case Security_Tags.Key: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(2);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner.privateKeyContent);
           return size;
         }
@@ -646,19 +643,19 @@ export const ConnectionDetails = (() => {
 const FfiConverterTypeConnectionDetails = (() => {
   type TypeName = ConnectionDetails;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        host: FfiConverterString.read(from),
-        port: FfiConverterUInt16.read(from),
-        username: FfiConverterString.read(from),
-        security: FfiConverterTypeSecurity.read(from),
+        host: FfiConverterString.readFromCursor(c),
+        port: FfiConverterUInt16.readFromCursor(c),
+        username: FfiConverterString.readFromCursor(c),
+        security: FfiConverterTypeSecurity.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.host, into);
-      FfiConverterUInt16.write(value.port, into);
-      FfiConverterString.write(value.username, into);
-      FfiConverterTypeSecurity.write(value.security, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.host, c);
+      FfiConverterUInt16.writeIntoCursor(value.port, c);
+      FfiConverterString.writeIntoCursor(value.username, c);
+      FfiConverterTypeSecurity.writeIntoCursor(value.security, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -678,11 +675,10 @@ export enum SshConnectionProgressEvent {
 }
 
 const FfiConverterTypeSshConnectionProgressEvent = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = SshConnectionProgressEvent;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
           return SshConnectionProgressEvent.TcpConnected;
         case 2:
@@ -691,16 +687,16 @@ const FfiConverterTypeSshConnectionProgressEvent = (() => {
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value) {
         case SshConnectionProgressEvent.TcpConnected:
-          return ordinalConverter.write(1, into);
+          return c.writeI32(1);
         case SshConnectionProgressEvent.SshHandshake:
-          return ordinalConverter.write(2, into);
+          return c.writeI32(2);
       }
     }
     allocationSize(value: TypeName): number {
-      return ordinalConverter.allocationSize(0);
+      return 4;
     }
   }
   return new FFIConverter();
@@ -1077,23 +1073,23 @@ export const ServerPublicKeyInfo = (() => {
 const FfiConverterTypeServerPublicKeyInfo = (() => {
   type TypeName = ServerPublicKeyInfo;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        host: FfiConverterString.read(from),
-        port: FfiConverterUInt16.read(from),
-        remoteIp: FfiConverterOptionalString.read(from),
-        algorithm: FfiConverterString.read(from),
-        fingerprintSha256: FfiConverterString.read(from),
-        keyBase64: FfiConverterString.read(from),
+        host: FfiConverterString.readFromCursor(c),
+        port: FfiConverterUInt16.readFromCursor(c),
+        remoteIp: FfiConverterOptionalString.readFromCursor(c),
+        algorithm: FfiConverterString.readFromCursor(c),
+        fingerprintSha256: FfiConverterString.readFromCursor(c),
+        keyBase64: FfiConverterString.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.host, into);
-      FfiConverterUInt16.write(value.port, into);
-      FfiConverterOptionalString.write(value.remoteIp, into);
-      FfiConverterString.write(value.algorithm, into);
-      FfiConverterString.write(value.fingerprintSha256, into);
-      FfiConverterString.write(value.keyBase64, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.host, c);
+      FfiConverterUInt16.writeIntoCursor(value.port, c);
+      FfiConverterOptionalString.writeIntoCursor(value.remoteIp, c);
+      FfiConverterString.writeIntoCursor(value.algorithm, c);
+      FfiConverterString.writeIntoCursor(value.fingerprintSha256, c);
+      FfiConverterString.writeIntoCursor(value.keyBase64, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -1353,27 +1349,36 @@ export const ConnectOptions = (() => {
 const FfiConverterTypeConnectOptions = (() => {
   type TypeName = ConnectOptions;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        connectionDetails: FfiConverterTypeConnectionDetails.read(from),
+        connectionDetails: FfiConverterTypeConnectionDetails.readFromCursor(c),
         onConnectionProgressCallback:
-          FfiConverterOptionalTypeConnectProgressCallback.read(from),
+          FfiConverterOptionalTypeConnectProgressCallback.readFromCursor(c),
         onDisconnectedCallback:
-          FfiConverterOptionalTypeConnectionDisconnectedCallback.read(from),
-        onServerKeyCallback: FfiConverterTypeServerKeyCallback.read(from),
+          FfiConverterOptionalTypeConnectionDisconnectedCallback.readFromCursor(
+            c,
+          ),
+        onServerKeyCallback:
+          FfiConverterTypeServerKeyCallback.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterTypeConnectionDetails.write(value.connectionDetails, into);
-      FfiConverterOptionalTypeConnectProgressCallback.write(
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterTypeConnectionDetails.writeIntoCursor(
+        value.connectionDetails,
+        c,
+      );
+      FfiConverterOptionalTypeConnectProgressCallback.writeIntoCursor(
         value.onConnectionProgressCallback,
-        into,
+        c,
       );
-      FfiConverterOptionalTypeConnectionDisconnectedCallback.write(
+      FfiConverterOptionalTypeConnectionDisconnectedCallback.writeIntoCursor(
         value.onDisconnectedCallback,
-        into,
+        c,
       );
-      FfiConverterTypeServerKeyCallback.write(value.onServerKeyCallback, into);
+      FfiConverterTypeServerKeyCallback.writeIntoCursor(
+        value.onServerKeyCallback,
+        c,
+      );
     }
     allocationSize(value: TypeName): number {
       return (
@@ -1421,15 +1426,15 @@ export const DynamicForwardConfig = (() => {
 const FfiConverterTypeDynamicForwardConfig = (() => {
   type TypeName = DynamicForwardConfig;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        bindAddress: FfiConverterString.read(from),
-        bindPort: FfiConverterUInt16.read(from),
+        bindAddress: FfiConverterString.readFromCursor(c),
+        bindPort: FfiConverterUInt16.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.bindAddress, into);
-      FfiConverterUInt16.write(value.bindPort, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.bindAddress, c);
+      FfiConverterUInt16.writeIntoCursor(value.bindPort, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -1565,20 +1570,19 @@ export type ForwardTunnelStatus = InstanceType<
 
 // FfiConverter for enum ForwardTunnelStatus
 const FfiConverterTypeForwardTunnelStatus = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = ForwardTunnelStatus;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
           return new ForwardTunnelStatus.Starting();
         case 2:
           return new ForwardTunnelStatus.Active({
-            effectiveBindPort: FfiConverterUInt16.read(from),
+            effectiveBindPort: FfiConverterUInt16.readFromCursor(c),
           });
         case 3:
           return new ForwardTunnelStatus.Failed({
-            error: FfiConverterString.read(from),
+            error: FfiConverterString.readFromCursor(c),
           });
         case 4:
           return new ForwardTunnelStatus.Stopped();
@@ -1586,26 +1590,26 @@ const FfiConverterTypeForwardTunnelStatus = (() => {
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value.tag) {
         case ForwardTunnelStatus_Tags.Starting: {
-          ordinalConverter.write(1, into);
+          c.writeI32(1);
           return;
         }
         case ForwardTunnelStatus_Tags.Active: {
-          ordinalConverter.write(2, into);
+          c.writeI32(2);
           const inner = value.inner;
-          FfiConverterUInt16.write(inner.effectiveBindPort, into);
+          FfiConverterUInt16.writeIntoCursor(inner.effectiveBindPort, c);
           return;
         }
         case ForwardTunnelStatus_Tags.Failed: {
-          ordinalConverter.write(3, into);
+          c.writeI32(3);
           const inner = value.inner;
-          FfiConverterString.write(inner.error, into);
+          FfiConverterString.writeIntoCursor(inner.error, c);
           return;
         }
         case ForwardTunnelStatus_Tags.Stopped: {
-          ordinalConverter.write(4, into);
+          c.writeI32(4);
           return;
         }
         default:
@@ -1616,22 +1620,22 @@ const FfiConverterTypeForwardTunnelStatus = (() => {
     allocationSize(value: TypeName): number {
       switch (value.tag) {
         case ForwardTunnelStatus_Tags.Starting: {
-          return ordinalConverter.allocationSize(1);
+          return 4;
         }
         case ForwardTunnelStatus_Tags.Active: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(2);
+          let size = 4;
           size += FfiConverterUInt16.allocationSize(inner.effectiveBindPort);
           return size;
         }
         case ForwardTunnelStatus_Tags.Failed: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(3);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner.error);
           return size;
         }
         case ForwardTunnelStatus_Tags.Stopped: {
-          return ordinalConverter.allocationSize(4);
+          return 4;
         }
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
@@ -1669,21 +1673,21 @@ export const ForwardTunnelStats = (() => {
 const FfiConverterTypeForwardTunnelStats = (() => {
   type TypeName = ForwardTunnelStats;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        status: FfiConverterTypeForwardTunnelStatus.read(from),
-        activeConnections: FfiConverterUInt32.read(from),
-        totalConnections: FfiConverterUInt64.read(from),
-        bytesIn: FfiConverterUInt64.read(from),
-        bytesOut: FfiConverterUInt64.read(from),
+        status: FfiConverterTypeForwardTunnelStatus.readFromCursor(c),
+        activeConnections: FfiConverterUInt32.readFromCursor(c),
+        totalConnections: FfiConverterUInt64.readFromCursor(c),
+        bytesIn: FfiConverterUInt64.readFromCursor(c),
+        bytesOut: FfiConverterUInt64.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterTypeForwardTunnelStatus.write(value.status, into);
-      FfiConverterUInt32.write(value.activeConnections, into);
-      FfiConverterUInt64.write(value.totalConnections, into);
-      FfiConverterUInt64.write(value.bytesIn, into);
-      FfiConverterUInt64.write(value.bytesOut, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterTypeForwardTunnelStatus.writeIntoCursor(value.status, c);
+      FfiConverterUInt32.writeIntoCursor(value.activeConnections, c);
+      FfiConverterUInt64.writeIntoCursor(value.totalConnections, c);
+      FfiConverterUInt64.writeIntoCursor(value.bytesIn, c);
+      FfiConverterUInt64.writeIntoCursor(value.bytesOut, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -1698,27 +1702,85 @@ const FfiConverterTypeForwardTunnelStats = (() => {
   return new FFIConverter();
 })();
 
-// Enum: Cursor
-export enum Cursor_Tags {
+export type GeneratedKeyMaterial = {
+  privateKey: string;
+  publicKey: string;
+  fingerprintSha256: string;
+  algorithm: string;
+  bits?: number;
+};
+
+/**
+ * Generated factory for {@link GeneratedKeyMaterial} record objects.
+ */
+export const GeneratedKeyMaterial = (() => {
+  const defaults = () => ({});
+  const create = (() => {
+    return uniffiCreateRecord<
+      GeneratedKeyMaterial,
+      ReturnType<typeof defaults>
+    >(defaults);
+  })();
+  return Object.freeze({
+    create,
+    new: create,
+    defaults: () => Object.freeze(defaults()) as Partial<GeneratedKeyMaterial>,
+  });
+})();
+
+const FfiConverterTypeGeneratedKeyMaterial = (() => {
+  type TypeName = GeneratedKeyMaterial;
+  class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
+    readFromCursor(c: Cursor): TypeName {
+      return {
+        privateKey: FfiConverterString.readFromCursor(c),
+        publicKey: FfiConverterString.readFromCursor(c),
+        fingerprintSha256: FfiConverterString.readFromCursor(c),
+        algorithm: FfiConverterString.readFromCursor(c),
+        bits: FfiConverterOptionalUInt32.readFromCursor(c),
+      };
+    }
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.privateKey, c);
+      FfiConverterString.writeIntoCursor(value.publicKey, c);
+      FfiConverterString.writeIntoCursor(value.fingerprintSha256, c);
+      FfiConverterString.writeIntoCursor(value.algorithm, c);
+      FfiConverterOptionalUInt32.writeIntoCursor(value.bits, c);
+    }
+    allocationSize(value: TypeName): number {
+      return (
+        FfiConverterString.allocationSize(value.privateKey) +
+        FfiConverterString.allocationSize(value.publicKey) +
+        FfiConverterString.allocationSize(value.fingerprintSha256) +
+        FfiConverterString.allocationSize(value.algorithm) +
+        FfiConverterOptionalUInt32.allocationSize(value.bits)
+      );
+    }
+  }
+  return new FFIConverter();
+})();
+
+// Enum: BufferCursor
+export enum BufferCursor_Tags {
   Head = "Head",
   TailBytes = "TailBytes",
   Seq = "Seq",
   TimeMs = "TimeMs",
   Live = "Live",
 }
-export const Cursor = (() => {
+export const BufferCursor = (() => {
   type Head__interface = {
-    tag: Cursor_Tags.Head;
+    tag: BufferCursor_Tags.Head;
   };
   class Head_ extends UniffiEnum implements Head__interface {
     /**
      * @private
      * This field is private and should not be used, use `tag` instead.
      */
-    readonly [uniffiTypeNameSymbol] = "Cursor";
-    readonly tag = Cursor_Tags.Head;
+    readonly [uniffiTypeNameSymbol] = "BufferCursor";
+    readonly tag = BufferCursor_Tags.Head;
     constructor() {
-      super("Cursor", "Head");
+      super("BufferCursor", "Head");
     }
 
     static new(): Head_ {
@@ -1726,12 +1788,12 @@ export const Cursor = (() => {
     }
 
     static instanceOf(obj: any): obj is Head_ {
-      return obj.tag === Cursor_Tags.Head;
+      return obj.tag === BufferCursor_Tags.Head;
     }
   }
 
   type TailBytes__interface = {
-    tag: Cursor_Tags.TailBytes;
+    tag: BufferCursor_Tags.TailBytes;
     inner: Readonly<{ bytes: bigint }>;
   };
   class TailBytes_ extends UniffiEnum implements TailBytes__interface {
@@ -1739,11 +1801,11 @@ export const Cursor = (() => {
      * @private
      * This field is private and should not be used, use `tag` instead.
      */
-    readonly [uniffiTypeNameSymbol] = "Cursor";
-    readonly tag = Cursor_Tags.TailBytes;
+    readonly [uniffiTypeNameSymbol] = "BufferCursor";
+    readonly tag = BufferCursor_Tags.TailBytes;
     readonly inner: Readonly<{ bytes: bigint }>;
     constructor(inner: { bytes: bigint }) {
-      super("Cursor", "TailBytes");
+      super("BufferCursor", "TailBytes");
 
       this.inner = Object.freeze(inner);
     }
@@ -1752,12 +1814,12 @@ export const Cursor = (() => {
     }
 
     static instanceOf(obj: any): obj is TailBytes_ {
-      return obj.tag === Cursor_Tags.TailBytes;
+      return obj.tag === BufferCursor_Tags.TailBytes;
     }
   }
 
   type Seq__interface = {
-    tag: Cursor_Tags.Seq;
+    tag: BufferCursor_Tags.Seq;
     inner: Readonly<{ seq: bigint }>;
   };
   class Seq_ extends UniffiEnum implements Seq__interface {
@@ -1765,11 +1827,11 @@ export const Cursor = (() => {
      * @private
      * This field is private and should not be used, use `tag` instead.
      */
-    readonly [uniffiTypeNameSymbol] = "Cursor";
-    readonly tag = Cursor_Tags.Seq;
+    readonly [uniffiTypeNameSymbol] = "BufferCursor";
+    readonly tag = BufferCursor_Tags.Seq;
     readonly inner: Readonly<{ seq: bigint }>;
     constructor(inner: { seq: bigint }) {
-      super("Cursor", "Seq");
+      super("BufferCursor", "Seq");
 
       this.inner = Object.freeze(inner);
     }
@@ -1778,12 +1840,12 @@ export const Cursor = (() => {
     }
 
     static instanceOf(obj: any): obj is Seq_ {
-      return obj.tag === Cursor_Tags.Seq;
+      return obj.tag === BufferCursor_Tags.Seq;
     }
   }
 
   type TimeMs__interface = {
-    tag: Cursor_Tags.TimeMs;
+    tag: BufferCursor_Tags.TimeMs;
     inner: Readonly<{ tMs: number }>;
   };
   class TimeMs_ extends UniffiEnum implements TimeMs__interface {
@@ -1791,11 +1853,11 @@ export const Cursor = (() => {
      * @private
      * This field is private and should not be used, use `tag` instead.
      */
-    readonly [uniffiTypeNameSymbol] = "Cursor";
-    readonly tag = Cursor_Tags.TimeMs;
+    readonly [uniffiTypeNameSymbol] = "BufferCursor";
+    readonly tag = BufferCursor_Tags.TimeMs;
     readonly inner: Readonly<{ tMs: number }>;
     constructor(inner: { tMs: number }) {
-      super("Cursor", "TimeMs");
+      super("BufferCursor", "TimeMs");
 
       this.inner = Object.freeze(inner);
     }
@@ -1804,22 +1866,22 @@ export const Cursor = (() => {
     }
 
     static instanceOf(obj: any): obj is TimeMs_ {
-      return obj.tag === Cursor_Tags.TimeMs;
+      return obj.tag === BufferCursor_Tags.TimeMs;
     }
   }
 
   type Live__interface = {
-    tag: Cursor_Tags.Live;
+    tag: BufferCursor_Tags.Live;
   };
   class Live_ extends UniffiEnum implements Live__interface {
     /**
      * @private
      * This field is private and should not be used, use `tag` instead.
      */
-    readonly [uniffiTypeNameSymbol] = "Cursor";
-    readonly tag = Cursor_Tags.Live;
+    readonly [uniffiTypeNameSymbol] = "BufferCursor";
+    readonly tag = BufferCursor_Tags.Live;
     constructor() {
-      super("Cursor", "Live");
+      super("BufferCursor", "Live");
     }
 
     static new(): Live_ {
@@ -1827,12 +1889,12 @@ export const Cursor = (() => {
     }
 
     static instanceOf(obj: any): obj is Live_ {
-      return obj.tag === Cursor_Tags.Live;
+      return obj.tag === BufferCursor_Tags.Live;
     }
   }
 
-  function instanceOf(obj: any): obj is Cursor {
-    return obj[uniffiTypeNameSymbol] === "Cursor";
+  function instanceOf(obj: any): obj is BufferCursor {
+    return obj[uniffiTypeNameSymbol] === "BufferCursor";
   }
 
   return Object.freeze({
@@ -1844,89 +1906,94 @@ export const Cursor = (() => {
     Live: Live_,
   });
 })();
-export type Cursor = InstanceType<
-  (typeof Cursor)["Head" | "TailBytes" | "Seq" | "TimeMs" | "Live"]
+export type BufferCursor = InstanceType<
+  (typeof BufferCursor)["Head" | "TailBytes" | "Seq" | "TimeMs" | "Live"]
 >;
 
-// FfiConverter for enum Cursor
-const FfiConverterTypeCursor = (() => {
-  const ordinalConverter = FfiConverterInt32;
-  type TypeName = Cursor;
+// FfiConverter for enum BufferCursor
+const FfiConverterTypeBufferCursor = (() => {
+  type TypeName = BufferCursor;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
-          return new Cursor.Head();
+          return new BufferCursor.Head();
         case 2:
-          return new Cursor.TailBytes({ bytes: FfiConverterUInt64.read(from) });
+          return new BufferCursor.TailBytes({
+            bytes: FfiConverterUInt64.readFromCursor(c),
+          });
         case 3:
-          return new Cursor.Seq({ seq: FfiConverterUInt64.read(from) });
+          return new BufferCursor.Seq({
+            seq: FfiConverterUInt64.readFromCursor(c),
+          });
         case 4:
-          return new Cursor.TimeMs({ tMs: FfiConverterFloat64.read(from) });
+          return new BufferCursor.TimeMs({
+            tMs: FfiConverterFloat64.readFromCursor(c),
+          });
         case 5:
-          return new Cursor.Live();
+          return new BufferCursor.Live();
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value.tag) {
-        case Cursor_Tags.Head: {
-          ordinalConverter.write(1, into);
+        case BufferCursor_Tags.Head: {
+          c.writeI32(1);
           return;
         }
-        case Cursor_Tags.TailBytes: {
-          ordinalConverter.write(2, into);
+        case BufferCursor_Tags.TailBytes: {
+          c.writeI32(2);
           const inner = value.inner;
-          FfiConverterUInt64.write(inner.bytes, into);
+          FfiConverterUInt64.writeIntoCursor(inner.bytes, c);
           return;
         }
-        case Cursor_Tags.Seq: {
-          ordinalConverter.write(3, into);
+        case BufferCursor_Tags.Seq: {
+          c.writeI32(3);
           const inner = value.inner;
-          FfiConverterUInt64.write(inner.seq, into);
+          FfiConverterUInt64.writeIntoCursor(inner.seq, c);
           return;
         }
-        case Cursor_Tags.TimeMs: {
-          ordinalConverter.write(4, into);
+        case BufferCursor_Tags.TimeMs: {
+          c.writeI32(4);
           const inner = value.inner;
-          FfiConverterFloat64.write(inner.tMs, into);
+          FfiConverterFloat64.writeIntoCursor(inner.tMs, c);
           return;
         }
-        case Cursor_Tags.Live: {
-          ordinalConverter.write(5, into);
+        case BufferCursor_Tags.Live: {
+          c.writeI32(5);
           return;
         }
         default:
-          // Throwing from here means that Cursor_Tags hasn't matched an ordinal.
+          // Throwing from here means that BufferCursor_Tags hasn't matched an ordinal.
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
     allocationSize(value: TypeName): number {
       switch (value.tag) {
-        case Cursor_Tags.Head: {
-          return ordinalConverter.allocationSize(1);
+        case BufferCursor_Tags.Head: {
+          return 4;
         }
-        case Cursor_Tags.TailBytes: {
+        case BufferCursor_Tags.TailBytes: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(2);
+          let size = 4;
           size += FfiConverterUInt64.allocationSize(inner.bytes);
           return size;
         }
-        case Cursor_Tags.Seq: {
+        case BufferCursor_Tags.Seq: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(3);
+          let size = 4;
           size += FfiConverterUInt64.allocationSize(inner.seq);
           return size;
         }
-        case Cursor_Tags.TimeMs: {
+        case BufferCursor_Tags.TimeMs: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(4);
+          let size = 4;
           size += FfiConverterFloat64.allocationSize(inner.tMs);
           return size;
         }
-        case Cursor_Tags.Live: {
-          return ordinalConverter.allocationSize(5);
+        case BufferCursor_Tags.Live: {
+          return 4;
         }
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
@@ -1937,7 +2004,7 @@ const FfiConverterTypeCursor = (() => {
 })();
 
 export type ListenerOptions = {
-  cursor: Cursor;
+  cursor: BufferCursor;
   coalesceMs?: number;
 };
 
@@ -1961,19 +2028,19 @@ export const ListenerOptions = (() => {
 const FfiConverterTypeListenerOptions = (() => {
   type TypeName = ListenerOptions;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        cursor: FfiConverterTypeCursor.read(from),
-        coalesceMs: FfiConverterOptionalUInt32.read(from),
+        cursor: FfiConverterTypeBufferCursor.readFromCursor(c),
+        coalesceMs: FfiConverterOptionalUInt32.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterTypeCursor.write(value.cursor, into);
-      FfiConverterOptionalUInt32.write(value.coalesceMs, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterTypeBufferCursor.writeIntoCursor(value.cursor, c);
+      FfiConverterOptionalUInt32.writeIntoCursor(value.coalesceMs, c);
     }
     allocationSize(value: TypeName): number {
       return (
-        FfiConverterTypeCursor.allocationSize(value.cursor) +
+        FfiConverterTypeBufferCursor.allocationSize(value.cursor) +
         FfiConverterOptionalUInt32.allocationSize(value.coalesceMs)
       );
     }
@@ -2008,19 +2075,19 @@ export const LocalForwardConfig = (() => {
 const FfiConverterTypeLocalForwardConfig = (() => {
   type TypeName = LocalForwardConfig;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        bindAddress: FfiConverterString.read(from),
-        bindPort: FfiConverterUInt16.read(from),
-        destinationAddress: FfiConverterString.read(from),
-        destinationPort: FfiConverterUInt16.read(from),
+        bindAddress: FfiConverterString.readFromCursor(c),
+        bindPort: FfiConverterUInt16.readFromCursor(c),
+        destinationAddress: FfiConverterString.readFromCursor(c),
+        destinationPort: FfiConverterUInt16.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.bindAddress, into);
-      FfiConverterUInt16.write(value.bindPort, into);
-      FfiConverterString.write(value.destinationAddress, into);
-      FfiConverterUInt16.write(value.destinationPort, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.bindAddress, c);
+      FfiConverterUInt16.writeIntoCursor(value.bindPort, c);
+      FfiConverterString.writeIntoCursor(value.destinationAddress, c);
+      FfiConverterUInt16.writeIntoCursor(value.destinationPort, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2061,19 +2128,19 @@ export const RemoteForwardConfig = (() => {
 const FfiConverterTypeRemoteForwardConfig = (() => {
   type TypeName = RemoteForwardConfig;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        bindAddress: FfiConverterString.read(from),
-        bindPort: FfiConverterUInt16.read(from),
-        destinationAddress: FfiConverterString.read(from),
-        destinationPort: FfiConverterUInt16.read(from),
+        bindAddress: FfiConverterString.readFromCursor(c),
+        bindPort: FfiConverterUInt16.readFromCursor(c),
+        destinationAddress: FfiConverterString.readFromCursor(c),
+        destinationPort: FfiConverterUInt16.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.bindAddress, into);
-      FfiConverterUInt16.write(value.bindPort, into);
-      FfiConverterString.write(value.destinationAddress, into);
-      FfiConverterUInt16.write(value.destinationPort, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.bindAddress, c);
+      FfiConverterUInt16.writeIntoCursor(value.bindPort, c);
+      FfiConverterString.writeIntoCursor(value.destinationAddress, c);
+      FfiConverterUInt16.writeIntoCursor(value.destinationPort, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2115,25 +2182,25 @@ export const SftpEntry = (() => {
 const FfiConverterTypeSftpEntry = (() => {
   type TypeName = SftpEntry;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        filename: FfiConverterString.read(from),
-        isDirectory: FfiConverterBool.read(from),
-        isSymlink: FfiConverterBool.read(from),
-        size: FfiConverterUInt64.read(from),
-        mode: FfiConverterUInt32.read(from),
-        modifiedAtMs: FfiConverterFloat64.read(from),
-        accessedAtMs: FfiConverterFloat64.read(from),
+        filename: FfiConverterString.readFromCursor(c),
+        isDirectory: FfiConverterBool.readFromCursor(c),
+        isSymlink: FfiConverterBool.readFromCursor(c),
+        size: FfiConverterUInt64.readFromCursor(c),
+        mode: FfiConverterUInt32.readFromCursor(c),
+        modifiedAtMs: FfiConverterFloat64.readFromCursor(c),
+        accessedAtMs: FfiConverterFloat64.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.filename, into);
-      FfiConverterBool.write(value.isDirectory, into);
-      FfiConverterBool.write(value.isSymlink, into);
-      FfiConverterUInt64.write(value.size, into);
-      FfiConverterUInt32.write(value.mode, into);
-      FfiConverterFloat64.write(value.modifiedAtMs, into);
-      FfiConverterFloat64.write(value.accessedAtMs, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.filename, c);
+      FfiConverterBool.writeIntoCursor(value.isDirectory, c);
+      FfiConverterBool.writeIntoCursor(value.isSymlink, c);
+      FfiConverterUInt64.writeIntoCursor(value.size, c);
+      FfiConverterUInt32.writeIntoCursor(value.mode, c);
+      FfiConverterFloat64.writeIntoCursor(value.modifiedAtMs, c);
+      FfiConverterFloat64.writeIntoCursor(value.accessedAtMs, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2176,17 +2243,17 @@ export const SftpSessionInfo = (() => {
 const FfiConverterTypeSftpSessionInfo = (() => {
   type TypeName = SftpSessionInfo;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        sessionId: FfiConverterString.read(from),
-        connectionId: FfiConverterString.read(from),
-        createdAtMs: FfiConverterFloat64.read(from),
+        sessionId: FfiConverterString.readFromCursor(c),
+        connectionId: FfiConverterString.readFromCursor(c),
+        createdAtMs: FfiConverterFloat64.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.sessionId, into);
-      FfiConverterString.write(value.connectionId, into);
-      FfiConverterFloat64.write(value.createdAtMs, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.sessionId, c);
+      FfiConverterString.writeIntoCursor(value.connectionId, c);
+      FfiConverterFloat64.writeIntoCursor(value.createdAtMs, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2226,23 +2293,23 @@ export const SftpStat = (() => {
 const FfiConverterTypeSftpStat = (() => {
   type TypeName = SftpStat;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        isDirectory: FfiConverterBool.read(from),
-        isSymlink: FfiConverterBool.read(from),
-        size: FfiConverterUInt64.read(from),
-        mode: FfiConverterUInt32.read(from),
-        modifiedAtMs: FfiConverterFloat64.read(from),
-        accessedAtMs: FfiConverterFloat64.read(from),
+        isDirectory: FfiConverterBool.readFromCursor(c),
+        isSymlink: FfiConverterBool.readFromCursor(c),
+        size: FfiConverterUInt64.readFromCursor(c),
+        mode: FfiConverterUInt32.readFromCursor(c),
+        modifiedAtMs: FfiConverterFloat64.readFromCursor(c),
+        accessedAtMs: FfiConverterFloat64.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterBool.write(value.isDirectory, into);
-      FfiConverterBool.write(value.isSymlink, into);
-      FfiConverterUInt64.write(value.size, into);
-      FfiConverterUInt32.write(value.mode, into);
-      FfiConverterFloat64.write(value.modifiedAtMs, into);
-      FfiConverterFloat64.write(value.accessedAtMs, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterBool.writeIntoCursor(value.isDirectory, c);
+      FfiConverterBool.writeIntoCursor(value.isSymlink, c);
+      FfiConverterUInt64.writeIntoCursor(value.size, c);
+      FfiConverterUInt32.writeIntoCursor(value.mode, c);
+      FfiConverterFloat64.writeIntoCursor(value.modifiedAtMs, c);
+      FfiConverterFloat64.writeIntoCursor(value.accessedAtMs, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2285,19 +2352,19 @@ export const SftpTransferInfo = (() => {
 const FfiConverterTypeSftpTransferInfo = (() => {
   type TypeName = SftpTransferInfo;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        transferId: FfiConverterString.read(from),
-        remotePath: FfiConverterString.read(from),
-        localPath: FfiConverterString.read(from),
-        totalBytes: FfiConverterOptionalUInt64.read(from),
+        transferId: FfiConverterString.readFromCursor(c),
+        remotePath: FfiConverterString.readFromCursor(c),
+        localPath: FfiConverterString.readFromCursor(c),
+        totalBytes: FfiConverterOptionalUInt64.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.transferId, into);
-      FfiConverterString.write(value.remotePath, into);
-      FfiConverterString.write(value.localPath, into);
-      FfiConverterOptionalUInt64.write(value.totalBytes, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.transferId, c);
+      FfiConverterString.writeIntoCursor(value.remotePath, c);
+      FfiConverterString.writeIntoCursor(value.localPath, c);
+      FfiConverterOptionalUInt64.writeIntoCursor(value.totalBytes, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2322,11 +2389,10 @@ export enum TerminalType {
 }
 
 const FfiConverterTypeTerminalType = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = TerminalType;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
           return TerminalType.Vanilla;
         case 2:
@@ -2345,26 +2411,26 @@ const FfiConverterTypeTerminalType = (() => {
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value) {
         case TerminalType.Vanilla:
-          return ordinalConverter.write(1, into);
+          return c.writeI32(1);
         case TerminalType.Vt100:
-          return ordinalConverter.write(2, into);
+          return c.writeI32(2);
         case TerminalType.Vt102:
-          return ordinalConverter.write(3, into);
+          return c.writeI32(3);
         case TerminalType.Vt220:
-          return ordinalConverter.write(4, into);
+          return c.writeI32(4);
         case TerminalType.Ansi:
-          return ordinalConverter.write(5, into);
+          return c.writeI32(5);
         case TerminalType.Xterm:
-          return ordinalConverter.write(6, into);
+          return c.writeI32(6);
         case TerminalType.Xterm256:
-          return ordinalConverter.write(7, into);
+          return c.writeI32(7);
       }
     }
     allocationSize(value: TypeName): number {
-      return ordinalConverter.allocationSize(0);
+      return 4;
     }
   }
   return new FFIConverter();
@@ -2401,21 +2467,21 @@ export const ShellSessionInfo = (() => {
 const FfiConverterTypeShellSessionInfo = (() => {
   type TypeName = ShellSessionInfo;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        channelId: FfiConverterUInt32.read(from),
-        createdAtMs: FfiConverterFloat64.read(from),
-        connectedAtMs: FfiConverterFloat64.read(from),
-        term: FfiConverterTypeTerminalType.read(from),
-        connectionId: FfiConverterString.read(from),
+        channelId: FfiConverterUInt32.readFromCursor(c),
+        createdAtMs: FfiConverterFloat64.readFromCursor(c),
+        connectedAtMs: FfiConverterFloat64.readFromCursor(c),
+        term: FfiConverterTypeTerminalType.readFromCursor(c),
+        connectionId: FfiConverterString.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterUInt32.write(value.channelId, into);
-      FfiConverterFloat64.write(value.createdAtMs, into);
-      FfiConverterFloat64.write(value.connectedAtMs, into);
-      FfiConverterTypeTerminalType.write(value.term, into);
-      FfiConverterString.write(value.connectionId, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterUInt32.writeIntoCursor(value.channelId, c);
+      FfiConverterFloat64.writeIntoCursor(value.createdAtMs, c);
+      FfiConverterFloat64.writeIntoCursor(value.connectedAtMs, c);
+      FfiConverterTypeTerminalType.writeIntoCursor(value.term, c);
+      FfiConverterString.writeIntoCursor(value.connectionId, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2457,15 +2523,15 @@ export const SshConnectionInfoProgressTimings = (() => {
 const FfiConverterTypeSshConnectionInfoProgressTimings = (() => {
   type TypeName = SshConnectionInfoProgressTimings;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        tcpEstablishedAtMs: FfiConverterFloat64.read(from),
-        sshHandshakeAtMs: FfiConverterFloat64.read(from),
+        tcpEstablishedAtMs: FfiConverterFloat64.readFromCursor(c),
+        sshHandshakeAtMs: FfiConverterFloat64.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterFloat64.write(value.tcpEstablishedAtMs, into);
-      FfiConverterFloat64.write(value.sshHandshakeAtMs, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterFloat64.writeIntoCursor(value.tcpEstablishedAtMs, c);
+      FfiConverterFloat64.writeIntoCursor(value.sshHandshakeAtMs, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2505,24 +2571,27 @@ export const SshConnectionInfo = (() => {
 const FfiConverterTypeSshConnectionInfo = (() => {
   type TypeName = SshConnectionInfo;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        connectionId: FfiConverterString.read(from),
-        connectionDetails: FfiConverterTypeConnectionDetails.read(from),
-        createdAtMs: FfiConverterFloat64.read(from),
-        connectedAtMs: FfiConverterFloat64.read(from),
+        connectionId: FfiConverterString.readFromCursor(c),
+        connectionDetails: FfiConverterTypeConnectionDetails.readFromCursor(c),
+        createdAtMs: FfiConverterFloat64.readFromCursor(c),
+        connectedAtMs: FfiConverterFloat64.readFromCursor(c),
         progressTimings:
-          FfiConverterTypeSshConnectionInfoProgressTimings.read(from),
+          FfiConverterTypeSshConnectionInfoProgressTimings.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterString.write(value.connectionId, into);
-      FfiConverterTypeConnectionDetails.write(value.connectionDetails, into);
-      FfiConverterFloat64.write(value.createdAtMs, into);
-      FfiConverterFloat64.write(value.connectedAtMs, into);
-      FfiConverterTypeSshConnectionInfoProgressTimings.write(
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterString.writeIntoCursor(value.connectionId, c);
+      FfiConverterTypeConnectionDetails.writeIntoCursor(
+        value.connectionDetails,
+        c,
+      );
+      FfiConverterFloat64.writeIntoCursor(value.createdAtMs, c);
+      FfiConverterFloat64.writeIntoCursor(value.connectedAtMs, c);
+      FfiConverterTypeSshConnectionInfoProgressTimings.writeIntoCursor(
         value.progressTimings,
-        into,
+        c,
       );
     }
     allocationSize(value: TypeName): number {
@@ -2567,15 +2636,15 @@ export const TerminalMode = (() => {
 const FfiConverterTypeTerminalMode = (() => {
   type TypeName = TerminalMode;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        opcode: FfiConverterUInt8.read(from),
-        value: FfiConverterUInt32.read(from),
+        opcode: FfiConverterUInt8.readFromCursor(c),
+        value: FfiConverterUInt32.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterUInt8.write(value.opcode, into);
-      FfiConverterUInt32.write(value.value, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterUInt8.writeIntoCursor(value.opcode, c);
+      FfiConverterUInt32.writeIntoCursor(value.value, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2612,15 +2681,15 @@ export const TerminalSize = (() => {
 const FfiConverterTypeTerminalSize = (() => {
   type TypeName = TerminalSize;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        rowHeight: FfiConverterOptionalUInt32.read(from),
-        colWidth: FfiConverterOptionalUInt32.read(from),
+        rowHeight: FfiConverterOptionalUInt32.readFromCursor(c),
+        colWidth: FfiConverterOptionalUInt32.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterOptionalUInt32.write(value.rowHeight, into);
-      FfiConverterOptionalUInt32.write(value.colWidth, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterOptionalUInt32.writeIntoCursor(value.rowHeight, c);
+      FfiConverterOptionalUInt32.writeIntoCursor(value.colWidth, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2657,15 +2726,15 @@ export const TerminalPixelSize = (() => {
 const FfiConverterTypeTerminalPixelSize = (() => {
   type TypeName = TerminalPixelSize;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        pixelWidth: FfiConverterOptionalUInt32.read(from),
-        pixelHeight: FfiConverterOptionalUInt32.read(from),
+        pixelWidth: FfiConverterOptionalUInt32.readFromCursor(c),
+        pixelHeight: FfiConverterOptionalUInt32.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterOptionalUInt32.write(value.pixelWidth, into);
-      FfiConverterOptionalUInt32.write(value.pixelHeight, into);
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterOptionalUInt32.writeIntoCursor(value.pixelWidth, c);
+      FfiConverterOptionalUInt32.writeIntoCursor(value.pixelHeight, c);
     }
     allocationSize(value: TypeName): number {
       return (
@@ -2866,30 +2935,35 @@ export const StartShellOptions = (() => {
 const FfiConverterTypeStartShellOptions = (() => {
   type TypeName = StartShellOptions;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
+    readFromCursor(c: Cursor): TypeName {
       return {
-        term: FfiConverterTypeTerminalType.read(from),
-        terminalMode: FfiConverterOptionalSequenceTypeTerminalMode.read(from),
-        terminalSize: FfiConverterOptionalTypeTerminalSize.read(from),
-        terminalPixelSize: FfiConverterOptionalTypeTerminalPixelSize.read(from),
+        term: FfiConverterTypeTerminalType.readFromCursor(c),
+        terminalMode:
+          FfiConverterOptionalSequenceTypeTerminalMode.readFromCursor(c),
+        terminalSize: FfiConverterOptionalTypeTerminalSize.readFromCursor(c),
+        terminalPixelSize:
+          FfiConverterOptionalTypeTerminalPixelSize.readFromCursor(c),
         onClosedCallback:
-          FfiConverterOptionalTypeShellClosedCallback.read(from),
+          FfiConverterOptionalTypeShellClosedCallback.readFromCursor(c),
       };
     }
-    write(value: TypeName, into: RustBuffer): void {
-      FfiConverterTypeTerminalType.write(value.term, into);
-      FfiConverterOptionalSequenceTypeTerminalMode.write(
+    writeIntoCursor(value: TypeName, c: Cursor): void {
+      FfiConverterTypeTerminalType.writeIntoCursor(value.term, c);
+      FfiConverterOptionalSequenceTypeTerminalMode.writeIntoCursor(
         value.terminalMode,
-        into,
+        c,
       );
-      FfiConverterOptionalTypeTerminalSize.write(value.terminalSize, into);
-      FfiConverterOptionalTypeTerminalPixelSize.write(
+      FfiConverterOptionalTypeTerminalSize.writeIntoCursor(
+        value.terminalSize,
+        c,
+      );
+      FfiConverterOptionalTypeTerminalPixelSize.writeIntoCursor(
         value.terminalPixelSize,
-        into,
+        c,
       );
-      FfiConverterOptionalTypeShellClosedCallback.write(
+      FfiConverterOptionalTypeShellClosedCallback.writeIntoCursor(
         value.onClosedCallback,
-        into,
+        c,
       );
     }
     allocationSize(value: TypeName): number {
@@ -2921,11 +2995,10 @@ export enum KeyType {
 }
 
 const FfiConverterTypeKeyType = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = KeyType;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
           return KeyType.Rsa;
         case 2:
@@ -2938,20 +3011,20 @@ const FfiConverterTypeKeyType = (() => {
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value) {
         case KeyType.Rsa:
-          return ordinalConverter.write(1, into);
+          return c.writeI32(1);
         case KeyType.Ecdsa:
-          return ordinalConverter.write(2, into);
+          return c.writeI32(2);
         case KeyType.Ed25519:
-          return ordinalConverter.write(3, into);
+          return c.writeI32(3);
         case KeyType.Ed448:
-          return ordinalConverter.write(4, into);
+          return c.writeI32(4);
       }
     }
     allocationSize(value: TypeName): number {
-      return ordinalConverter.allocationSize(0);
+      return 4;
     }
   }
   return new FFIConverter();
@@ -3187,61 +3260,62 @@ export type SftpError = InstanceType<
 
 // FfiConverter for enum SftpError
 const FfiConverterTypeSftpError = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = SftpError;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
-          return new SftpError.NotFound(FfiConverterString.read(from));
+          return new SftpError.NotFound(FfiConverterString.readFromCursor(c));
         case 2:
-          return new SftpError.PermissionDenied(FfiConverterString.read(from));
+          return new SftpError.PermissionDenied(
+            FfiConverterString.readFromCursor(c),
+          );
         case 3:
           return new SftpError.Cancelled();
         case 4:
-          return new SftpError.LocalIo(FfiConverterString.read(from));
+          return new SftpError.LocalIo(FfiConverterString.readFromCursor(c));
         case 5:
-          return new SftpError.Protocol(FfiConverterString.read(from));
+          return new SftpError.Protocol(FfiConverterString.readFromCursor(c));
         case 6:
-          return new SftpError.Ssh(FfiConverterString.read(from));
+          return new SftpError.Ssh(FfiConverterString.readFromCursor(c));
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value.tag) {
         case SftpError_Tags.NotFound: {
-          ordinalConverter.write(1, into);
+          c.writeI32(1);
           const inner = value.inner;
-          FfiConverterString.write(inner[0], into);
+          FfiConverterString.writeIntoCursor(inner[0], c);
           return;
         }
         case SftpError_Tags.PermissionDenied: {
-          ordinalConverter.write(2, into);
+          c.writeI32(2);
           const inner = value.inner;
-          FfiConverterString.write(inner[0], into);
+          FfiConverterString.writeIntoCursor(inner[0], c);
           return;
         }
         case SftpError_Tags.Cancelled: {
-          ordinalConverter.write(3, into);
+          c.writeI32(3);
           return;
         }
         case SftpError_Tags.LocalIo: {
-          ordinalConverter.write(4, into);
+          c.writeI32(4);
           const inner = value.inner;
-          FfiConverterString.write(inner[0], into);
+          FfiConverterString.writeIntoCursor(inner[0], c);
           return;
         }
         case SftpError_Tags.Protocol: {
-          ordinalConverter.write(5, into);
+          c.writeI32(5);
           const inner = value.inner;
-          FfiConverterString.write(inner[0], into);
+          FfiConverterString.writeIntoCursor(inner[0], c);
           return;
         }
         case SftpError_Tags.Ssh: {
-          ordinalConverter.write(6, into);
+          c.writeI32(6);
           const inner = value.inner;
-          FfiConverterString.write(inner[0], into);
+          FfiConverterString.writeIntoCursor(inner[0], c);
           return;
         }
         default:
@@ -3253,34 +3327,34 @@ const FfiConverterTypeSftpError = (() => {
       switch (value.tag) {
         case SftpError_Tags.NotFound: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(1);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner[0]);
           return size;
         }
         case SftpError_Tags.PermissionDenied: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(2);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner[0]);
           return size;
         }
         case SftpError_Tags.Cancelled: {
-          return ordinalConverter.allocationSize(3);
+          return 4;
         }
         case SftpError_Tags.LocalIo: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(4);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner[0]);
           return size;
         }
         case SftpError_Tags.Protocol: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(5);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner[0]);
           return size;
         }
         case SftpError_Tags.Ssh: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(6);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner[0]);
           return size;
         }
@@ -3364,35 +3438,36 @@ export type ShellEvent = InstanceType<(typeof ShellEvent)["Chunk" | "Dropped"]>;
 
 // FfiConverter for enum ShellEvent
 const FfiConverterTypeShellEvent = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = ShellEvent;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
-          return new ShellEvent.Chunk(FfiConverterTypeTerminalChunk.read(from));
+          return new ShellEvent.Chunk(
+            FfiConverterTypeTerminalChunk.readFromCursor(c),
+          );
         case 2:
           return new ShellEvent.Dropped({
-            fromSeq: FfiConverterUInt64.read(from),
-            toSeq: FfiConverterUInt64.read(from),
+            fromSeq: FfiConverterUInt64.readFromCursor(c),
+            toSeq: FfiConverterUInt64.readFromCursor(c),
           });
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value.tag) {
         case ShellEvent_Tags.Chunk: {
-          ordinalConverter.write(1, into);
+          c.writeI32(1);
           const inner = value.inner;
-          FfiConverterTypeTerminalChunk.write(inner[0], into);
+          FfiConverterTypeTerminalChunk.writeIntoCursor(inner[0], c);
           return;
         }
         case ShellEvent_Tags.Dropped: {
-          ordinalConverter.write(2, into);
+          c.writeI32(2);
           const inner = value.inner;
-          FfiConverterUInt64.write(inner.fromSeq, into);
-          FfiConverterUInt64.write(inner.toSeq, into);
+          FfiConverterUInt64.writeIntoCursor(inner.fromSeq, c);
+          FfiConverterUInt64.writeIntoCursor(inner.toSeq, c);
           return;
         }
         default:
@@ -3404,13 +3479,13 @@ const FfiConverterTypeShellEvent = (() => {
       switch (value.tag) {
         case ShellEvent_Tags.Chunk: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(1);
+          let size = 4;
           size += FfiConverterTypeTerminalChunk.allocationSize(inner[0]);
           return size;
         }
         case ShellEvent_Tags.Dropped: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(2);
+          let size = 4;
           size += FfiConverterUInt64.allocationSize(inner.fromSeq);
           size += FfiConverterUInt64.allocationSize(inner.toSeq);
           return size;
@@ -3642,57 +3717,56 @@ export type SshError = InstanceType<
 
 // FfiConverter for enum SshError
 const FfiConverterTypeSshError = (() => {
-  const ordinalConverter = FfiConverterInt32;
   type TypeName = SshError;
   class FFIConverter extends AbstractFfiConverterByteArray<TypeName> {
-    read(from: RustBuffer): TypeName {
-      switch (ordinalConverter.read(from)) {
+    readFromCursor(c: Cursor): TypeName {
+      switch (c.readI32()) {
         case 1:
           return new SshError.Disconnected();
         case 2:
           return new SshError.UnsupportedKeyType();
         case 3:
-          return new SshError.Auth(FfiConverterString.read(from));
+          return new SshError.Auth(FfiConverterString.readFromCursor(c));
         case 4:
           return new SshError.ShellAlreadyRunning();
         case 5:
-          return new SshError.Russh(FfiConverterString.read(from));
+          return new SshError.Russh(FfiConverterString.readFromCursor(c));
         case 6:
-          return new SshError.RusshKeys(FfiConverterString.read(from));
+          return new SshError.RusshKeys(FfiConverterString.readFromCursor(c));
         default:
           throw new UniffiInternalError.UnexpectedEnumCase();
       }
     }
-    write(value: TypeName, into: RustBuffer): void {
+    writeIntoCursor(value: TypeName, c: Cursor): void {
       switch (value.tag) {
         case SshError_Tags.Disconnected: {
-          ordinalConverter.write(1, into);
+          c.writeI32(1);
           return;
         }
         case SshError_Tags.UnsupportedKeyType: {
-          ordinalConverter.write(2, into);
+          c.writeI32(2);
           return;
         }
         case SshError_Tags.Auth: {
-          ordinalConverter.write(3, into);
+          c.writeI32(3);
           const inner = value.inner;
-          FfiConverterString.write(inner[0], into);
+          FfiConverterString.writeIntoCursor(inner[0], c);
           return;
         }
         case SshError_Tags.ShellAlreadyRunning: {
-          ordinalConverter.write(4, into);
+          c.writeI32(4);
           return;
         }
         case SshError_Tags.Russh: {
-          ordinalConverter.write(5, into);
+          c.writeI32(5);
           const inner = value.inner;
-          FfiConverterString.write(inner[0], into);
+          FfiConverterString.writeIntoCursor(inner[0], c);
           return;
         }
         case SshError_Tags.RusshKeys: {
-          ordinalConverter.write(6, into);
+          c.writeI32(6);
           const inner = value.inner;
-          FfiConverterString.write(inner[0], into);
+          FfiConverterString.writeIntoCursor(inner[0], c);
           return;
         }
         default:
@@ -3703,29 +3777,29 @@ const FfiConverterTypeSshError = (() => {
     allocationSize(value: TypeName): number {
       switch (value.tag) {
         case SshError_Tags.Disconnected: {
-          return ordinalConverter.allocationSize(1);
+          return 4;
         }
         case SshError_Tags.UnsupportedKeyType: {
-          return ordinalConverter.allocationSize(2);
+          return 4;
         }
         case SshError_Tags.Auth: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(3);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner[0]);
           return size;
         }
         case SshError_Tags.ShellAlreadyRunning: {
-          return ordinalConverter.allocationSize(4);
+          return 4;
         }
         case SshError_Tags.Russh: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(5);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner[0]);
           return size;
         }
         case SshError_Tags.RusshKeys: {
           const inner = value.inner;
-          let size = ordinalConverter.allocationSize(6);
+          let size = 4;
           size += FfiConverterString.allocationSize(inner[0]);
           return size;
         }
@@ -3762,23 +3836,20 @@ export class ForwardHandle
   }
 
   getStats(): ForwardTunnelStats {
-    return ((__rb: Uint8Array) => {
-      try {
-        return FfiConverterTypeForwardTunnelStats.lift(__rb);
-      } finally {
-        nativeModule().rustbuffer_free(__rb);
-      }
-    })(
-      uniffiCaller.rustCall(
-        /*caller:*/ (callStatus) => {
-          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_forwardhandle_get_stats(
-            uniffiTypeForwardHandleObjectFactory.clonePointer(this),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
+    const __rb: Uint8Array = uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_forwardhandle_get_stats(
+          uniffiTypeForwardHandleObjectFactory.clonePointer(this),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
     );
+    try {
+      return FfiConverterTypeForwardTunnelStats.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
   }
 
   async stop(asyncOpts_?: { signal: AbortSignal }): Promise<void> /*throws*/ {
@@ -4515,9 +4586,16 @@ export class SftpSession
         // RustBuffer comes back via the shared `rust_future_complete_*`
         // export. The bytes the runtime hands back must be deserialized
         // here using the per-callable return-type converter.
-        /*liftFunc:*/ FfiConverterTypeSftpTransferInfo.lift.bind(
-          FfiConverterTypeSftpTransferInfo,
-        ),
+        // Borrowed view over foreign memory: the call site owns the free,
+        // as on the sync paths. Unconditional — a no-op where buffers are
+        // already JS-owned.
+        /*liftFunc:*/ (__rb) => {
+          try {
+            return FfiConverterTypeSftpTransferInfo.lift(__rb);
+          } finally {
+            nativeModule().rustbuffer_free(__rb);
+          }
+        },
         /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
         /*asyncOpts:*/ asyncOpts_,
         /*errorHandler:*/ FfiConverterTypeSftpError.lift.bind(
@@ -4533,23 +4611,20 @@ export class SftpSession
   }
 
   getInfo(): SftpSessionInfo {
-    return ((__rb: Uint8Array) => {
-      try {
-        return FfiConverterTypeSftpSessionInfo.lift(__rb);
-      } finally {
-        nativeModule().rustbuffer_free(__rb);
-      }
-    })(
-      uniffiCaller.rustCall(
-        /*caller:*/ (callStatus) => {
-          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_get_info(
-            uniffiTypeSftpSessionObjectFactory.clonePointer(this),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
+    const __rb: Uint8Array = uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sftpsession_get_info(
+          uniffiTypeSftpSessionObjectFactory.clonePointer(this),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
     );
+    try {
+      return FfiConverterTypeSftpSessionInfo.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
   }
 
   async list(
@@ -4579,9 +4654,16 @@ export class SftpSession
         // RustBuffer comes back via the shared `rust_future_complete_*`
         // export. The bytes the runtime hands back must be deserialized
         // here using the per-callable return-type converter.
-        /*liftFunc:*/ FfiConverterSequenceTypeSftpEntry.lift.bind(
-          FfiConverterSequenceTypeSftpEntry,
-        ),
+        // Borrowed view over foreign memory: the call site owns the free,
+        // as on the sync paths. Unconditional — a no-op where buffers are
+        // already JS-owned.
+        /*liftFunc:*/ (__rb) => {
+          try {
+            return FfiConverterSequenceTypeSftpEntry.lift(__rb);
+          } finally {
+            nativeModule().rustbuffer_free(__rb);
+          }
+        },
         /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
         /*asyncOpts:*/ asyncOpts_,
         /*errorHandler:*/ FfiConverterTypeSftpError.lift.bind(
@@ -4665,7 +4747,16 @@ export class SftpSession
         // RustBuffer comes back via the shared `rust_future_complete_*`
         // export. The bytes the runtime hands back must be deserialized
         // here using the per-callable return-type converter.
-        /*liftFunc:*/ FfiConverterString.lift.bind(FfiConverterString),
+        // Borrowed view over foreign memory: the call site owns the free,
+        // as on the sync paths. Unconditional — a no-op where buffers are
+        // already JS-owned.
+        /*liftFunc:*/ (__rb) => {
+          try {
+            return FfiConverterString.lift(__rb);
+          } finally {
+            nativeModule().rustbuffer_free(__rb);
+          }
+        },
         /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
         /*asyncOpts:*/ asyncOpts_,
         /*errorHandler:*/ FfiConverterTypeSftpError.lift.bind(
@@ -4820,9 +4911,16 @@ export class SftpSession
         // RustBuffer comes back via the shared `rust_future_complete_*`
         // export. The bytes the runtime hands back must be deserialized
         // here using the per-callable return-type converter.
-        /*liftFunc:*/ FfiConverterTypeSftpStat.lift.bind(
-          FfiConverterTypeSftpStat,
-        ),
+        // Borrowed view over foreign memory: the call site owns the free,
+        // as on the sync paths. Unconditional — a no-op where buffers are
+        // already JS-owned.
+        /*liftFunc:*/ (__rb) => {
+          try {
+            return FfiConverterTypeSftpStat.lift(__rb);
+          } finally {
+            nativeModule().rustbuffer_free(__rb);
+          }
+        },
         /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
         /*asyncOpts:*/ asyncOpts_,
         /*errorHandler:*/ FfiConverterTypeSftpError.lift.bind(
@@ -4891,9 +4989,16 @@ export class SftpSession
         // RustBuffer comes back via the shared `rust_future_complete_*`
         // export. The bytes the runtime hands back must be deserialized
         // here using the per-callable return-type converter.
-        /*liftFunc:*/ FfiConverterTypeSftpTransferInfo.lift.bind(
-          FfiConverterTypeSftpTransferInfo,
-        ),
+        // Borrowed view over foreign memory: the call site owns the free,
+        // as on the sync paths. Unconditional — a no-op where buffers are
+        // already JS-owned.
+        /*liftFunc:*/ (__rb) => {
+          try {
+            return FfiConverterTypeSftpTransferInfo.lift(__rb);
+          } finally {
+            nativeModule().rustbuffer_free(__rb);
+          }
+        },
         /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
         /*asyncOpts:*/ asyncOpts_,
         /*errorHandler:*/ FfiConverterTypeSftpError.lift.bind(
@@ -5174,7 +5279,10 @@ export interface ShellSessionLike {
   /**
    * Read the ring buffer from a cursor.
    */
-  readBuffer(cursor: Cursor, maxBytes: bigint | undefined): BufferReadResult;
+  readBuffer(
+    cursor: BufferCursor,
+    maxBytes: bigint | undefined,
+  ): BufferReadResult;
   removeListener(id: bigint): void;
   /**
    * Send bytes to the active shell (stdin).
@@ -5239,23 +5347,20 @@ export class ShellSession
    * Buffer statistics snapshot.
    */
   bufferStats(): BufferStats {
-    return ((__rb: Uint8Array) => {
-      try {
-        return FfiConverterTypeBufferStats.lift(__rb);
-      } finally {
-        nativeModule().rustbuffer_free(__rb);
-      }
-    })(
-      uniffiCaller.rustCall(
-        /*caller:*/ (callStatus) => {
-          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_buffer_stats(
-            uniffiTypeShellSessionObjectFactory.clonePointer(this),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
+    const __rb: Uint8Array = uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_buffer_stats(
+          uniffiTypeShellSessionObjectFactory.clonePointer(this),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
     );
+    try {
+      return FfiConverterTypeBufferStats.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
   }
 
   /**
@@ -5312,54 +5417,51 @@ export class ShellSession
   }
 
   getInfo(): ShellSessionInfo {
-    return ((__rb: Uint8Array) => {
-      try {
-        return FfiConverterTypeShellSessionInfo.lift(__rb);
-      } finally {
-        nativeModule().rustbuffer_free(__rb);
-      }
-    })(
-      uniffiCaller.rustCall(
-        /*caller:*/ (callStatus) => {
-          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_get_info(
-            uniffiTypeShellSessionObjectFactory.clonePointer(this),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
+    const __rb: Uint8Array = uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_get_info(
+          uniffiTypeShellSessionObjectFactory.clonePointer(this),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
     );
+    try {
+      return FfiConverterTypeShellSessionInfo.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
   }
 
   /**
    * Read the ring buffer from a cursor.
    */
-  readBuffer(cursor: Cursor, maxBytes: bigint | undefined): BufferReadResult {
-    return ((__rb: Uint8Array) => {
-      try {
-        return FfiConverterTypeBufferReadResult.lift(__rb);
-      } finally {
-        nativeModule().rustbuffer_free(__rb);
-      }
-    })(
-      uniffiCaller.rustCall(
-        /*caller:*/ (callStatus) => {
-          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_read_buffer(
-            uniffiTypeShellSessionObjectFactory.clonePointer(this),
-            FfiConverterTypeCursor.lower(
-              cursor,
-              nativeModule().rustbuffer_alloc,
-            ),
-            FfiConverterOptionalUInt64.lower(
-              maxBytes,
-              nativeModule().rustbuffer_alloc,
-            ),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
+  readBuffer(
+    cursor: BufferCursor,
+    maxBytes: bigint | undefined,
+  ): BufferReadResult {
+    const __rb: Uint8Array = uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_shellsession_read_buffer(
+          uniffiTypeShellSessionObjectFactory.clonePointer(this),
+          FfiConverterTypeBufferCursor.lower(
+            cursor,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalUInt64.lower(
+            maxBytes,
+            nativeModule().rustbuffer_alloc,
+          ),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
     );
+    try {
+      return FfiConverterTypeBufferReadResult.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
   }
 
   removeListener(id: bigint): void {
@@ -5589,23 +5691,20 @@ export class SshConnection
    * Convenience snapshot for property-like access in TS.
    */
   getInfo(): SshConnectionInfo {
-    return ((__rb: Uint8Array) => {
-      try {
-        return FfiConverterTypeSshConnectionInfo.lift(__rb);
-      } finally {
-        nativeModule().rustbuffer_free(__rb);
-      }
-    })(
-      uniffiCaller.rustCall(
-        /*caller:*/ (callStatus) => {
-          return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sshconnection_get_info(
-            uniffiTypeSshConnectionObjectFactory.clonePointer(this),
-            callStatus,
-          );
-        },
-        /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
-      ),
+    const __rb: Uint8Array = uniffiCaller.rustCall(
+      /*caller:*/ (callStatus) => {
+        return nativeModule().ubrn_uniffi_uniffi_russh_fn_method_sshconnection_get_info(
+          uniffiTypeSshConnectionObjectFactory.clonePointer(this),
+          callStatus,
+        );
+      },
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
     );
+    try {
+      return FfiConverterTypeSshConnectionInfo.lift(__rb);
+    } finally {
+      nativeModule().rustbuffer_free(__rb);
+    }
   }
 
   async startDynamicForward(
@@ -5947,10 +6046,8 @@ const FfiConverterOptionalTypeConnectionDisconnectedCallback =
 // FfiConverter for string | undefined
 const FfiConverterOptionalString = new FfiConverterOptional(FfiConverterString);
 
-// FfiConverter for u32 | undefined
-const FfiConverterOptionalUInt32 = new FfiConverterOptional(FfiConverterUInt32);
-
 // FfiConverter for number | undefined
+const FfiConverterOptionalUInt32 = new FfiConverterOptional(FfiConverterUInt32);
 
 // FfiConverter for bigint | undefined
 const FfiConverterOptionalUInt64 = new FfiConverterOptional(FfiConverterUInt64);
@@ -6021,7 +6118,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_func_generate_key_pair() !==
-    46144
+    9778
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_func_generate_key_pair",
@@ -6029,7 +6126,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_func_validate_private_key() !==
-    25326
+    18461
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_func_validate_private_key",
@@ -6261,7 +6358,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_uniffi_russh_checksum_method_shellsession_read_buffer() !==
-    57122
+    45451
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_uniffi_russh_checksum_method_shellsession_read_buffer",
@@ -6352,19 +6449,20 @@ function uniffiEnsureInitialized() {
 export default Object.freeze({
   initialize: uniffiEnsureInitialized,
   converters: {
+    FfiConverterTypeBufferCursor,
     FfiConverterTypeBufferReadResult,
     FfiConverterTypeBufferStats,
     FfiConverterTypeConnectOptions,
     FfiConverterTypeConnectProgressCallback,
     FfiConverterTypeConnectionDetails,
     FfiConverterTypeConnectionDisconnectedCallback,
-    FfiConverterTypeCursor,
     FfiConverterTypeDroppedRange,
     FfiConverterTypeDynamicForwardConfig,
     FfiConverterTypeForwardHandle,
     FfiConverterTypeForwardTunnelCallback,
     FfiConverterTypeForwardTunnelStats,
     FfiConverterTypeForwardTunnelStatus,
+    FfiConverterTypeGeneratedKeyMaterial,
     FfiConverterTypeKeyType,
     FfiConverterTypeListenerOptions,
     FfiConverterTypeLocalForwardConfig,

@@ -47,7 +47,7 @@ export default {
   '@wendellhu/redi': {
     global: '@wendellhu/redi',
     name: '@wendellhu/redi',
-    version: '1.1.2',
+    version: '1.1.3',
   },
   '@wendellhu/redi/react-bindings': {
     global: '@wendellhu/redi/react-bindings',
@@ -58,7 +58,7 @@ export default {
   electron: {
     global: 'electron',
     name: 'electron',
-    version: '42.8.0',
+    version: '45.2.1',
   },
 
   // Node.js native / server-side packages (not bundleable by Rollup)
@@ -70,7 +70,7 @@ export default {
   socks: {
     global: 'socks',
     name: 'socks',
-    version: '^2.8.9',
+    version: '^2.8.10',
   },
   trzsz: {
     global: 'trzsz',
@@ -85,33 +85,33 @@ export default {
   'better-sqlite3': {
     global: 'better-sqlite3',
     name: 'better-sqlite3',
-    version: '^12.11.1',
+    version: '^13.0.3',
   },
 
   // Design package dependencies
   '@lobehub/icons': {
     global: '@lobehub/icons',
     name: '@lobehub/icons',
-    version: '^5.14.0',
+    version: '^6.14.0',
   },
   'lucide-react': {
     global: 'lucide-react',
     name: 'lucide-react',
-    version: '^1.25.0',
+    version: '^1.67.0',
   },
   dayjs: {
     global: 'dayjs',
     name: 'dayjs',
-    version: '^1.11.21',
+    version: '^1.11.23',
   },
   nanoid: {
     global: 'nanoid',
     name: 'nanoid',
-    version: '^5.1.16',
+    version: '^6.0.2',
   },
   'react-resizable-panels': {
     global: 'react-resizable-panels',
     name: 'react-resizable-panels',
-    version: '^4.12.2',
+    version: '^4.17.0',
   },
 };

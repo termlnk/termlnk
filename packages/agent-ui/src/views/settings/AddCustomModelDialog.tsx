@@ -38,7 +38,9 @@ export function AddCustomModelDialog({ providerId }: IAddCustomModelDialogProps)
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
-    if (!modelId.trim()) return;
+    if (!modelId.trim()) {
+      return;
+    }
 
     setSaving(true);
     try {

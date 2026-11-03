@@ -24,6 +24,7 @@ import { mcpServerEntity } from '../../entities/mcp-server';
 import { aiProviderEntity } from '../../entities/provider';
 import { isEncrypted } from '../../services/secret-cipher.service';
 import { encryptCredential, encryptIfNeeded, encryptMcpConfig, encryptProxy } from '../../services/secret-cipher/credential-masker';
+import { isLegacySafeStorageValue } from '../../services/secret-cipher/secret-payload';
 
 // Idempotent runtime migration: re-encrypt rows whose sensitive fields are still plaintext.
 // Runs outside a transaction so a single bad row cannot block the rest; safe to re-run on
@@ -147,6 +148,11 @@ function _hostCredentialNeedsEncryption(credential: ICredential): boolean {
 }
 
 function _canDecrypt(value: string, cipher: ISecretCipherService): boolean {
+  // TEMPORARY: legacy safe-storage payloads are recoverable by the legacy migration (which
+  // may have failed this launch); never treat them as corrupted or the secret is wiped.
+  if (isLegacySafeStorageValue(value)) {
+    return true;
+  }
   try {
     cipher.decrypt(value);
     return true;

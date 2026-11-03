@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback } from 'react';
@@ -111,5 +111,5 @@ export function useImagePicker() {
 }
 
 export async function readImageAsBase64(uri: string): Promise<string> {
-  return FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  return new File(uri).base64();
 }

@@ -128,8 +128,12 @@ export function ChatSessionList({ onSelectSession }: IChatSessionListProps) {
                     onChange={(e) => setEditTitle(e.target.value)}
                     onBlur={() => handleRename(session.id)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleRename(session.id);
-                      if (e.key === 'Escape') setEditingId(null);
+                      if (e.key === 'Enter') {
+                        handleRename(session.id);
+                      }
+                      if (e.key === 'Escape') {
+                        setEditingId(null);
+                      }
                     }}
                     className="tm:w-full tm:bg-transparent tm:text-xs tm:text-white tm:outline-none"
                     autoFocus

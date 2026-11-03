@@ -59,8 +59,8 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@noble/ciphers": "^2.2.0",
-    "@noble/hashes": "^2.2.0",
+    "@noble/ciphers": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
     "@termlnk/auth": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/sync": "workspace:*"
@@ -73,7 +73,7 @@
     "@termlnk/terminal": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.2.0",
-    "vitest": "^4.1.10"
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   }
 }

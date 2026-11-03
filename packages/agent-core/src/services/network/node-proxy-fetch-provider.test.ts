@@ -14,9 +14,9 @@
  */
 
 import type { IProxy } from '@termlnk/terminal';
+import { NETWORK_PLUGIN_CONFIG_KEY } from '@termlnk/network';
 import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NETWORK_PLUGIN_CONFIG_KEY } from '@termlnk/network';
 import { NodeProxyFetchProvider } from './node-proxy-fetch-provider';
 
 const mocks = vi.hoisted(() => {

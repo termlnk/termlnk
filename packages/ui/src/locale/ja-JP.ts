@@ -56,10 +56,20 @@ const locale: typeof enUS = {
         unread: '{0}件未読',
         'total-with-unread': '{0}件の通知、{1}件未読',
       },
+      updater: {
+        'available-body': 'バージョン {0} をダウンロードできます。',
+        'available-body-generic': '新しいバージョンをダウンロードできます。',
+        'ready-body': 'アプリを再起動して更新を完了してください。',
+        'error-title': '更新に失敗しました',
+        'error-body': '更新の確認中に問題が発生しました。',
+      },
     },
     'notification-icon': {
       title: '通知',
       'unread-title': '{0}件の未読通知',
+    },
+    'side-panel': {
+      tabs: 'サイドパネル',
     },
     'right-sidebar-toggle': {
       'open-title': '右サイドバーを開く',

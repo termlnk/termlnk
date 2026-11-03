@@ -13,17 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDisposable } from '@termlnk/core';
-import type { ITerminalMiddleware } from './terminal-middleware';
+import type { ITerminalMiddleware, ITerminalMiddlewareStack } from '@termlnk/rpc';
 
-export interface ITerminalMiddlewareStack extends IDisposable {
-  unshift(middleware: ITerminalMiddleware): void;
-  push(middleware: ITerminalMiddleware): void;
-  remove(name: string): void;
-  processFromSession(data: Uint8Array): Uint8Array | null;
-  processFromTerminal(data: Uint8Array): Uint8Array | null;
-  readonly hasActiveMiddleware: boolean;
-}
+export type { ITerminalMiddlewareStack };
 
 export function createTerminalMiddlewareStack(): ITerminalMiddlewareStack {
   const _middlewares: ITerminalMiddleware[] = [];

@@ -27,41 +27,15 @@ export interface IAgentCorePluginConfig {
   /** Read-write directory for user-installed skills. */
   userSkillsDir?: string;
   /**
-   * Shared Termlnk config root (e.g. `~/.config/termlnk` on POSIX).
-   * Resolved by desktop main and passed in via plugin config; reused by:
-   *   - {@link IHookLauncherService} → writes `<configPath>/bin/termlnk-hook`
-   *     and `<configPath>/bin/hook-helper.js`
-   *   - {@link IAgentHookServerService} → publishes `<configPath>/runtime.json`
-   * so external-terminal agents can discover the running Termlnk server.
+   * Shared Termlnk config root (e.g. `~/.config/termlnk` on POSIX). Only
+   * used by {@link LegacyAgentHookCleanupController} to find leftover hook
+   * launcher files.
    */
   configPath?: string;
-  /**
-   * Absolute path to the `@termlnk/agent-hook-cli` source directory (the
-   * one containing `helper.js`, `launcher.sh`, `launcher.cmd`). The
-   * {@link IHookLauncherService} copies these files into `<configPath>/bin/`
-   * on app startup so external terminal agents can invoke them.
-   *
-   * Desktop main resolves this from `packages/agent-hook-cli/src` in dev
-   * and `<resources>/agent-hook-cli` in production builds.
-   */
-  hookCliSrcDir?: string;
   mcp?: IMcpConfig;
   compact?: ICompactConfig;
-  /**
-   * Dynamic Island settings (macOS). Full schema in @termlnk/island;
-   * only the `enabled` flag is consumed by agent-core to suppress
-   * duplicate desktop notifications when the island UI is active.
-   */
-  islandSettings?: IIslandSettingsStored;
-}
-
-/**
- * Subset of the Dynamic Island settings schema relevant to agent-core.
- * The full payload (including sound config) is written by island-ui and
- * stored transparently — agent-core only reads `enabled`.
- */
-export interface IIslandSettingsStored {
-  enabled?: boolean;
+  /** Persisted: true once the one-time legacy agent-hook cleanup has finished. */
+  legacyAgentHookCleanupDone?: boolean;
 }
 
 export const defaultPluginConfig: IAgentCorePluginConfig = {};

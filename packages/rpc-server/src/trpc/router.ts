@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import { agentMonitorRouter } from './routers/agent-monitor';
+import { acpRouter } from './routers/acp';
 import { aiRouter } from './routers/ai';
 import { authRouter } from './routers/auth';
 import { backupRouter } from './routers/backup';
@@ -31,6 +31,7 @@ import { mcpRegistryRouter } from './routers/mcp-registry';
 import { notifyRouter } from './routers/notify';
 import { permissionRouter } from './routers/permission';
 import { portForwardingRouter } from './routers/port-forwarding';
+import { projectRouter } from './routers/project';
 import { proxyRouter } from './routers/proxy';
 import { ptyRouter } from './routers/pty';
 import { remoteSessionRouter } from './routers/remote-session';
@@ -44,7 +45,7 @@ import { terminalSessionBackupRouter } from './routers/terminal-session-backup';
 import { router } from './trpc';
 
 export const appRouter = router({
-  agentMonitor: agentMonitorRouter,
+  acp: acpRouter,
   ai: aiRouter,
   auth: authRouter,
   backup: backupRouter,
@@ -59,6 +60,7 @@ export const appRouter = router({
   notify: notifyRouter,
   permission: permissionRouter,
   portForwarding: portForwardingRouter,
+  project: projectRouter,
   proxy: proxyRouter,
   remoteSession: remoteSessionRouter,
   sharedSession: sharedSessionRouter,

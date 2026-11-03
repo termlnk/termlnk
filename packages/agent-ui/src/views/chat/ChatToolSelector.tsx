@@ -16,7 +16,7 @@
 import type { AgentToolCategory, IMcpRemoteTool, IMcpServer, McpConnectionStatus } from '@termlnk/agent';
 import type { ReactNode } from 'react';
 import { IMcpService } from '@termlnk/agent';
-import { LocaleService } from '@termlnk/core';
+import { ILogService, LocaleService } from '@termlnk/core';
 import { Button, Checkbox, cn, Collapsible, CollapsibleContent, CollapsibleTrigger, HoverCard, HoverCardContent, HoverCardTrigger, HoverPanel, HoverPanelBody, HoverPanelContent, HoverPanelFooter, HoverPanelHeader, HoverPanelTrigger, Switch, useDependency } from '@termlnk/design';
 import { IChatSessionService } from '@termlnk/rpc-client';
 import { Check, ChevronDown, ChevronRight, FolderOpen, Globe, Loader2, Plug2, RefreshCw, Server, Sparkles, TerminalSquare, Wrench } from 'lucide-react';
@@ -138,6 +138,7 @@ function readSelectedToolIds(session: any): string[] | null {
 
 export function ChatToolSelector() {
   const chatSessionService = useDependency(IChatSessionService);
+  const logService = useDependency(ILogService);
   const mcpService = useDependency(IMcpService);
   const localeService = useDependency(LocaleService);
   const currentSessionIdRef = useRef<string | null>(null);
@@ -330,7 +331,7 @@ export function ChatToolSelector() {
       await chatSessionService.setSelectedTools(sessionId, nextToolIds);
       pendingSelectedToolIdsRef.current = undefined;
     } catch (error) {
-      console.error('[ChatToolSelector] Failed to persist selected tools:', error);
+      logService.error('[ChatToolSelector] Failed to persist selected tools:', error);
       pendingSelectedToolIdsRef.current = undefined;
       startTransition(() => {
         setSessionSelectedToolIds(previous);
@@ -402,7 +403,7 @@ export function ChatToolSelector() {
     try {
       await Promise.all(serverIds.map(async (id) => mcpService.enabled(id, enabled)));
     } catch (error) {
-      console.error('[ChatToolSelector] Failed to update MCP server state:', error);
+      logService.error('[ChatToolSelector] Failed to update MCP server state:', error);
       startTransition(() => {
         setServers((prev) => sortServers(prev.map((server) => (
           previousEnabledMap.has(server.id)

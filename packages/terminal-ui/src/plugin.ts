@@ -22,8 +22,8 @@ import { UIPlugin } from '@termlnk/ui';
 import { defaultPluginConfig, TERMINAL_UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { HostDialogController } from './controllers/host-dialog/host-dialog.controller';
 import { HostsExplorerController } from './controllers/hosts-explorer/hosts-explorer.controller';
-import { KeychainController } from './controllers/keychain/keychain.controller';
 import { KeychainDialogController } from './controllers/keychain/keychain-dialog.controller';
+import { KeychainController } from './controllers/keychain/keychain.controller';
 import { KnownHostDetailDialogController } from './controllers/known-hosts/known-host-detail-dialog.controller';
 import { KnownHostsController } from './controllers/known-hosts/known-hosts.controller';
 import { SessionSyncController } from './controllers/session-sync.controller';
@@ -39,6 +39,7 @@ import { ITabListDropdownService, TabListDropdownService } from './services/tab-
 import { ITerminalInputService, TerminalInputService } from './services/terminal-input/terminal-input.service';
 import { ITerminalPersistenceService, TerminalPersistenceService } from './services/terminal/terminal-persistence.service';
 import { ITerminalProgressService, TerminalProgressService } from './services/terminal/terminal-progress.service';
+import { ITerminalSearchService, TerminalSearchService } from './services/terminal/terminal-search.service';
 import { ITerminalUIService, TerminalUIService } from './services/terminal/terminal-ui.service';
 import { ITerminalViewRegistry, TerminalViewRegistry } from './services/terminal/terminal-view-registry.service';
 import { IWorkspaceService, WorkspaceService } from './services/workspace/workspace.service';
@@ -89,6 +90,7 @@ export class TerminalUIPlugin extends Plugin {
       [IKnownHostDetailDialogService, { useClass: KnownHostDetailDialogService }],
       [ITerminalUIService, { useClass: TerminalUIService }],
       [ITerminalProgressService, { useClass: TerminalProgressService }],
+      [ITerminalSearchService, { useClass: TerminalSearchService }],
       [ITerminalViewRegistry, { useClass: TerminalViewRegistry }],
       [ITabListDropdownService, { useClass: TabListDropdownService }],
       [IWorkspaceService, { useClass: WorkspaceService }],

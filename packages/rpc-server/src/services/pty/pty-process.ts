@@ -180,7 +180,7 @@ export function createPTYProcess(options: IPTYSpawnOptions = {}): IPTYProcessRes
     applyEnvOverrides(siSetup);
   }
 
-  // Inject TERMLNK_SESSION_ID for agent hook correlation
+  // Expose the Termlnk session id to processes running inside the terminal
   const savedSessionId = process.env.TERMLNK_SESSION_ID;
   if (options.sessionId) {
     process.env.TERMLNK_SESSION_ID = options.sessionId;

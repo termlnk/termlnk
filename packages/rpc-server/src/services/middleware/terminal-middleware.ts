@@ -13,25 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDisposable } from '@termlnk/core';
-import type { Observable } from 'rxjs';
-
-export type TerminalMiddlewareState = 'idle' | 'active';
-
-export interface ITerminalMiddleware extends IDisposable {
-  readonly name: string;
-  readonly state: TerminalMiddlewareState;
-  readonly state$: Observable<TerminalMiddlewareState>;
-
-  /**
-   * Process data coming from the SSH channel (server → terminal).
-   * Return the (possibly modified) data to pass downstream, or `null` to consume it entirely.
-   */
-  feedFromSession(data: Uint8Array): Uint8Array | null;
-
-  /**
-   * Process data coming from the terminal (terminal → server).
-   * Return the (possibly modified) data to pass downstream, or `null` to consume it entirely.
-   */
-  feedFromTerminal(data: Uint8Array): Uint8Array | null;
-}
+/**
+ * The middleware interfaces live in @termlnk/rpc (a session handle exposes its
+ * stack, so consumers outside this package need the shape). Re-exported here so
+ * intra-package imports keep pointing at the middleware directory.
+ */
+export type { ITerminalMiddleware, TerminalMiddlewareState } from '@termlnk/rpc';

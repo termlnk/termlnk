@@ -21,7 +21,9 @@ function basename(shellPath: string): string {
 }
 
 export function detectShellType(shellPath: string | null | undefined): ShellType {
-  if (!shellPath) return 'unknown';
+  if (!shellPath) {
+    return 'unknown';
+  }
 
   const name = basename(shellPath).toLowerCase().replace(/\.exe$/i, '');
 

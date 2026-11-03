@@ -28,10 +28,14 @@ interface IWorkspaceContainerProps {
 }
 
 function getFirstSessionId(node: IWorkspaceLayoutNode): string | null {
-  if (node.type === 'leaf') return node.sessionId;
+  if (node.type === 'leaf') {
+    return node.sessionId;
+  }
   for (const child of node.children) {
     const id = getFirstSessionId(child);
-    if (id) return id;
+    if (id) {
+      return id;
+    }
   }
   return null;
 }
@@ -60,7 +64,9 @@ export function WorkspaceContainer({ workspaceId }: IWorkspaceContainerProps) {
   }, [workspaceService]);
 
   useEffect(() => {
-    if (!isMagnified) return;
+    if (!isMagnified) {
+      return;
+    }
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         handleClearMagnify();
@@ -76,7 +82,9 @@ export function WorkspaceContainer({ workspaceId }: IWorkspaceContainerProps) {
       return;
     }
 
-    if (!backdropVisible) return;
+    if (!backdropVisible) {
+      return;
+    }
     const timer = window.setTimeout(() => {
       setBackdropVisible(false);
     }, 180);
@@ -88,7 +96,9 @@ export function WorkspaceContainer({ workspaceId }: IWorkspaceContainerProps) {
   const [dragTarget, setDragTarget] = useState<IWorkspaceDropTarget | null>(null);
 
   const handleDrop = useCallback((targetSessionId: string, side: DropSide) => {
-    if (!dragState) return;
+    if (!dragState) {
+      return;
+    }
     workspaceService.moveSessionInWorkspace(workspaceId, dragState.draggedSessionId, targetSessionId, side);
     setDragState(null);
     setDragTarget(null);
@@ -102,7 +112,9 @@ export function WorkspaceContainer({ workspaceId }: IWorkspaceContainerProps) {
     onDrop: handleDrop,
   }), [dragState, dragTarget, handleDrop]);
 
-  if (!workspace) return null;
+  if (!workspace) {
+    return null;
+  }
   const shouldRenderBackdrop = isMagnified || backdropVisible;
 
   return (

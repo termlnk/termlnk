@@ -66,7 +66,6 @@ const RUNTIME_MODULES: IRuntimeModule[] = [
   { name: 'node-pty' },
   { name: 'better-sqlite3' },
   { name: 'cpu-features' },
-  { name: '@termlnk/macos-utils', optional: true, platforms: ['darwin'] },
 ];
 
 /** Packages needed only at build time — excluded from the final bundle. */
@@ -186,8 +185,7 @@ const MODULE_CLEANUP: Record<string, IModuleCleanupRule> = {
   },
 
   'better-sqlite3': {
-    dirs: ['deps', 'src', 'benchmark', 'bin'],
-    files: ['build/Release/test_extension.node'],
+    dirs: ['deps', 'src'],
   },
 
   'cpu-features': {
@@ -201,17 +199,6 @@ const MODULE_CLEANUP: Record<string, IModuleCleanupRule> = {
   zod: {
     dirs: ['src'],
   },
-
-  // NOTE: do not add rules for `@termlnk/macos-utils` (or any monorepo
-  // workspace package) here. electron-builder treats workspace dependencies
-  // declared with `workspace:*` as monorepo-aware: it re-copies them from
-  // their source directory into `app.asar.unpacked` after staging, bypassing
-  // both this cleanup table and the `files` filter in electron-builder.ts.
-  // Any rule placed here would mutate only the staged copy, which is then
-  // overwritten in the final artifact — silently ineffective. The ~25 KB
-  // of source/tooling files that ship with macos-utils as a result are
-  // accepted (this matches how Logseq, Joplin, Hyper and Element ship their
-  // workspace-resident native deps).
 };
 
 // ===========================================================================
@@ -415,6 +402,26 @@ async function stripPrebuilds(): Promise<void> {
 }
 
 /**
+ * Removes better-sqlite3 N-API prebuilds (`prebuilds/<platform>-<arch>.node`)
+ * for platforms other than the target.
+ */
+async function stripBetterSqlite3Prebuilds(): Promise<void> {
+  const prebuildsDir = resolve(TARGET_NODE_MODULES, 'better-sqlite3', 'prebuilds');
+  const target = `${platform}-${arch}.node`;
+
+  if (!existsSync(prebuildsDir)) {
+    return;
+  }
+
+  const entries = await readdir(prebuildsDir);
+  await Promise.all(
+    entries
+      .filter((entry) => entry !== target)
+      .map((entry) => rm(resolve(prebuildsDir, entry), { recursive: true, force: true }))
+  );
+}
+
+/**
  * Removes node-pty `bin/` entries compiled by @electron/rebuild for
  * architectures other than the target (e.g. `bin/darwin-x64-143/`).
  */
@@ -465,7 +472,8 @@ async function stripBuildArtifacts(): Promise<void> {
 
 /**
  * Fails fast when a runtime native module has no binary for the target
- * platform. node-pty's npm tarball ships prebuilds only for darwin/win32; the
+ * platform. better-sqlite3 ships a prebuild per platform inside its npm
+ * tarball; node-pty's npm tarball ships prebuilds only for darwin/win32; the
  * Linux build/Release/pty.node is produced by apps/desktop/scripts/postinstall.mjs
  * during `pnpm install`. Without this check a missing binary would silently
  * ship a broken package (see issue #7 — Linux RPM crashed at startup).
@@ -476,6 +484,15 @@ async function verifyNativeBinaries(): Promise<void> {
     resolve(TARGET_NODE_MODULES, 'node-pty', 'build', 'Release', 'pty.node'),
     resolve(TARGET_NODE_MODULES, 'node-pty', 'build', 'Debug', 'pty.node'),
   ].find((path) => existsSync(path));
+
+  const sqliteNode = resolve(TARGET_NODE_MODULES, 'better-sqlite3', 'prebuilds', `${platform}-${arch}.node`);
+
+  if (!existsSync(sqliteNode)) {
+    throw new Error(
+      `better-sqlite3 has no prebuild for ${platform}-${arch} after staging (expected ${sqliteNode}). `
+      + 'Refusing to package a broken app.'
+    );
+  }
 
   if (!ptyNode) {
     throw new Error(
@@ -610,6 +627,7 @@ async function main(): Promise<void> {
 
   // 9. Strip non-target platform prebuilds
   await stripPrebuilds();
+  await stripBetterSqlite3Prebuilds();
 
   // 10. Strip non-target architecture native bins
   await stripNativeBins();

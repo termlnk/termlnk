@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IDriverState, IParticipant, IShareableSession, IShareSessionOptions, ISharedSession, ISharedSessionService } from '@termlnk/shared-terminal';
+import type { IDriverState, IParticipant, IShareableSession, ISharedSession, ISharedSessionService, IShareSessionOptions } from '@termlnk/shared-terminal';
 import type { Observable } from 'rxjs';
 import { Disposable } from '@termlnk/core';
 import { trpcSubscriptionToObservable } from '@termlnk/rpc';

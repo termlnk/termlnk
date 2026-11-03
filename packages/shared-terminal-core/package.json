@@ -60,16 +60,16 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/shared-terminal": "workspace:*",
-    "@xterm/addon-serialize": "^0.15.0-beta.291",
-    "@xterm/headless": "^6.1.0-beta.291",
+    "@xterm/addon-serialize": "^0.15.0-beta.330",
+    "@xterm/headless": "^6.1.0-beta.334",
     "tweetnacl": "^1.0.3",
-    "undici": "^8.9.0"
+    "undici": "^8.12.3"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vite": "^8.2.0",
-    "vitest": "^4.1.10"
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   }
 }

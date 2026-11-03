@@ -19,15 +19,17 @@ import { IConfigService, IConfirmService, IContextService, Inject, Injector, mer
 import { defaultPluginConfig, UI_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
 import { LeftSidebarController } from './controllers/left-sidebar/left-sidebar.controller';
 import { RightSidebarController } from './controllers/right-sidebar/right-sidebar.controller';
+import { SidePanelController } from './controllers/side-panel/side-panel.controller';
 import { DesktopUIController } from './controllers/ui/desktop-ui.controller';
 import { IUIController } from './controllers/ui/ui.controller';
 import { UpdaterUIController } from './controllers/updater/updater-ui.controller';
-import { ComponentManagerService } from './services/component/component-manager.service';
 import { IColorSchemeService, WebColorSchemeService } from './services/color-scheme/color-scheme.service';
+import { ComponentManagerService } from './services/component/component-manager.service';
 import { DesktopConfirmService } from './services/confirm/desktop-confirm.service';
 import { ContentRouterService, IContentRouterService } from './services/content-router/content-router.service';
 import { ContextMenuService, IContextMenuService } from './services/contextmenu/contextmenu.service';
 import { DialogService, IDialogService } from './services/dialog/dialog.service';
+import { ExternalLinkService, IExternalLinkService } from './services/external-link/external-link.service';
 import { DesktopLayoutService, ILayoutService } from './services/layout/layout.service';
 import { IMenuManagerService, MenuManagerService } from './services/menu/menu-manager.service';
 import { IUIPartsService, UIPartsService } from './services/parts/parts.service';
@@ -35,6 +37,7 @@ import { IPlatformService, PlatformService } from './services/platform/platform.
 import { IRenderManagerService, RenderManagerService } from './services/render/render-manager.service';
 import { ResizableService } from './services/resizable/resizable.service';
 import { IShortcutService, ShortcutService } from './services/shortcut/shortcut.service';
+import { ISidePanelService, SidePanelService } from './services/side-panel/side-panel.service';
 import { SideTabBarService } from './services/side-tab-bar/side-tab-bar.service';
 import { IStatusBarService, StatusBarService } from './services/status-bar/status-bar.service';
 import { IThemeRegistryService, ThemeRegistryService } from './services/theme-registry/theme-registry.service';
@@ -65,10 +68,12 @@ export class UIPlugin extends Plugin {
       [ResizableService],
       [IContentRouterService],
       [IStatusBarService],
+      [ISidePanelService],
 
       [IUIController],
       [LeftSidebarController],
       [RightSidebarController],
+      [SidePanelController],
     ]);
   }
 
@@ -93,9 +98,11 @@ export class UIPlugin extends Plugin {
       [IContentRouterService, { useClass: ContentRouterService }],
 
       [IUIPartsService, { useClass: UIPartsService }],
+      [ISidePanelService, { useClass: SidePanelService }],
       [IRenderManagerService, { useClass: RenderManagerService }],
       [ILayoutService, { useClass: DesktopLayoutService }],
       [IShortcutService, { useClass: ShortcutService }],
+      [IExternalLinkService, { useClass: ExternalLinkService }],
       [IPlatformService, { useClass: PlatformService }],
       [IMenuManagerService, { useClass: MenuManagerService }],
       [IContextMenuService, { useClass: ContextMenuService }],
@@ -110,6 +117,7 @@ export class UIPlugin extends Plugin {
       }],
       [LeftSidebarController],
       [RightSidebarController],
+      [SidePanelController],
       [UpdaterUIController],
     ];
     registerDependencies(this._injector, mergeOverrideWithDependencies(dependencies, this._config.override));
