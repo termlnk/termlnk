@@ -15,13 +15,15 @@
 
 import type { AgentTool, AgentToolResult } from '@earendil-works/pi-agent-core';
 import type { AgentToolCategory, IAgentTool, IGuardMetadata, IMcpRemoteTool } from '@termlnk/agent';
-import { Type } from '@sinclair/typebox';
 import { IAgentToolPermissionService, IAgentToolRegistryService, IAIAgentService, IMcpService } from '@termlnk/agent';
 import { Disposable, ILogService, Inject } from '@termlnk/core';
 import { ChatRepository } from '@termlnk/database';
 import { sanitizeName } from '../common/sanitize-name';
 import { wrapToolWithPermission } from '../services/permission/permission-guarded-tool';
 import { WIDGET_TOOL_NAMES } from '../tools/widget-tools';
+
+// pi 1.5 accepts any JSON Schema object as tool `parameters`, so MCP input schemas are passed through untouched.
+const EMPTY_OBJECT_SCHEMA = { type: 'object' } as const;
 
 export class McpController extends Disposable {
   private _registeredAgentToolNames: string[] = [];
@@ -136,7 +138,7 @@ export class McpController extends Disposable {
       name: tool.name,
       label: tool.label ?? tool.name,
       description: tool.description,
-      parameters: Type.Unsafe(tool.inputSchema || { type: 'object' }),
+      parameters: tool.inputSchema || EMPTY_OBJECT_SCHEMA,
       execute: async (_toolCallId: string, params: unknown): Promise<AgentToolResult<any>> => {
         try {
           const result = await tool.handler(params as Record<string, unknown>);
@@ -180,7 +182,7 @@ export class McpController extends Disposable {
       name: toolName,
       label: `[${remoteTool.serverName}] ${remoteTool.name}`,
       description: remoteTool.description || remoteTool.name,
-      parameters: Type.Unsafe(remoteTool.inputSchema || { type: 'object' }),
+      parameters: remoteTool.inputSchema || EMPTY_OBJECT_SCHEMA,
       execute: async (_toolCallId: string, params: unknown): Promise<AgentToolResult<any>> => {
         try {
           const result = await this._mcpService.callTool(remoteTool.serverId, remoteTool.name, params as Record<string, unknown>);

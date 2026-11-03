@@ -58,10 +58,9 @@
     "socks": "^2.8.10"
   },
   "dependencies": {
-    "@earendil-works/pi-agent-core": "~1.4.0",
-    "@earendil-works/pi-ai": "~1.4.0",
+    "@earendil-works/pi-agent-core": "~1.5.0",
+    "@earendil-works/pi-ai": "~1.5.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "@sinclair/typebox": "^0.34.52",
     "@termlnk/agent": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",

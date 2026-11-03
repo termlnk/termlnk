@@ -67,7 +67,6 @@
     "ssh2": "^1.17.0"
   },
   "dependencies": {
-    "@sinclair/typebox": "^0.34.52",
     "@termlnk/acp": "workspace:*",
     "@termlnk/agent": "workspace:*",
     "@termlnk/auth": "workspace:*",
