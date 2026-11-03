@@ -92,7 +92,7 @@ export default {
   '@lobehub/icons': {
     global: '@lobehub/icons',
     name: '@lobehub/icons',
-    version: '^5.14.0',
+    version: '^6.14.0',
   },
   'lucide-react': {
     global: 'lucide-react',
@@ -107,7 +107,7 @@ export default {
   nanoid: {
     global: 'nanoid',
     name: 'nanoid',
-    version: '^5.1.16',
+    version: '^6.0.2',
   },
   'react-resizable-panels': {
     global: 'react-resizable-panels',
