@@ -17,7 +17,7 @@
 // must keep older frames decodable.
 export const SHARED_TERMINAL_FRAME_VERSION = 1;
 
-// Wire-frame magic; distinct from sync's `tmsync1:` and the local SafeStorage `tmenc1:`.
+// Wire-frame magic; distinct from sync's `tmsync1:` and the local secret-cipher `tmenc1:`.
 // Full ciphertext: `tmst1:` + version(1) + nonce(24) + ciphertext+poly1305_tag.
 export const SHARED_TERMINAL_FRAME_PREFIX = 'tmst1:';
 

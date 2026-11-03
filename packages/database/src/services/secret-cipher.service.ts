@@ -21,13 +21,11 @@ import { createIdentifier } from '@termlnk/core';
 export const SECRET_CIPHER_PREFIX = 'tmenc1:';
 
 export type SecretCipherScheme =
-  | 'safe-storage' // Electron safeStorage backed by the OS keystore
+  | 'safe-storage-envelope' // AES-GCM with a data key wrapped by the OS keystore (Electron safeStorage)
   | 'local-derived'; // Node crypto + device-fingerprint fallback
 
 export interface ISecretCipherService {
   readonly scheme: SecretCipherScheme;
-
-  isAvailable(): boolean;
 
   // Empty input is returned as-is; encrypted output always starts with SECRET_CIPHER_PREFIX.
   encrypt(plaintext: string): string;

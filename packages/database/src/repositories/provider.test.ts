@@ -122,7 +122,6 @@ function createTestBed() {
   };
   const cipher = {
     scheme: 'local-derived',
-    isAvailable: () => true,
     encrypt: (value: string) => value,
     decrypt: (value: string) => value,
   } as unknown as ISecretCipherService;

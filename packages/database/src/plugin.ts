@@ -88,7 +88,7 @@ export class DatabasePlugin extends Plugin {
     const dependencies: Dependency[] = [
       [IDBAdaptorService, { useClass: dbAdaptor }],
       // Default to the cross-platform fallback; apps/desktop/main overrides this with
-      // SafeStorageCipher via plugin config.
+      // the keystore-backed envelope cipher via plugin config.
       [ISecretCipherService, { useClass: LocalDerivedSecretCipher }],
       // Auth-core's TokenStorageService persists tokens via IAuthKeyValueStorage. The
       // database plugin owns this binding on Electron main / web server because we have

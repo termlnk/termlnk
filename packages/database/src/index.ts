@@ -20,6 +20,8 @@ export { aiCustomModelEntity, aiProviderEntity, aiProviderModelEntity, chatMessa
 export type { IAICustomModelEntity, IAICustomModelEntityInsert, IAIProviderEntity, IAIProviderEntityInsert, IAIProviderModelEntity, IAIProviderModelEntityInsert, IChatMessageEntity, IChatMessageEntityInsert, IChatSessionEntity, IChatSessionEntityInsert, ICollabInviteTokenEntity, ICollabInviteTokenEntityInsert, IConfigEntity, IConfigEntityInsert, IHostEntity, IHostEntityInsert, IIdentityEntity, IIdentityEntityInsert, IKnownHostEntity, IKnownHostEntityInsert, IMcpOAuthTokenEntity, IMcpOAuthTokenEntityInsert, IMcpServerEntity, IMcpServerEntityInsert, IPortForwardingRuleEntity, IPortForwardingRuleEntityInsert, ISkillEntity, ISkillEntityInsert, ISnippetEntity, ISnippetEntityInsert, ISshKeyEntity, ISshKeyEntityInsert, ISyncCursorEntity, ISyncCursorEntityInsert, ISyncFieldMetaEntity, ISyncFieldMetaEntityInsert, ISyncOutboxEntity, ISyncOutboxEntityInsert, ISyncRowMetaEntity, ISyncRowMetaEntityInsert, ITerminalSessionBackupEntity, ITerminalSessionBackupEntityInsert, PortForwardingType } from './entities';
 export { runEncryptSecretsRuntimeMigration } from './migrations/runtime/encrypt-secrets.runtime';
 export type { IEncryptSecretsResult } from './migrations/runtime/encrypt-secrets.runtime';
+export { migrateLegacySafeStorageSecrets } from './migrations/runtime/legacy-safe-storage.runtime';
+export type { ILegacySafeStorageMigrationResult, LegacyTokenRewrap } from './migrations/runtime/legacy-safe-storage.runtime';
 export { runSkillRelativePathRuntimeMigration } from './migrations/runtime/skill-relative-path.runtime';
 export type { ISkillRelativePathResult } from './migrations/runtime/skill-relative-path.runtime';
 export type { IConfigChangeEvent, IConfigEntry } from './models/config';
@@ -54,5 +56,8 @@ export { SQLiteAdaptor } from './services/db-adaptor/sqlite.adaptor';
 export type { ISQLiteDatabaseOptions } from './services/db-adaptor/sqlite.adaptor';
 export { ISecretCipherService, isEncrypted, SECRET_CIPHER_PREFIX } from './services/secret-cipher.service';
 export type { SecretCipherScheme } from './services/secret-cipher.service';
+export { AesGcmSecretCipher } from './services/secret-cipher/aes-gcm.cipher';
 export { decryptCredential, decryptIfNeeded, decryptMcpConfig, decryptProxy, encryptCredential, encryptIfNeeded, encryptMcpConfig, encryptProxy } from './services/secret-cipher/credential-masker';
 export { LocalDerivedSecretCipher } from './services/secret-cipher/local-derived.cipher';
+export { decodeSecretPayload, encodeSecretPayload, LEGACY_SAFE_STORAGE_SCHEME, tryDecodeSecretPayload } from './services/secret-cipher/secret-payload';
+export type { ISecretPayload } from './services/secret-cipher/secret-payload';

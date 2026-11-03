@@ -38,9 +38,6 @@ class FakeConfigRepository {
 /** Reversible cipher with the `tmenc1:` envelope so the service's roundtrip works. */
 class FakeCipher implements ISecretCipherService {
   readonly scheme = 'local-derived' as const;
-  isAvailable(): boolean {
-    return true;
-  }
 
   encrypt(plaintext: string): string {
     if (plaintext === '' || plaintext.startsWith('tmenc1:')) {

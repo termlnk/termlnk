@@ -29,8 +29,8 @@ import { createIdentifier } from '@termlnk/core';
 // activate() atomically installs a derived key as the active key: zeroizes the previous
 // key, publishes Unlocked, and rewrites the persisted wrap via IAuthKeyValueStorage so
 // tryRestoreFromStorage() can re-install it on the next app launch without asking for the
-// password again. Trust model: persistence is encrypted by the OS keystore (Electron
-// safeStorage: macOS Keychain / Windows DPAPI / Linux libsecret); an attacker with an
+// password again. Trust model: persistence is encrypted with a data key wrapped by the
+// OS keystore (Electron safeStorage: macOS Keychain / Windows DPAPI / Linux libsecret); an attacker with an
 // already-unlocked device can recover the vault, but the key never leaves the main process
 // and is never written in clear.
 //

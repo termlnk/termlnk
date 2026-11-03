@@ -21,8 +21,8 @@ import { BehaviorSubject } from 'rxjs';
 import { computeArgon2Salt, deriveSubKeys, zeroize } from '../crypto/kdf';
 
 // IAuthKeyValueStorage subKey under AUTH_PLUGIN_CONFIG_KEY. setString/getString is
-// already routed through ISecretCipherService (Electron safeStorage on desktop), so the
-// blob lands on disk encrypted by the OS keystore.
+// already routed through ISecretCipherService (keystore-wrapped data key on desktop), so the
+// blob lands on disk encrypted.
 const WRAPPED_KEY_STORAGE_KEY = 'wrappedMasterKey';
 
 // Serialised form of IMasterKey for at-rest storage. Uint8Array fields are base64-encoded
