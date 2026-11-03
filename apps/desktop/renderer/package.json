@@ -24,8 +24,6 @@
     "@termlnk/electron-renderer": "workspace:*",
     "@termlnk/extension": "workspace:*",
     "@termlnk/extension-ui": "workspace:*",
-    "@termlnk/island": "workspace:*",
-    "@termlnk/island-ui": "workspace:*",
     "@termlnk/port-forwarding-ui": "workspace:*",
     "@termlnk/project": "workspace:*",
     "@termlnk/project-ui": "workspace:*",

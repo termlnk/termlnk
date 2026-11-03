@@ -97,9 +97,7 @@ export class TrayService extends Disposable implements ITrayService {
   }
 
   private async _showMainWindow(): Promise<void> {
-    // Filter out the island window so we only show the main application window
-    const windows = BrowserWindow.getAllWindows()
-      .filter((w) => !w.webContents.getURL().includes('island.html'));
+    const windows = BrowserWindow.getAllWindows();
     if (windows.length === 0) {
       return;
     }

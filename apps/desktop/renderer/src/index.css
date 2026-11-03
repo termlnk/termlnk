@@ -7,7 +7,6 @@
  * whole workspace keeps new UI packages working the day they are created. */
 @source "../../../../packages/*/src/**/*.{ts,tsx}";
 @source "../../../../packages-internal/electron-renderer/src";
-@source "../../../../packages-internal/island-ui/src";
 
 body,
 #root {

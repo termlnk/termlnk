@@ -48,13 +48,6 @@ const noopNotify = {
   togglePanel: () => {},
 };
 
-function makeConfigStub(): any {
-  return {
-    changed$: new Subject(),
-    getField: async () => null,
-  };
-}
-
 function makeMeta(overrides: Partial<IAgentHookEventMeta> = {}): IAgentHookEventMeta {
   return {
     ppid: 1000,
@@ -79,7 +72,7 @@ describe('AgentMonitorService canonical key routing', () => {
   let service: AgentMonitorService;
 
   beforeEach(() => {
-    service = new AgentMonitorService(noopLog as any, noopNotify as any, makeConfigStub());
+    service = new AgentMonitorService(noopLog as any, noopNotify as any);
   });
 
   afterEach(() => {

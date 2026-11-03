@@ -24,13 +24,13 @@ const WARMUP_DURATION_MS = 250;
  * Chromium stops producing compositor frames when an idle foreground page has no
  * animation; the first animation after idle must ramp the frame scheduler back
  * up, dropping a frame or two — the stutter users see on the first dialog open /
- * island expand. A bare always-on rAF loop confirmed this (warm loop => no
+ * panel expand. A bare always-on rAF loop confirmed this (warm loop => no
  * stutter) but would burn power on this always-resident app. Instead we keep the
  * compositor warm only briefly after each user input, since animations are
  * virtually always input-triggered; idle (no input) throttles normally.
  *
- * Instantiated by ElectronRendererPlugin, so it runs in BOTH renderer processes
- * (main window + island) without per-component wiring.
+ * Instantiated by ElectronRendererPlugin, so it runs in every renderer window
+ * without per-component wiring.
  */
 export class CompositorWarmupController extends Disposable {
   private _warmUntil = 0;
@@ -42,9 +42,6 @@ export class CompositorWarmupController extends Disposable {
   }
 
   private _initInputListeners(): void {
-    // `mousemove` (not pointermove): while the island is click-through,
-    // Electron's setIgnoreMouseEvents(forward:true) forwards mousemove — the
-    // same source that drives the island's hover-expand — but not pointer events.
     const types: (keyof WindowEventMap)[] = ['mousemove', 'mousedown', 'keydown', 'wheel'];
     const onInput = (): void => this._touch();
     for (const type of types) {

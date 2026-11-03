@@ -32,7 +32,6 @@ import { ElectronPlugin } from '@termlnk/electron';
 import { ElectronIdleProbe, ElectronMainPlugin, FileDialogService, MockUpdaterService, SafeStorageCipher } from '@termlnk/electron-main';
 import { IExtensionStateService, IExtensionStorageService } from '@termlnk/extension';
 import { ExtensionCorePlugin } from '@termlnk/extension-core';
-import { IslandCorePlugin } from '@termlnk/island-core';
 import { IFetchProvider, NetworkPlugin } from '@termlnk/network';
 import { RPCPlugin } from '@termlnk/rpc';
 import { IFileDialogService, RPCServerPlugin } from '@termlnk/rpc-server';
@@ -391,7 +390,6 @@ app.whenReady().then(async () => {
   core.registerPlugin(ACPPlugin);
   core.registerPlugin(ACPCorePlugin);
   core.registerPlugin(ExtensionCorePlugin);
-  core.registerPlugin(IslandCorePlugin);
   core.registerPlugin(RPCServerPlugin, {
     override: [
       [IFileDialogService, { useClass: FileDialogService }],

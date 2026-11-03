@@ -66,7 +66,6 @@ const RUNTIME_MODULES: IRuntimeModule[] = [
   { name: 'node-pty' },
   { name: 'better-sqlite3' },
   { name: 'cpu-features' },
-  { name: '@termlnk/macos-utils', optional: true, platforms: ['darwin'] },
 ];
 
 /** Packages needed only at build time — excluded from the final bundle. */
@@ -200,17 +199,6 @@ const MODULE_CLEANUP: Record<string, IModuleCleanupRule> = {
   zod: {
     dirs: ['src'],
   },
-
-  // NOTE: do not add rules for `@termlnk/macos-utils` (or any monorepo
-  // workspace package) here. electron-builder treats workspace dependencies
-  // declared with `workspace:*` as monorepo-aware: it re-copies them from
-  // their source directory into `app.asar.unpacked` after staging, bypassing
-  // both this cleanup table and the `files` filter in electron-builder.ts.
-  // Any rule placed here would mutate only the staged copy, which is then
-  // overwritten in the final artifact — silently ineffective. The ~25 KB
-  // of source/tooling files that ship with macos-utils as a result are
-  // accepted (this matches how Logseq, Joplin, Hyper and Element ship their
-  // workspace-resident native deps).
 };
 
 // ===========================================================================

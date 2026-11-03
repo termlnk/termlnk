@@ -72,7 +72,7 @@ export class ElectronRendererPlugin extends Plugin {
   // Desktop-only OS integration switches (system tray / OS auto-launch /
   // powerSaveBlocker keep-awake). Registered in onReady so SettingsUIPlugin's
   // ISettingsTabRegistryService binding is already present. OPTIONAL injection
-  // means island secondary windows (which omit SettingsUIPlugin) silently skip.
+  // keeps windows that omit SettingsUIPlugin from failing.
   private _registerPlatformSettingsTab(): void {
     const registry = this._injector.get(ISettingsTabRegistryService, Quantity.OPTIONAL);
     if (!registry) {

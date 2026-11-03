@@ -90,12 +90,7 @@ const config: Configuration = {
     // The Squirrel.Mac update zip is produced by scripts/prepare-mac-update-artifacts.ts
     // with ditto so framework symlinks survive extraction and codesign validation.
     target: ['dmg'],
-    // Surfaced by macOS when Termlnk first requests Accessibility. The
-    // Dynamic Island uses it to replay user-picks from the notch into
-    // the terminal app running an external Claude Code CLI (AskUser-
-    // Question etc.) so the CLI TUI and the island stay in sync.
     extendInfo: {
-      NSAccessibilityUsageDescription: 'Termlnk requests Accessibility permission so the Dynamic Island can relay your choices to the terminal window running Claude Code (syncing AskUserQuestion picks between the notch and the CLI).',
       // Multiplayer invite handler — macOS uses CFBundleURLTypes to associate
       // `termlnk://` deep links with this app. electron-builder normally writes
       // this from `protocols` above, but we duplicate it here to keep the

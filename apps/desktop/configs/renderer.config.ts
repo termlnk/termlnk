@@ -42,7 +42,6 @@ export default mergeConfig(baseConfig, {
     rolldownOptions: {
       input: {
         main: resolve(RENDERER_ROOT, 'index.html'),
-        island: resolve(RENDERER_ROOT, 'island.html'),
       },
     },
   },

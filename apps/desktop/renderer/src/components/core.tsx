@@ -25,7 +25,6 @@ import { ElectronPlugin } from '@termlnk/electron';
 import { ElectronRendererPlugin } from '@termlnk/electron-renderer';
 import { ExtensionPlugin } from '@termlnk/extension';
 import { ExtensionUIPlugin } from '@termlnk/extension-ui';
-import { IslandSettingsPlugin } from '@termlnk/island-ui';
 import { PortForwardingUIPlugin } from '@termlnk/port-forwarding-ui';
 import { ProjectPlugin } from '@termlnk/project';
 import { ProjectUIPlugin } from '@termlnk/project-ui';
@@ -155,7 +154,6 @@ export async function createCore(ref: string | HTMLElement, options?: Partial<IC
   core.registerPlugin(PortForwardingUIPlugin);
   core.registerPlugin(SnippetUIPlugin);
   core.registerPlugin(SettingsUIPlugin);
-  core.registerPlugin(IslandSettingsPlugin);
   core.registerPlugin(ExtensionPlugin);
   core.registerPlugin(ExtensionUIPlugin);
   core.registerPlugin(AgentUIPlugin);

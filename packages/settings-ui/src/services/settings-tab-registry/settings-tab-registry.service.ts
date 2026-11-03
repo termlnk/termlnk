@@ -25,7 +25,7 @@ import { BehaviorSubject, combineLatest, distinctUntilChanged, map, of, switchMa
  *
  * settings-ui owns the registry, but tab descriptors come from anywhere:
  * settings-ui itself registers its built-in tabs (Appearance, Terminal, ...);
- * business packages (agent-ui, island-ui, auth-ui, ...) register tabs that
+ * business packages (agent-ui, auth-ui, ...) register tabs that
  * conceptually belong to them; the desktop shell registers a Platform tab
  * for OS-level switches that don't apply to web deployments.
  */
@@ -53,13 +53,13 @@ export interface ISettingsTabDescriptor {
    * Ascending sort key. Built-in tabs use 10-step increments leaving room
    * for inserts: APPEARANCE=10, PLATFORM=15, INTERFACE=20, TERMINAL=30,
    * COLOR_SCHEME=40, NETWORK=50, MCP=60, AI_PROVIDER=70, CHAT=80, SKILL=90,
-   * ISLAND=100, ACCOUNT=110, SHORTCUTS=120, ABOUT=130.
+   * ACCOUNT=110, SHORTCUTS=120, ABOUT=130.
    */
   order: number;
 
   /**
    * Optional dynamic visibility gate. When omitted, the tab is always shown.
-   * Examples: `of(isMacintosh)` for Island; `featureFlag$` for experimental
+   * Examples: `of(isMacintosh)` for macOS-only tabs; `featureFlag$` for experimental
    * panels; `combineLatest([authBound$, syncEnabled$]).pipe(map(both => ...))`
    * for tabs that depend on multiple capabilities.
    */

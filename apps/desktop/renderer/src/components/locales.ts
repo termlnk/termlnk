@@ -50,11 +50,6 @@ import extensionuijaJP from '@termlnk/extension-ui/locale/ja-JP';
 import extensionuikoKR from '@termlnk/extension-ui/locale/ko-KR';
 import extensionuizhCN from '@termlnk/extension-ui/locale/zh-CN';
 import extensionuizhTW from '@termlnk/extension-ui/locale/zh-TW';
-import islanduienUS from '@termlnk/island-ui/locale/en-US';
-import islanduijaJP from '@termlnk/island-ui/locale/ja-JP';
-import islanduikoKR from '@termlnk/island-ui/locale/ko-KR';
-import islanduizhCN from '@termlnk/island-ui/locale/zh-CN';
-import islanduizhTW from '@termlnk/island-ui/locale/zh-TW';
 import portforwardinguienUS from '@termlnk/port-forwarding-ui/locale/en-US';
 import portforwardinguijaJP from '@termlnk/port-forwarding-ui/locale/ja-JP';
 import portforwardinguikoKR from '@termlnk/port-forwarding-ui/locale/ko-KR';
@@ -110,7 +105,6 @@ export const enUS = merge(
   designenUS,
   electronrendererenUS,
   extensionuienUS,
-  islanduienUS,
   portforwardinguienUS,
   projectuienUS,
   settingsuienUS,
@@ -130,7 +124,6 @@ export const zhCN = merge(
   designzhCN,
   electronrendererzhCN,
   extensionuizhCN,
-  islanduizhCN,
   portforwardinguizhCN,
   projectuizhCN,
   settingsuizhCN,
@@ -150,7 +143,6 @@ export const jaJP = merge(
   designjaJP,
   electronrendererjaJP,
   extensionuijaJP,
-  islanduijaJP,
   portforwardinguijaJP,
   projectuijaJP,
   settingsuijaJP,
@@ -170,7 +162,6 @@ export const koKR = merge(
   designkoKR,
   electronrendererkoKR,
   extensionuikoKR,
-  islanduikoKR,
   portforwardinguikoKR,
   projectuikoKR,
   settingsuikoKR,
@@ -190,7 +181,6 @@ export const zhTW = merge(
   designzhTW,
   electronrendererzhTW,
   extensionuizhTW,
-  islanduizhTW,
   portforwardinguizhTW,
   projectuizhTW,
   settingsuizhTW,

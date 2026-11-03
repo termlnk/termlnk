@@ -15,13 +15,10 @@
 
 import type { AgentSessionStatus, ExternalAgentType, IAgentHookEvent, IAgentMonitorService, IExternalAgentSession } from '@termlnk/agent';
 import type { Observable } from 'rxjs';
-import type { IIslandSettingsStored } from '../../controllers/config.schema';
 import process from 'node:process';
 import { AGENT_DISPLAY_NAMES } from '@termlnk/agent';
-import { Disposable, ILogService, Inject, INotificationService, isMacintosh, toDisposable } from '@termlnk/core';
-import { ConfigRepository } from '@termlnk/database';
-import { BehaviorSubject, filter, Subject } from 'rxjs';
-import { AGENT_CORE_PLUGIN_CONFIG_KEY } from '../../controllers/config.schema';
+import { Disposable, ILogService, INotificationService, toDisposable } from '@termlnk/core';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { isNeedsInputNotification, resolveSource, SESSION_IDLE_GC_MS, truncate, ZOMBIE_CHECK_INTERVAL_MS } from './agent-monitor.utils';
 import { applyTodoTool, TODO_TOOL_NAMES } from './todos';
 import { TOOL_FORMATTERS } from './tool-descriptions';
@@ -59,13 +56,10 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
    */
   private readonly _subagentDepth = new Map<string, number>();
   private _zombieCheckInterval: ReturnType<typeof setInterval> | null = null;
-  /** Cached Dynamic Island enabled flag (macOS only); false until config loads. */
-  private _islandEnabled = false;
 
   constructor(
     @ILogService private readonly _logService: ILogService,
-    @INotificationService private readonly _notificationService: INotificationService,
-    @Inject(ConfigRepository) private readonly _configRepository: ConfigRepository
+    @INotificationService private readonly _notificationService: INotificationService
   ) {
     super();
     this.disposeWithMe(toDisposable(() => {
@@ -80,47 +74,6 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
       }
     }));
     this._startZombieDetection();
-    this._initIslandStateTracking();
-  }
-
-  /**
-   * Track the Dynamic Island enabled flag so we can suppress duplicate OS
-   * desktop notifications when the island UI is already surfacing the alert.
-   * macOS-only — Windows/Linux always show desktop notifications.
-   */
-  private _initIslandStateTracking(): void {
-    if (!isMacintosh) {
-      return;
-    }
-
-    void this._refreshIslandEnabled();
-
-    this.disposeWithMe(
-      this._configRepository.changed$
-        .pipe(filter((event) =>
-          event.key === AGENT_CORE_PLUGIN_CONFIG_KEY
-          && (event.subKey === 'islandSettings' || event.subKey === undefined)
-        ))
-        .subscribe(() => {
-          void this._refreshIslandEnabled();
-        })
-    );
-  }
-
-  private async _refreshIslandEnabled(): Promise<void> {
-    try {
-      const stored = await this._configRepository
-        .getField<IIslandSettingsStored>(AGENT_CORE_PLUGIN_CONFIG_KEY, 'islandSettings');
-      // Default to enabled on macOS (matches DEFAULT_ISLAND_SETTINGS in settings-ui).
-      this._islandEnabled = stored?.enabled !== false;
-    } catch {
-      // Keep previous value on read error.
-    }
-  }
-
-  /** False when the Dynamic Island is active and will surface the alert itself. */
-  private _shouldShowDesktop(): boolean {
-    return !(isMacintosh && this._islandEnabled);
   }
 
   handleHookEvent(event: IAgentHookEvent): void {
@@ -322,7 +275,7 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
       source: 'agent',
       groupId: event.sessionId,
       priority: 'normal',
-      showDesktop: this._shouldShowDesktop(),
+      showDesktop: true,
       metadata: { agent: event.agent, ...payload },
     });
   }
@@ -410,7 +363,7 @@ export class AgentMonitorService extends Disposable implements IAgentMonitorServ
       source: 'agent',
       groupId: event.sessionId,
       priority: 'high',
-      showDesktop: this._shouldShowDesktop(),
+      showDesktop: true,
       metadata: { agent: event.agent, toolName, ...payload },
     });
   }

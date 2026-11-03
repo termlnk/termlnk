@@ -47,21 +47,6 @@ export interface IAgentCorePluginConfig {
   hookCliSrcDir?: string;
   mcp?: IMcpConfig;
   compact?: ICompactConfig;
-  /**
-   * Dynamic Island settings (macOS). Full schema in @termlnk/island;
-   * only the `enabled` flag is consumed by agent-core to suppress
-   * duplicate desktop notifications when the island UI is active.
-   */
-  islandSettings?: IIslandSettingsStored;
-}
-
-/**
- * Subset of the Dynamic Island settings schema relevant to agent-core.
- * The full payload (including sound config) is written by island-ui and
- * stored transparently — agent-core only reads `enabled`.
- */
-export interface IIslandSettingsStored {
-  enabled?: boolean;
 }
 
 export const defaultPluginConfig: IAgentCorePluginConfig = {};

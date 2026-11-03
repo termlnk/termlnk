@@ -87,7 +87,6 @@ export default mergeConfig(baseConfig, {
         'cpu-features',
         'node-pty',
         'better-sqlite3',
-        '@termlnk/macos-utils',
       ],
     },
   },
@@ -97,7 +96,6 @@ export default mergeConfig(baseConfig, {
       'cpu-features',
       'node-pty',
       'better-sqlite3',
-      '@termlnk/macos-utils',
     ],
   },
   define: {

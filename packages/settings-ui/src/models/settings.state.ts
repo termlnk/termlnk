@@ -17,7 +17,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 
 /**
  * Built-in tab ids registered by settings-ui itself. `activeTab` is an open
- * string union — other packages (agent-ui, auth-ui, island-ui,
+ * string union — other packages (agent-ui, auth-ui,
  * electron-renderer) register their tabs with their own literal ids via
  * ISettingsTabRegistryService and intentionally do not appear here.
  */

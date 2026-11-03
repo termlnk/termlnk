@@ -28,7 +28,7 @@ const MAX_NOTIFICATIONS = 100;
 
 /**
  * Sources whose notifications never persist in the bell panel: they own a
- * dedicated surface (Dynamic Island / desktop toast) and would otherwise
+ * dedicated surface (desktop toast) and would otherwise
  * flood the notification center with per-turn agent chatter.
  */
 const TRANSIENT_ONLY_SOURCES: ReadonlySet<NotificationSource> = new Set<NotificationSource>(['agent']);

@@ -308,7 +308,6 @@ export const tailwindcssPreset = (): Linter.Config => {
           '^scrollbar-none$',
           '^tm:no-scrollbar$',
           '^tm:toaster$',
-          '^island-',
           '^tm:ease-spring$',
         ],
       }],

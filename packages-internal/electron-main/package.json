@@ -28,7 +28,6 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/electron": "workspace:*",
-    "@termlnk/island": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@termlnk/sync": "workspace:*",
@@ -43,7 +42,6 @@
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*",
     "@termlnk/electron": "workspace:*",
-    "@termlnk/island": "workspace:*",
     "@termlnk/rpc": "workspace:*",
     "@termlnk/rpc-server": "workspace:*",
     "@termlnk/sync": "workspace:*",
@@ -53,9 +51,6 @@
     "semver": "^7.8.6",
     "uuid": "^14.0.3",
     "zod": "^4.6.7"
-  },
-  "optionalDependencies": {
-    "@termlnk/macos-utils": "workspace:*"
   },
   "devDependencies": {
     "@termlnk/shared": "workspace:*",
