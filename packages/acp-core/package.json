@@ -55,7 +55,7 @@
     "rxjs": ">=7.0.0"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^1.3.0",
+    "@agentclientprotocol/sdk": "^2.2.0",
     "@termlnk/acp": "workspace:*",
     "@termlnk/core": "workspace:*",
     "@termlnk/database": "workspace:*"

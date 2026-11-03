@@ -150,8 +150,6 @@ export function translateSessionUpdate(
       break;
     }
     case 'usage_update':
-    case 'plan_update':
-    case 'plan_removed':
     default:
       break;
   }

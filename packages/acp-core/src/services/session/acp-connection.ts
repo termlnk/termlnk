@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { AgentCapabilities, Client, ContentBlock, RequestPermissionRequest, RequestPermissionResponse, SessionNotification } from '@agentclientprotocol/sdk';
+import type { AgentCapabilities, ClientApp, ClientContext, ContentBlock, RequestPermissionRequest, RequestPermissionResponse, SessionNotification } from '@agentclientprotocol/sdk';
 import type {
   IACPPermissionRequest,
   IACPPromptBlock,
@@ -32,12 +32,10 @@ import { dirname } from 'node:path';
 import process from 'node:process';
 import { Readable, Writable } from 'node:stream';
 import {
-
-  ClientSideConnection,
-
+  client,
+  methods,
   ndJsonStream,
   PROTOCOL_VERSION,
-
 } from '@agentclientprotocol/sdk';
 import { ACP_CLIENT_NAME, ACP_CLIENT_VERSION, AGENT_TERMINATE_GRACE_MS, DEFAULT_HANDSHAKE_TIMEOUT_MS } from '@termlnk/acp';
 import { Disposable, generateRandomId } from '@termlnk/core';
@@ -78,7 +76,7 @@ const STDERR_TAIL_LINES = 8;
  */
 export class ACPConnection extends Disposable {
   private _child: ChildProcessWithoutNullStreams | null = null;
-  private _connection: ClientSideConnection | null = null;
+  private _connection: ClientContext | null = null;
   private _nativeSessionId: string | null = null;
   private _agentCapabilities: AgentCapabilities | null = null;
   private _terminals: ACPTerminalRegistry | null = null;
@@ -160,7 +158,7 @@ export class ACPConnection extends Disposable {
     this._promptInFlight = true;
     this._setStatus('streaming');
     try {
-      const result = await connection.prompt({
+      const result = await connection.request(methods.agent.session.prompt, {
         sessionId: nativeId,
         prompt,
       });
@@ -187,7 +185,7 @@ export class ACPConnection extends Disposable {
       return;
     }
     try {
-      await connection.cancel({ sessionId: nativeId });
+      await connection.notify(methods.agent.session.cancel, { sessionId: nativeId });
     } catch (err) {
       this._logService.warn('[ACPConnection] cancel failed', err);
     }
@@ -209,7 +207,7 @@ export class ACPConnection extends Disposable {
   async setMode(modeId: string): Promise<void> {
     const connection = this._requireConnection();
     const nativeId = this._requireNativeSessionId();
-    await connection.setSessionMode({ sessionId: nativeId, modeId });
+    await connection.request(methods.agent.session.setMode, { sessionId: nativeId, modeId });
     this._patchInfo({ currentModeId: modeId });
     this._emit({ type: 'mode_update', currentModeId: modeId });
   }
@@ -218,7 +216,7 @@ export class ACPConnection extends Disposable {
     const connection = this._requireConnection();
     const nativeId = this._requireNativeSessionId();
     // Models are exposed as session config options by most agents.
-    await connection.setSessionConfigOption({
+    await connection.request(methods.agent.session.setConfigOption, {
       sessionId: nativeId,
       configId: this._modelConfigId ?? 'model',
       value: modelId,
@@ -280,7 +278,7 @@ export class ACPConnection extends Disposable {
     child.on('exit', (code, signal) => {
       const message = `Agent process exited (code=${code}, signal=${signal})`;
       this._abortHandshake?.(new Error(this._describeFailure(message)));
-      if (this._info.status === 'closed') {
+      if (this._info.status === 'closed' || this._info.status === 'error') {
         return;
       }
       this._emit({ type: 'error', message });
@@ -294,14 +292,14 @@ export class ACPConnection extends Disposable {
     const output = Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>;
     const stream = ndJsonStream(input, output);
 
-    const client = this._createClient();
-    const connection = new ClientSideConnection(() => client, stream);
+    const handle = this._createClientApp().connect(stream);
+    const connection = handle.agent;
     this._connection = connection;
 
-    // Every handshake round-trip races the process dying and the deadline. A
-    // dead stdio pipe does not settle the in-flight JSON-RPC promise, so
-    // without this the whole createSession call hangs and the caller sees
-    // nothing at all.
+    // Every handshake round-trip races the process dying and the deadline. The
+    // SDK only rejects pending requests with 'ACP connection closed' once stdout
+    // ends, so a hung-but-alive agent or a spawn error would leave createSession
+    // waiting forever without this.
     const aborted = new Promise<never>((_, reject) => {
       this._abortHandshake = reject;
     });
@@ -315,7 +313,7 @@ export class ACPConnection extends Disposable {
       Promise.race([promise, aborted]);
 
     try {
-      const init = await untilAborted(connection.initialize({
+      const init = await untilAborted(connection.request(methods.agent.initialize, {
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: {
           fs: { readTextFile: true, writeTextFile: true },
@@ -333,7 +331,7 @@ export class ACPConnection extends Disposable {
       if (resumeId && caps?.loadSession) {
         await untilAborted(this._loadSession(connection, resumeId));
       } else if (resumeId && caps?.sessionCapabilities?.resume) {
-        await untilAborted(connection.resumeSession({
+        await untilAborted(connection.request(methods.agent.session.resume, {
           sessionId: resumeId,
           cwd,
           mcpServers: [],
@@ -341,7 +339,7 @@ export class ACPConnection extends Disposable {
         this._nativeSessionId = resumeId;
         this._patchInfo({ nativeSessionId: resumeId });
       } else {
-        const created = await untilAborted(connection.newSession({
+        const created = await untilAborted(connection.request(methods.agent.session.new, {
           cwd,
           // Some agents (e.g. Devin CLI) reject missing mcpServers even when empty.
           mcpServers: [],
@@ -361,7 +359,11 @@ export class ACPConnection extends Disposable {
       }
 
       this._setStatus('ready');
-    } catch (err) {
+    } catch (rawErr) {
+      // SDK 2.x rejects pending requests with 'ACP connection closed' as soon as stdout ends, before the exit handler runs.
+      const err = rawErr instanceof Error && rawErr.message === 'ACP connection closed'
+        ? new Error(this._describeFailure('Agent process exited before completing the handshake'))
+        : rawErr;
       const message = err instanceof Error ? err.message : String(err);
       this._emit({ type: 'error', message });
       this._setStatus('error', message);
@@ -383,12 +385,12 @@ export class ACPConnection extends Disposable {
     return tail ? `${base}\n${tail}` : base;
   }
 
-  private async _loadSession(connection: ClientSideConnection, nativeSessionId: string): Promise<void> {
+  private async _loadSession(connection: ClientContext, nativeSessionId: string): Promise<void> {
     this._replayingHistory = true;
     this._replayBuffer = [];
     this._emit({ type: 'history_replay_start' });
     try {
-      const loaded = await connection.loadSession({
+      const loaded = await connection.request(methods.agent.session.load, {
         sessionId: nativeSessionId,
         cwd: this._params.cwd,
         mcpServers: [],
@@ -415,15 +417,13 @@ export class ACPConnection extends Disposable {
     }
   }
 
-  private _createClient(): Client {
-    return {
-      sessionUpdate: async (params: SessionNotification) => {
+  private _createClientApp(): ClientApp {
+    return client()
+      .onNotification(methods.client.session.update, ({ params }) => {
         this._onSessionUpdate(params);
-      },
-      requestPermission: async (params: RequestPermissionRequest) => {
-        return this._onRequestPermission(params);
-      },
-      readTextFile: async (params) => {
+      })
+      .onRequest(methods.client.session.requestPermission, ({ params }) => this._onRequestPermission(params))
+      .onRequest(methods.client.fs.readTextFile, async ({ params }) => {
         const content = await readFile(params.path, 'utf8');
         if (params.line != null || params.limit != null) {
           const lines = content.split('\n');
@@ -432,28 +432,17 @@ export class ACPConnection extends Disposable {
           return { content: lines.slice(start, end).join('\n') };
         }
         return { content };
-      },
-      writeTextFile: async (params) => {
+      })
+      .onRequest(methods.client.fs.writeTextFile, async ({ params }) => {
         await mkdir(dirname(params.path), { recursive: true });
         await writeFile(params.path, params.content, 'utf8');
         return {};
-      },
-      createTerminal: async (params) => {
-        return this._requireTerminals().createTerminal(params);
-      },
-      terminalOutput: async (params) => {
-        return this._requireTerminals().terminalOutput(params);
-      },
-      waitForTerminalExit: async (params) => {
-        return this._requireTerminals().waitForTerminalExit(params);
-      },
-      killTerminal: async (params) => {
-        return this._requireTerminals().killTerminal(params);
-      },
-      releaseTerminal: async (params) => {
-        return this._requireTerminals().releaseTerminal(params);
-      },
-    };
+      })
+      .onRequest(methods.client.terminal.create, ({ params }) => this._requireTerminals().createTerminal(params))
+      .onRequest(methods.client.terminal.output, ({ params }) => this._requireTerminals().terminalOutput(params))
+      .onRequest(methods.client.terminal.waitForExit, ({ params }) => this._requireTerminals().waitForTerminalExit(params))
+      .onRequest(methods.client.terminal.kill, ({ params }) => this._requireTerminals().killTerminal(params))
+      .onRequest(methods.client.terminal.release, ({ params }) => this._requireTerminals().releaseTerminal(params));
   }
 
   private _onSessionUpdate(params: SessionNotification): void {
@@ -539,7 +528,7 @@ export class ACPConnection extends Disposable {
     };
   }
 
-  private _requireConnection(): ClientSideConnection {
+  private _requireConnection(): ClientContext {
     if (!this._connection) {
       throw new Error('ACP connection is not started');
     }
