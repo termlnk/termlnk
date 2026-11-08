@@ -31,6 +31,11 @@ export interface ISafeStorageCipherOptions {
   logService: ILogService;
 }
 
+type LegacySafeStorage = typeof safeStorage & {
+  isEncryptionAvailable?: () => boolean;
+  decryptString?: (encrypted: Buffer) => string;
+};
+
 // Envelope cipher: fields are AES-256-GCM encrypted with a random DEK, and only the DEK is
 // wrapped by the OS keystore (Keychain / DPAPI / libsecret) through the async safeStorage API.
 // The sync safeStorage API is removed in Electron 46, and ISecretCipherService must stay sync.
@@ -44,7 +49,8 @@ export class SafeStorageCipher implements ISecretCipherService {
 
   constructor(
     private readonly _envelope: Nullable<AesGcmSecretCipher>,
-    private readonly _logService: ILogService
+    private readonly _logService: ILogService,
+    private readonly _legacySafeStorageAvailable = false
   ) {}
 
   get scheme(): SecretCipherScheme {
@@ -83,10 +89,10 @@ export class SafeStorageCipher implements ISecretCipherService {
         }
         return this._envelope.decrypt(ciphertext);
       case LEGACY_SAFE_STORAGE_SCHEME:
-        // TEMPORARY: only reachable when the legacy migration failed for this value; it is
-        // retried next launch, so keep the stored payload and just yield no secret.
-        this._warnOnce(payload.scheme, '[SafeStorageCipher] Legacy safe-storage ciphertext not migrated yet; treating as empty');
-        return '';
+        if (!this._legacySafeStorageAvailable) {
+          throw new Error('[SafeStorageCipher] Legacy safe-storage provider unavailable');
+        }
+        return (safeStorage as LegacySafeStorage).decryptString!(Buffer.from(payload.ciphertext, 'base64'));
       default:
         throw new Error(`[SafeStorageCipher] Unknown scheme '${payload.scheme}'`);
     }
@@ -100,8 +106,28 @@ export class SafeStorageCipher implements ISecretCipherService {
       return null;
     }
 
-    const { result } = await safeStorage.decryptStringAsync(Buffer.from(payload.ciphertext, 'base64'));
-    if (result === '') {
+    const encrypted = Buffer.from(payload.ciphertext, 'base64');
+    // Electron's async safeStorage implementation can reject legacy ciphertexts after an
+    // upgrade (notably when the OS keystore rotates its key). The deprecated synchronous
+    // reader remains available in Electron 45 and can still decode values written by 0.4.x.
+    // Keep this fallback limited to the one-time migration; all normal reads stay synchronous
+    // AES-GCM through the envelope cipher.
+    let result: string;
+    try {
+      const decrypted = await safeStorage.decryptStringAsync(encrypted);
+      if (decrypted.shouldReEncrypt) {
+        ({ result } = await safeStorage.decryptStringAsync(encrypted));
+      } else {
+        ({ result } = decrypted);
+      }
+    } catch (error) {
+      try {
+        result = (safeStorage as LegacySafeStorage).decryptString!(encrypted);
+      } catch {
+        throw error;
+      }
+    }
+    if (!result) {
       return null;
     }
     return this._envelope.encrypt(result);
@@ -119,15 +145,21 @@ export async function createSafeStorageCipher(options: ISafeStorageCipherOptions
   const { keyFilePath, logService } = options;
 
   if (!(await safeStorage.isAsyncEncryptionAvailable())) {
-    logService.warn(
-      '[SafeStorageCipher] OS keystore unavailable; falling back to LocalDerivedSecretCipher. '
-      + 'Install gnome-keyring (GNOME) or kwallet (KDE) on Linux for stronger protection.'
-    );
-    return new SafeStorageCipher(null, logService);
+    const legacyAvailable = (safeStorage as LegacySafeStorage).isEncryptionAvailable?.() ?? false;
+    if (legacyAvailable) {
+      logService.warn('[SafeStorageCipher] Async keystore unavailable; continuing with legacy safe-storage reads until migration can complete.');
+    } else {
+      logService.warn(
+        '[SafeStorageCipher] OS keystore unavailable; falling back to LocalDerivedSecretCipher. '
+        + 'Install gnome-keyring (GNOME) or kwallet (KDE) on Linux for stronger protection.'
+      );
+    }
+    return new SafeStorageCipher(null, logService, legacyAvailable);
   }
 
   const dek = await _loadOrCreateDek(keyFilePath, logService);
-  return new SafeStorageCipher(dek ? new AesGcmSecretCipher('safe-storage-envelope', dek) : null, logService);
+  const legacyAvailable = (safeStorage as LegacySafeStorage).isEncryptionAvailable?.() ?? false;
+  return new SafeStorageCipher(dek ? new AesGcmSecretCipher('safe-storage-envelope', dek) : null, logService, legacyAvailable);
 }
 
 // Returns null when the DEK cannot be used. An existing key file is never regenerated or
@@ -146,13 +178,20 @@ async function _loadOrCreateDek(keyFilePath: string, logService: ILogService): P
   }
 
   try {
-    const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(wrapped);
+    let decrypted = await safeStorage.decryptStringAsync(wrapped);
+    const needsReEncrypt = decrypted.shouldReEncrypt;
+    if (needsReEncrypt) {
+      // Electron may return the value from an older key provider first. The documented
+      // contract is to decrypt again so the provider can finish its key rotation.
+      decrypted = await safeStorage.decryptStringAsync(wrapped);
+    }
+    const { result } = decrypted;
     const dek = Buffer.from(result, 'base64');
     if (dek.length !== DEK_BYTES) {
       throw new Error(`Unexpected data key length ${dek.length}`);
     }
 
-    if (shouldReEncrypt) {
+    if (needsReEncrypt) {
       try {
         await _writeKeyFile(keyFilePath, await safeStorage.encryptStringAsync(result));
       } catch (error) {

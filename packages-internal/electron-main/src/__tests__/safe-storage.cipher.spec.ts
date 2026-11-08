@@ -24,21 +24,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Fake keystore: "wrapping" prefixes the plaintext so tests can tell versions apart.
 const keystore = vi.hoisted(() => ({
   available: true,
+  legacyAvailable: true,
   failDecrypt: false,
   shouldReEncrypt: false,
+  decryptAsyncCalls: 0,
   version: 'v1',
 }));
 
 vi.mock('electron', () => ({
   safeStorage: {
     isAsyncEncryptionAvailable: async () => keystore.available,
+    isEncryptionAvailable: () => keystore.legacyAvailable,
     encryptStringAsync: async (plain: string) => Buffer.from(`${keystore.version}:${plain}`),
     decryptStringAsync: async (buffer: Buffer) => {
+      keystore.decryptAsyncCalls += 1;
       if (keystore.failDecrypt) {
         throw new Error('keystore locked');
       }
       const text = buffer.toString();
       return { result: text.slice(text.indexOf(':') + 1), shouldReEncrypt: keystore.shouldReEncrypt };
+    },
+    decryptString: (buffer: Buffer) => {
+      const text = buffer.toString();
+      return text.slice(text.indexOf(':') + 1);
     },
   },
 }));
@@ -65,7 +73,7 @@ describe('createSafeStorageCipher', () => {
     dir = await mkdtemp(join(tmpdir(), 'termlnk-cipher-'));
     keyFilePath = join(dir, 'secret-key');
     logService = new RecordingLogService();
-    Object.assign(keystore, { available: true, failDecrypt: false, shouldReEncrypt: false, version: 'v1' });
+    Object.assign(keystore, { available: true, legacyAvailable: true, failDecrypt: false, shouldReEncrypt: false, decryptAsyncCalls: 0, version: 'v1' });
   });
 
   afterEach(async () => {
@@ -89,6 +97,16 @@ describe('createSafeStorageCipher', () => {
     const local = new LocalDerivedSecretCipher().encrypt('from-local');
 
     expect(cipher.decrypt(local)).toBe('from-local');
+  });
+
+  it('falls back to the legacy synchronous reader when re-wrapping old safe-storage values', async () => {
+    const cipher = await createSafeStorageCipher({ keyFilePath, logService });
+    const legacy = encodeSecretPayload({ scheme: 'safe-storage', ciphertext: Buffer.from('v1:legacy-password').toString('base64') });
+    keystore.failDecrypt = true;
+
+    const migrated = await cipher.rewrapLegacyToken(legacy);
+    expect(migrated).toBeTruthy();
+    expect(cipher.decrypt(migrated!)).toBe('legacy-password');
   });
 
   it('creates the wrapped key file with mode 0600 and reuses it across instances', async () => {
@@ -115,6 +133,7 @@ describe('createSafeStorageCipher', () => {
 
     expect((await readFile(keyFilePath)).toString().startsWith('v2:')).toBe(true);
     expect(second.decrypt(encrypted)).toBe('shared');
+    expect(keystore.decryptAsyncCalls).toBe(2);
   });
 
   it('never overwrites an unwrappable key file and yields empty envelope values', async () => {
@@ -147,6 +166,7 @@ describe('createSafeStorageCipher', () => {
 
   it('falls back to local-derived when the keystore is unavailable', async () => {
     keystore.available = false;
+    keystore.legacyAvailable = false;
 
     const cipher = await createSafeStorageCipher({ keyFilePath, logService });
     const encrypted = cipher.encrypt('secret');
@@ -159,11 +179,13 @@ describe('createSafeStorageCipher', () => {
     await expect(stat(keyFilePath)).rejects.toThrow();
   });
 
-  it('returns empty for unmigrated legacy safe-storage payloads without throwing', async () => {
+  it('keeps reading legacy safe-storage payloads when only async encryption is unavailable', async () => {
+    keystore.available = false;
+    keystore.legacyAvailable = true;
     const cipher = await createSafeStorageCipher({ keyFilePath, logService });
-    const legacy = encodeSecretPayload({ scheme: 'safe-storage', ciphertext: 'AAAA' });
+    const legacy = encodeSecretPayload({ scheme: 'safe-storage', ciphertext: Buffer.from('legacy:old-secret').toString('base64') });
 
-    expect(cipher.decrypt(legacy)).toBe('');
+    expect(cipher.decrypt(legacy)).toBe('old-secret');
   });
 
   it('re-wraps a legacy token into the envelope scheme', async () => {
