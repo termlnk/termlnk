@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/acp-core",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": false,
   "description": "ACP core services for termlnk - Agent Client Protocol connection engine, discovery, and session management",
   "author": "telan <telanflow@gmail.com>",

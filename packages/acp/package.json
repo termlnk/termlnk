@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/acp",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": false,
   "description": "ACP shared contracts for termlnk - Agent Client Protocol types, provider catalog, and DI identifiers",
   "author": "telan <telanflow@gmail.com>",

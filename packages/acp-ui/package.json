@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/acp-ui",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": false,
   "description": "ACP UI for termlnk - native ACP session tabs, launcher menu, and agent management",
   "author": "telan <telanflow@gmail.com>",
