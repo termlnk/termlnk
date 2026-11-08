@@ -1,6 +1,6 @@
 {
   "name": "@termlnk/project-ui",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": false,
   "description": "Project UI for termlnk - file explorer and git panels",
   "author": "telan <telanflow@gmail.com>",
