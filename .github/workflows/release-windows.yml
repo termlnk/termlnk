@@ -97,7 +97,7 @@ jobs:
         run: |
           aws s3 cp . s3://${{ secrets.R2_BUCKET_NAME }}/desktop/ \
             --endpoint-url ${{ secrets.R2_ENDPOINT }} \
-            --recursive --exclude "*" \
+            --recursive --exclude "*" --exclude "win-unpacked/*" \
             --include "*.exe" --include "*.tar.gz" --include "*.blockmap"
 
       - name: Upload update manifest as artifact
